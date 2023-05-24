@@ -105,31 +105,39 @@ class TorchvisionCIFAR10DataModule(L.LightningDataModule):
         return torch.utils.data.DataLoader(self.test, batch_size=self.batch_size)
 
 class CIFAR10ClassificationModel(L.LightningModule):
-    def __init__(self):
+    def __init__(self, num_classes: int = 10):
         super().__init__()
-        self.model = timm.create_model('resnet18', num_classes=10)
+        self.model = timm.create_model('resnet18', num_classes=num_classes)
         self.criterion = torch.nn.CrossEntropyLoss()
+        self.accuracy = torchmetrics.Accuracy(task='multiclass', num_classes=num_classes)
 
     def forward(self, x):
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        logits = self(x)
-        loss = self.criterion(logits, y)
+        preds = self(x)
+
+        self.accuracy(preds, y)
+        self.log('train_acc', self.accuracy, on_epoch=True, prog_bar=True)
+
+        loss = self.criterion(preds, y)
+        self.log('train_loss', loss, on_epoch=True, prog_bar=True)
+
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        logits = self(x)
-        loss = self.criterion(logits, y)
-        return loss
+        preds = self(x)
+
+        self.accuracy(preds, y)
+        self.log('valid_acc', self.accuracy, on_epoch=True, prog_bar=True)
+
+        loss = self.criterion(preds, y)
+        self.log('valid_loss', loss, on_epoch=True, prog_bar=True)
 
     def test_step(self, batch, batch_idx):
-        x, y = batch
-        logits = self(x)
-        loss = self.criterion(logits, y)
-        return loss
+        pass
 
 def main():
     data = MyHuggingFaceCIFAR10DataModule()
@@ -148,6 +156,7 @@ def main():
     trainer.test(model, data)
 
 def cli_main():
+
     cli = LightningCLI(
         CIFAR10ClassificationModel,
         MyHuggingFaceCIFAR10DataModule,
