@@ -17,8 +17,9 @@ from timm import create_model
 # use Huggingface datasets
 from datasets import load_dataset, Dataset
 
-# download Huggngface datase to custom directory
-#datasets.config.DOWNLOADED_DATASETS_PATH = Path(target_path)
+# download Huggingface datasets to custom directory if requested
+if DATA_DIR := os.environ.get('HUGGINGFACE_DATA_DIR'):
+    datasets.config.DOWNLOADED_DATASETS_PATH = Path(DATA_DIR)
 
 class MyHuggingFaceCIFAR10DataModule(L.LightningDataModule):
     def __init__(self, batch_size: int = 64, **kwargs):
