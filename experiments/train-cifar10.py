@@ -13,7 +13,7 @@ from opacus.data_loader import DPDataLoader
 from opacus.lightning import DPLightningDataModule
 
 # models
-from timm import create_model
+import timm
 
 # use Huggingface datasets
 import datasets
@@ -107,7 +107,7 @@ class TorchvisionCIFAR10DataModule(L.LightningDataModule):
 class CIFAR10ClassificationModel(L.LightningModule):
     def __init__(self):
         super().__init__()
-        self.model = create_model('resnet18', num_classes=10)
+        self.model = timm.create_model('resnet18', num_classes=10)
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def forward(self, x):
@@ -125,8 +125,11 @@ class CIFAR10ClassificationModel(L.LightningModule):
         loss = self.criterion(logits, y)
         return loss
 
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=0.001)
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self(x)
+        loss = self.criterion(logits, y)
+        return loss
 
 def main():
     data = MyHuggingFaceCIFAR10DataModule()
