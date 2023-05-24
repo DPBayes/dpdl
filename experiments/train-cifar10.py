@@ -23,15 +23,15 @@ if DATA_DIR := os.environ.get('HUGGINGFACE_DATA_DIR'):
     datasets.config.DOWNLOADED_DATASETS_PATH = Path(DATA_DIR)
 
 class MyHuggingFaceCIFAR10DataModule(L.LightningDataModule):
-    def __init__(self, batch_size: int = 64, **kwargs):
+    def __init__(self, batch_size: int = 64, num_workers: int = 4, **kwargs):
         super().__init__(**kwargs)
         self.batch_size = batch_size
+        self.num_workers = num_workers
 
     def setup(self, stage: str):
         train = datasets.load_dataset('cifar10', split='train').with_format('torch')
 
-        #self.train, self.val = torch.utils.data.random_split(train, [45000, 5000])
-        _, self.train, self.val = torch.utils.data.random_split(train, [35000, 10000, 5000])
+        self.train, self.val = torch.utils.data.random_split(train, [45000, 5000])
         self.test = datasets.load_dataset('cifar10', split='test').with_format('torch')
 
     @staticmethod
@@ -49,18 +49,34 @@ class MyHuggingFaceCIFAR10DataModule(L.LightningDataModule):
         return images, labels
 
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(self.train, batch_size=self.batch_size, collate_fn=self.collate_fn)
+        return torch.utils.data.DataLoader(
+                self.train,
+                batch_size=self.batch_size,
+                collate_fn=self.collate_fn,
+                num_workers=self.num_workers,
+            )
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.val, batch_size=self.batch_size, collate_fn=self.collate_fn)
+        return torch.utils.data.DataLoader(
+                self.val,
+                batch_size=self.batch_size,
+                collate_fn=self.collate_fn,
+                num_workers=self.num_workers,
+            )
 
     def test_dataloader(self):
-        return torch.utils.data.DataLoader(self.test, batch_size=self.batch_size, collate_fn=self.collate_fn)
+        return torch.utils.data.DataLoader(
+                self.test,
+                batch_size=self.batch_size,
+                collate_fn=self.collate_fn,
+                num_workers=self.num_workers,
+            )
 
 class TorchvisionCIFAR10DataModule(L.LightningDataModule):
-    def __init__(self, batch_size: int = 64, **kwargs):
+    def __init__(self, batch_size: int = 64, num_workers: int = 4, **kwargs):
         super().__init__(**kwargs)
         self.batch_size = batch_size
+        self.num_workers = num_workers
 
     def setup(self, stage: str):
         transform = torchvision.transforms.Compose([
@@ -106,7 +122,7 @@ class CIFAR10ClassificationModel(L.LightningModule):
         return torch.optim.Adam(self.model.parameters(), lr=0.001)
 
 def main():
-    data = MyHuggingFaceCIFAR10DataModule(batch_size=2)
+    data = MyHuggingFaceCIFAR10DataModule()
     #dp_data = DPLightningDataModule(data)
     dp_data = data
 
@@ -120,8 +136,6 @@ def main():
     trainer.fit(model, dp_data)
 
     trainer.test(model, data)
-    #trainer.test(model, dp_data)  # identical
-
 
 def cli_main():
     cli = LightningCLI(
@@ -134,7 +148,6 @@ def cli_main():
     )
     cli.trainer.fit(cli.model, datamodule=cli.datamodule)
     cli.trainer.test(ckpt_path='best', datamodule=cli.datamodule)
-
 
 if __name__ == '__main__':
     if os.environ.get('LIGHTNING_VANILLA') == 'true':
