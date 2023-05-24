@@ -16,7 +16,7 @@ from opacus.lightning import DPLightningDataModule
 from timm import create_model
 
 # use Huggingface datasets
-from datasets import load_dataset, Dataset
+import datasets
 
 # download Huggingface datasets to custom directory if requested
 if DATA_DIR := os.environ.get('HUGGINGFACE_DATA_DIR'):
@@ -28,11 +28,11 @@ class MyHuggingFaceCIFAR10DataModule(L.LightningDataModule):
         self.batch_size = batch_size
 
     def setup(self, stage: str):
-        train = load_dataset('cifar10', split='train').with_format('torch')
+        train = datasets.load_dataset('cifar10', split='train').with_format('torch')
 
         #self.train, self.val = torch.utils.data.random_split(train, [45000, 5000])
         _, self.train, self.val = torch.utils.data.random_split(train, [35000, 10000, 5000])
-        self.test = load_dataset('cifar10', split='test').with_format('torch')
+        self.test = datasets.load_dataset('cifar10', split='test').with_format('torch')
 
     @staticmethod
     def collate_fn(batch):
