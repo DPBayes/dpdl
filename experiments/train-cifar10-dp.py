@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-from typing import Callable, Iterable, Protocol
+from typing import Callable, Iterable
 
 import torch
 import torchmetrics
