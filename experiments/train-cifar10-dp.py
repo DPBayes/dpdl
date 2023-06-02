@@ -191,10 +191,11 @@ class CIFAR10ClassificationModelDP(CIFAR10ClassificationModel):
 
 class LogEpsilonCallback(L.Callback):
     def on_train_epoch_end(self, trainer, pl_module):
-        epsilon = self.trainer.model._get_epsilon()
-        self.pl_module.log('epsilon', epsilon, prog_bar=True)
+        epsilon = pl_module.trainer.model._get_epsilon()
+        pl_module.log('epsilon', epsilon, prog_bar=True)
 
 def main():
+
     callbacks = [
         LogEpsilonCallback(),
     ]
