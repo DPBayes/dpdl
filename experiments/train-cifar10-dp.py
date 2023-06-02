@@ -178,18 +178,6 @@ class CIFAR10ClassificationModelDP(CIFAR10ClassificationModel):
 
         return dp_optimizer
 
-    def training_step(self, batch, batch_idx):
-        loss = super().training_step(batch, batch_idx)
-
-        print(f'     Model class: {self.trainer.model.__class__}')
-        print(f' Optimizer class: {self.trainer.optimizers[0].__class__}')
-        print(f'Dataloader class: {self.trainer.train_dataloader.__class__}')
-
-        epsilon = self._get_epsilon()
-        self.log('epsilon', epsilon, on_epoch=True, on_step=False, prog_bar=True)
-
-        return loss
-
     def _get_epsilon(self):
         if not self.delta:
             N = len(self.trainer.train_dataloader.dataset)
@@ -201,12 +189,22 @@ class CIFAR10ClassificationModelDP(CIFAR10ClassificationModel):
 
         return epsilon
 
+class LogEpsilonCallback(L.Callback):
+    def on_train_epoch_end(self, trainer, pl_module):
+        epsilon = self.trainer.model._get_epsilon()
+        self.pl_module.log('epsilon', epsilon, prog_bar=True)
+
 def main():
+    callbacks = [
+        LogEpsilonCallback(),
+    ]
+
     cli = LightningCLI(
         CIFAR10ClassificationModelDP,
         MyHuggingFaceCIFAR10DataModuleDP,
         trainer_defaults = {
             'max_epochs': 10,
+            'callbacks' : callbacks,
         },
         save_config_kwargs = {
             'overwrite': True
