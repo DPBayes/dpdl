@@ -2,9 +2,9 @@
 #SBATCH --account=project_462000213
 #SBATCH --partition=small-g
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=2
 #SBATCH --cpus-per-task=8
-#SBATCH --gpus=1
+#SBATCH --gpus=2
 #SBATCH --time=1:00:00
 #SBATCH --mem=32G
 
