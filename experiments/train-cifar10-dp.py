@@ -8,6 +8,7 @@ import torch
 import torchmetrics
 
 from lightning.pytorch.cli import LightningCLI
+
 import lightning as L
 
 import opacus
@@ -141,7 +142,33 @@ class CIFAR10ClassificationModelDP(CIFAR10ClassificationModel):
         noise_multiplier: float = 1.0,
         max_grad_norm: float = 1.0,
         delta: float = None, # defaults to training dataset size
+        clipping: str = 'flat',
     ):
+        """
+        Add privacy-related responsibilities to the parent class.
+
+        - Model is wrapped to also compute per sample gradients.
+        - Optimizer is now responsible for gradient clipping and adding noise to the gradients.
+        - DataLoader is updated to perform Poisson sampling.
+
+        Args:
+            optimizer: Optimizer to be used for training
+            lr: Learning rate for the training.
+            num_classes: Number of classes for classification.
+            noise_multiplier: The ratio of the standard deviation of the Gaussian noise to
+                the L2-sensitivity of the function to which the noise is added
+                (How much noise to add)
+            max_grad_norm: The maximum norm of the per-sample gradients. Any gradient with norm
+                higher than this will be clipped to this value.
+            delta: The delta to be used when calculating epsilon. Default: 1/N
+            clipping: Per sample gradient clipping mechanism ("flat" or "per_layer" or "adaptive").
+                Flat clipping calculates the norm of the entire gradient over
+                all parameters, per layer clipping sets individual norms for
+                every parameter tensor, and adaptive clipping updates clipping bound per iteration.
+                Flat clipping is usually preferred, but using per layer clipping in combination
+                with distributed training can provide notable performance gains.
+        """
+
         super().__init__()
 
         self.noise_multiplier = noise_multiplier
@@ -162,7 +189,6 @@ class CIFAR10ClassificationModelDP(CIFAR10ClassificationModel):
 
     def configure_optimizers(self):
         optimizer = super().configure_optimizers()
-
         dataloader = self.trainer.datamodule.train_dataloader()
 
         # For DP we need optimizer that clips the per-sample gradients and adds noise to the gradient.
@@ -191,13 +217,30 @@ class CIFAR10ClassificationModelDP(CIFAR10ClassificationModel):
 
 class LogEpsilonCallback(L.Callback):
     def on_train_epoch_end(self, trainer, pl_module):
-        epsilon = pl_module.trainer.model._get_epsilon()
+        epsilon = trainer.model._get_epsilon()
         pl_module.log('epsilon', epsilon, prog_bar=True)
 
-def main():
+class LogDPModulesCallback(L.Callback):
+    def on_train_epoch_start(self, trainer, pl_module):
+        print('-------------------------------------------------------- [DP STUFF START]')
+        print(f'Model: {trainer.model.model.__class__.__name__}')
+        print(f'Dataloader: {trainer.train_dataloader.__class__.__name__}')
+        print(f'Optimizer: {pl_module.optimizers().__class__}')
+        print('-------------------------------------------------------- [DP STUFF END]')
 
+class AssertDPModulesCallback(L.Callback):
+    def on_train_epoch_start(self, trainer, pl_module):
+        assert isinstance(trainer.model.model, opacus.GradSampleModule), f'Model must be instance of opacus.GradSampleModule, we got: {trainer.model.model.__class__}'
+        assert isinstance(trainer.train_dataloader, opacus.data_loader.DPDataLoader), f'Data loader must be instance of opacus.data_loader.DPDataLoader, we got: {trainer.train_dataloader.__class__}'
+        assert isinstance(pl_module.optimizers(), opacus.optimizers.DPOptimizer), f'Optimizer must be instance of opacus.optimizers.DPOptimizer, we got: {pl_module.optimizers().__class__}'
+
+    on_train_epoch_end = on_train_epoch_start
+
+def main():
     callbacks = [
         LogEpsilonCallback(),
+        AssertDPModulesCallback(),
+        LogDPModulesCallback(),
     ]
 
     cli = LightningCLI(
@@ -212,7 +255,7 @@ def main():
         },
         auto_configure_optimizers = False,
     )
-    cli.trainer.fit(cli.model, datamodule=cli.datamodule)
+    print('Done.')
 
 if __name__ == '__main__':
     main()
