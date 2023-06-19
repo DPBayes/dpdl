@@ -36,7 +36,11 @@ class DataModule():
         self._val_dataloader = None
         self._test_dataloader = None
 
-    # XXX: Add criterion and metrics to datamodule?
+    def criterion(self, logits, y):
+        raise(NotImplementedError('Criterion not implemented for class: {self.__class__.__name__}'))
+
+    def accuracy(self, logits, y):
+        raise(NotImplementedError('Accuracy not implemented for class: {self.__class__.__name__}'))
 
     @property
     def train_dataloader(self):
@@ -65,6 +69,12 @@ class DataModule():
 class CIFAR10DataModule(DataModule):
     def __init__(self, batch_size: int = 64, num_workers: int = 4):
         super().__init__(batch_size, num_workers)
+
+        self.num_classes = 10
+
+        self._criterion = torch.nn.CrossEntropyLoss()
+        self._accuracy = torchmetrics.Accuracy(task='multiclass', num_classes=self.num_classes)
+
         self.setup()
 
     def setup(self):
@@ -94,6 +104,13 @@ class CIFAR10DataModule(DataModule):
             num_workers=self.num_workers,
         )
 
+    def criterion(logits, y):
+        return self._criterion(logits, y)
+
+    def accuracy(logits, y):
+        preds = torch.argmax(logits, dim=1)
+        return self._accuracy(preds, y)
+
     @staticmethod
     def collate_fn(batch):
         B = len(batch)
@@ -113,9 +130,6 @@ class ImageClassificationModel(torch.nn.Module):
         super().__init__()
         self.num_classes = num_classes
         self.model = timm.create_model(model_name, num_classes=num_classes)
-
-        self.criterion = torch.nn.CrossEntropyLoss()
-        self.accuracy = torchmetrics.Accuracy(task='multiclass', num_classes=num_classes)
 
         if not opacus.validators.ModuleValidator.is_valid(self.model):
             self.model = opacus.validators.ModuleValidator.fix(self.model)
@@ -213,8 +227,8 @@ class Trainer:
 
         X, y = batch
         self.optimizer.zero_grad()
-        preds = self.model(X)
-        loss = self.model.criterion(preds, y)
+        logits = self.model(X)
+        loss = self.model.datamodule.criterion(logits, y)
         self.fabric.backward(loss)
         self.optimizer.step()
 
@@ -245,8 +259,8 @@ class Trainer:
         self.fabric.call('on_validation_batch_start', self, batch_idx, batch)
 
         X, y = batch
-        preds = self.model(X)
-        loss = self.model.criterion(preds, y)
+        logits = self.model(X)
+        loss = self.model.datamodule.criterion(logits, y)
 
         loss = loss.item()
         self.fabric.call('on_validation_batch_end', self, batch_idx, batch, loss)
