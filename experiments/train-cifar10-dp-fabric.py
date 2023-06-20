@@ -104,10 +104,10 @@ class CIFAR10DataModule(DataModule):
             num_workers=self.num_workers,
         )
 
-    def criterion(logits, y):
+    def criterion(self, logits, y):
         return self._criterion(logits, y)
 
-    def accuracy(logits, y):
+    def accuracy(self, logits, y):
         preds = torch.argmax(logits, dim=1)
         return self._accuracy(preds, y)
 
@@ -144,7 +144,7 @@ class Trainer:
         # essentials
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        datamodule: L.LightningDataModule,
+        datamodule: DataModule,
 
         # generic params
         max_epochs: int = 10,
@@ -212,7 +212,6 @@ class Trainer:
 
         total_loss = 0
         for batch_idx, batch in enumerate(self.datamodule.train_dataloader):
-            print(f'STARTING TO FIT BATCH_IDX: {batch_idx}')
             batch_loss = self.fit_one_batch(batch_idx, batch)
             total_loss = total_loss + batch_loss
 
@@ -228,7 +227,8 @@ class Trainer:
         X, y = batch
         self.optimizer.zero_grad()
         logits = self.model(X)
-        loss = self.model.datamodule.criterion(logits, y)
+
+        loss = self.datamodule.criterion(logits, y)
         self.fabric.backward(loss)
         self.optimizer.step()
 
@@ -260,7 +260,7 @@ class Trainer:
 
         X, y = batch
         logits = self.model(X)
-        loss = self.model.datamodule.criterion(logits, y)
+        loss = self.datamodule.criterion(logits, y)
 
         loss = loss.item()
         self.fabric.call('on_validation_batch_end', self, batch_idx, batch, loss)
@@ -270,45 +270,15 @@ class Trainer:
 class DPTrainer(Trainer):
     def __init__(
         self,
-
-        # essentials
-        model: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
-        datamodule: L.LightningDataModule,
-
-        # generic params
-        max_epochs: int = 10,
-        validation_frequency: int = 1,
-
-        # fabric params
-        accelerator: str = 'auto',
-        strategy: str = 'auto',
-        devices: str = 'auto',
-        precision: int = 32,
-        callbacks: Optional[Union[List[Any], Any]] = None,
-        loggers: Optional[Union[L.fabric.loggers.Logger, List[L.fabric.loggers.Logger]]] = None,
-        #checkpoint_dir: str = "./checkpoints",
-        #checkpoint_frequency: int = 1,
-
+        *,
         # privacy params
         noise_multiplier: float = 1.0,
         max_grad_norm: float = 1.0,
         clipping: str = 'flat',
+        **kwargs,
     ):
 
-        super().__init__(
-                model,
-                optimizer,
-                datamodule,
-                max_epochs,
-                validation_frequency,
-                accelerator,
-                strategy,
-                devices,
-                precision,
-                callbacks,
-                loggers,
-        )
+        super().__init__(**kwargs)
 
         self.noise_multiplier = noise_multiplier
         self.max_grad_norm = max_grad_norm
@@ -320,11 +290,8 @@ class DPTrainer(Trainer):
     def setup(self):
         super().setup()
 
-        #import ipdb
-        #ipdb.set_trace()
-
         # fabric has wrapped the model, optimizer, and module. so let's grab
-        # the wrapped module an DP'ify them.
+        # the wrapped modules an DP'ify them.
         model = self.model._forward_module
         optimizer = self.optimizer._optimizer
         train_dataloader = self.datamodule.train_dataloader._dataloader
@@ -341,20 +308,16 @@ class DPTrainer(Trainer):
 
         # are we distributed?
         if self.fabric.world_size > 1:
+            # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
+            # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
             dp_model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(dp_model)
 
-            dp_optimizer = opacus.optimizers.DistributedDPOptimizer(
-                dp_optimizer,
-                noise_multiplier=dp_optimizer.noise_multiplier,
-                max_grad_norm=dp_optimizer.max_grad_norm,
-                expected_batch_size=dp_optimizer.expected_batch_size,
-            )
+        # put the DP'ifyed stuff back into Fabric wrappers
+        self.model._forward_module = dp_model
+        self.datamodule.train_dataloader._dataloader = dp_dataloader
 
-        # note that we ignore the fabric wrappers here, since opacus handles
-        # everything else for as than tran
-        self.model = dp_model
-        self.optimizer = dp_optimizer
-        self.datamodule.train_dataloader = dp_dataloader
+        # For some reason
+        self.optimizer._optimizer = dp_optimizer
 
 class PrintStateCallback():
     def on_train_start(self, trainer):
@@ -369,17 +332,17 @@ class PrintStateCallback():
     def on_train_epoch_end(self, trainer, epoch, loss):
         print(f' - Epoch finished, loss: {loss}.')
 
-    def on_train_batch_start(self, trainer, batch_idx, batch):
-        print(f'  - Start processing batch {batch_idx+1}.')
+    #def on_train_batch_start(self, trainer, batch_idx, batch):
+    #    print(f'  - Start processing batch {batch_idx+1}.')
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss):
-        print(f'  - Processed batch {batch_idx+1}, loss: {loss}')
+        print(f'  - Processed batch {batch_idx+1}, loss: {loss:.2f}')
 
 def main():
     # training params
     batch_size = 511
     num_workers = 8
-    model_name = 'resnet18'
+    model_name = 'resnet50'
     num_classes = 10
     max_epochs = 10
     lr = 1e-3
@@ -404,6 +367,10 @@ def main():
         PrintStateCallback(),
     ]
 
+    #loggers = [
+    #    L.pytorch.loggers.TensorBoardLogger(save_dir='./logs'),
+    #]
+
     trainer = DPTrainer(
         model=model,
         optimizer=optimizer,
@@ -417,6 +384,7 @@ def main():
         max_grad_norm=max_grad_norm,
         clipping=clipping,
         callbacks=callbacks,
+    #    loggers=loggers,
     )
 
 #    trainer = Trainer(
