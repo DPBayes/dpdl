@@ -11,10 +11,10 @@ from typing_extensions import Annotated
 
 import lightning as L
 
-from callbacks import PrintStateCallback
-from datamodules import CIFAR10DataModule
-from models import ImageClassificationModel
-from trainer import Trainer, DifferentiallyPrivateTrainer
+from dpdl.callbacks import PrintStateCallback
+from dpdl.datamodules import CIFAR10DataModule
+from dpdl.models import ImageClassificationModel
+from dpdl.trainer import Trainer, DifferentiallyPrivateTrainer
 
 def main(
         ctx: typer.Context,

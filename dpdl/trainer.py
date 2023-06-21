@@ -4,7 +4,7 @@ import opacus
 
 from typing import Any, List, Optional, Union
 
-from datamodules import DataModule
+from .datamodules import DataModule
 
 class Trainer:
     def __init__(
