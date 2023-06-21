@@ -1,3 +1,11 @@
+import lightning as L
+import torch
+import opacus
+
+from typing import Any, List, Optional, Union
+
+from datamodules import DataModule
+
 class Trainer:
     def __init__(
         self,
@@ -150,6 +158,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.privacy_engine = opacus.PrivacyEngine()
 
     def setup(self):
+        # call super class to initialize fabric
         super().setup()
 
         # fabric has wrapped the model, optimizer, and module. so let's grab
@@ -177,6 +186,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         # put the DP'ifyed stuff back into Fabric wrappers
         self.model._forward_module = dp_model
         self.datamodule.train_dataloader._dataloader = dp_dataloader
-
-        # For some reason
         self.optimizer._optimizer = dp_optimizer
+
+    def get_epsilon(self, delta):
+        return self.privacy_engine.get_epsilon(delta)

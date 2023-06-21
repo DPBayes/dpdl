@@ -1,3 +1,7 @@
+import opacus
+import torch
+import timm
+
 class ImageClassificationModel(torch.nn.Module):
     def __init__(self, model_name: str ='resnet18', num_classes: int = 10):
         super().__init__()

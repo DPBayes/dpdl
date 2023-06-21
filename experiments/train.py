@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 import os
 import warnings
-from pathlib import Path
-
-import typer
-from typing import Any, List, Optional, Union
-from typing_extensions import Annotated
 
 import torch
-import torchmetrics
+import typer
+
+from typing import Optional
+from typing_extensions import Annotated
 
 import lightning as L
-import opacus
 
-def train(
+from callback import PrintStateCallback
+from datamodules import CIFAR10DataModule
+from models import ImageClassificationModel
+from trainer import Trainer, DifferentiallyPrivateTrainer
+
+def get_cli_configuration(
+        ctx: typer.Context,
         max_epochs: Annotated[
             int,
             typer.Option(
@@ -56,6 +59,20 @@ def train(
                 rich_help_panel='Training options',
             )
         ] = True,
+        log_dir: Annotated[
+            str,
+            typer.Option(
+                help='Log directory',
+                rich_help_panel='Logging options',
+            )
+        ] = 'logs',
+        experiment_name: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Experiment name for logging',
+                rich_help_panel='Logging options',
+            )
+        ] = None,
         num_classes: Annotated[
             Optional[int],
             typer.Option(
@@ -114,34 +131,43 @@ def train(
         ] = 'flat',
     ):
 
-    devices = devices if devices else 'auto'
+    configuration = ctx.params
+    configuration['devices'] = devices if devices else 'auto'
 
+    train(configuration)
+
+def train(configuration):
+    print('WE GOT CONFIGURATION: ', configuration)
     # setup data, model, and optimizer
-    datamodule = CIFAR10DataModule(num_workers=num_workers, batch_size=batch_size)
-    model = ImageClassificationModel(model_name, num_classes)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    datamodule = CIFAR10DataModule(
+        num_workers=configuration['num_workers'],
+        batch_size=configuration['batch_size']
+    )
+    model = ImageClassificationModel(configuration['model_name'], configuration['num_classes'])
+    optimizer = torch.optim.Adam(model.parameters(), lr=configuration['lr'])
 
     callbacks = [
         PrintStateCallback(),
     ]
 
+    log_dir = configuration['log_dir']
     loggers = [
-        L.pytorch.loggers.TensorBoardLogger(),
+        L.pytorch.loggers.TensorBoardLogger(f'{log_dir}/tensorboard'),
     ]
 
-    if privacy:
+    if configuration['privacy']:
         trainer = DifferentiallyPrivateTrainer(
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
-            accelerator=accelerator,
-            strategy=strategy,
-            devices=devices,
-            precision=precision,
-            max_epochs=max_epochs,
-            noise_multiplier=noise_multiplier,
-            max_grad_norm=max_grad_norm,
-            clipping=clipping,
+            accelerator=configuration['accelerator'],
+            strategy=configuration['strategy'],
+            devices=configuration['devices'],
+            precision=configuration['precision'],
+            max_epochs=configuration['max_epochs'],
+            noise_multiplier=configuration['noise_multiplier'],
+            max_grad_norm=configuration['max_grad_norm'],
+            clipping=configuration['clipping'],
             callbacks=callbacks,
             loggers=loggers,
         )
@@ -150,11 +176,11 @@ def train(
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
-            accelerator=accelerator,
-            strategy=strategy,
-            devices=devices,
-            precision=precision,
-            max_epochs=max_epochs,
+            accelerator=configuration['accelerator'],
+            strategy=configuration['strategy'],
+            devices=configuration['devices'],
+            precision=configuration['precision'],
+            max_epochs=configuration['max_epochs'],
             callbacks=callbacks,
             loggers=loggers,
         )
@@ -164,4 +190,4 @@ def train(
     print('Done.')
 
 if __name__ == '__main__':
-    typer.run(train)
+    typer.run(get_cli_configuration)
