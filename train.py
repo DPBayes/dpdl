@@ -3,10 +3,12 @@
 import os
 import warnings
 
+import optuna
 import torch
 import typer
+import yaml
 
-from typing import Optional
+from typing import Optional, List
 from typing_extensions import Annotated
 
 import lightning as L
@@ -29,7 +31,7 @@ def main(
                 rich_help_panel='Training options',
             )
         ] = 10,
-        lr: Annotated[
+        learning_rate: Annotated[
             float,
             typer.Option(
                 help='Leraning rate',
@@ -155,37 +157,94 @@ def main(
                 rich_help_panel='Opacus options',
             )
         ] = None,
+        optimize: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Run Bayesian optimization',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = False,
+        target_hypers: Annotated[
+            Optional[List[str]],
+            typer.Option(
+                help='Hyperparameters to optimize (use multiple times if necessary)',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = [],
+        n_trials: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Number of optimization rounds',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = 20,
+        optuna_config_fpath: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Configuration file containing ranges/options for hypers',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = 'conf/optuna_hypers.conf',
     ):
 
     configuration = ctx.params
     configuration['devices'] = devices if devices else 'auto'
-
     hyperparam_names = [
-        'model_name',
         'batch_size',
-        'lr',
+        'learning_rate',
         'epochs',
+        'clipping',
+        'target_epsilon',
+        'model_name',
     ]
 
     if privacy:
         hyperparam_names.extend([
-            'accountant',
             'noise_multiplier',
             'max_grad_norm',
-            'clipping',
-            'target_epsilon',
         ])
 
     hyperparams = {}
     for name in hyperparam_names:
         hyperparams[name] = configuration.pop(name)
 
-    train(configuration, hyperparams)
+    if not optimize:
+        train(configuration, hyperparams)
+    else:
+        optimize_hypers(configuration, hyperparams)
+
+def optimize_hypers(configuration, hyperparams):
+    def read_optuna_config(config_fpath):
+
+        with open(config_fpath, 'rb') as fh:
+            config = yaml.safe_load(fh)
+
+        return config
+
+    target_hypers = configuration['target_hypers']
+
+    if len(target_hypers) == 0:
+        raise(typer.BadParameter('Bayesian optimization enabled and no target hyperparameters for optimization.'))
+
+    optuna_config = read_optuna_config(configuration['optuna_config_fpath'])
+
+    for target_hyper in target_hypers:
+        if not target_hyper in hyperparams:
+            raise(typer.BadParameter(f'Cannot optimize unknown hyperparameter "{target_hyper}".'))
+        if not target_hyper in optuna_config:
+            config_fpath = configuration['optuna_config_fpath']
+            raise(RuntimeError(f'Hyperparameter "{target_hyper}" not found in Optuna configuration file "{config_fpath}".'))
+
+    study = optuna.create_study()
+    #study.optimize(...)
 
 def train(configuration, hyperparams):
     def get_tensorboard_logger(log_dir, hyperparams):
         logger = L.pytorch.loggers.TensorBoardLogger(f'{log_dir}/tensorboard')
-        logger.log_hyperparams(hyperparams)
+        logger.log_hyperparams({
+            'hyperparams': hyperparams,
+            'configuration': configuration,
+        })
         return logger
 
     # setup data, model, and optimizer
@@ -195,13 +254,12 @@ def train(configuration, hyperparams):
     )
 
     model = ImageClassificationModel(hyperparams['model_name'], configuration['num_classes'])
-    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['lr'])
+    optimizer = torch.optim.Adam(model.parameters(), learning_rate=hyperparams['learning_rate'])
 
     callbacks = [
         PrintStateCallback(),
     ]
 
-    log_dir = configuration['log_dir']
     loggers = [
         get_tensorboard_logger(configuration['log_dir'], hyperparams),
     ]
@@ -223,7 +281,7 @@ def train(configuration, hyperparams):
             datamodule=datamodule,
             # hypers
             epochs=hyperparams['epochs'],
-            accountant=hyperparams['accountant'],
+            accountant=configuration['accountant'],
             noise_multiplier=hyperparams['noise_multiplier'],
             max_grad_norm=hyperparams['max_grad_norm'],
             clipping=hyperparams['clipping'],
