@@ -18,6 +18,13 @@ from trainer import Trainer, DifferentiallyPrivateTrainer
 
 def main(
         ctx: typer.Context,
+        mode: Annotated[
+            str,
+            typer.Argument(
+                help='Mode to run in (currently only "train" available)',
+                #rich_help_panel='Training options',
+            )
+        ],
         epochs: Annotated[
             int,
             typer.Option(
