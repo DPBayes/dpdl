@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+epochs#!/usr/bin/env python3
 
 import os
 import warnings
@@ -11,17 +11,17 @@ from typing_extensions import Annotated
 
 import lightning as L
 
-from callback import PrintStateCallback
+from callbacks import PrintStateCallback
 from datamodules import CIFAR10DataModule
 from models import ImageClassificationModel
 from trainer import Trainer, DifferentiallyPrivateTrainer
 
 def get_cli_configuration(
         ctx: typer.Context,
-        max_epochs: Annotated[
+        epochs: Annotated[
             int,
             typer.Option(
-                help='Max number of epochs to train',
+                help='Number of epochs to train',
                 rich_help_panel='Training options',
             )
         ] = 10,
@@ -166,17 +166,41 @@ def get_cli_configuration(
     configuration = ctx.params
     configuration['devices'] = devices if devices else 'auto'
 
-    train(configuration)
+    hyperparam_names = [
+        'model_name',
+        'batch_size',
+        'lr',
+    ]
 
-def train(configuration):
-    print('WE GOT CONFIGURATION: ', configuration)
+    if privacy:
+        hyperparam_names.extend([
+            'accountant',
+            'noise_multiplier'
+            'max_grad_norm',
+            'clipping',
+            'target_delta',
+            'target_epsilon',
+        ])
+
+    hyperparams = {}
+    for name in hyperparam_names:
+        hyperparams[name] = configuration.pop(name)
+
+    train(configuration, hyperparams)
+
+def train(configuration, hyperparams):
+    def get_tensorboard_logger(log_dir, hyperparams):
+        logger = L.pytorch.loggers.TensorBoardLogger(f'{log_dir}/tensorboard'),
+        logger.log_hyperparams(hyperparams)
+        return logger
+
     # setup data, model, and optimizer
     datamodule = CIFAR10DataModule(
         num_workers=configuration['num_workers'],
-        batch_size=configuration['batch_size']
+        batch_size=hyperparams['batch_size'],
     )
-    model = ImageClassificationModel(configuration['model_name'], configuration['num_classes'])
-    optimizer = torch.optim.Adam(model.parameters(), lr=configuration['lr'])
+    model = ImageClassificationModel(hyperparams['model_name'], configuration['num_classes'])
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['lr'])
 
     callbacks = [
         PrintStateCallback(),
@@ -184,7 +208,7 @@ def train(configuration):
 
     log_dir = configuration['log_dir']
     loggers = [
-        L.pytorch.loggers.TensorBoardLogger(f'{log_dir}/tensorboard'),
+        get_tensorboard_logger(configuration['log_dir'], hyperparams),
     ]
 
     if configuration['privacy']:
@@ -192,18 +216,21 @@ def train(configuration):
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
+            # hypers
+            epochs=hyperparams['epochs'],
+            accountant=configuration['accountant'],
+            noise_multiplier=hyperparams['noise_multiplier'],
+            max_grad_norm=hyperparams['max_grad_norm'],
+            target_epsilon=hyperparams['target_epsilon'],
+            target_delta=hyperparams['target_delta'],
+            clipping=hyperparams['clipping'],
+            # config
             accelerator=configuration['accelerator'],
             strategy=configuration['strategy'],
             devices=configuration['devices'],
             precision=configuration['precision'],
-            max_epochs=configuration['max_epochs'],
-            accountant=configuration['accountant'],
-            noise_multiplier=configuration['noise_multiplier'],
-            max_grad_norm=configuration['max_grad_norm'],
-            clipping=configuration['clipping'],
             secure_mode=configuration['secure_mode'],
-            target_epsilon=configuration['target_epsilon'],
-            target_delta=configuration['target_delta'],
+            # callbacks and logging
             callbacks=callbacks,
             loggers=loggers,
         )
@@ -212,11 +239,11 @@ def train(configuration):
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
+            epochs=configuration['epochs'],
             accelerator=configuration['accelerator'],
             strategy=configuration['strategy'],
             devices=configuration['devices'],
             precision=configuration['precision'],
-            max_epochs=configuration['max_epochs'],
             callbacks=callbacks,
             loggers=loggers,
         )
@@ -227,3 +254,4 @@ def train(configuration):
 
 if __name__ == '__main__':
     typer.run(get_cli_configuration)
+

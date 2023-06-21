@@ -16,7 +16,7 @@ class Trainer:
         datamodule: DataModule,
 
         # generic params
-        max_epochs: int = 10,
+        epochs: int = 10,
         validation_frequency: int = 1,
 
         # fabric params
@@ -44,7 +44,7 @@ class Trainer:
         )
         self.fabric.launch()
 
-        self.max_epochs = max_epochs
+        self.epochs = epochs
         self.validation_frequency = validation_frequency
 
     def setup(self):
@@ -67,7 +67,7 @@ class Trainer:
         self.setup()
 
         self.fabric.call('on_train_start', self)
-        for epoch in range(self.max_epochs):
+        for epoch in range(self.epochs):
             epoch_loss = self.fit_one_epoch(epoch)
 
             if epoch % self.validation_frequency == 0:
