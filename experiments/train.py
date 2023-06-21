@@ -1,4 +1,4 @@
-epochs#!/usr/bin/env python3
+#!/usr/bin/env python3
 
 import os
 import warnings
@@ -16,7 +16,7 @@ from datamodules import CIFAR10DataModule
 from models import ImageClassificationModel
 from trainer import Trainer, DifferentiallyPrivateTrainer
 
-def get_cli_configuration(
+def main(
         ctx: typer.Context,
         epochs: Annotated[
             int,
@@ -253,5 +253,5 @@ def train(configuration, hyperparams):
     print('Done.')
 
 if __name__ == '__main__':
-    typer.run(get_cli_configuration)
+    typer.run(main)
 
