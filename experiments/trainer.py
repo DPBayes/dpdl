@@ -191,7 +191,6 @@ class DifferentiallyPrivateTrainer(Trainer):
                 module=model,
                 optimizer=optimizer,
                 data_loader=train_dataloader,
-                noise_multiplier=self.noise_multiplier,
                 max_grad_norm=self.max_grad_norm,
                 clipping=self.clipping,
                 target_epsilon=self.target_epsilon,
