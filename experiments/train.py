@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import os
 import warnings
 
@@ -125,11 +126,42 @@ def get_cli_configuration(
         clipping: Annotated[
             Optional[str],
             typer.Option(
-                help='Clipping mode',
+                help='Clipping mode (see Opacus)',
                 rich_help_panel='Opacus options',
             )
         ] = 'flat',
+        secure_mode: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Enable secure mode for production use',
+                rich_help_panel='Opacus options',
+            )
+        ] = False,
+        accountant: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Privacy accountant',
+                rich_help_panel='Opacus options',
+            )
+        ] = 'rdp',
+        target_delta: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Target delta for the privacy accountant (requires target_epsilon)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        target_epsilon: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Target delta for the privacy accountant (requires target_delta)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
     ):
+
+    if not all([target_epsilon, target_delta]):
+        raise typer.BadParameter('Both arguments "target_epsilon" and "target_delta" are required.')
 
     configuration = ctx.params
     configuration['devices'] = devices if devices else 'auto'
@@ -165,9 +197,13 @@ def train(configuration):
             devices=configuration['devices'],
             precision=configuration['precision'],
             max_epochs=configuration['max_epochs'],
+            accountant=configuration['accountant'],
             noise_multiplier=configuration['noise_multiplier'],
             max_grad_norm=configuration['max_grad_norm'],
             clipping=configuration['clipping'],
+            secure_mode=configuration['secure_mode'],
+            target_epsilon=configuration['target_epsilon'],
+            target_delta=configuration['target_delta'],
             callbacks=callbacks,
             loggers=loggers,
         )

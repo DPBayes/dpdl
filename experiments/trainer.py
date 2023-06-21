@@ -145,6 +145,10 @@ class DifferentiallyPrivateTrainer(Trainer):
         noise_multiplier: float = 1.0,
         max_grad_norm: float = 1.0,
         clipping: str = 'flat',
+        accountant: str = 'rdp',
+        secure_mode: bool = False,
+        target_epsilon: float = 0,
+        target_delta: float = 0,
         **kwargs,
     ):
 
@@ -153,9 +157,20 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.noise_multiplier = noise_multiplier
         self.max_grad_norm = max_grad_norm
         self.clipping = clipping
+        self.target_epsilon = target_epsilon
+        self.target_delta = target_delta
 
         # setup opacus privacy engine
-        self.privacy_engine = opacus.PrivacyEngine()
+        self.privacy_engine = opacus.PrivacyEngine(accountant=accountant, secure_mode=secure_mode)
+
+    def _has_target_privacy_params(self):
+        if self.target_epsilon and not self.target_delta:
+            raise(RuntimeError('Parameter "target_delta" present, but "target_epsilon" is missing.'))
+
+        if self.target_delta and not self.target_epsilon:
+            raise(RuntimeError('Parameter "target_delta" present, but "target_epsilon" is missing.'))
+
+        return True
 
     def setup(self):
         # call super class to initialize fabric
@@ -168,14 +183,26 @@ class DifferentiallyPrivateTrainer(Trainer):
         train_dataloader = self.datamodule.train_dataloader._dataloader
 
         # setup differential privacy for the model, optimize, and dataloader
-        dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
-            module=model,
-            optimizer=optimizer,
-            data_loader=train_dataloader,
-            noise_multiplier=self.noise_multiplier,
-            max_grad_norm=self.max_grad_norm,
-            clipping=self.clipping,
-        )
+        if self._has_target_privacy_params():
+            dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private_with_epsilon(
+                module=model,
+                optimizer=optimizer,
+                data_loader=train_dataloader,
+                noise_multiplier=self.noise_multiplier,
+                max_grad_norm=self.max_grad_norm,
+                clipping=self.clipping,
+                target_epsilon=self.target_epsilon,
+                target_delta=self.target_delta,
+            )
+        else:
+            dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
+                module=model,
+                optimizer=optimizer,
+                data_loader=train_dataloader,
+                noise_multiplier=self.noise_multiplier,
+                max_grad_norm=self.max_grad_norm,
+                clipping=self.clipping,
+            )
 
         # are we distributed?
         if self.fabric.world_size > 1:
