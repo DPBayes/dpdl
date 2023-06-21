@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gpus=1
 #SBATCH --time=1:00:00
-#SBATCH --mem=32G
+#SBATCH --mem-per-gpu=32G
 
 module purge
 module load pytorch
@@ -18,4 +18,4 @@ export HF_DATASETS_CACHE="$DATA_DIR/huggingface"
 export PYTHONUSERBASE="$DATA_DIR/python/lightning-opacus"
 
 set -xv
-python3 $*
+srun python3 $*
