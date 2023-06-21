@@ -1,6 +1,6 @@
 class PrintStateCallback():
     def on_train_start(self, trainer):
-        print(f'Starting training for {trainer.max_epochs} epochs.')
+        print(f'Starting training for {trainer.epochs} epochs.')
 
     def on_train_end(self, trainer):
         print('Training finished.')

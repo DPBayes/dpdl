@@ -144,24 +144,14 @@ def main(
                 rich_help_panel='Opacus options',
             )
         ] = 'rdp',
-        target_delta: Annotated[
-            Optional[float],
-            typer.Option(
-                help='Target delta for the privacy accountant (requires target_epsilon)',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
         target_epsilon: Annotated[
             Optional[float],
             typer.Option(
-                help='Target delta for the privacy accountant (requires target_delta)',
+                help='Target epsilon for the privacy accountant (implies delta = 1/N)',
                 rich_help_panel='Opacus options',
             )
         ] = None,
     ):
-
-    if not all([target_epsilon, target_delta]):
-        raise typer.BadParameter('Both arguments "target_epsilon" and "target_delta" are required.')
 
     configuration = ctx.params
     configuration['devices'] = devices if devices else 'auto'
@@ -170,15 +160,15 @@ def main(
         'model_name',
         'batch_size',
         'lr',
+        'epochs',
     ]
 
     if privacy:
         hyperparam_names.extend([
             'accountant',
-            'noise_multiplier'
+            'noise_multiplier',
             'max_grad_norm',
             'clipping',
-            'target_delta',
             'target_epsilon',
         ])
 
@@ -190,7 +180,7 @@ def main(
 
 def train(configuration, hyperparams):
     def get_tensorboard_logger(log_dir, hyperparams):
-        logger = L.pytorch.loggers.TensorBoardLogger(f'{log_dir}/tensorboard'),
+        logger = L.pytorch.loggers.TensorBoardLogger(f'{log_dir}/tensorboard')
         logger.log_hyperparams(hyperparams)
         return logger
 
@@ -199,6 +189,7 @@ def train(configuration, hyperparams):
         num_workers=configuration['num_workers'],
         batch_size=hyperparams['batch_size'],
     )
+
     model = ImageClassificationModel(hyperparams['model_name'], configuration['num_classes'])
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['lr'])
 
@@ -211,19 +202,29 @@ def train(configuration, hyperparams):
         get_tensorboard_logger(configuration['log_dir'], hyperparams),
     ]
 
+    # are we differentially private?
     if configuration['privacy']:
+
+        # if we have target epsilon, set target delta = 1/N
+        if hyperparams['target_epsilon']:
+            target_delta = 1 / len(datamodule.train_dataloader.dataset)
+            target_epsilon = hyperparams['target_epsilon']
+        else:
+            target_delta = None
+            target_epsilon = None
+
         trainer = DifferentiallyPrivateTrainer(
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
             # hypers
             epochs=hyperparams['epochs'],
-            accountant=configuration['accountant'],
+            accountant=hyperparams['accountant'],
             noise_multiplier=hyperparams['noise_multiplier'],
             max_grad_norm=hyperparams['max_grad_norm'],
-            target_epsilon=hyperparams['target_epsilon'],
-            target_delta=hyperparams['target_delta'],
             clipping=hyperparams['clipping'],
+            target_epsilon=target_epsilon,
+            target_delta=target_delta,
             # config
             accelerator=configuration['accelerator'],
             strategy=configuration['strategy'],

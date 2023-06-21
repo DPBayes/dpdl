@@ -164,6 +164,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.privacy_engine = opacus.PrivacyEngine(accountant=accountant, secure_mode=secure_mode)
 
     def _has_target_privacy_params(self):
+        if not any([self.target_epsilon, self.target_delta]):
+            return False
+
         if self.target_epsilon and not self.target_delta:
             raise(RuntimeError('Parameter "target_delta" present, but "target_epsilon" is missing.'))
 
@@ -193,6 +196,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 clipping=self.clipping,
                 target_epsilon=self.target_epsilon,
                 target_delta=self.target_delta,
+                epochs=self.epochs,
             )
         else:
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
