@@ -21,38 +21,24 @@ class Trainer:
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         datamodule: DataModule,
+        fabric: L.Fabric = None,
 
         # generic params
         epochs: int = 10,
         validation_frequency: int = 1,
-
-        # fabric params
-        accelerator: str = 'auto',
-        strategy: str = 'auto',
-        devices: str = 'auto',
-        precision: int = 32,
-        callbacks: Optional[Union[List[Any], Any]] = None,
-        loggers: Optional[Union[L.fabric.loggers.Logger, List[L.fabric.loggers.Logger]]] = None,
         #checkpoint_dir: str = "./checkpoints",
         #checkpoint_frequency: int = 1,
     ):
 
+        if not fabric:
+            raise(RuntimeError('Initialized fabric not passed to {self.__class__.__name}.'))
+
         self.model = model
         self.optimizer = optimizer
         self.datamodule = datamodule
-
-        self.fabric = L.Fabric(
-            accelerator=accelerator,
-            strategy=strategy,
-            devices=devices,
-            precision=precision,
-            callbacks=callbacks,
-            loggers=loggers,
-        )
-        self.fabric.launch()
-
         self.epochs = epochs
         self.validation_frequency = validation_frequency
+        self.fabric = fabric
 
     def setup(self):
         # call fabric to setup possible distributed training
