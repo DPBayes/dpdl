@@ -70,7 +70,7 @@ class Trainer:
         for epoch in range(self.epochs):
             epoch_loss = self.fit_one_epoch(epoch)
 
-            if epoch % self.validation_frequency == 0:
+            if self.validation_frequency and epoch % self.validation_frequency == 0:
                 self.validate(epoch)
 
         self.fabric.call('on_train_end', self)
@@ -123,6 +123,7 @@ class Trainer:
 
         torch.set_grad_enabled(True)
         self.model.train()
+
         return valid_loss
 
     def validate_one_batch(self, batch_idx, batch):
@@ -172,6 +173,9 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         if self.target_delta and not self.target_epsilon:
             raise(RuntimeError('Parameter "target_delta" present, but "target_epsilon" is missing.'))
+
+        if self.target_epsilon and self.noise_multiplier:
+            raise(RuntimeError('Parameter "noise_multiplier" can not be used when target epsilon is given.'))
 
         return True
 
