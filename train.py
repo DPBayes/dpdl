@@ -11,6 +11,7 @@ import yaml
 from functools import partial
 from typing import Optional, List
 from typing_extensions import Annotated
+from rich import print
 
 import lightning as L
 
@@ -276,96 +277,132 @@ def optuna_objective(configuration, hyperparams, optuna_config, target_hypers, t
     configuration['validation_frequency'] = 0
 
     # train the model
-    trainer = train(configuration, hyperparams)
+    trainer = get_trainer(configuration, hyperparams)
 
     # optimization objective is the validation loss
     objective = trainer.validate()
 
     return objective
 
-def train(configuration, hyperparams):
-    def get_tensorboard_logger(log_dir, hyperparams):
-        logger = L.pytorch.loggers.TensorBoardLogger(f'{log_dir}/tensorboard')
-        logger.log_hyperparams({
-            'hyperparams': hyperparams,
-            'configuration': configuration,
-        })
-        return logger
+def get_model(configuration, hyperparams):
+    model = ImageClassificationModel(hyperparams['model_name'], configuration['num_classes'])
+    return model
 
-    # setup data, model, and optimizer
+def get_datamodule(configuration, hyperparams):
     datamodule = CIFAR10DataModule(
         num_workers=configuration['num_workers'],
         batch_size=hyperparams['batch_size'],
     )
 
-    model = ImageClassificationModel(hyperparams['model_name'], configuration['num_classes'])
-    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
+    return datamodule
 
+def get_optimizer(configuration, hyperparams, model):
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
+    return optimizer
+
+def get_loggers(configuration, hyperparams):
+    loggers = []
+
+    log_dir = configuration['log_dir']
+    logger = L.pytorch.loggers.TensorBoardLogger(f'{log_dir}/tensorboard')
+    logger.log_hyperparams({
+        'hyperparams': hyperparams,
+        'configuration': configuration,
+    })
+
+    loggers.append(logger)
+
+def get_callbacks(configuration, hyperparams):
     callbacks = [
         PrintStateCallback(),
     ]
 
-    loggers = [
-        get_tensorboard_logger(configuration['log_dir'], hyperparams),
-    ]
+    return callbacks
 
-    # are we differentially private?
-    if configuration['privacy']:
+def get_basic_trainer(configuration, hyperparams):
+    # setup data, model, and optimizer
+    datamodule = get_datamodule(configuration, hyperparams)
+    model = get_model(configuration, hyperparams)
+    optimizer = get_optimizer(configuration, hyperparams, model)
 
-        # are we given a target epsilon?
-        if 'target_epsilon' in hyperparams:
-            # if we have target epsilon, set target delta = 1/N
-            target_delta = 1 / len(datamodule.train_dataloader.dataset)
-            target_epsilon = hyperparams['target_epsilon']
+    loggers = get_loggers(configuration, hyperparams)
+    callbacks = get_callbacks(configuration, hyperparams)
 
-            # if target epsilon is given, then opacus will calculate
-            # the noise multiplier for us
-            hyperparams['noise_multiplier'] = None
-        else:
-            target_delta = None
-            target_epsilon = None
-
-        # instantiate a differentialy private trained
-        trainer = DifferentiallyPrivateTrainer(
-            model=model,
-            optimizer=optimizer,
-            datamodule=datamodule,
-            # hypers
-            epochs=hyperparams['epochs'],
-            noise_multiplier=hyperparams['noise_multiplier'],
-            max_grad_norm=hyperparams['max_grad_norm'],
-            target_epsilon=target_epsilon,
-            target_delta=target_delta,
-            # config
-            accelerator=configuration['accelerator'],
-            strategy=configuration['strategy'],
-            devices=configuration['devices'],
-            precision=configuration['precision'],
-            secure_mode=configuration['secure_mode'],
-            clipping=configuration['clipping'],
-
-            # callbacks and logging
-            callbacks=callbacks,
-            loggers=loggers,
-        )
-    else:
-        # instantiate a trainer without dp
-        trainer = Trainer(
-            model=model,
-            optimizer=optimizer,
-            datamodule=datamodule,
-            epochs=configuration['epochs'],
-            accelerator=configuration['accelerator'],
-            strategy=configuration['strategy'],
-            devices=configuration['devices'],
-            precision=configuration['precision'],
-            callbacks=callbacks,
-            loggers=loggers,
-        )
-
-    trainer.fit()
+    # instantiate a trainer without dp
+    trainer = Trainer(
+        model=model,
+        optimizer=optimizer,
+        datamodule=datamodule,
+        epochs=configuration['epochs'],
+        accelerator=configuration['accelerator'],
+        strategy=configuration['strategy'],
+        devices=configuration['devices'],
+        precision=configuration['precision'],
+        callbacks=callbacks,
+        loggers=loggers,
+    )
 
     return trainer
+
+def get_differentially_private_trainer(configuration, hyperparams):
+    # setup data, model, and optimizer
+    datamodule = get_datamodule(configuration, hyperparams)
+    model = get_model(configuration, hyperparams)
+    optimizer = get_optimizer(configuration, hyperparams, model)
+
+    loggers = get_loggers(configuration, hyperparams)
+    callbacks = get_callbacks(configuration, hyperparams)
+
+    # are we given a target epsilon?
+    if 'target_epsilon' in hyperparams:
+        # if we have target epsilon, set target delta = 1/N
+        target_delta = 1 / len(datamodule.train_dataloader.dataset)
+        target_epsilon = hyperparams['target_epsilon']
+
+        # if target epsilon is given, then opacus will calculate
+        # the noise multiplier for us
+        hyperparams['noise_multiplier'] = None
+    else:
+        target_delta = None
+        target_epsilon = None
+
+    # instantiate a differentialy private trained
+    trainer = DifferentiallyPrivateTrainer(
+        model=model,
+        optimizer=optimizer,
+        datamodule=datamodule,
+        # hypers
+        epochs=hyperparams['epochs'],
+        noise_multiplier=hyperparams['noise_multiplier'],
+        max_grad_norm=hyperparams['max_grad_norm'],
+        target_epsilon=target_epsilon,
+        target_delta=target_delta,
+        # config
+        accelerator=configuration['accelerator'],
+        strategy=configuration['strategy'],
+        devices=configuration['devices'],
+        precision=configuration['precision'],
+        secure_mode=configuration['secure_mode'],
+        clipping=configuration['clipping'],
+
+        # callbacks and logging
+        callbacks=callbacks,
+        loggers=loggers,
+    )
+
+    return trainer
+
+def get_trainer(configuration, hyperparams):
+    # are we differentially private?
+    if configuration['privacy']:
+        return get_differentially_private_trainer(configuration, hyperparams)
+
+    return get_basic_trainer(configuration, hyperparams)
+
+
+def train(configuration, hyperparams):
+    trainer = get_trainer(configuration, hyperparams)
+    trainer.fit()
 
 if __name__ == '__main__':
     typer.run(main)

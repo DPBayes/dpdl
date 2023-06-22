@@ -108,7 +108,7 @@ class Trainer:
 
         return loss
 
-    def validate(self, epoch):
+    def validate(self, epoch=None):
         self.model.eval()
         torch.set_grad_enabled(False)
 
