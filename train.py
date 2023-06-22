@@ -278,6 +278,7 @@ def optuna_objective(configuration, hyperparams, optuna_config, target_hypers, t
 
     # train the model
     trainer = get_trainer(configuration, hyperparams)
+    trainer.fit()
 
     # optimization objective is the validation loss
     objective = trainer.validate()
