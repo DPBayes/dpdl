@@ -6,6 +6,13 @@ from typing import Any, List, Optional, Union
 
 from .datamodules import DataModule
 
+# You are using a CUDA device ('AMD Radeon Graphics') that has Tensor Cores.
+# To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')`
+# which will trade-off precision for performance.
+# For more details, read
+# https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+torch.set_float32_matmul_precision('medium')
+
 class Trainer:
     def __init__(
         self,
