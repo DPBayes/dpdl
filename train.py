@@ -19,11 +19,14 @@ from dpdl.datamodules import CIFAR10DataModule
 from dpdl.models import ImageClassificationModel
 from dpdl.trainer import Trainer, DifferentiallyPrivateTrainer
 
+
 def main(
         ctx: typer.Context,
         command: Annotated[
             str,
-            typer.Argument(help='command to run in (currently only "train" available)')
+            typer.Argument(
+                help='Command to run (train|optimize)',
+            )
         ],
         epochs: Annotated[
             int,
@@ -35,7 +38,7 @@ def main(
         learning_rate: Annotated[
             float,
             typer.Option(
-                help='Leraning rate',
+                help='Learning rate',
                 rich_help_panel='Training options',
             )
         ] = 1e-3,
@@ -60,6 +63,13 @@ def main(
                 rich_help_panel='Training options',
             )
         ] = 'resnet50',
+        validation_frequency: Annotated[
+            float,
+            typer.Option(
+                help='Validation frequency',
+                rich_help_panel='Training options',
+            )
+        ] = 1.0,
         privacy: Annotated[
             bool,
             typer.Option(
@@ -158,13 +168,6 @@ def main(
                 rich_help_panel='Opacus options',
             )
         ] = None,
-        optimize: Annotated[
-            Optional[bool],
-            typer.Option(
-                help='Run Bayesian optimization',
-                rich_help_panel='Bayesian optimization (Optuna) options',
-            )
-        ] = False,
         target_hypers: Annotated[
             Optional[List[str]],
             typer.Option(
@@ -188,13 +191,15 @@ def main(
         ] = 'conf/optuna_hypers.conf',
     ):
 
+    if command not in ['train', 'optimize']:
+        raise(typer.BadParameter('Command must be "train" or "optimize".'))
+
     configuration = ctx.params
     configuration['devices'] = devices if devices else 'auto'
     hyperparam_names = [
         'batch_size',
         'learning_rate',
         'epochs',
-        'clipping',
         'model_name',
     ]
 
@@ -208,9 +213,10 @@ def main(
     for name in hyperparam_names:
         hyperparams[name] = configuration.pop(name)
 
-    if not optimize:
+    if command == 'train':
         train(configuration, hyperparams)
-    else:
+
+    if command == 'optimize':
         optimize_hypers(configuration, hyperparams)
 
 def optimize_hypers(configuration, hyperparams):
@@ -240,7 +246,6 @@ def optimize_hypers(configuration, hyperparams):
     study.optimize(objective, n_trials=configuration['n_trials'])
 
 def optuna_objective(configuration, hyperparams, optuna_config, target_hypers, trial):
-    print(f'HYPERPARAMS BEFORE: {hyperparams}')
     for target_hyper in target_hypers:
         if optuna_config[target_hyper]['type'] == 'float':
             hyper_value = trial.suggest_float(
@@ -267,8 +272,16 @@ def optuna_objective(configuration, hyperparams, optuna_config, target_hypers, t
 
         hyperparams[target_hyper] = hyper_value
 
-    print(f'HYPERPARAMS AFTER: {hyperparams}')
-    train(configuration, hyperparams)
+    # while tuning hypers, do not validate
+    configuration['validation_frequency'] = 0
+
+    # train the model
+    trainer = train(configuration, hyperparams)
+
+    # optimization objective is the validation loss
+    objective = trainer.validate()
+
+    return objective
 
 def train(configuration, hyperparams):
     def get_tensorboard_logger(log_dir, hyperparams):
@@ -299,24 +312,28 @@ def train(configuration, hyperparams):
     # are we differentially private?
     if configuration['privacy']:
 
-        # if we have target epsilon, set target delta = 1/N
+        # are we given a target epsilon?
         if 'target_epsilon' in hyperparams:
+            # if we have target epsilon, set target delta = 1/N
             target_delta = 1 / len(datamodule.train_dataloader.dataset)
             target_epsilon = hyperparams['target_epsilon']
+
+            # if target epsilon is given, then opacus will calculate
+            # the noise multiplier for us
+            hyperparams['noise_multiplier'] = None
         else:
             target_delta = None
             target_epsilon = None
 
+        # instantiate a differentialy private trained
         trainer = DifferentiallyPrivateTrainer(
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
             # hypers
             epochs=hyperparams['epochs'],
-            accountant=configuration['accountant'],
             noise_multiplier=hyperparams['noise_multiplier'],
             max_grad_norm=hyperparams['max_grad_norm'],
-            clipping=hyperparams['clipping'],
             target_epsilon=target_epsilon,
             target_delta=target_delta,
             # config
@@ -325,11 +342,14 @@ def train(configuration, hyperparams):
             devices=configuration['devices'],
             precision=configuration['precision'],
             secure_mode=configuration['secure_mode'],
+            clipping=configuration['clipping'],
+
             # callbacks and logging
             callbacks=callbacks,
             loggers=loggers,
         )
     else:
+        # instantiate a trainer without dp
         trainer = Trainer(
             model=model,
             optimizer=optimizer,
@@ -345,7 +365,7 @@ def train(configuration, hyperparams):
 
     trainer.fit()
 
-    print('Done.')
+    return trainer
 
 if __name__ == '__main__':
     typer.run(main)
