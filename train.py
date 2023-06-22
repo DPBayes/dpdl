@@ -241,12 +241,17 @@ def optimize_hypers(configuration, hyperparams):
             config_fpath = configuration['optuna_config_fpath']
             raise(typer.BadParameter(f'Hyperparameter "{target_hyper}" not found in Optuna configuration file "{config_fpath}".'))
 
-    study = optuna.create_study()
+    # instantiate fabric
+    fabric = get_fabric(configuration, hyperparams)
 
-    objective = partial(optuna_objective, configuration, hyperparams, optuna_config, target_hypers)
-    study.optimize(objective, n_trials=configuration['n_trials'])
+    # we want sequential studies. only run a study if we are
+    # the global rank zero process
+    if fabric.is_global_zero:
+        study = optuna.create_study()
+        objective = partial(optuna_objective, fabric, configuration, hyperparams, optuna_config, target_hypers)
+        study.optimize(objective, n_trials=configuration['n_trials'])
 
-def optuna_objective(configuration, hyperparams, optuna_config, target_hypers, trial):
+def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_hypers, trial):
     for target_hyper in target_hypers:
         if optuna_config[target_hyper]['type'] == 'float':
             hyper_value = trial.suggest_float(
@@ -277,7 +282,7 @@ def optuna_objective(configuration, hyperparams, optuna_config, target_hypers, t
     configuration['validation_frequency'] = 0
 
     # train the model
-    trainer = get_trainer(configuration, hyperparams)
+    trainer = get_trainer(fabric, configuration, hyperparams)
     trainer.fit()
 
     # optimization objective is the validation loss
@@ -301,6 +306,22 @@ def get_optimizer(configuration, hyperparams, model):
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
     return optimizer
 
+def get_fabric(configuration, hyperparams):
+    loggers = get_loggers(configuration, hyperparams)
+    callbacks = get_callbacks(configuration, hyperparams)
+
+    fabric = L.Fabric(
+        accelerator=configuration['accelerator'],
+        strategy=configuration['strategy'],
+        devices=configuration['devices'],
+        precision=configuration['precision'],
+        callbacks=callbacks,
+        loggers=loggers,
+    )
+    fabric.launch()
+
+    return fabric
+
 def get_loggers(configuration, hyperparams):
     loggers = []
 
@@ -313,6 +334,8 @@ def get_loggers(configuration, hyperparams):
 
     loggers.append(logger)
 
+    return loggers
+
 def get_callbacks(configuration, hyperparams):
     callbacks = [
         PrintStateCallback(),
@@ -320,39 +343,28 @@ def get_callbacks(configuration, hyperparams):
 
     return callbacks
 
-def get_basic_trainer(configuration, hyperparams):
+def get_basic_trainer(fabric, configuration, hyperparams):
     # setup data, model, and optimizer
     datamodule = get_datamodule(configuration, hyperparams)
     model = get_model(configuration, hyperparams)
     optimizer = get_optimizer(configuration, hyperparams, model)
-
-    loggers = get_loggers(configuration, hyperparams)
-    callbacks = get_callbacks(configuration, hyperparams)
 
     # instantiate a trainer without dp
     trainer = Trainer(
         model=model,
         optimizer=optimizer,
         datamodule=datamodule,
+        fabric=fabric,
         epochs=configuration['epochs'],
-        accelerator=configuration['accelerator'],
-        strategy=configuration['strategy'],
-        devices=configuration['devices'],
-        precision=configuration['precision'],
-        callbacks=callbacks,
-        loggers=loggers,
     )
 
     return trainer
 
-def get_differentially_private_trainer(configuration, hyperparams):
+def get_differentially_private_trainer(fabric, configuration, hyperparams):
     # setup data, model, and optimizer
     datamodule = get_datamodule(configuration, hyperparams)
     model = get_model(configuration, hyperparams)
     optimizer = get_optimizer(configuration, hyperparams, model)
-
-    loggers = get_loggers(configuration, hyperparams)
-    callbacks = get_callbacks(configuration, hyperparams)
 
     # are we given a target epsilon?
     if 'target_epsilon' in hyperparams:
@@ -372,6 +384,7 @@ def get_differentially_private_trainer(configuration, hyperparams):
         model=model,
         optimizer=optimizer,
         datamodule=datamodule,
+        fabric=fabric,
         # hypers
         epochs=hyperparams['epochs'],
         noise_multiplier=hyperparams['noise_multiplier'],
@@ -379,30 +392,24 @@ def get_differentially_private_trainer(configuration, hyperparams):
         target_epsilon=target_epsilon,
         target_delta=target_delta,
         # config
-        accelerator=configuration['accelerator'],
-        strategy=configuration['strategy'],
-        devices=configuration['devices'],
-        precision=configuration['precision'],
         secure_mode=configuration['secure_mode'],
         clipping=configuration['clipping'],
-
-        # callbacks and logging
-        callbacks=callbacks,
-        loggers=loggers,
     )
 
     return trainer
 
-def get_trainer(configuration, hyperparams):
+def get_trainer(fabric, configuration, hyperparams):
     # are we differentially private?
     if configuration['privacy']:
-        return get_differentially_private_trainer(configuration, hyperparams)
+        return get_differentially_private_trainer(fabric, configuration, hyperparams)
 
-    return get_basic_trainer(configuration, hyperparams)
-
+    return get_basic_trainer(fabric, configuration, hyperparams)
 
 def train(configuration, hyperparams):
-    trainer = get_trainer(configuration, hyperparams)
+    # instantiate fabric
+    fabric = get_fabric(configuration, hyperparams)
+
+    trainer = get_trainer(fabric, configuration, hyperparams)
     trainer.fit()
 
 if __name__ == '__main__':
