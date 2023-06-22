@@ -8,6 +8,7 @@ import torch
 import typer
 import yaml
 
+from functools import partial
 from typing import Optional, List
 from typing_extensions import Annotated
 
@@ -194,7 +195,6 @@ def main(
         'learning_rate',
         'epochs',
         'clipping',
-        'target_epsilon',
         'model_name',
     ]
 
@@ -215,7 +215,6 @@ def main(
 
 def optimize_hypers(configuration, hyperparams):
     def read_optuna_config(config_fpath):
-
         with open(config_fpath, 'rb') as fh:
             config = yaml.safe_load(fh)
 
@@ -233,10 +232,43 @@ def optimize_hypers(configuration, hyperparams):
             raise(typer.BadParameter(f'Cannot optimize unknown hyperparameter "{target_hyper}".'))
         if not target_hyper in optuna_config:
             config_fpath = configuration['optuna_config_fpath']
-            raise(RuntimeError(f'Hyperparameter "{target_hyper}" not found in Optuna configuration file "{config_fpath}".'))
+            raise(typer.BadParameter(f'Hyperparameter "{target_hyper}" not found in Optuna configuration file "{config_fpath}".'))
 
     study = optuna.create_study()
-    #study.optimize(...)
+
+    objective = partial(optuna_objective, configuration, hyperparams, optuna_config, target_hypers)
+    study.optimize(objective, n_trials=configuration['n_trials'])
+
+def optuna_objective(configuration, hyperparams, optuna_config, target_hypers, trial):
+    print(f'HYPERPARAMS BEFORE: {hyperparams}')
+    for target_hyper in target_hypers:
+        if optuna_config[target_hyper]['type'] == 'float':
+            hyper_value = trial.suggest_float(
+                target_hyper,
+                optuna_config[target_hyper]['min'],
+                optuna_config[target_hyper]['max'],
+                log=True,
+            )
+
+        if optuna_config[target_hyper]['type'] == 'int':
+            hyper_value = trial.suggest_int(
+                target_hyper,
+                optuna_config[target_hyper]['min'],
+                optuna_config[target_hyper]['max'],
+                log=True,
+            )
+
+        if optuna_config[target_hyper]['type'] == 'categorical':
+            hyper_value = trial.suggest_int(
+                target_hyper,
+                optuna_config[target_hyper]['options'],
+                log=True,
+            )
+
+        hyperparams[target_hyper] = hyper_value
+
+    print(f'HYPERPARAMS AFTER: {hyperparams}')
+    train(configuration, hyperparams)
 
 def train(configuration, hyperparams):
     def get_tensorboard_logger(log_dir, hyperparams):
@@ -254,7 +286,7 @@ def train(configuration, hyperparams):
     )
 
     model = ImageClassificationModel(hyperparams['model_name'], configuration['num_classes'])
-    optimizer = torch.optim.Adam(model.parameters(), learning_rate=hyperparams['learning_rate'])
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
 
     callbacks = [
         PrintStateCallback(),
@@ -268,7 +300,7 @@ def train(configuration, hyperparams):
     if configuration['privacy']:
 
         # if we have target epsilon, set target delta = 1/N
-        if hyperparams['target_epsilon']:
+        if 'target_epsilon' in hyperparams:
             target_delta = 1 / len(datamodule.train_dataloader.dataset)
             target_epsilon = hyperparams['target_epsilon']
         else:
