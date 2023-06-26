@@ -379,7 +379,7 @@ def get_basic_trainer(fabric, configuration, hyperparams):
         optimizer=optimizer,
         datamodule=datamodule,
         fabric=fabric,
-        epochs=configuration['epochs'],
+        epochs=hyperparams['epochs'],
     )
 
     return trainer
