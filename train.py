@@ -169,6 +169,13 @@ def main(
                 rich_help_panel='Opacus options',
             )
         ] = None,
+        study_name: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Optuna study name',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = 'Default study',
         target_hypers: Annotated[
             Optional[List[str]],
             typer.Option(
@@ -250,7 +257,10 @@ def optimize_hypers(configuration, hyperparams):
     # we want sequential studies. only run a study if we are
     # the global rank zero process
     if fabric.is_global_zero:
-        study = optuna.create_study()
+        study = optuna.create_study(
+            storage='sqlite:///optuna.sqlite3',
+            study_name=configuration['study_name'],
+        )
         study.optimize(objective, n_trials=configuration['n_trials'])
     else:
         # not sure why need to call the objective
@@ -263,9 +273,7 @@ def optimize_hypers(configuration, hyperparams):
         pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
         complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
 
-        print('Best trial:')
         trial = study.best_trial
-
         print(f'Best objective ralue: {trial.value}', trial.value)
         print('Params: ')
         for key, value in trial.params.items():
