@@ -244,14 +244,38 @@ def optimize_hypers(configuration, hyperparams):
     # instantiate fabric
     fabric = get_fabric(configuration, hyperparams)
 
+    # the optimization objective
+    objective = partial(optuna_objective, fabric, configuration, hyperparams, optuna_config, target_hypers)
+
     # we want sequential studies. only run a study if we are
     # the global rank zero process
     if fabric.is_global_zero:
         study = optuna.create_study()
-        objective = partial(optuna_objective, fabric, configuration, hyperparams, optuna_config, target_hypers)
         study.optimize(objective, n_trials=configuration['n_trials'])
+    else:
+        # not sure why need to call the objective
+        # with None here.
+        # https://github.com/optuna/optuna-examples/blob/main/pytorch/pytorch_distributed_simple.py
+        for _ in range(configuration['n_trials']):
+            objective(None)
+
+    if fabric.is_global_zero:
+        pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
+        complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
+
+        print('Best trial:')
+        trial = study.best_trial
+
+        print(f'Best objective ralue: {trial.value}', trial.value)
+        print('Params: ')
+        for key, value in trial.params.items():
+            print(f' - {key}: {value}')
 
 def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_hypers, trial):
+    # make the trial support distributed
+    # https://github.com/optuna/optuna-examples/blob/main/pytorch/pytorch_distributed_simple.py
+    trial = optuna.integration.TorchDistributedTrial(trial)
+
     for target_hyper in target_hypers:
         if optuna_config[target_hyper]['type'] == 'float':
             hyper_value = trial.suggest_float(
