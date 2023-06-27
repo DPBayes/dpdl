@@ -261,10 +261,13 @@ def optimize_hypers(configuration, hyperparams):
             storage='sqlite:///optuna.sqlite3',
             study_name=configuration['study_name'],
         )
-        study.optimize(objective, n_trials=configuration['n_trials'])
+        study.optimize(
+            objective,
+            n_trials=configuration['n_trials'],
+            gc_after_trial=True, # garbage collect after each trial
+        )
     else:
-        # not sure why need to call the objective
-        # with None here.
+        # not sure why need to call the objective with None here.
         # https://github.com/optuna/optuna-examples/blob/main/pytorch/pytorch_distributed_simple.py
         for _ in range(configuration['n_trials']):
             objective(None)
@@ -320,6 +323,10 @@ def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_h
     # optimization objective is the validation loss
     objective = trainer.validate()
 
+    # trainer has reference to the fabric object, let's
+    # make sure the trainer gets garbage collected
+    del trainer
+
     return objective
 
 def get_model(configuration, hyperparams):
@@ -330,6 +337,7 @@ def get_datamodule(configuration, hyperparams):
     datamodule = CIFAR10DataModule(
         num_workers=configuration['num_workers'],
         batch_size=hyperparams['batch_size'],
+        image_size=(224, 224),
     )
 
     return datamodule
