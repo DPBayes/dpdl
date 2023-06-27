@@ -9,6 +9,8 @@ import timm
 # NB: Set data cache directory with the environment variable HF_DATASETS_CACHE
 import datasets
 
+from functools import partial
+
 class DataModule():
     def __init__(self, batch_size: int = 64, num_workers: int = 4):
         super().__init__()
@@ -50,10 +52,11 @@ class DataModule():
         self._test_dataloader = dataloader
 
 class CIFAR10DataModule(DataModule):
-    def __init__(self, batch_size: int = 64, num_workers: int = 4):
+    def __init__(self, batch_size: int = 64, num_workers: int = 4, image_size=None):
         super().__init__(batch_size, num_workers)
 
         self.num_classes = 10
+        self.image_size = image_size
 
         self._criterion = torch.nn.CrossEntropyLoss()
         self._accuracy = torchmetrics.Accuracy(task='multiclass', num_classes=self.num_classes)
@@ -61,8 +64,13 @@ class CIFAR10DataModule(DataModule):
         self.setup()
 
     def setup(self):
-        dataset = datasets.load_dataset('cifar10', split='train').with_format('torch')
-        train_dataset, val_dataset = torch.utils.data.random_split(dataset, [45000, 5000])
+        dataset = datasets.load_dataset('cifar10', split='train')
+
+        if self.image_size:
+            transform = partial(self._resize_transform, self.image_size)
+            dataset = dataset.map(transform, batched=True)
+
+        train_dataset, val_dataset = torch.utils.data.random_split(dataset.with_format('torch'), [45000, 5000])
 
         self._train_dataloader = torch.utils.data.DataLoader(
             train_dataset,
@@ -78,14 +86,22 @@ class CIFAR10DataModule(DataModule):
             num_workers=self.num_workers,
         )
 
-        test_dataset = datasets.load_dataset('cifar10', split='test').with_format('torch')
+        test_dataset = datasets.load_dataset('cifar10', split='test')
+        if self.image_size:
+            transform = partial(self._resize_transform, self.image_size)
+            test_dataset = test_dataset.map(transform, batched=True)
 
         self._test_dataloader = torch.utils.data.DataLoader(
-            test_dataset,
+            test_dataset.with_format('torch'),
             batch_size=self.batch_size,
             collate_fn=self.collate_fn,
             num_workers=self.num_workers,
         )
+
+    @staticmethod
+    def _resize_transform(image_size, examples):
+        examples['img'] = [image.resize(image_size) for image in examples['img']]
+        return examples
 
     def criterion(self, logits, y):
         return self._criterion(logits, y)
