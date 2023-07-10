@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import warnings
+import sys
 
 import optuna
 import torch
@@ -19,7 +19,6 @@ from dpdl.callbacks import PrintStateCallback
 from dpdl.datamodules import CIFAR10DataModule
 from dpdl.models import ImageClassificationModel
 from dpdl.trainer import Trainer, DifferentiallyPrivateTrainer
-
 
 def main(
         ctx: typer.Context,
@@ -71,6 +70,13 @@ def main(
                 rich_help_panel='Training options',
             )
         ] = 1.0,
+        seed: Annotated[
+            int,
+            typer.Option(
+                help='Random seed',
+                rich_help_panel='Training options',
+            )
+        ] = 0,
         privacy: Annotated[
             bool,
             typer.Option(
@@ -89,6 +95,13 @@ def main(
             Optional[str],
             typer.Option(
                 help='Experiment name for logging',
+                rich_help_panel='Logging options',
+            )
+        ] = 'default',
+        experiment_version: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Experiment version for logging',
                 rich_help_panel='Logging options',
             )
         ] = None,
@@ -127,6 +140,13 @@ def main(
                 rich_help_panel='Fabric options',
             )
         ] = 32,
+        physical_batch_size: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Largest size batch that fits in GPU memory',
+                rich_help_panel='Opacus options',
+            )
+        ] = 60,
         noise_multiplier: Annotated[
             Optional[float],
             typer.Option(
@@ -169,13 +189,6 @@ def main(
                 rich_help_panel='Opacus options',
             )
         ] = None,
-        study_name: Annotated[
-            Optional[str],
-            typer.Option(
-                help='Optuna study name',
-                rich_help_panel='Bayesian optimization (Optuna) options',
-            )
-        ] = 'Default study',
         target_hypers: Annotated[
             Optional[List[str]],
             typer.Option(
@@ -190,7 +203,7 @@ def main(
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
         ] = 20,
-        optuna_config_fpath: Annotated[
+        optuna_config: Annotated[
             Optional[str],
             typer.Option(
                 help='Configuration file containing ranges/options for hypers',
@@ -228,64 +241,84 @@ def main(
         optimize_hypers(configuration, hyperparams)
 
 def optimize_hypers(configuration, hyperparams):
+    # reproducible results
+    if configuration['seed']:
+        L.fabric.utilities.seed.seed_everything(configuration['seed'])
+
+    # helper function for reading Optuna hyperparameter configuration that
+    # includes types, options, lower and upper bounds, etc for hyperparams
     def read_optuna_config(config_fpath):
         with open(config_fpath, 'rb') as fh:
             config = yaml.safe_load(fh)
 
         return config
 
+    # the targeted hypers from command line
     target_hypers = configuration['target_hypers']
 
     if len(target_hypers) == 0:
         raise(typer.BadParameter('Bayesian optimization enabled and no target hyperparameters for optimization.'))
 
-    optuna_config = read_optuna_config(configuration['optuna_config_fpath'])
+    optuna_config = read_optuna_config(configuration['optuna_config'])
 
+    # check that the target hypers are known and appear in Optuna configuration
     for target_hyper in target_hypers:
         if not target_hyper in hyperparams:
             raise(typer.BadParameter(f'Cannot optimize unknown hyperparameter "{target_hyper}".'))
         if not target_hyper in optuna_config:
-            config_fpath = configuration['optuna_config_fpath']
+            config_fpath = configuration['optuna_config']
             raise(typer.BadParameter(f'Hyperparameter "{target_hyper}" not found in Optuna configuration file "{config_fpath}".'))
 
     # instantiate fabric
     fabric = get_fabric(configuration, hyperparams)
 
-    # the optimization objective
-    objective = partial(optuna_objective, fabric, configuration, hyperparams, optuna_config, target_hypers)
+    # optuna needs a global process group with 'gloo' backend for communication.
+    # "Create a global gloo backend when group is None and WORLD is nccl."
+    # - https://optuna.readthedocs.io/en/stable/reference/generated/optuna.integration.TorchDistributedTrial.html
+    optuna_process_group = torch.distributed.new_group(
+        backend='gloo',
+    )
 
-    # we want sequential studies. only run a study if we are
-    # the global rank zero process
+    # the optimization objective
+    objective = partial(optuna_objective, fabric, configuration, hyperparams, optuna_config, target_hypers, optuna_process_group)
+
+    # start Optuna study only on rank zero
     if fabric.is_global_zero:
+        print('Starting optimization.')
+        print('Configuration:')
+        for key, value in configuration.items():
+            print(f'- {key:<20}: {value}')
+
+        sampler = optuna.samplers.TPESampler(seed=configuration['seed'])
+
         study = optuna.create_study(
             storage='sqlite:///optuna.sqlite3',
-            study_name=configuration['study_name'],
+            study_name=configuration['experiment_name'],
+            sampler=sampler,
         )
+
         study.optimize(
             objective,
             n_trials=configuration['n_trials'],
             gc_after_trial=True, # garbage collect after each trial
         )
     else:
-        # not sure why need to call the objective with None here.
-        # https://github.com/optuna/optuna-examples/blob/main/pytorch/pytorch_distributed_simple.py
+        # "Please set trial object in rank-0 node and set `None` in the other rank node."
+        # - https://optuna.readthedocs.io/en/stable/reference/generated/optuna.integration.TorchDistributedTrial.html
         for _ in range(configuration['n_trials']):
             objective(None)
 
     if fabric.is_global_zero:
-        pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
-        complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
-
         trial = study.best_trial
         print(f'Best objective ralue: {trial.value}', trial.value)
         print('Params: ')
         for key, value in trial.params.items():
             print(f' - {key}: {value}')
 
-def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_hypers, trial):
+def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_hypers, process_group, trial):
     # make the trial support distributed
     # https://github.com/optuna/optuna-examples/blob/main/pytorch/pytorch_distributed_simple.py
-    trial = optuna.integration.TorchDistributedTrial(trial)
+    trial = optuna.integration.TorchDistributedTrial(trial, group=process_group)
 
     for target_hyper in target_hypers:
         if optuna_config[target_hyper]['type'] == 'float':
@@ -293,22 +326,19 @@ def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_h
                 target_hyper,
                 optuna_config[target_hyper]['min'],
                 optuna_config[target_hyper]['max'],
-                log=True,
-            )
+                )
 
         if optuna_config[target_hyper]['type'] == 'int':
             hyper_value = trial.suggest_int(
                 target_hyper,
                 optuna_config[target_hyper]['min'],
                 optuna_config[target_hyper]['max'],
-                log=True,
             )
 
         if optuna_config[target_hyper]['type'] == 'categorical':
             hyper_value = trial.suggest_int(
                 target_hyper,
                 optuna_config[target_hyper]['options'],
-                log=True,
             )
 
         hyperparams[target_hyper] = hyper_value
@@ -318,6 +348,13 @@ def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_h
 
     # train the model
     trainer = get_trainer(fabric, configuration, hyperparams)
+
+    if fabric.is_global_zero:
+        print(f'Starting trial {trial.number}.')
+        print(f'Hyperparams:')
+        for hyper, value in hyperparams.items():
+            print(f'- {hyper:<20}: {value}')
+
     trainer.fit()
 
     # optimization objective is the validation loss
@@ -326,6 +363,10 @@ def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_h
     # trainer has reference to the fabric object, let's
     # make sure the trainer gets garbage collected
     del trainer
+
+    # we don't need anything in the CUDA cache anymore so, let's clear
+    # it to make sure nothing there interferes with the next run
+    torch.cuda.empty_cache()
 
     return objective
 
@@ -337,6 +378,7 @@ def get_datamodule(configuration, hyperparams):
     datamodule = CIFAR10DataModule(
         num_workers=configuration['num_workers'],
         batch_size=hyperparams['batch_size'],
+        seed=configuration['seed'],
         image_size=(224, 224),
     )
 
@@ -344,6 +386,7 @@ def get_datamodule(configuration, hyperparams):
 
 def get_optimizer(configuration, hyperparams, model):
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
+    #optimizer = torch.optim.SGD(model.parameters(), lr=hyperparams['learning_rate'])
     return optimizer
 
 def get_fabric(configuration, hyperparams):
@@ -358,6 +401,7 @@ def get_fabric(configuration, hyperparams):
         callbacks=callbacks,
         loggers=loggers,
     )
+
     fabric.launch()
 
     return fabric
@@ -366,7 +410,11 @@ def get_loggers(configuration, hyperparams):
     loggers = []
 
     log_dir = configuration['log_dir']
-    logger = L.pytorch.loggers.TensorBoardLogger(f'{log_dir}/tensorboard')
+    logger = L.pytorch.loggers.TensorBoardLogger(
+        save_dir=f'{log_dir}',
+        name=configuration['experiment_name'],
+        version=configuration['experiment_version'],
+    )
     logger.log_hyperparams({
         'hyperparams': hyperparams,
         'configuration': configuration,
@@ -396,6 +444,7 @@ def get_basic_trainer(fabric, configuration, hyperparams):
         datamodule=datamodule,
         fabric=fabric,
         epochs=hyperparams['epochs'],
+        seed=configuration['seed'],
     )
 
     return trainer
@@ -434,6 +483,8 @@ def get_differentially_private_trainer(fabric, configuration, hyperparams):
         # config
         secure_mode=configuration['secure_mode'],
         clipping=configuration['clipping'],
+        physical_batch_size=configuration['physical_batch_size'],
+        seed=configuration['seed'],
     )
 
     return trainer
@@ -446,10 +497,24 @@ def get_trainer(fabric, configuration, hyperparams):
     return get_basic_trainer(fabric, configuration, hyperparams)
 
 def train(configuration, hyperparams):
+    if configuration['seed']:
+        L.fabric.utilities.seed.seed_everything(configuration['seed'])
+
     # instantiate fabric
     fabric = get_fabric(configuration, hyperparams)
 
     trainer = get_trainer(fabric, configuration, hyperparams)
+
+    if fabric.is_global_zero:
+        print('Starting training.')
+        print(f'Configuration:')
+        for key, value in configuration.items():
+            print(f'- {key:<20}: {value}')
+
+        print(f'Hyperparams:')
+        for hyper, value in hyperparams.items():
+            print(f'- {hyper:<20}: {value}')
+
     trainer.fit()
 
 if __name__ == '__main__':
