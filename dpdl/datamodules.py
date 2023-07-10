@@ -1,3 +1,4 @@
+import lightning as L
 import opacus
 import torch
 import torchmetrics
@@ -12,10 +13,11 @@ import datasets
 from functools import partial
 
 class DataModule():
-    def __init__(self, batch_size: int = 64, num_workers: int = 4):
+    def __init__(self, batch_size: int = 64, num_workers: int = 4, seed: int = 0):
         super().__init__()
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.seed = seed
 
         self._train_dataloader = None
         self._val_dataloader = None
@@ -52,8 +54,8 @@ class DataModule():
         self._test_dataloader = dataloader
 
 class CIFAR10DataModule(DataModule):
-    def __init__(self, batch_size: int = 64, num_workers: int = 4, image_size=None):
-        super().__init__(batch_size, num_workers)
+    def __init__(self, *, image_size=None, **kwargs):
+        super().__init__(**kwargs)
 
         self.num_classes = 10
         self.image_size = image_size
@@ -64,39 +66,72 @@ class CIFAR10DataModule(DataModule):
         self.setup()
 
     def setup(self):
-        dataset = datasets.load_dataset('cifar10', split='train')
+        self._initialize_datasets()
+        self._initialize_dataloaders()
+
+    def _initialize_dataloaders(self):
+        generator = torch.Generator()
+        if self.seed:
+            generator.manual_seed(self.seed)
+
+        def seed_worker(worker_id):
+            L.fabric.utilities.seed.seed_everything(self.seed)
+
+        self._train_dataloader = torch.utils.data.DataLoader(
+            self.train_dataset.with_format('torch'),
+            batch_size=self.batch_size,
+            collate_fn=self.collate_fn,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            shuffle=True,
+            generator=generator,
+            worker_init_fn=seed_worker if self.seed else None,
+        )
+
+        self._val_dataloader = torch.utils.data.DataLoader(
+            self.val_dataset.with_format('torch'),
+            batch_size=self.batch_size,
+            collate_fn=self.collate_fn,
+            num_workers=self.num_workers,
+            shuffle=False,
+        )
+
+        self._test_dataloader = torch.utils.data.DataLoader(
+            self.test_dataset.with_format('torch'),
+            batch_size=self.batch_size,
+            collate_fn=self.collate_fn,
+            num_workers=self.num_workers,
+            shuffle=False,
+        )
+
+    def _initialize_datasets(self):
+        # only load the data in single process on each node
+        if torch.distributed.get_rank() == 0:
+            dataset = datasets.load_dataset('cifar10', split='train')
+            test_dataset = datasets.load_dataset('cifar10', split='test')
+            torch.distributed.barrier()
+        else:
+            # wait for local rank 0 to load the datasets
+            torch.distributed.barrier()
+
+            dataset = datasets.load_dataset('cifar10', split='train')
+            test_dataset = datasets.load_dataset('cifar10', split='test')
 
         if self.image_size:
             transform = partial(self._resize_transform, self.image_size)
             dataset = dataset.map(transform, batched=True)
 
-        train_dataset, val_dataset = torch.utils.data.random_split(dataset.with_format('torch'), [45000, 5000])
-
-        self._train_dataloader = torch.utils.data.DataLoader(
-            train_dataset,
-            batch_size=self.batch_size,
-            collate_fn=self.collate_fn,
-            num_workers=self.num_workers,
-        )
-
-        self._val_dataloader = torch.utils.data.DataLoader(
-            val_dataset,
-            batch_size=self.batch_size,
-            collate_fn=self.collate_fn,
-            num_workers=self.num_workers,
-        )
+        # create train and validation splits
+        split_dataset = dataset.train_test_split(test_size=0.1, shuffle=False)
+        self.train_dataset = split_dataset['train']
+        self.val_dataset = split_dataset['test']
 
         test_dataset = datasets.load_dataset('cifar10', split='test')
         if self.image_size:
             transform = partial(self._resize_transform, self.image_size)
             test_dataset = test_dataset.map(transform, batched=True)
 
-        self._test_dataloader = torch.utils.data.DataLoader(
-            test_dataset.with_format('torch'),
-            batch_size=self.batch_size,
-            collate_fn=self.collate_fn,
-            num_workers=self.num_workers,
-        )
+        self.test_dataset = test_dataset
 
     @staticmethod
     def _resize_transform(image_size, examples):
