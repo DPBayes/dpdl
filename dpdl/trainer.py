@@ -2,6 +2,7 @@ import lightning as L
 import torch
 import opacus
 
+from opacus.utils.batch_memory_manager import BatchMemoryManager
 from typing import Any, List, Optional, Union
 
 from .datamodules import DataModule
@@ -143,6 +144,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         secure_mode: bool = False,
         target_epsilon: float = 0,
         target_delta: float = 0,
+        physical_batch_size: int = 64,
         seed: int = 0,
         **kwargs,
     ):
@@ -152,6 +154,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.clipping = clipping
         self.target_epsilon = target_epsilon
         self.target_delta = target_delta
+        self.physical_batch_size = physical_batch_size
         self.seed = seed
 
         # setup opacus privacy engine
@@ -225,3 +228,34 @@ class DifferentiallyPrivateTrainer(Trainer):
 
     def get_epsilon(self, delta):
         return self.privacy_engine.get_epsilon(delta)
+
+    def fit_one_epoch(self, epoch):
+        self.model.train()
+        self.fabric.call('on_train_epoch_start', self, epoch)
+
+        # save the current dataloader, we are going to use a virtual
+        # dataloader to enable larger batches
+        original_dataloader = self.datamodule.train_dataloader._dataloader
+
+        total_loss = 0
+        with BatchMemoryManager(
+            data_loader=self.datamodule.train_dataloader._dataloader,
+            max_physical_batch_size=self.physical_batch_size,
+            optimizer=self.optimizer._optimizer,
+        ) as virtual_dataloader:
+            # the virtual data loader created by BatchMemoryManager enables us to use larger
+            # logical batch sizes that fit in a GPU.
+            self.datamodule.train_dataloader._dataloader = virtual_dataloader
+
+            for batch_idx, batch in enumerate(self.datamodule.train_dataloader):
+                batch_loss = self.fit_one_batch(batch_idx, batch)
+                total_loss = total_loss + batch_loss
+
+        epoch_loss = total_loss / (batch_idx + 1)
+        self.fabric.log('Train/loss', epoch_loss, epoch)
+
+        # we have enumerated the batch, let's swap back to the original dataloader
+        self.datamodule.train_dataloader._dataloader = original_dataloader
+
+        self.fabric.call('on_train_epoch_end', self, epoch, epoch_loss)
+        return epoch_loss
