@@ -26,6 +26,7 @@ class Trainer:
         # generic params
         epochs: int = 10,
         validation_frequency: int = 1,
+        seed: int = 0,
         #checkpoint_dir: str = "./checkpoints",
         #checkpoint_frequency: int = 1,
     ):
@@ -39,6 +40,9 @@ class Trainer:
         self.epochs = epochs
         self.validation_frequency = validation_frequency
         self.fabric = fabric
+        self.seed = seed
+
+        self.setup()
 
     def setup(self):
         # call fabric to setup possible distributed training
@@ -57,8 +61,6 @@ class Trainer:
         self.datamodule.test_dataloader = test_dataloader
 
     def fit(self):
-        self.setup()
-
         self.fabric.call('on_train_start', self)
         for epoch in range(self.epochs):
             epoch_loss = self.fit_one_epoch(epoch)
@@ -94,11 +96,9 @@ class Trainer:
         loss = self.datamodule.criterion(logits, y)
         self.fabric.backward(loss)
         self.optimizer.step()
-
         loss = loss.item()
 
         self.fabric.call('on_train_batch_end', self, batch_idx, batch, loss)
-
         return loss
 
     def validate(self, epoch=None):
@@ -143,19 +143,21 @@ class DifferentiallyPrivateTrainer(Trainer):
         secure_mode: bool = False,
         target_epsilon: float = 0,
         target_delta: float = 0,
+        seed: int = 0,
         **kwargs,
     ):
-
-        super().__init__(**kwargs)
 
         self.noise_multiplier = noise_multiplier
         self.max_grad_norm = max_grad_norm
         self.clipping = clipping
         self.target_epsilon = target_epsilon
         self.target_delta = target_delta
+        self.seed = seed
 
         # setup opacus privacy engine
         self.privacy_engine = opacus.PrivacyEngine(accountant=accountant, secure_mode=secure_mode)
+
+        super().__init__(**kwargs)
 
     def _has_target_privacy_params(self):
         if not any([self.target_epsilon, self.target_delta]):
@@ -182,6 +184,10 @@ class DifferentiallyPrivateTrainer(Trainer):
         optimizer = self.optimizer._optimizer
         train_dataloader = self.datamodule.train_dataloader._dataloader
 
+        noise_generator = torch.Generator(device=self.fabric.device)
+        if self.seed:
+            noise_generator.manual_seed(self.seed)
+
         # setup differential privacy for the model, optimize, and dataloader
         if self._has_target_privacy_params():
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private_with_epsilon(
@@ -193,6 +199,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 target_epsilon=self.target_epsilon,
                 target_delta=self.target_delta,
                 epochs=self.epochs,
+                noise_generator=noise_generator,
             )
         else:
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
@@ -202,6 +209,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 noise_multiplier=self.noise_multiplier,
                 max_grad_norm=self.max_grad_norm,
                 clipping=self.clipping,
+                noise_generator=noise_generator,
             )
 
         # are we distributed?
