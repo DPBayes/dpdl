@@ -1,11 +1,12 @@
-import lightning as L
-import torch
+import logging
 import opacus
+import torch
 
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 from typing import Any, List, Optional, Union
 
 from .datamodules import DataModule
+from .callbacks import CallbackHandler
 
 # You are using a CUDA device ('AMD Radeon Graphics') that has Tensor Cores.
 # To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')`
@@ -13,6 +14,8 @@ from .datamodules import DataModule
 # For more details, read
 # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
 torch.set_float32_matmul_precision('medium')
+
+log = logging.getLogger(__name__)
 
 class Trainer:
     def __init__(
@@ -22,7 +25,6 @@ class Trainer:
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         datamodule: DataModule,
-        fabric: L.Fabric = None,
 
         # generic params
         epochs: int = 10,
@@ -30,50 +32,43 @@ class Trainer:
         seed: int = 0,
         #checkpoint_dir: str = "./checkpoints",
         #checkpoint_frequency: int = 1,
+        callback_handler: CallbackHandler = None,
     ):
-
-        if not fabric:
-            raise(RuntimeError('Initialized fabric not passed to {self.__class__.__name}.'))
 
         self.model = model
         self.optimizer = optimizer
         self.datamodule = datamodule
         self.epochs = epochs
         self.validation_frequency = validation_frequency
-        self.fabric = fabric
         self.seed = seed
+
+        if not callback_handler:
+            self.callback_handler = CallbackHandler()
+        else:
+            self.callback_handler = callback_handler
 
         self.setup()
 
     def setup(self):
-        # call fabric to setup possible distributed training
-        model, optimizer = self.fabric.setup(self.model, self.optimizer)
-        train_dataloader, val_dataloader, test_dataloader = self.fabric.setup_dataloaders(
-            self.datamodule.train_dataloader,
-            self.datamodule.val_dataloader,
-            self.datamodule.test_dataloader,
-        )
+        self.model = self.model.cuda()
 
-        self.model = model
-        self.optimizer = optimizer
-
-        self.datamodule.train_dataloader = train_dataloader
-        self.datamodule.val_dataloader = val_dataloader
-        self.datamodule.test_dataloader = test_dataloader
+        local_rank = torch.distributed.get_rank()
+        self.model = torch.nn.parallel.DistributedDataParallel(self.model, device_ids=[local_rank])
 
     def fit(self):
-        self.fabric.call('on_train_start', self)
+        self.callback_handler.call('on_train_start', self)
+
         for epoch in range(self.epochs):
             epoch_loss = self.fit_one_epoch(epoch)
 
             if self.validation_frequency and epoch % self.validation_frequency == 0:
                 self.validate(epoch)
 
-        self.fabric.call('on_train_end', self)
+        self.callback_handler.call('on_train_end', self)
 
     def fit_one_epoch(self, epoch):
         self.model.train()
-        self.fabric.call('on_train_epoch_start', self, epoch)
+        self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         total_loss = 0
         for batch_idx, batch in enumerate(self.datamodule.train_dataloader):
@@ -81,25 +76,31 @@ class Trainer:
             total_loss = total_loss + batch_loss
 
         epoch_loss = total_loss / (batch_idx + 1)
-        self.fabric.log('Train/loss', epoch_loss, epoch)
+        #self.fabric.log('Train/loss', epoch_loss, epoch)
 
-        self.fabric.call('on_train_epoch_end', self, epoch, epoch_loss)
+        self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss)
 
         return epoch_loss
 
+    def _unwrap_model(self):
+        return self.model.module
+
     def fit_one_batch(self, batch_idx, batch):
-        self.fabric.call('on_train_batch_start', self, batch_idx, batch)
+        self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
 
         X, y = batch
+        X = X.cuda(non_blocking=True)
+        y = y.cuda(non_blocking=True)
+
         self.optimizer.zero_grad()
         logits = self.model(X)
 
-        loss = self.datamodule.criterion(logits, y)
-        self.fabric.backward(loss)
+        loss = self._unwrap_model().criterion(logits, y)
+        loss.backward(loss)
         self.optimizer.step()
         loss = loss.item()
 
-        self.fabric.call('on_train_batch_end', self, batch_idx, batch, loss)
+        self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss)
         return loss
 
     def validate(self, epoch=None):
@@ -107,13 +108,13 @@ class Trainer:
         torch.set_grad_enabled(False)
 
         total_loss = 0
-        self.fabric.call('on_validation_epoch_start', self, epoch)
+        self.callback_handler.call('on_validation_epoch_start', self, epoch)
         for batch_idx, batch in enumerate(self.datamodule.val_dataloader):
             batch_loss = self.validate_one_batch(batch_idx, batch)
             total_loss = total_loss + batch_loss
 
         valid_loss = total_loss / (batch_idx + 1)
-        self.fabric.call('on_validation_epoch_end', self, epoch, valid_loss)
+        self.callback_handler.call('on_validation_epoch_end', self, epoch, valid_loss)
 
         torch.set_grad_enabled(True)
         self.model.train()
@@ -121,14 +122,17 @@ class Trainer:
         return valid_loss
 
     def validate_one_batch(self, batch_idx, batch):
-        self.fabric.call('on_validation_batch_start', self, batch_idx, batch)
+        self.callback_handler.call('on_validation_batch_start', self, batch_idx, batch)
 
         X, y = batch
+        X = X.cuda(non_blocking=True)
+        y = y.cuda(non_blocking=True)
+
         logits = self.model(X)
-        loss = self.datamodule.criterion(logits, y)
+        loss = self._unwrap_model().criterion(logits, y)
 
         loss = loss.item()
-        self.fabric.call('on_validation_batch_end', self, batch_idx, batch, loss)
+        self.callback_handler.call('on_validation_batch_end', self, batch_idx, batch, loss)
 
         return loss
 
@@ -178,18 +182,15 @@ class DifferentiallyPrivateTrainer(Trainer):
         return True
 
     def setup(self):
-        # call super class to initialize fabric
         super().setup()
 
-        # fabric has wrapped the model, optimizer, and module. so let's grab
-        # the wrapped modules an DP'ify them.
-        model = self.model._forward_module
-        optimizer = self.optimizer._optimizer
-        train_dataloader = self.datamodule.train_dataloader._dataloader
-
-        noise_generator = torch.Generator(device=self.fabric.device)
+        noise_generator = torch.Generator(device=torch.cuda.current_device())
         if self.seed:
             noise_generator.manual_seed(self.seed)
+
+        model = self.model
+        optimizer = self.optimizer
+        train_dataloader = self.datamodule.train_dataloader
 
         # setup differential privacy for the model, optimize, and dataloader
         if self._has_target_privacy_params():
@@ -216,46 +217,49 @@ class DifferentiallyPrivateTrainer(Trainer):
             )
 
         # are we distributed?
-        if self.fabric.world_size > 1:
+        if torch.distributed.get_world_size() > 1:
             # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
             # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
             dp_model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(dp_model)
 
         # put the DP'ifyed stuff back into Fabric wrappers
-        self.model._forward_module = dp_model
-        self.datamodule.train_dataloader._dataloader = dp_dataloader
-        self.optimizer._optimizer = dp_optimizer
+        self.model = dp_model
+        self.datamodule.train_dataloader = dp_dataloader
+        self.optimizer = dp_optimizer
 
     def get_epsilon(self, delta):
         return self.privacy_engine.get_epsilon(delta)
 
+    def _unwrap_model(self):
+        return self.model.module._module.module
+
     def fit_one_epoch(self, epoch):
         self.model.train()
-        self.fabric.call('on_train_epoch_start', self, epoch)
+        self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         # save the current dataloader, we are going to use a virtual
         # dataloader to enable larger batches
-        original_dataloader = self.datamodule.train_dataloader._dataloader
+        original_dataloader = self.datamodule.train_dataloader
 
         total_loss = 0
         with BatchMemoryManager(
-            data_loader=self.datamodule.train_dataloader._dataloader,
+            data_loader=self.datamodule.train_dataloader,
             max_physical_batch_size=self.physical_batch_size,
-            optimizer=self.optimizer._optimizer,
+            optimizer=self.optimizer,
         ) as virtual_dataloader:
             # the virtual data loader created by BatchMemoryManager enables us to use larger
             # logical batch sizes that fit in a GPU.
-            self.datamodule.train_dataloader._dataloader = virtual_dataloader
+            self.datamodule.train_dataloader = virtual_dataloader
 
             for batch_idx, batch in enumerate(self.datamodule.train_dataloader):
                 batch_loss = self.fit_one_batch(batch_idx, batch)
                 total_loss = total_loss + batch_loss
 
         epoch_loss = total_loss / (batch_idx + 1)
-        self.fabric.log('Train/loss', epoch_loss, epoch)
+        #self.fabric.log('Train/loss', epoch_loss, epoch)
 
         # we have enumerated the batch, let's swap back to the original dataloader
-        self.datamodule.train_dataloader._dataloader = original_dataloader
+        self.datamodule.train_dataloader = original_dataloader
 
-        self.fabric.call('on_train_epoch_end', self, epoch, epoch_loss)
+        self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss)
         return epoch_loss
