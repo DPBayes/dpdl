@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-
 import os
 import sys
+import logging
 
 import optuna
 import torch
@@ -13,12 +13,14 @@ from typing import Optional, List
 from typing_extensions import Annotated
 from rich import print
 
-import lightning as L
+import dpdl.utils
 
-from dpdl.callbacks import PrintStateCallback
+from dpdl.callbacks import CallbackHandler, PrintStateCallback
 from dpdl.datamodules import CIFAR10DataModule
 from dpdl.models import ImageClassificationModel
 from dpdl.trainer import Trainer, DifferentiallyPrivateTrainer
+
+log = logging.getLogger(__name__)
 
 def main(
         ctx: typer.Context,
@@ -242,8 +244,8 @@ def main(
 
 def optimize_hypers(configuration, hyperparams):
     # reproducible results
-    if configuration['seed']:
-        L.fabric.utilities.seed.seed_everything(configuration['seed'])
+    if seed := configuration['seed']:
+        dpdl.utils.seed_everything(seed)
 
     # helper function for reading Optuna hyperparameter configuration that
     # includes types, options, lower and upper bounds, etc for hyperparams
@@ -269,9 +271,6 @@ def optimize_hypers(configuration, hyperparams):
             config_fpath = configuration['optuna_config']
             raise(typer.BadParameter(f'Hyperparameter "{target_hyper}" not found in Optuna configuration file "{config_fpath}".'))
 
-    # instantiate fabric
-    fabric = get_fabric(configuration, hyperparams)
-
     # optuna needs a global process group with 'gloo' backend for communication.
     # "Create a global gloo backend when group is None and WORLD is nccl."
     # - https://optuna.readthedocs.io/en/stable/reference/generated/optuna.integration.TorchDistributedTrial.html
@@ -280,10 +279,10 @@ def optimize_hypers(configuration, hyperparams):
     )
 
     # the optimization objective
-    objective = partial(optuna_objective, fabric, configuration, hyperparams, optuna_config, target_hypers, optuna_process_group)
+    objective = partial(optuna_objective, configuration, hyperparams, optuna_config, target_hypers, optuna_process_group)
 
     # start Optuna study only on rank zero
-    if fabric.is_global_zero:
+    if torch.distributed.get_rank() == 0:
         print('Starting optimization.')
         print('Configuration:')
         for key, value in configuration.items():
@@ -308,14 +307,14 @@ def optimize_hypers(configuration, hyperparams):
         for _ in range(configuration['n_trials']):
             objective(None)
 
-    if fabric.is_global_zero:
+    if torch.distributed.get_rank() == 0:
         trial = study.best_trial
         print(f'Best objective ralue: {trial.value}', trial.value)
         print('Params: ')
         for key, value in trial.params.items():
             print(f' - {key}: {value}')
 
-def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_hypers, process_group, trial):
+def optuna_objective(configuration, hyperparams, optuna_config, target_hypers, process_group, trial):
     # make the trial support distributed
     # https://github.com/optuna/optuna-examples/blob/main/pytorch/pytorch_distributed_simple.py
     trial = optuna.integration.TorchDistributedTrial(trial, group=process_group)
@@ -347,9 +346,9 @@ def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_h
     configuration['validation_frequency'] = 0
 
     # train the model
-    trainer = get_trainer(fabric, configuration, hyperparams)
+    trainer = get_trainer(configuration, hyperparams)
 
-    if fabric.is_global_zero:
+    if torch.distributed.get_rank() == 0:
         print(f'Starting trial {trial.number}.')
         print(f'Hyperparams:')
         for hyper, value in hyperparams.items():
@@ -360,18 +359,21 @@ def optuna_objective(fabric, configuration, hyperparams, optuna_config, target_h
     # optimization objective is the validation loss
     objective = trainer.validate()
 
-    # trainer has reference to the fabric object, let's
-    # make sure the trainer gets garbage collected
-    del trainer
-
-    # we don't need anything in the CUDA cache anymore so, let's clear
-    # it to make sure nothing there interferes with the next run
-    torch.cuda.empty_cache()
+#    # trainer has reference to the fabric object, let's
+#    # make sure the trainer gets garbage collected
+#    del trainer
+#
+#    # we don't need anything in the CUDA cache anymore so, let's clear
+#    # it to make sure nothing there interferes with the next run
+#    torch.cuda.empty_cache()
 
     return objective
 
 def get_model(configuration, hyperparams):
-    model = ImageClassificationModel(hyperparams['model_name'], configuration['num_classes'])
+    model = ImageClassificationModel(
+        model_name=hyperparams['model_name'],
+        num_classes=configuration['num_classes']
+    )
     return model
 
 def get_datamodule(configuration, hyperparams):
@@ -388,23 +390,6 @@ def get_optimizer(configuration, hyperparams, model):
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
     #optimizer = torch.optim.SGD(model.parameters(), lr=hyperparams['learning_rate'])
     return optimizer
-
-def get_fabric(configuration, hyperparams):
-    loggers = get_loggers(configuration, hyperparams)
-    callbacks = get_callbacks(configuration, hyperparams)
-
-    fabric = L.Fabric(
-        accelerator=configuration['accelerator'],
-        strategy=configuration['strategy'],
-        devices=configuration['devices'],
-        precision=configuration['precision'],
-        callbacks=callbacks,
-        loggers=loggers,
-    )
-
-    fabric.launch()
-
-    return fabric
 
 def get_loggers(configuration, hyperparams):
     loggers = []
@@ -431,29 +416,35 @@ def get_callbacks(configuration, hyperparams):
 
     return callbacks
 
-def get_basic_trainer(fabric, configuration, hyperparams):
+def get_basic_trainer(configuration, hyperparams):
     # setup data, model, and optimizer
     datamodule = get_datamodule(configuration, hyperparams)
     model = get_model(configuration, hyperparams)
     optimizer = get_optimizer(configuration, hyperparams, model)
+    callback_handler = CallbackHandler(
+        get_callbacks(configuration, hyperparams)
+    )
 
     # instantiate a trainer without dp
     trainer = Trainer(
         model=model,
         optimizer=optimizer,
         datamodule=datamodule,
-        fabric=fabric,
         epochs=hyperparams['epochs'],
         seed=configuration['seed'],
+        callback_handler=callback_handler,
     )
 
     return trainer
 
-def get_differentially_private_trainer(fabric, configuration, hyperparams):
+def get_differentially_private_trainer(configuration, hyperparams):
     # setup data, model, and optimizer
     datamodule = get_datamodule(configuration, hyperparams)
     model = get_model(configuration, hyperparams)
     optimizer = get_optimizer(configuration, hyperparams, model)
+    callback_handler = CallbackHandler(
+        get_callbacks(configuration, hyperparams)
+    )
 
     # are we given a target epsilon?
     if 'target_epsilon' in hyperparams:
@@ -473,7 +464,6 @@ def get_differentially_private_trainer(fabric, configuration, hyperparams):
         model=model,
         optimizer=optimizer,
         datamodule=datamodule,
-        fabric=fabric,
         # hypers
         epochs=hyperparams['epochs'],
         noise_multiplier=hyperparams['noise_multiplier'],
@@ -485,27 +475,25 @@ def get_differentially_private_trainer(fabric, configuration, hyperparams):
         clipping=configuration['clipping'],
         physical_batch_size=configuration['physical_batch_size'],
         seed=configuration['seed'],
+        callback_handler=callback_handler,
     )
 
     return trainer
 
-def get_trainer(fabric, configuration, hyperparams):
+def get_trainer(configuration, hyperparams):
     # are we differentially private?
     if configuration['privacy']:
-        return get_differentially_private_trainer(fabric, configuration, hyperparams)
+        return get_differentially_private_trainer(configuration, hyperparams)
 
-    return get_basic_trainer(fabric, configuration, hyperparams)
+    return get_basic_trainer(configuration, hyperparams)
 
 def train(configuration, hyperparams):
-    if configuration['seed']:
-        L.fabric.utilities.seed.seed_everything(configuration['seed'])
+    if seed := configuration['seed']:
+        dpdl.utils.seed_everything(seed)
 
-    # instantiate fabric
-    fabric = get_fabric(configuration, hyperparams)
+    trainer = get_trainer(configuration, hyperparams)
 
-    trainer = get_trainer(fabric, configuration, hyperparams)
-
-    if fabric.is_global_zero:
+    if torch.distributed.get_rank() == 0:
         print('Starting training.')
         print(f'Configuration:')
         for key, value in configuration.items():
@@ -518,5 +506,10 @@ def train(configuration, hyperparams):
     trainer.fit()
 
 if __name__ == '__main__':
-    typer.run(main)
+    torch.distributed.init_process_group(backend='nccl')
 
+    local_rank = int(os.environ['LOCAL_RANK'])
+    torch.cuda.set_device(local_rank)
+
+    log.debug('Running application.')
+    typer.run(main)

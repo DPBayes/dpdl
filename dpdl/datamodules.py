@@ -1,16 +1,11 @@
-import lightning as L
+# NB: Set datasets cache directory with the environment variable HF_DATASETS_CACHE
+import datasets
 import opacus
 import torch
-import torchmetrics
-
-# for models
-import timm
-
-# use Huggingface datasets
-# NB: Set data cache directory with the environment variable HF_DATASETS_CACHE
-import datasets
 
 from functools import partial
+
+import dpdl.utils
 
 class DataModule():
     def __init__(self, batch_size: int = 64, num_workers: int = 4, seed: int = 0):
@@ -22,12 +17,6 @@ class DataModule():
         self._train_dataloader = None
         self._val_dataloader = None
         self._test_dataloader = None
-
-    def criterion(self, logits, y):
-        raise(NotImplementedError('Criterion not implemented for class: {self.__class__.__name__}'))
-
-    def accuracy(self, logits, y):
-        raise(NotImplementedError('Accuracy not implemented for class: {self.__class__.__name__}'))
 
     @property
     def train_dataloader(self):
@@ -60,9 +49,6 @@ class CIFAR10DataModule(DataModule):
         self.num_classes = 10
         self.image_size = image_size
 
-        self._criterion = torch.nn.CrossEntropyLoss()
-        self._accuracy = torchmetrics.Accuracy(task='multiclass', num_classes=self.num_classes)
-
         self.setup()
 
     def setup(self):
@@ -75,7 +61,7 @@ class CIFAR10DataModule(DataModule):
             generator.manual_seed(self.seed)
 
         def seed_worker(worker_id):
-            L.fabric.utilities.seed.seed_everything(self.seed)
+            dpdl.utils.seed_everything(self.seed)
 
         self._train_dataloader = torch.utils.data.DataLoader(
             self.train_dataset.with_format('torch'),
@@ -137,13 +123,6 @@ class CIFAR10DataModule(DataModule):
     def _resize_transform(image_size, examples):
         examples['img'] = [image.resize(image_size) for image in examples['img']]
         return examples
-
-    def criterion(self, logits, y):
-        return self._criterion(logits, y)
-
-    def accuracy(self, logits, y):
-        preds = torch.argmax(logits, dim=1)
-        return self._accuracy(preds, y)
 
     @staticmethod
     def collate_fn(batch):
