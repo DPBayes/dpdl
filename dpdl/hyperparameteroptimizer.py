@@ -1,0 +1,137 @@
+import gc
+import logging
+import optuna
+import torch
+import yaml
+
+from functools import partial
+
+from .trainer import TrainerFactory
+from .cli import ConfigurationManager
+
+log = logging.getLogger(__name__)
+
+class HyperparameterOptimizer():
+    # helper function for reading Optuna hyperparameter configuration that
+    # includes types, options, lower and upper bounds, etc for hyperparams
+    @staticmethod
+    def read_optuna_config(config_fpath):
+        with open(config_fpath, 'rb') as fh:
+            config = yaml.safe_load(fh)
+
+        return config
+
+    @staticmethod
+    def optimize_hypers(config: ConfigurationManager) -> None:
+        configuration = config.get_configuration()
+        hyperparams = config.get_hyperparams()
+
+        # the targeted hypers from command line
+        target_hypers = configuration['target_hypers']
+
+        if len(target_hypers) == 0:
+            raise(typer.BadParameter('Bayesian optimization enabled and no target hyperparameters for optimization.'))
+
+        optuna_config = HyperparameterOptimizer.read_optuna_config(configuration['optuna_config'])
+
+        # check that the target hypers are known and appear in Optuna configuration
+        for target_hyper in target_hypers:
+            if not target_hyper in hyperparams:
+                raise(typer.BadParameter(f'Cannot optimize unknown hyperparameter "{target_hyper}".'))
+            if not target_hyper in optuna_config:
+                config_fpath = configuration['optuna_config']
+                raise(typer.BadParameter(f'Hyperparameter "{target_hyper}" not found in Optuna configuration file "{config_fpath}".'))
+
+        # optuna needs a global process group with 'gloo' backend for communication.
+        # "Create a global gloo backend when group is None and WORLD is nccl."
+        # - https://optuna.readthedocs.io/en/stable/reference/generated/optuna.integration.TorchDistributedTrial.html
+        optuna_process_group = torch.distributed.new_group(
+            backend='gloo',
+        )
+
+        # the optimization objective
+        objective = partial(
+            HyperparameterOptimizer.objective,
+            config,
+            optuna_config,
+            target_hypers,
+            optuna_process_group,
+        )
+
+        # start Optuna study only on rank zero
+        if torch.distributed.get_rank() == 0:
+            sampler = optuna.samplers.TPESampler(seed=configuration['seed'])
+
+            study = optuna.create_study(
+                storage='sqlite:///optuna.sqlite3',
+                study_name=configuration['experiment_name'],
+                sampler=sampler,
+            )
+
+            study.optimize(
+                objective,
+                n_trials=configuration['n_trials'],
+                gc_after_trial=True, # garbage collect after each trial
+            )
+        else:
+            # "Please set trial object in rank-0 node and set `None` in the other rank node."
+            # - https://optuna.readthedocs.io/en/stable/reference/generated/optuna.integration.TorchDistributedTrial.html
+            for _ in range(configuration['n_trials']):
+                objective(None)
+
+        if torch.distributed.get_rank() == 0:
+            trial = study.best_trial
+            log.info(f'Best objective ralue: {trial.value}', trial.value)
+            log.info('Params: ')
+            for key, value in trial.params.items():
+                log.info(f' - {key}: {value}')
+
+    @staticmethod
+    def objective(config, optuna_config, target_hypers, process_group, trial):
+        # make the trial support distributed
+        # https://github.com/optuna/optuna-examples/blob/main/pytorch/pytorch_distributed_simple.py
+        trial = optuna.integration.TorchDistributedTrial(trial, group=process_group)
+
+        for target_hyper in target_hypers:
+            if optuna_config[target_hyper]['type'] == 'float':
+                hyper_value = trial.suggest_float(
+                    target_hyper,
+                    optuna_config[target_hyper]['min'],
+                    optuna_config[target_hyper]['max'],
+                    )
+
+            if optuna_config[target_hyper]['type'] == 'int':
+                hyper_value = trial.suggest_int(
+                    target_hyper,
+                    optuna_config[target_hyper]['min'],
+                    optuna_config[target_hyper]['max'],
+                )
+
+            if optuna_config[target_hyper]['type'] == 'categorical':
+                hyper_value = trial.suggest_int(
+                    target_hyper,
+                    optuna_config[target_hyper]['options'],
+                )
+
+            # update the hyperparameter value in configuration
+            config.set_hyper(target_hyper, hyper_value)
+
+        # while tuning hypers, do not validate
+        config.set_value('validation_frequency', 0)
+
+        # train the model
+        trainer = TrainerFactory.get_trainer(config)
+
+        if torch.distributed.get_rank() == 0:
+            log.info(f'Starting trial {trial.number}.')
+            config.print_hyperparams()
+
+        trainer.fit()
+
+        # optimization objective is the validation loss
+        objective = trainer.validate()
+
+        del trainer, process_group, trial
+        gc.collect()
+
+        return objective

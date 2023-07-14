@@ -3,6 +3,15 @@ import timm
 import torch
 import torchmetrics
 
+class ModelFactory():
+    @staticmethod
+    def get_model(configuration, hyperparams):
+        model = ImageClassificationModel(
+            model_name=hyperparams['model_name'],
+            num_classes=configuration['num_classes']
+        )
+        return model
+
 class TimmModel(torch.nn.Module):
     def __init__(
             self,
