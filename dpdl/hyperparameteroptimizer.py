@@ -81,7 +81,7 @@ class HyperparameterOptimizer():
 
         if torch.distributed.get_rank() == 0:
             trial = study.best_trial
-            log.info(f'Best objective ralue: {trial.value}', trial.value)
+            log.info(f'Best objective ralue: {trial.value}')
             log.info('Params: ')
             for key, value in trial.params.items():
                 log.info(f' - {key}: {value}')
