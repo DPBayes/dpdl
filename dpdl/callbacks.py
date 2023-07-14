@@ -1,6 +1,8 @@
 import torch
 import logging
 
+from typing import List
+
 log = logging.getLogger(__name__)
 
 class CallbackHandler():
@@ -47,11 +49,11 @@ class PrintStateCallback(Callback):
 
     def on_train_epoch_start(self, trainer, epoch):
         if self._is_global_zero(trainer):
-            log.info(f' - Starting training epoch {epoch+1}.')
+            log.info(f'Starting training epoch {epoch+1}.')
 
     def on_train_epoch_end(self, trainer, epoch, loss):
         if self._is_global_zero(trainer):
-            log.info(f' - Epoch {epoch+1} finished. Loss: {loss:.4f}.')
+            log.info(f'Epoch {epoch+1} finished. Loss: {loss:.4f}.')
 
 #    def on_train_batch_end(self, trainer, batch_idx, batch, loss):
 #        if self._is_global_zero(trainer):
@@ -67,6 +69,16 @@ class PrintStateCallback(Callback):
     def on_validation_epoch_end(self, trainer, epoch, loss):
         if self._is_global_zero(trainer):
             if epoch:
-                log.info(f' - Validation epoch {epoch+1} finished. Loss: {loss:.4f}.')
+                log.info(f'Validation epoch {epoch+1} finished. Loss: {loss:.4f}.')
             else:
-                log.info(f' - Validation finished. Loss: {loss:.4f}.')
+                log.info(f'Validation finished. Loss: {loss:.4f}.')
+
+class CallbackFactory():
+    @staticmethod
+    def get_callbacks(configuration: dict, hyperparams: dict) -> List[Callback]:
+        callbacks = [
+            PrintStateCallback(),
+        ]
+
+        return callbacks
+

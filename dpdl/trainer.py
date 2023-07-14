@@ -3,10 +3,13 @@ import opacus
 import torch
 
 from opacus.utils.batch_memory_manager import BatchMemoryManager
-from typing import Any, List, Optional, Union
 
-from .datamodules import DataModule
-from .callbacks import CallbackHandler
+from .callbacks import CallbackHandler, CallbackFactory
+from .cli import ConfigurationManager
+from .configurationmanager import ConfigurationManager
+from .datamodules import DataModule, DataModuleFactory
+from .models import ModelFactory
+from .optimizers import OptimizerFactory
 
 # You are using a CUDA device ('AMD Radeon Graphics') that has Tensor Cores.
 # To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')`
@@ -263,3 +266,83 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss)
         return epoch_loss
+
+class TrainerFactory():
+    @staticmethod
+    def _get_basic_trainer(configuration: dict, hyperparams: dict) -> Trainer:
+        # setup data, model, and optimizer
+        datamodule = DataModule.get_datamodule(configuration, hyperparams)
+        model = Model.get_model(configuration, hyperparams)
+        optimizer = get_optimizer(configuration, hyperparams, model)
+        callback_handler = CallbackHandler(
+            get_callbacks(configuration, hyperparams)
+        )
+
+        # instantiate a trainer without dp
+        trainer = Trainer(
+            model=model,
+            optimizer=optimizer,
+            datamodule=datamodule,
+            epochs=hyperparams['epochs'],
+            seed=configuration['seed'],
+            callback_handler=callback_handler,
+        )
+
+        return trainer
+
+    @staticmethod
+    def _get_differentially_private_trainer(configuration: dict, hyperparams: dict) -> Trainer:
+        # setup data, model, and optimizer
+        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
+        model = ModelFactory.get_model(configuration, hyperparams)
+        optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
+
+        callback_handler = CallbackHandler(
+            CallbackFactory.get_callbacks(configuration, hyperparams)
+        )
+
+        # are we given a target epsilon?
+        if 'target_epsilon' in hyperparams:
+            # if we have target epsilon, set target delta = 1/N
+            target_delta = 1 / len(datamodule.train_dataloader.dataset)
+            target_epsilon = hyperparams['target_epsilon']
+
+            # if target epsilon is given, then opacus will calculate
+            # the noise multiplier for us
+            hyperparams['noise_multiplier'] = None
+        else:
+            target_delta = None
+            target_epsilon = None
+
+        # instantiate a differentialy private trained
+        trainer = DifferentiallyPrivateTrainer(
+            model=model,
+            optimizer=optimizer,
+            datamodule=datamodule,
+            # hypers
+            epochs=hyperparams['epochs'],
+            noise_multiplier=hyperparams['noise_multiplier'],
+            max_grad_norm=hyperparams['max_grad_norm'],
+            target_epsilon=target_epsilon,
+            target_delta=target_delta,
+            # config
+            secure_mode=configuration['secure_mode'],
+            clipping=configuration['clipping'],
+            physical_batch_size=configuration['physical_batch_size'],
+            seed=configuration['seed'],
+            callback_handler=callback_handler,
+        )
+
+        return trainer
+
+    @staticmethod
+    def get_trainer(config: ConfigurationManager) -> Trainer:
+        configuration = config.get_configuration()
+        hyperparams = config.get_hyperparams()
+
+        # are we differentially private?
+        if configuration['privacy']:
+            return TrainerFactory._get_differentially_private_trainer(configuration, hyperparams)
+
+        return TrainerFactory._get_basic_trainer(configuration, hyperparams)
+

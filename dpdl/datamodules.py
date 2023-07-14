@@ -5,7 +5,7 @@ import torch
 
 from functools import partial
 
-import dpdl.utils
+from dpdl.utils import seed_everything
 
 class DataModule():
     def __init__(self, batch_size: int = 64, num_workers: int = 4, seed: int = 0):
@@ -61,7 +61,7 @@ class CIFAR10DataModule(DataModule):
             generator.manual_seed(self.seed)
 
         def seed_worker(worker_id):
-            dpdl.utils.seed_everything(self.seed)
+            seed_everything(self.seed)
 
         self._train_dataloader = torch.utils.data.DataLoader(
             self.train_dataset.with_format('torch'),
@@ -137,4 +137,16 @@ class CIFAR10DataModule(DataModule):
             labels[i] = batch[i]['label']
 
         return images, labels
+
+class DataModuleFactory():
+    @staticmethod
+    def get_datamodule(configuration: dict, hyperparams: dict) -> DataModule:
+        datamodule = CIFAR10DataModule(
+            num_workers=configuration['num_workers'],
+            batch_size=hyperparams['batch_size'],
+            seed=configuration['seed'],
+            image_size=(224, 224),
+        )
+
+        return datamodule
 
