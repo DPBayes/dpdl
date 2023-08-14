@@ -7,7 +7,7 @@ import yaml
 from functools import partial
 
 from .trainer import TrainerFactory
-from .cli import ConfigurationManager
+from .configurationmanager import ConfigurationManager
 
 log = logging.getLogger(__name__)
 
@@ -22,9 +22,9 @@ class HyperparameterOptimizer():
         return config
 
     @staticmethod
-    def optimize_hypers(config: ConfigurationManager) -> None:
-        configuration = config.get_configuration()
-        hyperparams = config.get_hyperparams()
+    def optimize_hypers(configurationmanager: ConfigurationManager) -> None:
+        configuration = configurationmanager.get_configuration()
+        hyperparams = configurationmanager.get_hyperparams()
 
         # the targeted hypers from command line
         target_hypers = configuration['target_hypers']
@@ -52,7 +52,7 @@ class HyperparameterOptimizer():
         # the optimization objective
         objective = partial(
             HyperparameterOptimizer.objective,
-            config,
+            configurationmanager,
             optuna_config,
             target_hypers,
             optuna_process_group,
@@ -60,14 +60,21 @@ class HyperparameterOptimizer():
 
         # start Optuna study only on rank zero
         if torch.distributed.get_rank() == 0:
+            journal_fpath = configuration['optuna_journal']
+
+            # we manually define the sampler to be able to set the seed
             sampler = optuna.samplers.TPESampler(seed=configuration['seed'])
 
+            # we will store the information about the trials on disk in a journal file
+            storage = optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(journal_fpath))
+
             study = optuna.create_study(
-                storage='sqlite:///optuna.sqlite3',
+                storage=storage,
                 study_name=configuration['experiment_name'],
                 sampler=sampler,
             )
 
+            # no we can actually run the study
             study.optimize(
                 objective,
                 n_trials=configuration['n_trials'],
@@ -79,6 +86,7 @@ class HyperparameterOptimizer():
             for _ in range(configuration['n_trials']):
                 objective(None)
 
+        # log the results of the best trial
         if torch.distributed.get_rank() == 0:
             trial = study.best_trial
             log.info(f'Best objective ralue: {trial.value}')
@@ -87,7 +95,13 @@ class HyperparameterOptimizer():
                 log.info(f' - {key}: {value}')
 
     @staticmethod
-    def objective(config, optuna_config, target_hypers, process_group, trial):
+    def objective(
+        configurationmanager: ConfigurationManager,
+        optuna_config: dict,
+        target_hypers: list,
+        process_group: torch.distributed.ProcessGroupGloo,
+        trial: optuna.trial.Trial,
+    ):
         # make the trial support distributed
         # https://github.com/optuna/optuna-examples/blob/main/pytorch/pytorch_distributed_simple.py
         trial = optuna.integration.TorchDistributedTrial(trial, group=process_group)
@@ -98,7 +112,7 @@ class HyperparameterOptimizer():
                     target_hyper,
                     optuna_config[target_hyper]['min'],
                     optuna_config[target_hyper]['max'],
-                    )
+                )
 
             if optuna_config[target_hyper]['type'] == 'int':
                 hyper_value = trial.suggest_int(
@@ -114,23 +128,25 @@ class HyperparameterOptimizer():
                 )
 
             # update the hyperparameter value in configuration
-            config.set_hyper(target_hyper, hyper_value)
+            configurationmanager.set_hyper(target_hyper, hyper_value)
 
         # while tuning hypers, do not validate
-        config.set_value('validation_frequency', 0)
+        configurationmanager.set_value('validation_frequency', 0)
 
         # train the model
-        trainer = TrainerFactory.get_trainer(config)
+        trainer = TrainerFactory.get_trainer(configurationmanager)
 
         if torch.distributed.get_rank() == 0:
             log.info(f'Starting trial {trial.number}.')
-            config.print_hyperparams()
+            configurationmanager.print_hyperparams()
 
         trainer.fit()
 
         # optimization objective is the validation loss
         objective = trainer.validate()
 
+        # without these, this randomly leads to a nasty segmentation fault
+        # on AMD, and a memory related CUDA error on Nvidia.
         del trainer, process_group, trial
         gc.collect()
 

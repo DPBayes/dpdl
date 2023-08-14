@@ -5,7 +5,6 @@ import torch
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 from .callbacks import CallbackHandler, CallbackFactory
-from .cli import ConfigurationManager
 from .configurationmanager import ConfigurationManager
 from .datamodules import DataModule, DataModuleFactory
 from .models import ModelFactory
@@ -336,9 +335,9 @@ class TrainerFactory():
         return trainer
 
     @staticmethod
-    def get_trainer(config: ConfigurationManager) -> Trainer:
-        configuration = config.get_configuration()
-        hyperparams = config.get_hyperparams()
+    def get_trainer(configurationmanager: ConfigurationManager) -> Trainer:
+        configuration = configurationmanager.get_configuration()
+        hyperparams = configurationmanager.get_hyperparams()
 
         # are we differentially private?
         if configuration['privacy']:
