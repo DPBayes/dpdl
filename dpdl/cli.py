@@ -202,28 +202,35 @@ def cli(
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
         ] = 'conf/optuna_hypers.conf',
+        optuna_journal: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Optuna journal (logging) file path',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = 'optuna-journal.log',
     ):
 
-    config = ConfigurationManager(ctx.params)
+    configurationmanager = ConfigurationManager(ctx.params)
 
-    if config.get_command() == 'train':
+    if configurationmanager.get_command() == 'train':
         if torch.distributed.get_rank() == 0:
             log.info('Starting training.')
 
-        config.print_configuration()
-        config.print_hyperparams()
+        configurationmanager.print_configuration()
+        configurationmanager.print_hyperparams()
 
-        seed_everything(config.get_value('seed'))
-        trainer = TrainerFactory.get_trainer(config)
+        seed_everything(configurationmanager.get_value('seed'))
+        trainer = TrainerFactory.get_trainer(configurationmanager)
 
         trainer.fit()
 
-    if config.get_command() == 'optimize':
+    if configurationmanager.get_command() == 'optimize':
         if torch.distributed.get_rank() == 0:
             log.info('Starting hyperparameter optimization.')
 
-        config.print_configuration()
+        configurationmanager.print_configuration()
 
-        seed_everything(config.get_value('seed'))
-        HyperparameterOptimizer.optimize_hypers(config)
+        seed_everything(configurationmanager.get_value('seed'))
+        HyperparameterOptimizer.optimize_hypers(configurationmanager)
 
