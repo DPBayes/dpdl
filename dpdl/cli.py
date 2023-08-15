@@ -149,14 +149,14 @@ def cli(
         max_grad_norm: Annotated[
             Optional[float],
             typer.Option(
-                help='Maximum gradient norm (clipping)',
+                help='Maximum gradient norm (for clipping)',
                 rich_help_panel='Opacus options',
             )
         ] = 1.0,
-        clipping: Annotated[
+        clipping_mode: Annotated[
             Optional[str],
             typer.Option(
-                help='Clipping mode (see Opacus)',
+                help='Opacus clipping mode ("flat" or "per_layer" or "adaptive")',
                 rich_help_panel='Opacus options',
             )
         ] = 'flat',
@@ -164,6 +164,13 @@ def cli(
             Optional[bool],
             typer.Option(
                 help='Enable secure mode for production use',
+                rich_help_panel='Opacus options',
+            )
+        ] = False,
+        modulevalidator_fix: Annotated[
+            Optional[bool],
+            typer.Option(
+                help="Use ModuleValidator.fix() from Opacus to fix incompatible layers in the model (use with caution)",
                 rich_help_panel='Opacus options',
             )
         ] = False,

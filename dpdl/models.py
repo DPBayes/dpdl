@@ -8,7 +8,8 @@ class ModelFactory():
     def get_model(configuration, hyperparams):
         model = ImageClassificationModel(
             model_name=hyperparams['model_name'],
-            num_classes=configuration['num_classes']
+            num_classes=configuration['num_classes'],
+            fix_model=configuration['modulevalidator_fix'],
         )
         return model
 
@@ -18,6 +19,7 @@ class TimmModel(torch.nn.Module):
             *,
             model_name: str = 'resnet18',
             pretrained: bool = True,
+            fix_model: bool = False,
             **kwargs,
         ):
 
@@ -25,6 +27,7 @@ class TimmModel(torch.nn.Module):
 
         self.model_name = model_name
         self.pretrained = pretrained
+        self.fix_model = fix_model
 
     def forward(self, x):
         return self.model(x)
@@ -53,7 +56,11 @@ class ImageClassificationModel(TimmModel):
         )
 
         if not opacus.validators.ModuleValidator.is_valid(self.model):
-            self.model = opacus.validators.ModuleValidator.fix(self.model)
+            if self.fix_model:
+                self.model = opacus.validators.ModuleValidator.fix(self.model)
+            else:
+                raise RuntimeError("Model contains layers that are note compatible with DP-SGD. "
+                                   "Use --modulevalidator-fix (with caution!) to automatically fix the model.")
 
         self._criterion = torch.nn.CrossEntropyLoss().cuda()
         self._accuracy = torchmetrics.Accuracy(task='multiclass', num_classes=self.num_classes)

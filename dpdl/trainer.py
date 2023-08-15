@@ -15,7 +15,7 @@ from .optimizers import OptimizerFactory
 # which will trade-off precision for performance.
 # For more details, read
 # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
-torch.set_float32_matmul_precision('medium')
+torch.set_float32_matmul_precision('high')
 
 log = logging.getLogger(__name__)
 
@@ -145,8 +145,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         # privacy params
         noise_multiplier: float = 1.0,
         max_grad_norm: float = 1.0,
-        clipping: str = 'flat',
-        accountant: str = 'rdp',
+        clipping_mode: str = 'flat',
+        accountant: str = 'prv',
         secure_mode: bool = False,
         target_epsilon: float = 0,
         target_delta: float = 0,
@@ -157,7 +157,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         self.noise_multiplier = noise_multiplier
         self.max_grad_norm = max_grad_norm
-        self.clipping = clipping
+        self.clipping_mode = clipping_mode
         self.target_epsilon = target_epsilon
         self.target_delta = target_delta
         self.physical_batch_size = physical_batch_size
@@ -201,7 +201,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 optimizer=optimizer,
                 data_loader=train_dataloader,
                 max_grad_norm=self.max_grad_norm,
-                clipping=self.clipping,
+                clipping=self.clipping_mode,
                 target_epsilon=self.target_epsilon,
                 target_delta=self.target_delta,
                 epochs=self.epochs,
@@ -214,7 +214,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 data_loader=train_dataloader,
                 noise_multiplier=self.noise_multiplier,
                 max_grad_norm=self.max_grad_norm,
-                clipping=self.clipping,
+                clipping=self.clipping_mode,
                 noise_generator=noise_generator,
             )
 
@@ -271,7 +271,7 @@ class TrainerFactory():
     def _get_basic_trainer(configuration: dict, hyperparams: dict) -> Trainer:
         # setup data, model, and optimizer
         datamodule = DataModule.get_datamodule(configuration, hyperparams)
-        model = Model.get_model(configuration, hyperparams)
+        model = ModelFactory.get_model(configuration, hyperparams)
         optimizer = get_optimizer(configuration, hyperparams, model)
         callback_handler = CallbackHandler(
             get_callbacks(configuration, hyperparams)
@@ -326,7 +326,7 @@ class TrainerFactory():
             target_delta=target_delta,
             # config
             secure_mode=configuration['secure_mode'],
-            clipping=configuration['clipping'],
+            clipping_mode=configuration['clipping_mode'],
             physical_batch_size=configuration['physical_batch_size'],
             seed=configuration['seed'],
             callback_handler=callback_handler,
