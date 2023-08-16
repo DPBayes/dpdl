@@ -17,7 +17,7 @@ def cli(
         command: Annotated[
             str,
             typer.Argument(
-                help='Command to run (train|optimize)',
+                help='Command to run ("train" or "optimize")',
             )
         ],
         epochs: Annotated[
@@ -202,6 +202,20 @@ def cli(
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
         ] = 20,
+        optuna_target_metric: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Target metric for Bayesian optimization',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = 'loss',
+        optuna_direction: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Direction for Bayesian optimization ("minimize" or "maximize")',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = 'minimize',
         optuna_config: Annotated[
             Optional[str],
             typer.Option(
@@ -216,6 +230,13 @@ def cli(
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
         ] = 'optuna-journal.log',
+        optuna_resume: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Resume previous Optuna study',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = False,
     ):
 
     configurationmanager = ConfigurationManager(ctx.params)

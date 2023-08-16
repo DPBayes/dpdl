@@ -63,6 +63,10 @@ class ConfigurationManager():
         if self.command not in ['train', 'optimize']:
             raise(typer.BadParameter('Command must be "train" or "optimize".'))
 
+    def _check_optuna_direction(self):
+        if self.optuna_direction not in ['minimize', 'maximize']:
+            raise(typer.BadParameter('Optuna direction must be "minimize" or "maximize".'))
+
     def print_configuration(self):
         if torch.distributed.get_rank() == 0:
             log.info(f'Configuration:')

@@ -68,10 +68,15 @@ class HyperparameterOptimizer():
             # we will store the information about the trials on disk in a journal file
             storage = optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(journal_fpath))
 
+            # should we try to resume an existing study?
+            load_if_exists = configuration['optuna_resume']
+
             study = optuna.create_study(
                 storage=storage,
                 study_name=configuration['experiment_name'],
                 sampler=sampler,
+                load_if_exists=load_if_exists,
+                direction=configuration['optuna_direction'],
             )
 
             # no we can actually run the study
@@ -143,7 +148,16 @@ class HyperparameterOptimizer():
         trainer.fit()
 
         # optimization objective is the validation loss
-        objective = trainer.validate()
+        loss, metrics = trainer.validate()
+
+        # find the correct metric value to use as optimization objective
+        target_metric = configurationmanager.get_value('optuna_target_metric')
+        if target_metric == 'loss':
+            objective = loss
+        elif target_metric in metrics:
+            objective = metrics[target_metric]
+        else:
+            raise f'Metric "{target_metric}" not found in metrics (' + ', '.join(metrics.keys()) + ')'
 
         # without these, this randomly leads to a nasty segmentation fault
         # on AMD, and a memory related CUDA error on Nvidia.
