@@ -1,6 +1,7 @@
 import logging
 import opacus
 import torch
+import torchmetrics
 
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
@@ -44,6 +45,10 @@ class Trainer:
         self.validation_frequency = validation_frequency
         self.seed = seed
 
+        # use torchmetrics mean aggregation to track the losses
+        self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()
+        self.valid_loss = torchmetrics.aggregation.MeanMetric().cuda()
+
         if not callback_handler:
             self.callback_handler = CallbackHandler()
         else:
@@ -61,7 +66,7 @@ class Trainer:
         self.callback_handler.call('on_train_start', self)
 
         for epoch in range(self.epochs):
-            epoch_loss = self.fit_one_epoch(epoch)
+            self.fit_one_epoch(epoch)
 
             if self.validation_frequency and epoch % self.validation_frequency == 0:
                 self.validate(epoch)
@@ -72,19 +77,21 @@ class Trainer:
         self.model.train()
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
-        total_loss = 0
         for batch_idx, batch in enumerate(self.datamodule.train_dataloader):
-            batch_loss = self.fit_one_batch(batch_idx, batch)
-            total_loss = total_loss + batch_loss
+            self.fit_one_batch(batch_idx, batch)
 
-        epoch_loss = total_loss / (batch_idx + 1)
-        #self.fabric.log('Train/loss', epoch_loss, epoch)
+        # compute the train loss for the epoch and reset
+        epoch_loss = self.train_loss.compute()
+        self.train_loss.reset()
 
-        self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss)
+        # compute the epoch metrics
+        metrics = self._unwrap_model().train_metrics.compute()
 
-        return epoch_loss
+        self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss, metrics)
 
     def _unwrap_model(self):
+        # the model is wrapped inside torch distributed,
+        # here we just return the vanilla model
         return self.model.module
 
     def fit_one_batch(self, batch_idx, batch):
@@ -102,26 +109,37 @@ class Trainer:
         self.optimizer.step()
         loss = loss.item()
 
-        self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss)
-        return loss
+        # update the mean loss
+        self.train_loss.update(loss)
+
+        # calculate metrics if there are any
+        preds = torch.argmax(logits, dim=1)
+        metrics = self._unwrap_model().train_metrics(preds, y)
+
+        self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss, metrics)
 
     def validate(self, epoch=None):
         self.model.eval()
         torch.set_grad_enabled(False)
 
-        total_loss = 0
         self.callback_handler.call('on_validation_epoch_start', self, epoch)
         for batch_idx, batch in enumerate(self.datamodule.val_dataloader):
-            batch_loss = self.validate_one_batch(batch_idx, batch)
-            total_loss = total_loss + batch_loss
+            self.validate_one_batch(batch_idx, batch)
 
-        valid_loss = total_loss / (batch_idx + 1)
-        self.callback_handler.call('on_validation_epoch_end', self, epoch, valid_loss)
+        # compute and resert the validation loss
+        valid_loss = self.valid_loss.compute()
+        self.valid_loss.reset()
+
+        # compute and reset the metrics
+        metrics = self._unwrap_model().valid_metrics.compute()
+        self._unwrap_model().valid_metrics.reset()
+
+        self.callback_handler.call('on_validation_epoch_end', self, epoch, valid_loss, metrics)
 
         torch.set_grad_enabled(True)
         self.model.train()
 
-        return valid_loss
+        return valid_loss, metrics
 
     def validate_one_batch(self, batch_idx, batch):
         self.callback_handler.call('on_validation_batch_start', self, batch_idx, batch)
@@ -132,11 +150,16 @@ class Trainer:
 
         logits = self.model(X)
         loss = self._unwrap_model().criterion(logits, y)
-
         loss = loss.item()
-        self.callback_handler.call('on_validation_batch_end', self, batch_idx, batch, loss)
 
-        return loss
+        # update the validation loss
+        self.valid_loss.update(loss)
+
+        # calculate the metrics if there are any
+        preds = torch.argmax(logits, dim=1)
+        metrics = self._unwrap_model().valid_metrics(preds, y)
+
+        self.callback_handler.call('on_validation_batch_end', self, batch_idx, batch, loss, metrics)
 
 class DifferentiallyPrivateTrainer(Trainer):
     def __init__(
@@ -218,11 +241,10 @@ class DifferentiallyPrivateTrainer(Trainer):
                 noise_generator=noise_generator,
             )
 
-        # are we distributed?
-        if torch.distributed.get_world_size() > 1:
-            # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
-            # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
-            dp_model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(dp_model)
+        # let's be distributed by default and wrap the model for Opacus DDP.
+        # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
+        # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
+        dp_model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(dp_model)
 
         # put the DP'ifyed stuff back into Fabric wrappers
         self.model = dp_model
@@ -233,6 +255,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         return self.privacy_engine.get_epsilon(delta)
 
     def _unwrap_model(self):
+        # the model is wrapped inside torch distributed, Opacus, and Opacus'
+        # distributed. let's unwrap the vanilla model and return it
         return self.model.module._module.module
 
     def fit_one_epoch(self, epoch):
@@ -243,7 +267,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         # dataloader to enable larger batches
         original_dataloader = self.datamodule.train_dataloader
 
-        total_loss = 0
         with BatchMemoryManager(
             data_loader=self.datamodule.train_dataloader,
             max_physical_batch_size=self.physical_batch_size,
@@ -254,27 +277,31 @@ class DifferentiallyPrivateTrainer(Trainer):
             self.datamodule.train_dataloader = virtual_dataloader
 
             for batch_idx, batch in enumerate(self.datamodule.train_dataloader):
-                batch_loss = self.fit_one_batch(batch_idx, batch)
-                total_loss = total_loss + batch_loss
-
-        epoch_loss = total_loss / (batch_idx + 1)
-        #self.fabric.log('Train/loss', epoch_loss, epoch)
+                self.fit_one_batch(batch_idx, batch)
 
         # we have enumerated the batch, let's swap back to the original dataloader
         self.datamodule.train_dataloader = original_dataloader
 
-        self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss)
+        # compute and reset the training loss
+        epoch_loss = self.train_loss.compute()
+        self.train_loss.reset()
+
+        # compute and reset the epoch metrics
+        metrics = self._unwrap_model().train_metrics.compute()
+        self._unwrap_model().train_metrics.reset()
+
+        self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss, metrics)
         return epoch_loss
 
 class TrainerFactory():
     @staticmethod
     def _get_basic_trainer(configuration: dict, hyperparams: dict) -> Trainer:
         # setup data, model, and optimizer
-        datamodule = DataModule.get_datamodule(configuration, hyperparams)
+        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
         model = ModelFactory.get_model(configuration, hyperparams)
-        optimizer = get_optimizer(configuration, hyperparams, model)
+        optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
         callback_handler = CallbackHandler(
-            get_callbacks(configuration, hyperparams)
+            CallbackFactory.get_callbacks(configuration, hyperparams)
         )
 
         # instantiate a trainer without dp

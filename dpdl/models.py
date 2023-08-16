@@ -29,14 +29,15 @@ class TimmModel(torch.nn.Module):
         self.pretrained = pretrained
         self.fix_model = fix_model
 
+        # no default metrics
+        self.train_metrics = torchmetrics.MetricCollection([])
+        self.valid_metrics = torchmetrics.MetricCollection([])
+
     def forward(self, x):
         return self.model(x)
 
     def criterion(self, logits, y):
-        raise(NotImplementedError('Criterion not implemented for class: {self.__class__.__name__}'))
-
-    def accuracy(self, logits, y):
-        raise(NotImplementedError('Accuracy not implemented for class: {self.__class__.__name__}'))
+        raise NotImplementedError('Criterion not implemented for class: {self.__class__.__name__}')
 
 class ImageClassificationModel(TimmModel):
     def __init__(
@@ -63,12 +64,15 @@ class ImageClassificationModel(TimmModel):
                                    "Use --modulevalidator-fix (with caution!) to automatically fix the model.")
 
         self._criterion = torch.nn.CrossEntropyLoss().cuda()
-        self._accuracy = torchmetrics.Accuracy(task='multiclass', num_classes=self.num_classes)
+
+        # let's track the accuracy
+        self.train_metrics = torchmetrics.MetricCollection([
+            torchmetrics.classification.MulticlassAccuracy(num_classes=self.num_classes),
+        ])
+
+        self.valid_metrics = torchmetrics.MetricCollection([
+            torchmetrics.classification.MulticlassAccuracy(num_classes=self.num_classes),
+        ])
 
     def criterion(self, logits, y):
         return self._criterion(logits, y)
-
-    def accuracy(self, logits, y):
-        preds = torch.argmax(logits, dim=1)
-        return self._accuracy(preds, y)
-

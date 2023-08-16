@@ -27,15 +27,15 @@ class Callback():
         pass
     def on_train_batch_start(self, trainer, batch_idx, batch):
         pass
-    def on_train_batch_end(self, trainer, batch_idx, batch, loss):
+    def on_train_batch_end(self, trainer, batch_idx, batch, loss, metrics):
         pass
     def on_validation_epoch_start(self, trainer, epoch):
         pass
-    def on_validation_epoch_end(self, trainer, epoch, valid_loss):
+    def on_validation_epoch_end(self, trainer, epoch, valid_loss, metrics):
         pass
     def on_validation_batch_start(self, trainer, batch_idx, batch):
         pass
-    def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
+    def on_validation_batch_end(self, trainer, batch_idx, batch, loss, metrics):
         pass
 
 class PrintStateCallback(Callback):
@@ -51,27 +51,34 @@ class PrintStateCallback(Callback):
         if self._is_global_zero(trainer):
             log.info(f'Starting training epoch {epoch+1}.')
 
-    def on_train_epoch_end(self, trainer, epoch, loss):
+    def on_train_epoch_end(self, trainer, epoch, loss, metrics):
         if self._is_global_zero(trainer):
             log.info(f'Epoch {epoch+1} finished. Loss: {loss:.4f}.')
+            self._log_metrics(metrics)
 
-#    def on_train_batch_end(self, trainer, batch_idx, batch, loss):
+#    def on_train_batch_end(self, trainer, batch_idx, batch, loss, metrics):
 #        if self._is_global_zero(trainer):
 #            log.info(f'  - Processed batch {batch_idx+1}, loss: {loss:.4f}')
-
-#    def on_validation_epoch_start(self, trainer, epoch):
+#            self._log_metrics(metrics)
+#
+#    def on_validation_batch_end(self, trainer, batch_idx, batch, loss, metrics):
 #        if self._is_global_zero(trainer):
-#            if epoch:
-#                log.info(f' - Starting validation epoch {epoch+1}.')
-#            else:
-#                log.info(f' - Starting validation.')
+#            log.info(f'Validation batch {batch_idx+1} finished. Loss: {loss:.4f}.')
+#            self._log_metrics(metrics)
 
-    def on_validation_epoch_end(self, trainer, epoch, loss):
+    def on_validation_epoch_end(self, trainer, epoch, loss, metrics):
         if self._is_global_zero(trainer):
             if epoch:
                 log.info(f'Validation epoch {epoch+1} finished. Loss: {loss:.4f}.')
             else:
                 log.info(f'Validation finished. Loss: {loss:.4f}.')
+
+            self._log_metrics(metrics)
+
+    def _log_metrics(self, metrics):
+        log.info('Metrics:')
+        for key, value in metrics.items():
+            log.info(f' - {key}: {value:.4f}.')
 
 class CallbackFactory():
     @staticmethod
