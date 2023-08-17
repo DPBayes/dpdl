@@ -8,9 +8,16 @@ from functools import partial
 from dpdl.utils import seed_everything
 
 class DataModule():
-    def __init__(self, batch_size: int = 64, num_workers: int = 4, seed: int = 0):
+    def __init__(
+        self,
+        batch_size: int = 64,
+        physical_batch_size: int = 64,
+        num_workers: int = 4,
+        seed: int = 0
+    ):
         super().__init__()
         self.batch_size = batch_size
+        self.physical_batch_size = physical_batch_size
         self.num_workers = num_workers
         self.seed = seed
 
@@ -76,7 +83,7 @@ class CIFAR10DataModule(DataModule):
 
         self._val_dataloader = torch.utils.data.DataLoader(
             self.val_dataset.with_format('torch'),
-            batch_size=self.batch_size,
+            batch_size=self.physical_batch_size,
             collate_fn=self.collate_fn,
             num_workers=self.num_workers,
             shuffle=False,
@@ -84,7 +91,7 @@ class CIFAR10DataModule(DataModule):
 
         self._test_dataloader = torch.utils.data.DataLoader(
             self.test_dataset.with_format('torch'),
-            batch_size=self.batch_size,
+            batch_size=self.physical_batch_size,
             collate_fn=self.collate_fn,
             num_workers=self.num_workers,
             shuffle=False,
@@ -144,6 +151,7 @@ class DataModuleFactory():
         datamodule = CIFAR10DataModule(
             num_workers=configuration['num_workers'],
             batch_size=hyperparams['batch_size'],
+            physical_batch_size=configuration['physical_batch_size'],
             seed=configuration['seed'],
             image_size=(224, 224),
         )

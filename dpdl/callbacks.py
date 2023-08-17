@@ -27,7 +27,7 @@ class Callback():
         pass
     def on_train_batch_start(self, trainer, batch_idx, batch):
         pass
-    def on_train_batch_end(self, trainer, batch_idx, batch, loss, metrics):
+    def on_train_batch_end(self, trainer, batch_idx, batch, loss):
         pass
     def on_validation_epoch_start(self, trainer, epoch):
         pass
@@ -35,7 +35,7 @@ class Callback():
         pass
     def on_validation_batch_start(self, trainer, batch_idx, batch):
         pass
-    def on_validation_batch_end(self, trainer, batch_idx, batch, loss, metrics):
+    def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
         pass
 
 class PrintStateCallback(Callback):
@@ -56,15 +56,13 @@ class PrintStateCallback(Callback):
             log.info(f'Epoch {epoch+1} finished. Loss: {loss:.4f}.')
             self._log_metrics(metrics)
 
-#    def on_train_batch_end(self, trainer, batch_idx, batch, loss, metrics):
+#    def on_train_batch_end(self, trainer, batch_idx, batch, loss):
 #        if self._is_global_zero(trainer):
 #            log.info(f'  - Processed batch {batch_idx+1}, loss: {loss:.4f}')
-#            self._log_metrics(metrics)
 #
-#    def on_validation_batch_end(self, trainer, batch_idx, batch, loss, metrics):
+#    def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
 #        if self._is_global_zero(trainer):
 #            log.info(f'Validation batch {batch_idx+1} finished. Loss: {loss:.4f}.')
-#            self._log_metrics(metrics)
 
     def on_validation_epoch_end(self, trainer, epoch, loss, metrics):
         if self._is_global_zero(trainer):
@@ -76,6 +74,9 @@ class PrintStateCallback(Callback):
             self._log_metrics(metrics)
 
     def _log_metrics(self, metrics):
+        if not metrics:
+            return
+
         log.info('Metrics:')
         for key, value in metrics.items():
             log.info(f' - {key}: {value:.4f}.')

@@ -33,6 +33,7 @@ class Trainer:
         epochs: int = 10,
         validation_frequency: int = 1,
         seed: int = 0,
+        physical_batch_size: int = 40,
         #checkpoint_dir: str = "./checkpoints",
         #checkpoint_frequency: int = 1,
         callback_handler: CallbackHandler = None,
@@ -44,6 +45,7 @@ class Trainer:
         self.epochs = epochs
         self.validation_frequency = validation_frequency
         self.seed = seed
+        self.physical_batch_size = physical_batch_size
 
         # use torchmetrics mean aggregation to track the losses
         self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()
@@ -94,7 +96,7 @@ class Trainer:
         # here we just return the vanilla model
         return self.model.module
 
-    def fit_one_batch(self, batch_idx, batch):
+    def fit_one_batch_old(self, batch_idx, batch):
         self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
 
         X, y = batch
@@ -117,6 +119,44 @@ class Trainer:
         metrics = self._unwrap_model().train_metrics(preds, y)
 
         self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss, metrics)
+
+    def fit_one_batch(self, batch_idx, batch):
+        self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
+
+        X, y = batch
+        X = X.cuda(non_blocking=True)
+        y = y.cuda(non_blocking=True)
+
+        # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
+        # then process the sub batches one at a time and call backward.
+        # when all the sub batches have been processed we can finally step the optimizer.
+        X_split = X.split(self.physical_batch_size, dim=0)
+        y_split = y.split(self.physical_batch_size, dim=0)
+
+        # zero the grads as usually before doing anything
+        self.optimizer.zero_grad()
+
+        batch_loss = 0
+        # process the sub batches one at a time
+        N = len(X_split)
+        for i in range(N):
+            logits = self.model(X_split[i])
+            loss = self._unwrap_model().criterion(logits, y_split[i]) / N # NB: normalize loss
+            loss.backward(loss)
+
+            # keep track of the batch loss
+            batch_loss = batch_loss + loss.item()
+
+            # update the metrics if there are any
+            preds = torch.argmax(logits, dim=1)
+            self._unwrap_model().train_metrics.update(preds, y_split[i])
+
+        # after accumulating the gradients for all the sub batches we can finally update weights.
+        self.optimizer.step()
+
+        self.train_loss.update(batch_loss)
+
+        self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss)
 
     def validate(self, epoch=None):
         self.model.eval()
@@ -155,11 +195,11 @@ class Trainer:
         # update the validation loss
         self.valid_loss.update(loss)
 
-        # calculate the metrics if there are any
+        # update the metrics if there are any
         preds = torch.argmax(logits, dim=1)
-        metrics = self._unwrap_model().valid_metrics(preds, y)
+        self._unwrap_model().valid_metrics.update(preds, y)
 
-        self.callback_handler.call('on_validation_batch_end', self, batch_idx, batch, loss, metrics)
+        self.callback_handler.call('on_validation_batch_end', self, batch_idx, batch, loss)
 
 class DifferentiallyPrivateTrainer(Trainer):
     def __init__(
