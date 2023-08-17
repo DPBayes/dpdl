@@ -104,34 +104,6 @@ def cli(
                 rich_help_panel='Classification model options',
             )
         ] = 10,
-        accelerator: Annotated[
-            Optional[str],
-            typer.Option(
-                help='Accelerator to use',
-                rich_help_panel='Fabric options',
-            )
-        ] = 'gpu',
-        strategy: Annotated[
-            Optional[str],
-            typer.Option(
-                help='Distributed strategy',
-                rich_help_panel='Fabric options',
-            )
-        ] = 'ddp',
-        devices: Annotated[
-            Optional[int],
-            typer.Option(
-                help='Number of devices to use',
-                rich_help_panel='Fabric options',
-            )
-        ] = 0,
-        precision: Annotated[
-            Optional[int],
-            typer.Option(
-                help='Training precision',
-                rich_help_panel='Fabric options',
-            )
-        ] = 32,
         physical_batch_size: Annotated[
             Optional[int],
             typer.Option(
