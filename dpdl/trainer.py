@@ -96,30 +96,6 @@ class Trainer:
         # here we just return the vanilla model
         return self.model.module
 
-    def fit_one_batch_old(self, batch_idx, batch):
-        self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
-
-        X, y = batch
-        X = X.cuda(non_blocking=True)
-        y = y.cuda(non_blocking=True)
-
-        self.optimizer.zero_grad()
-        logits = self.model(X)
-
-        loss = self._unwrap_model().criterion(logits, y)
-        loss.backward(loss)
-        self.optimizer.step()
-        loss = loss.item()
-
-        # update the mean loss
-        self.train_loss.update(loss)
-
-        # calculate metrics if there are any
-        preds = torch.argmax(logits, dim=1)
-        metrics = self._unwrap_model().train_metrics(preds, y)
-
-        self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss, metrics)
-
     def fit_one_batch(self, batch_idx, batch):
         self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
 
