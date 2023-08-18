@@ -1,4 +1,5 @@
 import os
+import sys
 import torch
 import typer
 
@@ -30,5 +31,10 @@ def main():
 
     typer.run(cli)
 
+    dist.destroy_process_group()
+
 if __name__ == '__main__':
+    if len(sys.argv) == 1:
+        sys.argv.append('--help')
+
     main()
