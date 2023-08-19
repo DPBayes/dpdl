@@ -41,6 +41,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = 256,
+        physical_batch_size: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Largest size batch that fits in GPU memory',
+                rich_help_panel='Training options',
+            )
+        ] = 40,
         num_workers: Annotated[
             int,
             typer.Option(
@@ -104,13 +111,6 @@ def cli(
                 rich_help_panel='Classification model options',
             )
         ] = 10,
-        physical_batch_size: Annotated[
-            Optional[int],
-            typer.Option(
-                help='Largest size batch that fits in GPU memory',
-                rich_help_panel='Opacus options',
-            )
-        ] = 60,
         noise_multiplier: Annotated[
             Optional[float],
             typer.Option(
@@ -152,7 +152,7 @@ def cli(
                 help='Privacy accountant',
                 rich_help_panel='Opacus options',
             )
-        ] = 'rdp',
+        ] = 'prv',
         target_epsilon: Annotated[
             Optional[float],
             typer.Option(
