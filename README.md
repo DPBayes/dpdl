@@ -58,6 +58,8 @@ The CLI calls the `fit` method of [trainer](dpdl/trainer.py)
 
 The CLI calls the `optimize_hypers` method of [hyperparameteroptimizer](dpdl/hyperparameteroptimizer.py).
 
+The ranges/options for the different hyperparameters is in `conf/optuna_hypers.conf`.
+
 ### Callbacks
 
 The system provides a flexible [callback system](dpdl/callbacks.py).
