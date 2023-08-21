@@ -3,7 +3,7 @@ import timm
 import torch
 import torchmetrics
 
-class ModelFactory():
+class ModelFactory:
     @staticmethod
     def get_model(configuration, hyperparams):
         model = ImageClassificationModel(

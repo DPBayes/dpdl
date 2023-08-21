@@ -5,7 +5,7 @@ from typing import List
 
 log = logging.getLogger(__name__)
 
-class CallbackHandler():
+class CallbackHandler:
     def __init__(self, callbacks: list = []):
         self.callbacks = callbacks
 
@@ -14,7 +14,7 @@ class CallbackHandler():
             event_handler = getattr(callback, event)
             event_handler(*args, **kwargs)
 
-class Callback():
+class Callback:
     def _is_global_zero(self, trainer):
         return torch.distributed.get_rank() == 0
     def on_train_start(self, trainer):
@@ -81,7 +81,7 @@ class PrintStateCallback(Callback):
         for key, value in metrics.items():
             log.info(f' - {key}: {value:.4f}.')
 
-class CallbackFactory():
+class CallbackFactory:
     @staticmethod
     def get_callbacks(configuration: dict, hyperparams: dict) -> List[Callback]:
         callbacks = [

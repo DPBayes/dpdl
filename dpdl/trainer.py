@@ -212,13 +212,13 @@ class DifferentiallyPrivateTrainer(Trainer):
             return False
 
         if self.target_epsilon and not self.target_delta:
-            raise(RuntimeError('Parameter "target_delta" present, but "target_epsilon" is missing.'))
+            raise RuntimeError('Parameter "target_delta" present, but "target_epsilon" is missing.')
 
         if self.target_delta and not self.target_epsilon:
-            raise(RuntimeError('Parameter "target_delta" present, but "target_epsilon" is missing.'))
+            raise RuntimeError('Parameter "target_delta" present, but "target_epsilon" is missing.')
 
         if self.target_epsilon and self.noise_multiplier:
-            raise(RuntimeError('Parameter "noise_multiplier" can not be used when target epsilon is given.'))
+            raise RuntimeError('Parameter "noise_multiplier" can not be used when target epsilon is given.')
 
         return True
 
@@ -309,7 +309,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss, metrics)
         return epoch_loss
 
-class TrainerFactory():
+class TrainerFactory:
     @staticmethod
     def _get_basic_trainer(configuration: dict, hyperparams: dict) -> Trainer:
         # setup data, model, and optimizer

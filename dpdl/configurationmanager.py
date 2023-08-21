@@ -5,7 +5,7 @@ import typer
 
 log = logging.getLogger(__name__)
 
-class ConfigurationManager():
+class ConfigurationManager:
     def __init__(self, cli_params: dict):
         self.command = cli_params['command']
         self._check_command()
@@ -33,7 +33,7 @@ class ConfigurationManager():
 
     def get_value(self, key):
         if not key in self.configuration:
-            raise(RuntimeError(f'{__name__} - Unknown configuration key "{key}".'))
+            raise RuntimeError(f'{__name__} - Unknown configuration key "{key}".')
 
         return self.configuration[key]
 
@@ -45,7 +45,7 @@ class ConfigurationManager():
 
     def get_hyper(self, key):
         if not key in self.hyperparams:
-            raise(RuntimeError(f'{__name__} - Unknown hyperparameter "{key}".'))
+            raise RuntimeError(f'{__name__} - Unknown hyperparameter "{key}".')
 
         return self.hyperparams[key]
 
@@ -61,11 +61,11 @@ class ConfigurationManager():
 
     def _check_command(self):
         if self.command not in ['train', 'optimize']:
-            raise(typer.BadParameter('Command must be "train" or "optimize".'))
+            raise typer.BadParameter('Command must be "train" or "optimize".')
 
     def _check_optuna_direction(self):
         if self.optuna_direction not in ['minimize', 'maximize']:
-            raise(typer.BadParameter('Optuna direction must be "minimize" or "maximize".'))
+            raise typer.BadParameter('Optuna direction must be "minimize" or "maximize".')
 
     def print_configuration(self):
         if torch.distributed.get_rank() == 0:

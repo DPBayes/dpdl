@@ -7,7 +7,7 @@ from functools import partial
 
 from dpdl.utils import seed_everything
 
-class DataModule():
+class DataModule:
     def __init__(
         self,
         batch_size: int = 64,
@@ -145,7 +145,7 @@ class CIFAR10DataModule(DataModule):
 
         return images, labels
 
-class DataModuleFactory():
+class DataModuleFactory:
     @staticmethod
     def get_datamodule(configuration: dict, hyperparams: dict) -> DataModule:
         datamodule = CIFAR10DataModule(

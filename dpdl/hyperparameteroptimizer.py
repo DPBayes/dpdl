@@ -11,7 +11,7 @@ from .configurationmanager import ConfigurationManager
 
 log = logging.getLogger(__name__)
 
-class HyperparameterOptimizer():
+class HyperparameterOptimizer:
     # helper function for reading Optuna hyperparameter configuration that
     # includes types, options, lower and upper bounds, etc for hyperparams
     @staticmethod
@@ -30,17 +30,17 @@ class HyperparameterOptimizer():
         target_hypers = configuration['target_hypers']
 
         if len(target_hypers) == 0:
-            raise(typer.BadParameter('Bayesian optimization enabled and no target hyperparameters for optimization.'))
+            raise typer.BadParameter('Bayesian optimization enabled and no target hyperparameters for optimization.')
 
         optuna_config = HyperparameterOptimizer.read_optuna_config(configuration['optuna_config'])
 
         # check that the target hypers are known and appear in Optuna configuration
         for target_hyper in target_hypers:
             if not target_hyper in hyperparams:
-                raise(typer.BadParameter(f'Cannot optimize unknown hyperparameter "{target_hyper}".'))
+                raise typer.BadParameter(f'Cannot optimize unknown hyperparameter "{target_hyper}".')
             if not target_hyper in optuna_config:
                 config_fpath = configuration['optuna_config']
-                raise(typer.BadParameter(f'Hyperparameter "{target_hyper}" not found in Optuna configuration file "{config_fpath}".'))
+                raise typer.BadParameter(f'Hyperparameter "{target_hyper}" not found in Optuna configuration file "{config_fpath}".')
 
         # optuna needs a global process group with 'gloo' backend for communication.
         # "Create a global gloo backend when group is None and WORLD is nccl."
