@@ -14,7 +14,14 @@ Entry point is [run.py](blob/vanilla-pytorch-refactor/run.py).
 
 ### How to use?
 
-Get help with `python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=1 --rdzv_endpoint=localhost:0 run.py`.
+Even when running a single process, start the script with `python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=1 --rdzv_endpoint=localhost:0 run.py <COMMAND> <ARGUMENTS>`
+
+Command `train` is used for training a model.
+
+Command `optimize` is used for training a model.
+
+Get command line usage with `--help` argument or running without a command `python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=1 --rdzv_endpoint=localhost:0 run.py`.
+
 ![run.py help](images/usage.png)
 
 ### Examples
