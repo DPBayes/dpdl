@@ -157,7 +157,7 @@ class HyperparameterOptimizer:
         elif target_metric in metrics:
             objective = metrics[target_metric]
         else:
-            raise f'Metric "{target_metric}" not found in metrics (' + ', '.join(metrics.keys()) + ')'
+            raise RuntimeError(f'Metric "{target_metric}" not found in metrics (' + ', '.join(metrics.keys()) + ')')
 
         # without these, this randomly leads to a nasty segmentation fault
         # on AMD, and a memory related CUDA error on Nvidia.
