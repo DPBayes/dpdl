@@ -84,6 +84,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 - [ ] Log all parameters to the Optuna study
 - [ ] Refactor CIFAR10DataModule as HuggingfaceDataModule or similar
 - [ ] Possibility to finetune only the head of a model
+- [ ] Validation/training loss logging?
 - [ ] More optimizers? Optimizer as a CLI switch?
 - [ ] Learning rate schedulers?
 
