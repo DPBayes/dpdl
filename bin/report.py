@@ -12,7 +12,7 @@ def get_optuna_storage(optuna_journal_fname):
 
 def print_best_trials(storage, verbose=False):
     studies = storage.get_all_studies()
-    for study in studies:
+    for study in sorted(studies, key=lambda s: s.study_name):
         print('----------------------------------------------------------------')
         print(f'Study: {study.study_name}')
         study_id = storage.get_study_id_from_name(study.study_name)
