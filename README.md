@@ -19,11 +19,11 @@ Get help with `python -m torch.distributed.run --standalone --nnodes=1 --nproc_p
 
 ### Examples
 
-#### Optimize loss for target epsilon 3.t using a pretrained BiT (Big Transfer) ResNet-50
+#### Optimize loss for target epsilon 3.1 using a pretrained BiT (Big Transfer) ResNet-50
 
 `run.py optimize --num-workers 8 --model-name resnetv2_50x1_bitm_in21k --target-hypers batch_size --target-hypers learning_rate --target-hypers max_grad_norm --target-epsilon 3.1 --epochs 30 --n-trials 20 --seed 42 --physical-batch-size 40 --optuna-config conf/optuna_hypers-bs1024.conf --experiment-name experiment-with-epsilon-3.1`
 
-#### Optimize accuracy for target epsilon 3.t using a pretrained BiT (Big Transfer) ResNet-50
+#### Optimize accuracy for target epsilon 3.1 using a pretrained BiT (Big Transfer) ResNet-50
 
 `run.py optimize --num-workers 8 --model-name resnetv2_50x1_bitm_in21k --target-hypers batch_size --target-hypers learning_rate --target-hypers max_grad_norm --target-epsilon 3.1 --epochs 30 --n-trials 20 --seed 42 --physical-batch-size 40 --optuna-config conf/optuna_hypers-bs1024.conf --optuna-target-metric MulticlassAccuracy --optuna-direction maximize --experiment-name experiment-with-epsilon-3.1`
 
@@ -33,7 +33,7 @@ Get help with `python -m torch.distributed.run --standalone --nnodes=1 --nproc_p
 
 ## Architecture
 
-![DPDL Architecture](images/dpdl-architecture.cli)
+![DPDL Architecture](images/dpdl-architecture.svg)
 
 ### Entry point
 
