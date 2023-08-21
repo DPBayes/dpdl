@@ -47,13 +47,13 @@ The CLI implementation is in [dpdl/cli.py](dpdl/cli.py)
 
 The CLI calls the `fit` method of [trainer](dpdl/trainer.py) 
 
+### Hyperparameter optimization
+
+The CLI calls the `optimize_hypers` method of [hyperparameteroptimizer](dpdl/hyperparameteroptimizer.py).
+
 ### Callbacks
 
 The system provides a flexible [callback system](dpdl/callbacks.py).
-
-### Hyperparameter optimization
-
-The CLI class the `optimize_hypers` method of [hyperparameteroptimizer](dpdl/hyperparameteroptimizer.py).
 
 ## How to?
 
@@ -68,4 +68,13 @@ Create a new [model](dpdl/models.py).
 ### Add a new optimizer?
 
 Add a new optimizer in [optimizers](dpdl/optimizers.py).
+
+## TODO
+
+- [ ] Save experiments to log directory
+- [ ] Log all parameters to the Optuna study
+- [ ] Refactor CIFAR10DataModule as HuggingfaceDataModule or similar
+- [ ] Possibility to finetune only the head of a model
+- [ ] More optimizers? Optimizer as a CLI switch?
+- [ ] Learning rate schedulers?
 
