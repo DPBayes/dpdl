@@ -24,6 +24,7 @@ class ConfigurationManager:
             self.hyperparam_names.extend([
                 'noise_multiplier',
                 'max_grad_norm',
+                'target_epsilon',
             ])
 
         self._get_hypers_from_params()
