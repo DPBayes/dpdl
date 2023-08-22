@@ -38,6 +38,14 @@ Get command line usage with `--help` argument or running without a command `pyth
 
 `run.py optimize --num-workers 8 --model-name resnetv2_50x1_bitm_in21k --target-hypers batch_size --target-hypers learning_rate --target-hypers max_grad_norm --target-epsilon 3.1 --epochs 30 --n-trials 20 --seed 42 --physical-batch-size 40 --optuna-config conf/optuna_hypers-bs1024.conf --optuna-target-metric MulticlassAccuracy --optuna-direction maximize --no-privacy --experiment-name experiment-with-epsilon-3.1-no-privacy`
 
+### Train a model
+
+`run.py train --num-workers 8 --model-name resnetv2_50x1_bitm_in21k --dataset-name cifar100 --num-classes 100 --batch-size 1024 --learning-rate 6.0e-05 --target-epsilon 10.0 --epochs 30 --n-trials 20 --seed 42 --physical-batch-size 40 --optuna-config conf/optuna_hypers.conf --experiment-name EXP-TRAIN-RESNET50-CIFAR100-epsilon=8.0`
+
+### Train a model without DP
+
+`run.py train --num-workers 8 --model-name resnetv2_50x1_bitm_in21k --dataset-name cifar100 --num-classes 100 --batch-size 1024 --learning-rate 6.0e-05 --epochs 30 --n-trials 20 --seed 42 --physical-batch-size 40 --optuna-config conf/optuna_hypers.conf --no-privacy --experiment-name EXP-TRAIN-RESNET50-CIFAR100-no-privacy`
+
 ## Architecture
 
 ![DPDL Architecture](images/dpdl-architecture.svg)
