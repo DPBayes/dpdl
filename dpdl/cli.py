@@ -62,6 +62,20 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = 'resnet50',
+        dataset_name: Annotated[
+            str,
+            typer.Option(
+                help='Huggingface dataset name',
+                rich_help_panel='Training options',
+            )
+        ] = 'cifar10',
+        dataset_subset_size: Annotated[
+            float,
+            typer.Option(
+                help='Only load subset of the dataset (0.1 indicate 10%)',
+                rich_help_panel='Training options',
+            )
+        ] = 0,
         validation_frequency: Annotated[
             float,
             typer.Option(
