@@ -29,6 +29,10 @@ class ConfigurationManager:
 
         self._get_hypers_from_params()
 
+        if 'target_epsilon' in self.hyperparams:
+            log.warn('We have "target_epsilon" defined. Removing "noise_multiplier".')
+            self.hyperparams['noise_multiplier'] = None
+
     def get_command(self):
         return self.command
 

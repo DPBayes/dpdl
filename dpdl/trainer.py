@@ -348,10 +348,6 @@ class TrainerFactory:
             # if we have target epsilon, set target delta = 1/N
             target_delta = 1 / len(datamodule.train_dataloader.dataset)
             target_epsilon = hyperparams['target_epsilon']
-
-            # if target epsilon is given, then opacus will calculate
-            # the noise multiplier for us
-            hyperparams['noise_multiplier'] = None
         else:
             target_delta = None
             target_epsilon = None
