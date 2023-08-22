@@ -18,7 +18,7 @@ Even when running a single process, start the script with `python -m torch.distr
 
 Command `train` is used for training a model.
 
-Command `optimize` is used for training a model.
+Command `optimize` is used for optimizing the hyperparameters of a model.
 
 Get command line usage with `--help` argument or running without a command `python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=1 --rdzv_endpoint=localhost:0 run.py`.
 
@@ -77,6 +77,8 @@ The system provides a flexible [callback system](dpdl/callbacks.py).
 ### Add a new dataset?
 
 Create a new [datamodule](dpdl/datamodules.py).
+
+NB: The code currently should support all Huggingface image datasets by using, for example a `--dataset-name cifar100` command line parameter.
 
 ### Add a new model?
 
