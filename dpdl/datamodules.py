@@ -196,7 +196,7 @@ class DataModuleFactory:
             batch_size=hyperparams['batch_size'],
             physical_batch_size=configuration['physical_batch_size'],
             seed=configuration['seed'],
-            subset_size=configuration['dataset_subset_size'],
+            subset_size=configuration['subset_size'],
             image_size=(224, 224),
         )
 
