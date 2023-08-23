@@ -9,6 +9,7 @@ from .configurationmanager import ConfigurationManager
 from .hyperparameteroptimizer import HyperparameterOptimizer
 from .trainer import TrainerFactory
 from .utils import seed_everything
+from .logger_config import start_experiment_logging
 
 log = logging.getLogger(__name__)
 
@@ -62,20 +63,6 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = 'resnet50',
-        dataset_name: Annotated[
-            str,
-            typer.Option(
-                help='Huggingface dataset name',
-                rich_help_panel='Training options',
-            )
-        ] = 'cifar10',
-        dataset_subset_size: Annotated[
-            float,
-            typer.Option(
-                help='Only load subset of the dataset (0.1 indicate 10%)',
-                rich_help_panel='Training options',
-            )
-        ] = 0,
         validation_frequency: Annotated[
             float,
             typer.Option(
@@ -97,6 +84,27 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = True,
+        dataset_name: Annotated[
+            str,
+            typer.Option(
+                help='Huggingface dataset name',
+                rich_help_panel='Dataset options',
+            )
+        ] = 'cifar10',
+        subset_size: Annotated[
+            float,
+            typer.Option(
+                help='Only load subset of the dataset (0.1 indicate 10%)',
+                rich_help_panel='Dataset options',
+            )
+        ] = 0,
+        num_classes: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Number of classes for a classification problem',
+                rich_help_panel='Dataset options',
+            )
+        ] = 10,
         log_dir: Annotated[
             str,
             typer.Option(
@@ -111,20 +119,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = 'default',
-        experiment_version: Annotated[
-            Optional[str],
+        overwrite_experiment: Annotated[
+            bool,
             typer.Option(
-                help='Experiment version for logging',
+                help='Overwrite existing experiment logs',
                 rich_help_panel='Logging options',
             )
-        ] = None,
-        num_classes: Annotated[
-            Optional[int],
-            typer.Option(
-                help='Number of classes for a classification model',
-                rich_help_panel='Classification model options',
-            )
-        ] = 10,
+        ] = False,
         noise_multiplier: Annotated[
             Optional[float],
             typer.Option(
@@ -226,6 +227,10 @@ def cli(
     ):
 
     configurationmanager = ConfigurationManager(ctx.params)
+
+    # configurationmanager knows our experiment directory, so let's start logging also there
+    if torch.distributed.get_rank() == 0:
+        start_experiment_logging(log.parent, configurationmanager)
 
     if configurationmanager.get_command() == 'train':
         if torch.distributed.get_rank() == 0:
