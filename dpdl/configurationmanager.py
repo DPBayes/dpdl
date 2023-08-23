@@ -1,5 +1,5 @@
 import logging
-
+import pathlib
 import torch
 import typer
 
@@ -29,9 +29,14 @@ class ConfigurationManager:
 
         self._get_hypers_from_params()
 
+        # Opacus calculates noise multiplier is target epsilon is given
         if 'target_epsilon' in self.hyperparams:
             log.warn('We have "target_epsilon" defined. Removing "noise_multiplier".')
             self.hyperparams['noise_multiplier'] = None
+
+        # remove the target hypers from hyperparams as they will be set in trials
+        for target_hyper in self.get_value('target_hypers'):
+            self.hyperparams[target_hyper] = None
 
     def get_command(self):
         return self.command
@@ -84,6 +89,25 @@ class ConfigurationManager:
         if torch.distributed.get_rank() == 0:
             log.info(f'Hyperparams:')
             self._print_dict(self.hyperparams)
+
+    def save_configuration(self, directory: pathlib.Path):
+        max_key_length = max(len(key) for key in self.configuration.keys())
+        with open(directory / 'configuration.txt', 'w') as fh:
+            fh.write('Configuration:\n')
+            for key, value in self.configuration.items():
+                fh.write(f'{key:<{max_key_length}} : {value}\n')
+
+        log.info(f'Configuration saved to {directory}/configuration.txt')
+
+    def save_hyperparameters(self, directory: pathlib.Path):
+        max_key_length = max(len(key) for key in self.hyperparams.keys())
+        with open(directory / 'hyperparameters.txt', 'w') as fh:
+            fh.write('Hyperparameters:\n')
+            for key, value in self.hyperparams.items():
+                if value is not None:
+                    fh.write(f'{key:<{max_key_length}} : {value}\n')
+
+        log.info(f'Hyperparameters saved to {directory}/hyperparameters.txt')
 
     @staticmethod
     def _print_dict(d: dict) -> None:
