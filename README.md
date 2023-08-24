@@ -6,7 +6,7 @@ Many of the ideas that we are using come from [fastai](https://github.com/fastai
 
 ## Install dependencies
 
-`pip install torch opacus timm datasets typer[all] optuna torchmetrics`
+`pip install torch opacus timm datasets typer[all] optuna torchmetrics pydantic`
 
 ## Command line usage
 
