@@ -23,21 +23,21 @@ def configure_logger() -> logging.Logger:
 
 def start_experiment_logging(
         log: logging.Logger,
-        configurationmanager: ConfigurationManager,
+        config_manager: ConfigurationManager,
         overwrite: bool = False,
     ):
 
-    log_dir = configurationmanager.get_value('log_dir')
-    experiment_name = configurationmanager.get_value('experiment_name')
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
 
     # create a directory for the experiments and start logging there
-    overwrite = configurationmanager.get_value('overwrite_experiment')
+    overwrite = config_manager.configuration.overwrite_experiment
     experiment_directory = _create_experiment_directory(log_dir, experiment_name, overwrite)
     _update_logger_with_file_handler(log, experiment_directory)
 
-    # Save configuration and hyperparameters
-    configurationmanager.save_configuration(experiment_directory)
-    configurationmanager.save_hyperparameters(experiment_directory)
+    # save configuration
+    config_manager.save_configuration(experiment_directory)
+    config_manager.save_hyperparameters(experiment_directory)
 
 def _create_experiment_directory(
         log_dir: str = 'log_dir',

@@ -3,6 +3,8 @@ import logging
 
 from typing import List
 
+from .configurationmanager import Configuration, Hyperparameters
+
 log = logging.getLogger(__name__)
 
 class CallbackHandler:
@@ -83,7 +85,7 @@ class PrintStateCallback(Callback):
 
 class CallbackFactory:
     @staticmethod
-    def get_callbacks(configuration: dict, hyperparams: dict) -> List[Callback]:
+    def get_callbacks(configuration: Configuration, hyperparams: Hyperparameters) -> List[Callback]:
         callbacks = [
             PrintStateCallback(),
         ]

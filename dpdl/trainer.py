@@ -6,7 +6,7 @@ import torchmetrics
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 from .callbacks import CallbackHandler, CallbackFactory
-from .configurationmanager import ConfigurationManager
+from .configurationmanager import ConfigurationManager, Configuration, Hyperparameters
 from .datamodules import DataModule, DataModuleFactory
 from .models import ModelFactory
 from .optimizers import OptimizerFactory
@@ -311,7 +311,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
 class TrainerFactory:
     @staticmethod
-    def _get_basic_trainer(configuration: dict, hyperparams: dict) -> Trainer:
+    def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
         # setup data, model, and optimizer
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
         model = ModelFactory.get_model(configuration, hyperparams)
@@ -325,15 +325,15 @@ class TrainerFactory:
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
-            epochs=hyperparams['epochs'],
-            seed=configuration['seed'],
             callback_handler=callback_handler,
+            epochs=hyperparams.epochs,
+            seed=configuration.seed,
         )
 
         return trainer
 
     @staticmethod
-    def _get_differentially_private_trainer(configuration: dict, hyperparams: dict) -> Trainer:
+    def _get_differentially_private_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
         # setup data, model, and optimizer
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
         model = ModelFactory.get_model(configuration, hyperparams)
@@ -344,10 +344,10 @@ class TrainerFactory:
         )
 
         # are we given a target epsilon?
-        if 'target_epsilon' in hyperparams:
+        if hyperparams.target_epsilon is not None:
             # if we have target epsilon, set target delta = 1/N
             target_delta = 1 / len(datamodule.train_dataloader.dataset)
-            target_epsilon = hyperparams['target_epsilon']
+            target_epsilon = hyperparams.target_epsilon
         else:
             target_delta = None
             target_epsilon = None
@@ -358,29 +358,26 @@ class TrainerFactory:
             optimizer=optimizer,
             datamodule=datamodule,
             # hypers
-            epochs=hyperparams['epochs'],
-            noise_multiplier=hyperparams['noise_multiplier'],
-            max_grad_norm=hyperparams['max_grad_norm'],
+            epochs=hyperparams.epochs,
+            noise_multiplier=hyperparams.noise_multiplier,
+            max_grad_norm=hyperparams.max_grad_norm,
             target_epsilon=target_epsilon,
             target_delta=target_delta,
             # config
-            secure_mode=configuration['secure_mode'],
-            clipping_mode=configuration['clipping_mode'],
-            physical_batch_size=configuration['physical_batch_size'],
-            seed=configuration['seed'],
+            secure_mode=configuration.secure_mode,
+            clipping_mode=configuration.clipping_mode,
+            physical_batch_size=configuration.physical_batch_size,
+            seed=configuration.seed,
             callback_handler=callback_handler,
         )
 
         return trainer
 
     @staticmethod
-    def get_trainer(configurationmanager: ConfigurationManager) -> Trainer:
-        configuration = configurationmanager.get_configuration()
-        hyperparams = configurationmanager.get_hyperparams()
-
+    def get_trainer(config_manager: ConfigurationManager) -> Trainer:
         # are we differentially private?
-        if configuration['privacy']:
-            return TrainerFactory._get_differentially_private_trainer(configuration, hyperparams)
+        if config_manager.configuration.privacy:
+            return TrainerFactory._get_differentially_private_trainer(config_manager.configuration, config_manager.hyperparams)
 
-        return TrainerFactory._get_basic_trainer(configuration, hyperparams)
+        return TrainerFactory._get_basic_trainer(config_manager.configuration, config_manager.hyperparams)
 

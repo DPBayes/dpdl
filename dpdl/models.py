@@ -3,13 +3,15 @@ import timm
 import torch
 import torchmetrics
 
+from .configurationmanager import Configuration, Hyperparameters
+
 class ModelFactory:
     @staticmethod
-    def get_model(configuration, hyperparams):
+    def get_model(configuration: Configuration, hyperparams: Hyperparameters):
         model = ImageClassificationModel(
-            model_name=hyperparams['model_name'],
-            num_classes=configuration['num_classes'],
-            fix_model=configuration['modulevalidator_fix'],
+            model_name=configuration.model_name,
+            num_classes=configuration.num_classes,
+            fix_model=configuration.modulevalidator_fix,
         )
         return model
 

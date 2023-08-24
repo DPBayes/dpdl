@@ -4,8 +4,10 @@ import opacus
 import torch
 
 from functools import partial
+from typing import Tuple
 
 from dpdl.utils import seed_everything
+from .configurationmanager import Configuration, Hyperparameters
 
 class DataModule:
     def __init__(
@@ -52,7 +54,14 @@ class DataModule:
         self._test_dataloader = dataloader
 
 class ImageDataModule(DataModule):
-    def __init__(self, *, dataset_name='cifar10', image_size=None, **kwargs):
+    def __init__(
+        self,
+        *,
+        dataset_name: str = 'cifar10',
+        num_classes: int = 10,
+        image_size: Tuple[int, int] = None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
 
         self.num_classes = 10
@@ -189,14 +198,14 @@ class ImageDataModule(DataModule):
 
 class DataModuleFactory:
     @staticmethod
-    def get_datamodule(configuration: dict, hyperparams: dict) -> DataModule:
+    def get_datamodule(configuration: Configuration, hyperparams: Hyperparameters) -> DataModule:
         datamodule = ImageDataModule(
-            dataset_name=configuration['dataset_name'],
-            num_workers=configuration['num_workers'],
-            batch_size=hyperparams['batch_size'],
-            physical_batch_size=configuration['physical_batch_size'],
-            seed=configuration['seed'],
-            subset_size=configuration['subset_size'],
+            dataset_name=configuration.dataset_name,
+            num_workers=configuration.num_workers,
+            physical_batch_size=configuration.physical_batch_size,
+            subset_size=configuration.subset_size,
+            seed=configuration.seed,
+            batch_size=hyperparams.batch_size,
             image_size=(224, 224),
         )
 
