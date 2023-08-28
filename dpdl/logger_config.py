@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import shutil
 import sys
 
 from .configurationmanager import ConfigurationManager
@@ -51,15 +52,9 @@ def _create_experiment_directory(
         raise FileExistsError(f'The directory {full_log_dir} already exists and not asked to overwrite.')
 
     if full_log_dir.exists() and overwrite:
-        for item in full_log_dir.iterdir():
-            if item.is_file():
-                item.unlink()
-            elif item.is_dir():
-                item.rmdir()
+        shutil.rmtree(full_log_dir)
 
-        full_log_dir.rmdir()
-
-    full_log_dir.mkdir(parents=True, exist_ok=True)
+    full_log_dir.mkdir(parents=True)
 
     return full_log_dir
 

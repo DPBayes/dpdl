@@ -228,16 +228,18 @@ def cli(
 
     config_manager = ConfigurationManager(ctx.params)
 
-    # config_manager knows our experiment directory, so let's start logging also there
+    # ConfigurationManager knows our experiment directory, so let's start logging also there
     if torch.distributed.get_rank() == 0:
         start_experiment_logging(log.parent, config_manager)
+        torch.distributed.barrier()
+    else:
+        torch.distributed.barrier()
 
     if config_manager.get_command() == 'train':
         if torch.distributed.get_rank() == 0:
             log.info('Starting training.')
-
-        log.info(config_manager.hyperparams)
-        log.info(config_manager.configuration)
+            log.info(config_manager.hyperparams)
+            log.info(config_manager.configuration)
 
         seed_everything(config_manager.configuration.seed)
         trainer = TrainerFactory.get_trainer(config_manager)
@@ -247,8 +249,7 @@ def cli(
     if config_manager.get_command() == 'optimize':
         if torch.distributed.get_rank() == 0:
             log.info('Starting hyperparameter optimization.')
-
-        log.info(config_manager.configuration)
+            log.info(config_manager.configuration)
 
         seed_everything(config_manager.configuration.seed)
         HyperparameterOptimizer.optimize_hypers(config_manager)

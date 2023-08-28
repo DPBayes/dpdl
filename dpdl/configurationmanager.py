@@ -115,7 +115,9 @@ class ConfigurationManager:
 
         # Opacus calculates noise multiplier is target epsilon is given
         if self.hyperparams.target_epsilon is not None:
-            log.warn('We have "target_epsilon" defined. Removing "noise_multiplier".')
+            if torch.distributed.get_rank() == 0:
+                log.warn('We have "target_epsilon" defined. Removing "noise_multiplier".')
+
             self.hyperparams.noise_multiplier = None
 
         # remove the target hypers from hyperparams as they will be set in trials
@@ -136,15 +138,17 @@ class ConfigurationManager:
             log.info(self.configuration.json(indent=4))
 
     def save_configuration(self, directory: pathlib.Path):
-        with open(directory / 'configuration.txt', 'w') as fh:
-            fh.write('Configuration:\n')
-            fh.write(str(self.configuration))
+        if torch.distributed.get_rank() == 0:
+            with open(directory / 'configuration.txt', 'w') as fh:
+                fh.write('Configuration:\n')
+                fh.write(str(self.configuration))
 
-        log.info(f'Configuration saved to {directory}/configuration.txt')
+            log.info(f'Configuration saved to {directory}/configuration.txt')
 
     def save_hyperparameters(self, directory: pathlib.Path):
-        with open(directory / 'hyperparameters.txt', 'w') as fh:
-            fh.write('Hyperparameters:\n')
-            fh.write(str(self.hyperparams))
+        if torch.distributed.get_rank() == 0:
+            with open(directory / 'hyperparameters.txt', 'w') as fh:
+                fh.write('Hyperparameters:\n')
+                fh.write(str(self.hyperparams))
 
-        log.info(f'Hyperparameters saved to {directory}/hyperparameters.txt')
+            log.info(f'Hyperparameters saved to {directory}/hyperparameters.txt')
