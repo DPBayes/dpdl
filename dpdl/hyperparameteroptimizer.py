@@ -128,7 +128,7 @@ class HyperparameterOptimizer:
                 )
 
             if optuna_config[target_hyper]['type'] == 'categorical':
-                hyper_value = trial.suggest_int(
+                hyper_value = trial.suggest_categorical(
                     target_hyper,
                     optuna_config[target_hyper]['options'],
                 )
