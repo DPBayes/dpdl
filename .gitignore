@@ -1,1 +1,7 @@
 *~
+slurm-*
+logs*
+.*
+*/.*
+*/__pycache__
+*.log
