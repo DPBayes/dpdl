@@ -1,4 +1,5 @@
 # NB: Set datasets cache directory with the environment variable HF_DATASETS_CACHE
+import logging
 import datasets
 import opacus
 import torch
@@ -8,6 +9,8 @@ from typing import Tuple
 
 from dpdl.utils import seed_everything
 from .configurationmanager import Configuration, Hyperparameters
+
+log = logging.getLogger(__name__)
 
 class DataModule:
     def __init__(
@@ -78,7 +81,7 @@ class ImageDataModule(DataModule):
     def _initialize_dataloaders(self):
         generator = torch.Generator()
         if self.seed:
-            generator.manual_seed(self.seed)
+            generator = generator.manual_seed(self.seed)
 
         def seed_worker(worker_id):
             seed_everything(self.seed)
@@ -119,6 +122,10 @@ class ImageDataModule(DataModule):
         return label_field
 
     def _get_stratified_subset(self, dataset):
+        generator = torch.Generator()
+        if self.seed:
+            generator.manual_seed(self.seed)
+
         label_field = self._get_dataset_label_field()
         labels = torch.tensor(dataset[label_field])
         unique_labels = labels.unique()
@@ -128,52 +135,66 @@ class ImageDataModule(DataModule):
             # find the indices of the dataset where the current label is present
             label_indices = torch.where(labels == label)[0]
 
-            # determine how many samples are needed for the given label based on the subset size
-            num_samples_per_class = int(len(label_indices) * self.subset_size)
+            # determine the number of samples needed for this label
+            num_samples = int(len(label_indices) * self.subset_size)
 
-            # randomly choose the required number of indices for the current label
-            chosen_indices = torch.randperm(len(label_indices))[:num_samples_per_class]
+            # generate a random permutation of the label indices
+            random_indices = torch.randperm(len(label_indices), generator=generator)
 
-            # add the chosen indices to the sampled_indices list
-            sampled_indices.extend(label_indices[chosen_indices].tolist())
+            # select the first 'num_samples' indices
+            chosen_indices = random_indices[:num_samples]
 
-        # shuffle the sampled indices
-        sampled_indices = torch.tensor(sampled_indices)[torch.randperm(len(sampled_indices))].tolist()
+            # retrieve the dataset indices corresponding to the chosen label indices
+            chosen_dataset_indices = label_indices[chosen_indices].tolist()
+
+            # extend the final list of sampled indices
+            sampled_indices.extend(chosen_dataset_indices)
+
+        # generate a random permutation for the final list of sampled indices
+        random_order = torch.randperm(len(sampled_indices), generator=generator)
+
+        # reorder the sampled indices randomly
+        sampled_indices = torch.tensor(sampled_indices)[random_order].tolist()
 
         return dataset.select(sampled_indices)
 
     def _initialize_datasets(self):
-        # only load the data in single process
+        # first load the data only in rank 0
         if torch.distributed.get_rank() == 0:
-            dataset = datasets.load_dataset(self.dataset_name, split='train')
-            test_dataset = datasets.load_dataset(self.dataset_name, split='test')
+            self._load_and_preprocess_datasets()
             torch.distributed.barrier()
         else:
-            # wait for local rank 0 to load the datasets
             torch.distributed.barrier()
 
-            dataset = datasets.load_dataset(self.dataset_name, split='train')
-            test_dataset = datasets.load_dataset(self.dataset_name, split='test')
+            # then after all preprocessing is done, load the data
+            # on other ranks also. Huggingface datasets has cached
+            # everything on disk.
+            self._load_and_preprocess_datasets()
 
-        # stratified sampling for subset_size
+    def _load_and_preprocess_datasets(self):
+        # load datasets and cache to disk
+        train_dataset = datasets.load_dataset(self.dataset_name, split='train')
+        test_dataset = datasets.load_dataset(self.dataset_name, split='test')
+
+        # apply stratified sampling if subset_size is set
         if self.subset_size:
-            dataset = self._get_stratified_subset(dataset)
+            train_dataset = self._get_stratified_subset(train_dataset)
             test_dataset = self._get_stratified_subset(test_dataset)
 
-        # do we need to scale the images?
+        # apply image resizing if image_size is set
         if self.image_size:
             transform = partial(self._resize_transform, self.image_size)
-            dataset = dataset.map(transform, batched=True)
-            test_dataset = test_dataset.map(transform, batched=True)
+            train_dataset = train_dataset.map(transform, num_proc=self.num_workers, batched=True)
+            test_dataset = test_dataset.map(transform, num_proc=self.num_workers, batched=True)
 
-        # create train and validation splits
-        split_dataset = dataset.train_test_split(test_size=0.1, shuffle=False)
+        # split the train dataset into train and validation sets
+        split_dataset = train_dataset.train_test_split(
+            test_size=0.1,
+            shuffle=False,
+            seed=self.seed,
+        )
         self.train_dataset = split_dataset['train']
         self.val_dataset = split_dataset['test']
-
-        if self.image_size:
-            transform = partial(self._resize_transform, self.image_size)
-            test_dataset = test_dataset.map(transform, batched=True)
 
         self.test_dataset = test_dataset
 
