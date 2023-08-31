@@ -38,7 +38,7 @@ class Hyperparameters(BaseModel):
         return 'Hyperparameters:\n  ' + '\n  '.join(hyper_str)
 
 class Configuration(BaseModel):
-    command: str
+    command: Literal['train', 'optimize']
     privacy: bool = True
     model_name: str = 'resnet50'
     dataset_name: str = 'cifar10'
@@ -65,6 +65,7 @@ class Configuration(BaseModel):
 
     def __str__(self):
         attributes = [
+            ('Command', self.command),
             ('Privacy', self.privacy),
             ('Model Name', self.model_name),
             ('Dataset Name', self.dataset_name),
