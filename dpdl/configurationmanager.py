@@ -53,6 +53,7 @@ class Configuration(BaseModel):
     secure_mode: bool = False
     modulevalidator_fix: bool = False
     accountant: str = 'prv'
+    poisson_sampling: bool = True
     n_trials: int = 20
     target_hypers: List[str] = []
     optuna_target_metric: str = 'loss'
@@ -86,6 +87,7 @@ class Configuration(BaseModel):
                 ('Secure Mode', self.secure_mode),
                 ('ModuleValidator Fix', self.modulevalidator_fix),
                 ('Accountant', self.accountant),
+                ('Poisson Sampling', self.poisson_sampling),
             ]
             attributes.extend(privacy_attributes)
 
