@@ -116,8 +116,11 @@ class Trainer:
         # process the sub batches one at a time
         N = len(X_split)
         for i in range(N):
-            logits = self.model(X_split[i])
-            loss = self._unwrap_model().criterion(logits, y_split[i]) / N # NB: normalize loss
+            X_splitted = X_split[i]
+            y_splitted = y_split[i]
+
+            logits = self.model(X_splitted)
+            loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
             loss.backward(loss)
 
             # keep track of the batch loss
@@ -186,6 +189,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         max_grad_norm: float = 1.0,
         clipping_mode: str = 'flat',
         accountant: str = 'prv',
+        poisson_sampling: bool = True,
         secure_mode: bool = False,
         target_epsilon: float = 0,
         target_delta: float = 0,
@@ -201,6 +205,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.target_delta = target_delta
         self.physical_batch_size = physical_batch_size
         self.seed = seed
+        self.poisson_sampling = poisson_sampling
 
         # setup opacus privacy engine
         self.privacy_engine = opacus.PrivacyEngine(accountant=accountant, secure_mode=secure_mode)
@@ -223,13 +228,17 @@ class DifferentiallyPrivateTrainer(Trainer):
         return True
 
     def setup(self):
-        super().setup()
-
         noise_generator = torch.Generator(device=torch.cuda.current_device())
         if self.seed:
             noise_generator.manual_seed(self.seed)
 
-        model = self.model
+        self.model = self.model.cuda()
+
+        # let's be distributed by default and wrap the model for Opacus DDP.
+        # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
+        # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
+        model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
+
         optimizer = self.optimizer
         train_dataloader = self.datamodule.train_dataloader
 
@@ -245,6 +254,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 target_delta=self.target_delta,
                 epochs=self.epochs,
                 noise_generator=noise_generator,
+                poisson_sampling=self.poisson_sampling,
             )
         else:
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
@@ -255,12 +265,8 @@ class DifferentiallyPrivateTrainer(Trainer):
                 max_grad_norm=self.max_grad_norm,
                 clipping=self.clipping_mode,
                 noise_generator=noise_generator,
+                poisson_sampling=self.poisson_sampling,
             )
-
-        # let's be distributed by default and wrap the model for Opacus DDP.
-        # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
-        # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
-        dp_model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(dp_model)
 
         # put the DP'ifyed stuff back into Fabric wrappers
         self.model = dp_model
@@ -271,17 +277,37 @@ class DifferentiallyPrivateTrainer(Trainer):
         return self.privacy_engine.get_epsilon(delta)
 
     def _unwrap_model(self):
-        # the model is wrapped inside torch distributed, Opacus, and Opacus'
-        # distributed. let's unwrap the vanilla model and return it
-        return self.model.module._module.module
+        # the model is wrapped inside Opacus, and Opacus distributed.
+        # let's unwrap the vanilla model and return it
+        return self.model._module.module
+
+    def fit_one_batch(self, batch_idx, batch):
+        self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
+        self.optimizer.zero_grad()
+
+        X, y = batch
+        X = X.cuda(non_blocking=True)
+        y = y.cuda(non_blocking=True)
+
+        logits = self.model(X)
+        loss = self._unwrap_model().criterion(logits, y)
+        loss.backward(loss)
+        self.optimizer.step()
+
+        loss = loss.item()
+
+        # update the mean loss
+        self.train_loss.update(loss)
+
+        # calculate metrics if there are any
+        preds = torch.argmax(logits, dim=1)
+        metrics = self._unwrap_model().train_metrics(preds, y)
+
+        self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss)
 
     def fit_one_epoch(self, epoch):
         self.model.train()
         self.callback_handler.call('on_train_epoch_start', self, epoch)
-
-        # save the current dataloader, we are going to use a virtual
-        # dataloader to enable larger batches
-        original_dataloader = self.datamodule.train_dataloader
 
         with BatchMemoryManager(
             data_loader=self.datamodule.train_dataloader,
@@ -290,13 +316,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         ) as virtual_dataloader:
             # the virtual data loader created by BatchMemoryManager enables us to use larger
             # logical batch sizes that fit in a GPU.
-            self.datamodule.train_dataloader = virtual_dataloader
-
-            for batch_idx, batch in enumerate(self.datamodule.train_dataloader):
+            for batch_idx, batch in enumerate(virtual_dataloader):
                 self.fit_one_batch(batch_idx, batch)
-
-        # we have enumerated the batch, let's swap back to the original dataloader
-        self.datamodule.train_dataloader = original_dataloader
 
         # compute and reset the training loss
         epoch_loss = self.train_loss.compute()
@@ -307,7 +328,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         self._unwrap_model().train_metrics.reset()
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss, metrics)
-        return epoch_loss
 
 class TrainerFactory:
     @staticmethod
@@ -363,7 +383,9 @@ class TrainerFactory:
             max_grad_norm=hyperparams.max_grad_norm,
             target_epsilon=target_epsilon,
             target_delta=target_delta,
+            poisson_sampling=configuration.poisson_sampling,
             # config
+            accountant=configuration.accountant,
             secure_mode=configuration.secure_mode,
             clipping_mode=configuration.clipping_mode,
             physical_batch_size=configuration.physical_batch_size,
