@@ -154,6 +154,13 @@ def cli(
                 rich_help_panel='Opacus options',
             )
         ] = False,
+        poisson_sampling: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Enable Opacus Poisson sampling',
+                rich_help_panel='Opacus options',
+            )
+        ] = True,
         modulevalidator_fix: Annotated[
             Optional[bool],
             typer.Option(
