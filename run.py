@@ -6,6 +6,10 @@ import typer
 from dpdl.cli import cli
 from dpdl.logger_config import configure_logger
 
+# reproducible results
+torch.use_deterministic_algorithms(True)
+torch.backends.cudnn.benchmark = False
+
 def main():
     log = configure_logger()
 
