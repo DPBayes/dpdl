@@ -18,7 +18,7 @@ def main():
                   "python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=<# of GPUS> --rdzv_endpoint=localhost:<PORT> run.py")
         sys.exit(1)
 
-    log.info(f'Initializing {world_size} workers for training.')
+    log.info(f'Initializing worker for training.')
 
     torch.distributed.init_process_group(backend='nccl')
     local_rank = int(local_rank)
@@ -31,7 +31,7 @@ def main():
 
     typer.run(cli)
 
-    dist.destroy_process_group()
+    torch.distributed.destroy_process_group()
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:

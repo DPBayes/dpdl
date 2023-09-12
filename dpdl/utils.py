@@ -9,8 +9,6 @@ def seed_everything(seed) -> None:
     if not seed:
         return
 
-    log.info(f'Setting global seed: {seed}')
-
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
