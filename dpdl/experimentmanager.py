@@ -2,6 +2,7 @@ import json
 import logging
 import pathlib
 import shutil
+import subprocess
 
 import optuna
 
@@ -29,6 +30,20 @@ def save_study(
     with open(full_log_dir / 'best-value', 'w') as fh:
         fh.write(str(study.best_value) + '\n')
 
+    with open(full_log_dir / 'git-hash', 'w') as fh:
+        git_hash = _get_git_hash()
+        fh.write(str(git_hash) + '\n')
+
+    with open(full_log_dir / 'results-and-configuration.json', 'w') as fh:
+        d = {}
+        d['best_params'] = study.best_params
+        d['best_value'] = study.best_value
+        d['configuration'] = config_manager.configuration.dict()
+        d['git-hash'] = study.best_value
+        d['hyperparameters'] = config_manager.hyperparams.dict()
+
+        json.dump(d, fh)
+
 def start_experiment_logging(
         log: logging.Logger,
         config_manager: ConfigurationManager,
@@ -46,6 +61,11 @@ def start_experiment_logging(
     # save configuration
     config_manager.save_configuration(experiment_directory)
     config_manager.save_hyperparameters(experiment_directory)
+
+def _get_git_hash():
+    process = subprocess.Popen(['git', 'rev-parse', 'HEAD'], shell=False, stdout=subprocess.PIPE)
+    git_hash = process.communicate()[0].strip()
+    return git_hash
 
 def _create_experiment_directory(
         log_dir: str = 'log_dir',
