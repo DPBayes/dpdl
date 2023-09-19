@@ -86,15 +86,14 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 ## TODO
 
-- [ ] Save models to experiment directory
+- [ ] Use test set for final Optuna trial accuracy
 - [x] Save experiments to log directory
 - [ ] Image (re)size to CLI params
-- [ ] Copy Optuna journal to experiment directory after all trials
+- [x] Save Optuna study to experiment directory after all trials
 - [ ] Use DistributedSampler in dataloaders for the non-DP case
-- [ ] Log all parameters to the Optuna study
 - [x] Refactor CIFAR10DataModule as HuggingfaceDataModule or similar
 - [x] Possibility to only use a subset of dataset
-- [ ] Possibility to finetune only the head of a model
+- [ ] Possibility to finetune only the head of a model?
 - [ ] Validation/training loss logging?
 - [ ] More optimizers? Optimizer as a CLI switch?
 - [ ] Learning rate schedulers?
