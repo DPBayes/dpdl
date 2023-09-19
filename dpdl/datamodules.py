@@ -92,18 +92,26 @@ class ImageDataModule(DataModule):
         # otherwise, we need to use distributedsampler and divide
         # the batch size by number of replicas
         if not self.privacy:
-            sampler = torch.utils.data.distributed.DistributedSampler(
+            train_sampler = torch.utils.data.distributed.DistributedSampler(
                 self.train_dataset.with_format('torch')
+            )
+
+            val_sampler = torch.utils.data.distributed.DistributedSampler(
+                self.val_dataset.with_format('torch')
+            )
+
+            test_sampler = torch.utils.data.distributed.DistributedSampler(
+                self.test_dataset.with_format('torch')
             )
 
             batch_size = self.batch_size // torch.distributed.get_world_size()
         else:
-            sampler = None
+            train_sampler, val_sampler, test_sampler = None, None, None
             batch_size = self.batch_size
 
         self._train_dataloader = torch.utils.data.DataLoader(
             self.train_dataset.with_format('torch'),
-            sampler=sampler,
+            sampler=train_sampler,
             batch_size=batch_size,
             collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
             num_workers=self.num_workers,
@@ -115,7 +123,7 @@ class ImageDataModule(DataModule):
 
         self._val_dataloader = torch.utils.data.DataLoader(
             self.val_dataset.with_format('torch'),
-            sampler=sampler,
+            sampler=val_sampler,
             batch_size=self.physical_batch_size,
             collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
             num_workers=self.num_workers,
@@ -124,7 +132,7 @@ class ImageDataModule(DataModule):
 
         self._test_dataloader = torch.utils.data.DataLoader(
             self.test_dataset.with_format('torch'),
-            sampler=sampler,
+            sampler=test_sampler,
             batch_size=self.physical_batch_size,
             collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
             num_workers=self.num_workers,
