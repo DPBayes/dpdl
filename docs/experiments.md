@@ -27,6 +27,10 @@ Conduct separate optimization runs for each batch size. In each run, the batch s
 
 #### Model: Vision transformer (vit_base_patch16_224.augreg_in21k)
 
+Do these for all epsilon = \{1, 2, 3, 4, 5, 6, 7, 8\}
+
+###### Epsilon = 1.0
+
 ##### Dataset: CIFAR10
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
@@ -71,6 +75,10 @@ Conduct separate optimization runs for each batch size. In each run, the batch s
 | 4500  | | | | |
 
 #### Model: ResNet-50 (resnetv2_50x1_bitm_in21k)
+
+Do these for all epsilon = \{1, 2, 3, 4, 5, 6, 7, 8\}
+
+###### Epsilon = 1.0
 
 ##### Dataset: CIFAR10
 
