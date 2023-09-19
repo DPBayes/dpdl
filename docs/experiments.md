@@ -2,6 +2,8 @@
 
 ## Questions/ideas
 
+- Are the steps in batch sizes too dense?
+- Compare with adaptive clipping?
 - Fixed vs optimized epochs?
 - Sensitivity analysis of individual hypers?
 - Define baseline hypers?
