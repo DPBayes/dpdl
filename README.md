@@ -4,29 +4,21 @@ The system requires CUDA. We provide scripts for running in a Slurm environment.
 
 Many of the ideas that we are using come from [fastai](https://github.com/fastai/fastai) and [PyTorch Lightning](https://github.com/Lightning-AI/lightning).
 
-## Install dependencies
+## Experiments
+
+![Experiment documentation is here.](docs/experiments.md)
+
+## Installation and usage
+
+### Install dependencies
 
 `pip install torch opacus timm datasets typer[all] optuna torchmetrics pydantic`
 
-## Command line usage
+### Command line usage
 
 Entry point is [run.py](blob/vanilla-pytorch-refactor/run.py).
 
-### How to use?
-
-Even when running a single process, start the script with `python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=1 --rdzv_endpoint=localhost:0 run.py <COMMAND> <ARGUMENTS>`
-
-Command `train` is used for training a model.
-
-Command `optimize` is used for optimizing the hyperparameters of a model.
-
-Get command line usage with `--help` argument or running without a command `python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=1 --rdzv_endpoint=localhost:0 run.py`.
-
-![run.py help](images/usage.png)
-
-### Experiments
-
-![Experiments are here](docs/experiments.md)
+### How to use? Even when running a single process, start the script with `python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=1 --rdzv_endpoint=localhost:0 run.py <COMMAND> <ARGUMENTS>` Command `train` is used for training a model. Command `optimize` is used for optimizing the hyperparameters of a model. Get command line usage with `--help` argument or running without a command `python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=1 --rdzv_endpoint=localhost:0 run.py`. ![run.py help](images/usage.png)
 
 ### Examples
 
