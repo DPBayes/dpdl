@@ -38,6 +38,12 @@
 
 - How does dataset imbalance affect the hypers?
 
+## Goal of the experiments
+
+We want to analyze the privacy-utility tradeoff for the hyperparameters and the interaction of the hyperparameters.
+
+From the results of the analysis, we aim to develop methods for predicting good hyperparameters for the model in response to alterations of the privacy budget.
+
 ## General method overview
 
 For CIFAR100 we divide the given training set (50000 examples) into a training set (45000 examples) and a validation set (5000 examples). For the Bayesian optimization we use multiclass accuracy of the validation set as optimization objective.
