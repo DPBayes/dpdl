@@ -8,6 +8,7 @@
 - Other datasets?
 - Other models?
 - Other metrics to track/optimize?
+- Search hypers in log space from some params?
 
 ## Future experiments
 
@@ -19,15 +20,32 @@
 
 To investigate the influence of varying batch sizes on the optimal configurations of other hyperparameters (epochs, learning_rate, max_grad_norm) using Bayesian optimization.
 
-Methodology
+#### Methodology
 
 1. Batch size variation: Systematically vary the batch size through a predefined set of values: 256, 512, 1024, 2048, 4096, 8192, 12288, etc.
 
 2. Bayesian Optimization: For each batch size, use Bayesian optimization to find the optimal values of the other hyperparameters (epochs, learning_rate, max_grad_norm).
 
-Experimentation
+#### Experimentation
 
 Conduct separate optimization runs for each batch size. In each run, the batch size is fixed, and Bayesian optimization is used to optimize the other hyperparameters. Here is a markdown table template that you might use to document the results:
+
+### Configuration for Bayes optimization
+
+```
+learning_rate:
+  max: 1.0e-2
+  min: 1.0e-07
+  type: float
+epochs:
+  max: 200
+  min: 1
+  type: int
+max_grad_norm:
+  max: 10
+  min: 0.2
+  type: float
+```
 
 #### Model: Vision transformer (vit_base_patch16_224.augreg_in21k)
 
