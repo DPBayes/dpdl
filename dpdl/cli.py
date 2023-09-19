@@ -9,7 +9,7 @@ from .configurationmanager import ConfigurationManager
 from .hyperparameteroptimizer import HyperparameterOptimizer
 from .trainer import TrainerFactory
 from .utils import seed_everything
-from .logger_config import start_experiment_logging
+from .experimentmanager import start_experiment_logging
 
 log = logging.getLogger(__name__)
 

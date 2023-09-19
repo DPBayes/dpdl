@@ -20,22 +20,22 @@ class Hyperparameters(BaseModel):
     def __str__(self):
         hypers = [
             ('Epochs', self.epochs),
-            ('Batch Size', self.batch_size),
-            ('Learning Rate', self.learning_rate),
+            ('Batch size', self.batch_size),
+            ('Learning rate', self.learning_rate),
         ]
 
         if self.privacy:
             privacy_hypers = [
-                ('Noise Multiplier', self.noise_multiplier),
-                ('Max Grad Norm', self.max_grad_norm),
-                ('Target Epsilon', self.target_epsilon),
+                ('Noise multiplier', self.noise_multiplier),
+                ('Max grad norn', self.max_grad_norm),
+                ('Target epsilon', self.target_epsilon),
             ]
             hypers.extend(privacy_hypers)
 
         max_key_length = max(len(hyper[0]) for hyper in hypers)
         hyper_str = [f'{hyper[0]:<{max_key_length}}: {hyper[1]}' for hyper in hypers]
 
-        return 'Hyperparameters:\n  ' + '\n  '.join(hyper_str)
+        return 'Hyperparameters:\n  ' + '\n  '.join(hyper_str) + '\n'
 
 class Configuration(BaseModel):
     command: Literal['train', 'optimize']
@@ -68,45 +68,45 @@ class Configuration(BaseModel):
         attributes = [
             ('Command', self.command),
             ('Privacy', self.privacy),
-            ('Model Name', self.model_name),
-            ('Dataset Name', self.dataset_name),
-            ('Physical Batch Size', self.physical_batch_size),
-            ('Num Workers', self.num_workers),
-            ('Validation Frequency', self.validation_frequency),
+            ('Model name', self.model_name),
+            ('Dataset name', self.dataset_name),
+            ('Physical batch size', self.physical_batch_size),
+            ('Num workers', self.num_workers),
+            ('Validation frequency', self.validation_frequency),
             ('Seed', self.seed),
-            ('Log Dir', self.log_dir),
-            ('Experiment Name', self.experiment_name),
-            ('Overwrite Experiment', self.overwrite_experiment),
-            ('Subset Size', self.subset_size),
-            ('Num Classes', self.num_classes),
+            ('Log dir', self.log_dir),
+            ('Experiment dame', self.experiment_name),
+            ('Overwrite experiment', self.overwrite_experiment),
+            ('Subset size', self.subset_size),
+            ('Num classes', self.num_classes),
         ]
 
         if self.command == 'optimize':
             privacy_attributes = [
-                ('Clipping Mode', self.clipping_mode),
-                ('Secure Mode', self.secure_mode),
-                ('ModuleValidator Fix', self.modulevalidator_fix),
+                ('Clipping mode', self.clipping_mode),
+                ('Secure mode', self.secure_mode),
+                ('Modulevalidator fix', self.modulevalidator_fix),
                 ('Accountant', self.accountant),
-                ('Poisson Sampling', self.poisson_sampling),
+                ('Poisson sampling', self.poisson_sampling),
             ]
             attributes.extend(privacy_attributes)
 
         if self.command == 'optimize':
             optuna_attributes = [
-                ('N Trials', self.n_trials),
-                ('Target Hypers', ', '.join(self.target_hypers)),
-                ('Optuna Target Metric', self.optuna_target_metric),
-                ('Optuna Direction', self.optuna_direction),
-                ('Optuna Config', self.optuna_config),
-                ('Optuna Journal', self.optuna_journal),
-                ('Optuna Resume', self.optuna_resume),
+                ('N trials', self.n_trials),
+                ('Target hypers', ', '.join(self.target_hypers)),
+                ('Optuna target metric', self.optuna_target_metric),
+                ('Optuna direction', self.optuna_direction),
+                ('Optuna config', self.optuna_config),
+                ('Optuna journal', self.optuna_journal),
+                ('Optuna resume', self.optuna_resume),
             ]
             attributes.extend(optuna_attributes)
 
         max_key_length = max(len(attr[0]) for attr in attributes)
         attribute_str = [f'{attr[0]:<{max_key_length}}: {attr[1]}' for attr in attributes]
 
-        return 'Configuration:\n  ' + '\n  '.join(attribute_str)
+        return 'Configuration:\n  ' + '\n  '.join(attribute_str) + '\n'
 
 class ConfigurationManager:
     def __init__(self, cli_params: dict):
@@ -119,7 +119,7 @@ class ConfigurationManager:
         # Opacus calculates noise multiplier is target epsilon is given
         if self.hyperparams.target_epsilon is not None:
             if torch.distributed.get_rank() == 0:
-                log.warn('We have "target_epsilon" defined. Removing "noise_multiplier".')
+                log.info('We have "target_epsilon" defined. Removing "noise_multiplier".')
 
             self.hyperparams.noise_multiplier = None
 
@@ -134,24 +134,22 @@ class ConfigurationManager:
         if self.command not in ['train', 'optimize']:
             raise typer.BadParameter('Command must be "train" or "optimize".')
 
-    def print_configuration(self):
-        if torch.distributed.get_rank() == 0:
-            log.info(f'Configuration:')
-            log.info(f'Command: {self.command}\n')
-            log.info(self.configuration.json(indent=4))
-
     def save_configuration(self, directory: pathlib.Path):
         if torch.distributed.get_rank() == 0:
             with open(directory / 'configuration.txt', 'w') as fh:
-                fh.write('Configuration:\n')
                 fh.write(str(self.configuration))
 
-            log.info(f'Configuration saved to {directory}/configuration.txt')
+            with open(directory / 'configuration.json', 'w') as fh:
+                fh.write(self.configuration.json())
+
+            log.info(f'Configuration saved to {directory}.')
 
     def save_hyperparameters(self, directory: pathlib.Path):
         if torch.distributed.get_rank() == 0:
             with open(directory / 'hyperparameters.txt', 'w') as fh:
-                fh.write('Hyperparameters:\n')
                 fh.write(str(self.hyperparams))
 
-            log.info(f'Hyperparameters saved to {directory}/hyperparameters.txt')
+            with open(directory / 'hyperparameters.json', 'w') as fh:
+                fh.write(self.hyperparams.json())
+
+            log.info(f'Hyperparameters saved to {directory}/.')
