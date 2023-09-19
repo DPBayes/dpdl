@@ -90,7 +90,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 - [x] Save experiments to log directory
 - [ ] Image (re)size to CLI params
 - [x] Save Optuna study to experiment directory after all trials
-- [ ] Use DistributedSampler in dataloaders for the non-DP case
+- [x] Use DistributedSampler in dataloaders for the non-DP case
 - [x] Refactor CIFAR10DataModule as HuggingfaceDataModule or similar
 - [x] Possibility to only use a subset of dataset
 - [ ] Possibility to finetune only the head of a model?

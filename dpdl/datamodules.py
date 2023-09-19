@@ -20,6 +20,7 @@ class DataModule:
         num_workers: int = 4,
         subset_size: float = None,
         seed: int = 0,
+        privacy: bool = True,
     ):
         super().__init__()
         self.batch_size = batch_size
@@ -27,6 +28,7 @@ class DataModule:
         self.num_workers = num_workers
         self.seed = seed
         self.subset_size = subset_size
+        self.privacy = privacy
 
         self._train_dataloader = None
         self._val_dataloader = None
@@ -86,9 +88,23 @@ class ImageDataModule(DataModule):
         def seed_worker(worker_id):
             seed_everything(self.seed)
 
+        # for the DP case, Opacus handles distributed for use.
+        # otherwise, we need to use distributedsampler and divide
+        # the batch size by number of replicas
+        if not self.privacy:
+            sampler = torch.utils.data.distributed.DistributedSampler(
+                self.train_dataset.with_format('torch')
+            )
+
+            batch_size = self.batch_size // torch.distributed.get_world_size()
+        else:
+            sampler = None
+            batch_size = self.batch_size
+
         self._train_dataloader = torch.utils.data.DataLoader(
             self.train_dataset.with_format('torch'),
-            batch_size=self.batch_size,
+            sampler=sampler,
+            batch_size=batch_size,
             collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
             num_workers=self.num_workers,
             pin_memory=True,
@@ -99,6 +115,7 @@ class ImageDataModule(DataModule):
 
         self._val_dataloader = torch.utils.data.DataLoader(
             self.val_dataset.with_format('torch'),
+            sampler=sampler,
             batch_size=self.physical_batch_size,
             collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
             num_workers=self.num_workers,
@@ -107,6 +124,7 @@ class ImageDataModule(DataModule):
 
         self._test_dataloader = torch.utils.data.DataLoader(
             self.test_dataset.with_format('torch'),
+            sampler=sampler,
             batch_size=self.physical_batch_size,
             collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
             num_workers=self.num_workers,
@@ -227,6 +245,7 @@ class DataModuleFactory:
             subset_size=configuration.subset_size,
             seed=configuration.seed,
             batch_size=hyperparams.batch_size,
+            privacy=configuration.privacy,
             image_size=(224, 224),
         )
 
