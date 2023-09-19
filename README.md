@@ -24,6 +24,10 @@ Get command line usage with `--help` argument or running without a command `pyth
 
 ![run.py help](images/usage.png)
 
+### Experiments
+
+![Experiments are here](docs/experiments.md)
+
 ### Examples
 
 #### Optimize loss for target epsilon 3.1 using a pretrained BiT (Big Transfer) ResNet-50
