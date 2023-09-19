@@ -9,6 +9,7 @@ from functools import partial
 
 from .trainer import TrainerFactory
 from .configurationmanager import ConfigurationManager, Configuration, Hyperparameters
+from .experimentmanager import save_study
 
 log = logging.getLogger(__name__)
 
@@ -99,6 +100,9 @@ class HyperparameterOptimizer:
             log.info('Params: ')
             for key, value in trial.params.items():
                 log.info(f' - {key}: {value}')
+
+            # save this study to experiment directory
+            save_study(config_manager, study)
 
     @staticmethod
     def objective(
