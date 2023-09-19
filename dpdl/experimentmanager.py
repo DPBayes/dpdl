@@ -1,6 +1,7 @@
 import json
 import logging
 import pathlib
+import pickle
 import shutil
 import subprocess
 
@@ -23,6 +24,10 @@ def save_study(
 
     with open(full_log_dir / 'trials.csv', 'w') as fh:
         fh.write(study.trials_dataframe().to_csv())
+
+    with open(full_log_dir / 'optuna-study.pkl', 'wb') as fh:
+        git_hash = _get_git_hash()
+        pickle.dump(study, fh)
 
     with open(full_log_dir / 'best-params.json', 'w') as fh:
         json.dump(study.best_params, fh)
