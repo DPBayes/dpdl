@@ -2,6 +2,7 @@
 
 ## Questions/ideas
 
+- Fixed vs optimized epochs?
 - Sensitivity analysis of individual hypers?
 - Define baseline hypers?
 - Other datasets?
