@@ -9,6 +9,10 @@
 - Other models?
 - Other metrics to track/optimize?
 
+## Future experiments
+
+- How does dataset imbalance affect the hypers?
+
 ## Batch size variation
 
 ### Objective
