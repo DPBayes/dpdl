@@ -53,19 +53,21 @@ From the results of the analysis, we aim to develop methods for predicting good 
 
    2.1 hyperparams <- BO_system.get_hyperparameters()
 
-   2.2 model <- train_model(training_data, hyperparams)
+   2.2 model <- model(hyperparams)
 
-   2.3 validation_metric <- evaluate_model(model, validation_data)
+   2.3 model <- train_model(training_data)
 
-   2.4 BO_system.update(hyperparams, validation_metric)
+   2.4 validation_metric <- evaluate_model(model, validation_data)
+
+   2.5 BO_system.update(hyperparams, validation_metric)
 
 3. best_hyperparams <- BO_system.get_best_hyperparameters()
 
 4. final_model <- model(best_hyperparams)
 
-5. final_model.train(training_data)
+5. train_model(final_model, training_data)
 
-6. final_model.train(validation_data)
+6. train_model(final_model, validation_data)
 
 7. final_metric_value <- evaluate_model(final_model, test_data)
 
