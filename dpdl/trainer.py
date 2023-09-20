@@ -49,7 +49,9 @@ class Trainer:
 
         # use torchmetrics mean aggregation to track the losses
         self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()
-        self.valid_loss = torchmetrics.aggregation.MeanMetric().cuda()
+
+        # for validation and test sets
+        self.evaluation_loss = torchmetrics.aggregation.MeanMetric().cuda()
 
         if not callback_handler:
             self.callback_handler = CallbackHandler()
@@ -138,30 +140,39 @@ class Trainer:
         self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss)
 
     def validate(self, epoch=None):
+        return self._evaluate('validation', epoch)
+
+    def test(self):
+        return self._evaluate('test')
+
+    def _evaluate(self, mode, epoch=None):
+        self.callback_handler.call(f'on_{mode}_epoch_start', self, epoch)
+
         self.model.eval()
         torch.set_grad_enabled(False)
 
-        self.callback_handler.call('on_validation_epoch_start', self, epoch)
-        for batch_idx, batch in enumerate(self.datamodule.val_dataloader):
-            self.validate_one_batch(batch_idx, batch)
+        dataloader = self.datamodule.val_dataloader if mode == 'validate' else self.datamodule.test_dataloader
 
-        # compute and resert the validation loss
-        valid_loss = self.valid_loss.compute()
-        self.valid_loss.reset()
+        for batch_idx, batch in enumerate(dataloader):
+            self._evaluate_one_batch(mode, batch_idx, batch)
 
-        # compute and reset the metrics
+        # let's just use the same loss for both test and validation,
+        # as we reset them anyway after the evaluation is done
+        loss = self.evaluation_loss.compute()
+        self.evaluation_loss.reset()
+
+        # similarly for metrics
         metrics = self._unwrap_model().valid_metrics.compute()
         self._unwrap_model().valid_metrics.reset()
-
-        self.callback_handler.call('on_validation_epoch_end', self, epoch, valid_loss, metrics)
 
         torch.set_grad_enabled(True)
         self.model.train()
 
-        return valid_loss, metrics
+        self.callback_handler.call(f'on_{mode}_epoch_end', self, epoch, loss, metrics)
+        return loss, metrics
 
-    def validate_one_batch(self, batch_idx, batch):
-        self.callback_handler.call('on_validation_batch_start', self, batch_idx, batch)
+    def _evaluate_one_batch(self, mode, batch_idx, batch):
+        self.callback_handler.call(f'on_{mode}_batch_start', self, batch_idx, batch)
 
         X, y = batch
         X = X.cuda(non_blocking=True)
@@ -171,14 +182,12 @@ class Trainer:
         loss = self._unwrap_model().criterion(logits, y)
         loss = loss.item()
 
-        # update the validation loss
-        self.valid_loss.update(loss)
+        self.evaluation_loss.update(loss)
 
-        # update the metrics if there are any
         preds = torch.argmax(logits, dim=1)
         self._unwrap_model().valid_metrics.update(preds, y)
 
-        self.callback_handler.call('on_validation_batch_end', self, batch_idx, batch, loss)
+        self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss)
 
 class DifferentiallyPrivateTrainer(Trainer):
     def __init__(

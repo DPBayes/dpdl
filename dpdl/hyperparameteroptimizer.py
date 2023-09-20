@@ -152,8 +152,12 @@ class HyperparameterOptimizer:
 
         trainer.fit()
 
-        # optimization objective is the validation loss
-        loss, metrics = trainer.validate()
+        if trial.number == config_manager.configuration.n_trials:
+            # for the final trial we'll evaluate on test set
+            loss, metrics = trainer.test()
+        else:
+            # optimization objective is the validation loss
+            loss, metrics = trainer.validate()
 
         # find the correct metric value to use as optimization objective
         target_metric = config_manager.configuration.optuna_target_metric
