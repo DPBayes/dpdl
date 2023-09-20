@@ -44,6 +44,22 @@ We want to analyze the privacy-utility tradeoff for the hyperparameters and the 
 
 From the results of the analysis, we aim to develop methods for predicting good hyperparameters for the model in response to alterations of the privacy budget.
 
+## General method overview in pseudo-code
+
+1. Initialize 8ayesian Optimization (BO) system with a range of hyperparameters
+   BO_system <- BayesianOptimization(hyperparameter_space)
+2. For i <- 1 to n_trials do
+   2.1 hyperparams <- BO_system.get_hyperparameters()
+   2.2 model <- train_model(training_data, hyperparams)
+   2.3 validation_metric <- evaluate_model(model, validation_data)
+   2.4 BO_system.update(hyperparams, validation_metric)
+3. best_hyperparams <- BO_system.get_best_hyperparameters()
+4. final_model <- model(best_hyperparams)
+5. final_model.train(training_data)
+6. final_model.train(validation_data)
+7. final_metric_value <- evaluate_model(final_model, test_data)
+8. Report the final metric value
+
 ## General method overview
 
 For CIFAR100 we divide the given training set (50000 examples) into a training set (45000 examples) and a validation set (5000 examples). For the Bayesian optimization we use multiclass accuracy of the validation set as optimization objective.
@@ -65,7 +81,7 @@ max_grad_norm:
   type: float
 ```
 
-The accuracy for the last trial is calculated using the test set (10000 examples).
+We then train a final model with the best params first on the training set and then on the validation set. The metrics for the final model are calculated using the test set (10000 examples).
 
 When training using a subset of the data the training and validation data is divided according to the proportions. For examples, for 10% of CIFAR100 that is 4500 training examples and 5000 validation examples.
 
