@@ -39,6 +39,14 @@ class Callback:
         pass
     def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
         pass
+    def on_test_epoch_start(self, trainer, epoch):
+        pass
+    def on_test_epoch_end(self, trainer, epoch, valid_loss, metrics):
+        pass
+    def on_test_batch_start(self, trainer, batch_idx, batch):
+        pass
+    def on_test_batch_end(self, trainer, batch_idx, batch, loss):
+        pass
 
 class PrintStateCallback(Callback):
     def on_train_start(self, trainer):
