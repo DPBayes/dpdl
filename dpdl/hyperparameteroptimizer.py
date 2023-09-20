@@ -101,8 +101,68 @@ class HyperparameterOptimizer:
             for key, value in trial.params.items():
                 log.info(f' - {key}: {value}')
 
+
+        # lastly, we'll train with the training data and the validation data
+        # using the best params to get a model that we can evaluate on the test
+        # for the final accuracy set
+        if torch.distributed.get_rank() == 0:
+            log.info('Training final model with best hyperparameters for evaluation.')
+
+        # first we need to broadcast the best parameters to all ranks,
+        # so we pack them into a list for sending
+        if torch.distributed.get_rank() == 0:
+            # rank 0 is the source
+            best_params = study.best_trial.params
+            broadcast_objects = [best_params]
+        else:
+            # other ranks receive
+            broadcast_objects = [None]
+
+        # now, broadcast the list from rank 0 to all the other ranks
+        torch.distributed.broadcast_object_list(broadcast_objects, src=0)
+
+        # and finally, let's unpack the best params from the list
+        best_params = broadcast_objects[0]
+
+        # update the training hypers to the best values from the optimization
+        for hyper, best_value in best_params.items():
+            setattr(config_manager.hyperparams, hyper, best_value)
+
+        # construct the final model
+        trainer = TrainerFactory.get_trainer(config_manager)
+
+        # no need to validate
+        config_manager.configuration.validation_frequency = 0
+
+        # fit the model on the training set
+        if torch.distributed.get_rank() == 0:
+            log.info('- Training on the training set.')
+
+        # now we can fit the model
+        trainer.fit()
+
+        if torch.distributed.get_rank() == 0:
+            log.info('- Training on the validation set.')
+
+        # lastly, fit the model on the validation set
+        trainer.fit_on_validation()
+
+        # now we can evaluate the final performance of the best model
+        if torch.distributed.get_rank() == 0:
+            log.info('- Evaluatiing final model on the test set.')
+
+        loss, metrics = trainer.test()
+        if torch.distributed.get_rank() == 0:
+            log.info(f'Final loss: {loss:.4f}')
+
+        if metrics and torch.distributed.get_rank() == 0:
+            log.info('Final metrics:')
+            for key, value in metrics.items():
+                log.info(f' - {key}: {value:.4f}.')
+
+        if torch.distributed.get_rank() == 0:
             # save this study to experiment directory
-            save_study(config_manager, study)
+            save_study(config_manager, study, metrics)
 
     @staticmethod
     def objective(
@@ -141,7 +201,7 @@ class HyperparameterOptimizer:
             setattr(config_manager.hyperparams, target_hyper, hyper_value)
 
         # while tuning hypers, do not validate
-        config_manager.configuration.validation_frequency =  0
+        config_manager.configuration.validation_frequency = 0
 
         # train the model
         trainer = TrainerFactory.get_trainer(config_manager)
@@ -152,12 +212,8 @@ class HyperparameterOptimizer:
 
         trainer.fit()
 
-        if trial.number == config_manager.configuration.n_trials:
-            # for the final trial we'll evaluate on test set
-            loss, metrics = trainer.test()
-        else:
-            # optimization objective is the validation loss
-            loss, metrics = trainer.validate()
+        # optimization objective is the validation loss
+        loss, metrics = trainer.validate()
 
         # find the correct metric value to use as optimization objective
         target_metric = config_manager.configuration.optuna_target_metric

@@ -12,7 +12,12 @@ from .configurationmanager import ConfigurationManager
 def save_study(
         config_manager: ConfigurationManager,
         study: optuna.study.Study,
+        final_metrics: dict,
     ):
+
+    # unwrap metric  values from torch tensors
+    final_metrics = _untensorify_dict(final_metrics)
+
     log_dir = config_manager.configuration.log_dir
     experiment_name = config_manager.configuration.experiment_name
 
@@ -34,6 +39,9 @@ def save_study(
     with open(full_log_dir / 'best-value', 'w') as fh:
         fh.write(str(study.best_value) + '\n')
 
+    with open(full_log_dir / 'final-metrics', 'w') as fh:
+        json.dump(final_metrics, fh)
+
     with open(full_log_dir / 'git-hash', 'w') as fh:
         git_hash = _get_git_hash()
         fh.write(str(git_hash) + '\n')
@@ -43,10 +51,17 @@ def save_study(
         d['best_params'] = study.best_params
         d['best_value'] = study.best_value
         d['configuration'] = config_manager.configuration.dict()
+        d['final_metrics'] = final_metrics
         d['git-hash'] = study.best_value
         d['hyperparameters'] = config_manager.hyperparams.dict()
 
         json.dump(d, fh)
+
+def _untensorify_dict(d):
+    res = {}
+    for key, value in d.items():
+        res[key] = value.item()
+    return res
 
 def start_experiment_logging(
         log: logging.Logger,

@@ -77,6 +77,14 @@ class Trainer:
 
         self.callback_handler.call('on_train_end', self)
 
+    def fit_on_validation(self):
+        # when all the training have been done, we want to train also
+        # on the validation set to squeeze the last performance out
+        self.datamodule.train_dataloader = self.datamodule.val_dataloader
+
+        for epoch in range(self.epochs):
+            self.fit_one_epoch(epoch)
+
     def fit_one_epoch(self, epoch):
         self.model.train()
         self.callback_handler.call('on_train_epoch_start', self, epoch)
