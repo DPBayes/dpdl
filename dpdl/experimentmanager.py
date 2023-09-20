@@ -7,7 +7,6 @@ import subprocess
 
 import optuna
 
-from .trainer import Trainer
 from .configurationmanager import ConfigurationManager
 
 def save_study(

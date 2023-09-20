@@ -1,7 +1,6 @@
 # NB: Set datasets cache directory with the environment variable HF_DATASETS_CACHE
 import logging
 import datasets
-import opacus
 import torch
 
 from functools import partial

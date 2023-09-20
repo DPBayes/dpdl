@@ -8,7 +8,7 @@ import yaml
 from functools import partial
 
 from .trainer import TrainerFactory
-from .configurationmanager import ConfigurationManager, Configuration, Hyperparameters
+from .configurationmanager import ConfigurationManager
 from .experimentmanager import save_study
 
 log = logging.getLogger(__name__)

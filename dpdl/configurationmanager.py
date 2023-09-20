@@ -3,7 +3,7 @@ import pathlib
 import torch
 import typer
 
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel
 from typing import Optional, List, Literal
 
 log = logging.getLogger(__name__)
