@@ -49,7 +49,7 @@ From the results of the analysis, we aim to develop methods for predicting good 
 1. Initialize Bayesian Optimization (BO) system with a range of hyperparameters
    BO_system <- BayesianOptimization(hyperparameter_space)
 
-2. For i <- 1 to n_trials do
+2. For i <- 1 to n_BO_steps do
 
    2.1 hyperparams <- BO_system.get_hyperparameters()
 
@@ -65,13 +65,11 @@ From the results of the analysis, we aim to develop methods for predicting good 
 
 4. final_model <- model(best_hyperparams)
 
-5. train_model(final_model, training_data)
+5. train_model(final_model, training_data + validation_data)
 
-6. train_model(final_model, validation_data)
+6. final_metric_value <- evaluate_model(final_model, test_data)
 
-7. final_metric_value <- evaluate_model(final_model, test_data)
-
-8. Report the final metric value
+7. Report the final metric value
 
 ## General method overview
 
