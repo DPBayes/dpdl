@@ -299,9 +299,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         # update the mean loss
         self.train_loss.update(loss)
 
-        # calculate metrics if there are any
+        # update metrics if there are any
         preds = torch.argmax(logits, dim=1)
-        metrics = self._unwrap_model().train_metrics(preds, y)
+        self._unwrap_model().train_metrics(preds, y)
 
         self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss)
 
