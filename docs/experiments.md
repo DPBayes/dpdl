@@ -1,22 +1,28 @@
 # Experiment Design
 
-## Questions for Antti
-
-- Are the steps in batch sizes too dense?
-    - Comments by Antti?
-- Compare with adaptive clipping?
-    - Forgot to discuss. Why not? Antti?
-- How about comparing the results against subsampling ratio instead of batch size?
-- Which epsilons to use? Current plan of epsilon = \{1,2,...,8\} maybe too much?
-
 ## Questions/ideas
 
-- Use test set for calculating final accuracy
+None.
+
+## TODO
+
+- Use FiLM adaptor instead of training head/all
+- Zero the head weights
 - Save the optuna study in experiment directory (if we want to try more trials)
-- Marlon mentioned something about epsilon -grid
+- BO search for learning rate in log space
+- Repeat experiments with different seeds (confidence interval and to avoid getting stuck in bad local minima by chance)
 
 ## Handled questions/ideas
 
+- Use test set for calculating final accuracy
+- Which epsilons to use? Current plan of epsilon = \{1,2,...,8\} maybe too much?
+    - Lots of action in the small epsilons so try epsilon = {0.25, 0.5, 1, 2, 4, 8}
+- How about comparing the results against subsampling ratio instead of batch size?
+    - Let's not do this.
+- Compare with adaptive clipping?
+    - Could be a good idea. Interesting would be to benchmark all the adaptive methods.
+- Are the steps in batch sizes too dense?
+    - Yes. Make the larger end of batch sizes less dense by growing f.ex. exponentially.
 - Fixed vs optimized epochs?
     - Optimize epochs.
 - Other datasets?
