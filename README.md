@@ -86,7 +86,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 ## TODO
 
-- [ ] Use test set for final Optuna trial accuracy
+- [x] Use test set for final Optuna trial accuracy
 - [x] Save experiments to log directory
 - [ ] Image (re)size to CLI params
 - [x] Save Optuna study to experiment directory after all trials
