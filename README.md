@@ -86,15 +86,23 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 ## TODO
 
+- [ ] Use FiLM adaptor instead of training head/all
+- [ ] Possibility to zero the head weights
+- [ ] BO search for learning rate in log space
+- [ ] Possibility to finetune only the head of a model?
+- [ ] Repeat experiments with different seeds (do in CLI isntead?)
+- [ ] Image (re)size to CLI params
+- [x] Final training round with train + validation datasets
+- [x] Save the optuna study in experiment directory (if we want to try more trials)
 - [x] Use test set for final Optuna trial accuracy
 - [x] Save experiments to log directory
-- [ ] Image (re)size to CLI params
 - [x] Save Optuna study to experiment directory after all trials
 - [x] Use DistributedSampler in dataloaders for the non-DP case
 - [x] Refactor CIFAR10DataModule as HuggingfaceDataModule or similar
 - [x] Possibility to only use a subset of dataset
-- [ ] Possibility to finetune only the head of a model?
+
+## Maybe TODO
+
 - [ ] Validation/training loss logging?
 - [ ] More optimizers? Optimizer as a CLI switch?
 - [ ] Learning rate schedulers?
-
