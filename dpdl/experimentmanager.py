@@ -20,7 +20,6 @@ def save_study(
 
     log_dir = config_manager.configuration.log_dir
     experiment_name = config_manager.configuration.experiment_name
-
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
     with open(full_log_dir / 'trials.json', 'w') as fh:
@@ -28,10 +27,6 @@ def save_study(
 
     with open(full_log_dir / 'trials.csv', 'w') as fh:
         fh.write(study.trials_dataframe().to_csv())
-
-    with open(full_log_dir / 'optuna-study.pkl', 'wb') as fh:
-        git_hash = _get_git_hash()
-        pickle.dump(study, fh)
 
     with open(full_log_dir / 'best-params.json', 'w') as fh:
         json.dump(study.best_params, fh)
@@ -56,6 +51,28 @@ def save_study(
         d['hyperparameters'] = config_manager.hyperparams.dict()
 
         json.dump(d, fh)
+
+    _copy_optuna_study_to_experiment_dir(config_manager)
+
+def _copy_optuna_study_to_experiment_dir(config_manager: ConfigurationManager):
+    experiment_name = config_manager.configuration.experiment_name
+
+    # source storage is the main optuna journal file
+    src_journal_fpath = str(config_manager.configuration.optuna_journal) # optuna expects strings
+    src_storage = optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(src_journal_fpath))
+
+    # destination storage is under the experiment directory
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    dst_journal_fpath = str(pathlib.Path(f'{log_dir}/{experiment_name}/optuna.journal'))
+    dst_storage = optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(dst_journal_fpath))
+
+    # now copy this experiment's journal to the experiment directory
+    optuna.copy_study(
+        from_study_name=experiment_name,
+        from_storage=src_storage,
+        to_storage=dst_storage,
+    )
 
 def _untensorify_dict(d):
     res = {}
