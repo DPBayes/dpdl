@@ -138,6 +138,18 @@ class ImageDataModule(DataModule):
             shuffle=False,
         )
 
+        self._train_and_valid_dataloader = torch.utils.data.DataLoader(
+            self.train_and_valid_dataset.with_format('torch'),
+            sampler=train_sampler,
+            batch_size=batch_size,
+            collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
+            num_workers=self.num_workers,
+            pin_memory=True,
+            shuffle=True,
+            generator=generator,
+            worker_init_fn=seed_worker if self.seed else None,
+        )
+
     def _get_dataset_label_field(self):
         if self.dataset_name in self.dataset_label_fields:
             label_field = self.dataset_label_fields[self.dataset_name]
@@ -187,14 +199,14 @@ class ImageDataModule(DataModule):
         # first load the data only in rank 0
         if torch.distributed.get_rank() == 0:
             self._load_and_preprocess_datasets()
-            torch.distributed.barrier()
-        else:
-            torch.distributed.barrier()
 
-            # then after all preprocessing is done, load the data
-            # on other ranks also. Huggingface datasets has cached
-            # everything on disk.
-            self._load_and_preprocess_datasets()
+        # other ranks will wait here
+        torch.distributed.barrier()
+
+        # then after all preprocessing is done, load the data
+        # on other ranks also. Huggingface datasets has cached
+        # everything on disk.
+        self._load_and_preprocess_datasets()
 
     def _load_and_preprocess_datasets(self):
         # load datasets and cache to disk
@@ -222,6 +234,16 @@ class ImageDataModule(DataModule):
         self.val_dataset = split_dataset['test']
 
         self.test_dataset = test_dataset
+
+        # for the last training round, let's train with the training
+        # and also also the validation dataset
+        # NB: Implementing this this way, as I've been thinking about that
+        #     maybe we should split the test dataset into training and validation,
+        #     instead of splitting the train dataset into testing and validation.
+        self.train_and_valid_dataset = datasets.concatenate_datasets([
+            self.train_dataset,
+            self.val_dataset,
+        ])
 
     @staticmethod
     def _resize_transform(image_size, examples):
