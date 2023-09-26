@@ -136,20 +136,14 @@ class HyperparameterOptimizer:
 
         # fit the model on the training set
         if torch.distributed.get_rank() == 0:
-            log.info('- Training on the training set.')
+            log.info('Training on the full training dataset (train + valid).')
 
-        # now we can fit the model
-        trainer.fit()
-
-        if torch.distributed.get_rank() == 0:
-            log.info('- Training on the validation set.')
-
-        # lastly, fit the model on the validation set
-        trainer.fit_on_validation()
+        # now we can fit the model for the last time
+        trainer.fit_on_train_and_valid()
 
         # now we can evaluate the final performance of the best model
         if torch.distributed.get_rank() == 0:
-            log.info('- Evaluatiing final model on the test set.')
+            log.info('Evaluatiing final model on the test set.')
 
         loss, metrics = trainer.test()
         if torch.distributed.get_rank() == 0:
