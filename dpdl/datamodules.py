@@ -115,7 +115,6 @@ class ImageDataModule(DataModule):
             collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
             num_workers=self.num_workers,
             pin_memory=True,
-            shuffle=True,
             generator=generator,
             worker_init_fn=seed_worker if self.seed else None,
         )
@@ -126,7 +125,6 @@ class ImageDataModule(DataModule):
             batch_size=self.physical_batch_size,
             collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
             num_workers=self.num_workers,
-            shuffle=False,
         )
 
         self._test_dataloader = torch.utils.data.DataLoader(
@@ -135,7 +133,6 @@ class ImageDataModule(DataModule):
             batch_size=self.physical_batch_size,
             collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
             num_workers=self.num_workers,
-            shuffle=False,
         )
 
         self._train_and_valid_dataloader = torch.utils.data.DataLoader(
@@ -145,7 +142,6 @@ class ImageDataModule(DataModule):
             collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
             num_workers=self.num_workers,
             pin_memory=True,
-            shuffle=True,
             generator=generator,
             worker_init_fn=seed_worker if self.seed else None,
         )
