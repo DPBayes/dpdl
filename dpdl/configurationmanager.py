@@ -38,7 +38,7 @@ class Hyperparameters(BaseModel):
         return 'Hyperparameters:\n  ' + '\n  '.join(hyper_str) + '\n'
 
 class Configuration(BaseModel):
-    command: Literal['train', 'optimize']
+    command: Literal['train', 'optimize', 'show-layers']
     privacy: bool = True
     model_name: str = 'resnet50'
     dataset_name: str = 'cifar10'
@@ -63,6 +63,7 @@ class Configuration(BaseModel):
     optuna_resume: bool = False
     subset_size: Optional[float]
     num_classes: Optional[int]
+    lora: bool = False
 
     def __str__(self):
         attributes = [
@@ -79,6 +80,7 @@ class Configuration(BaseModel):
             ('Overwrite experiment', self.overwrite_experiment),
             ('Subset size', self.subset_size),
             ('Num classes', self.num_classes),
+            ('Use LoRA', self.lora),
         ]
 
         if self.command == 'optimize':
@@ -131,8 +133,8 @@ class ConfigurationManager:
         return self.command
 
     def _check_command(self):
-        if self.command not in ['train', 'optimize']:
-            raise typer.BadParameter('Command must be "train" or "optimize".')
+        if self.command not in ['train', 'optimize', 'show-layers']:
+            raise typer.BadParameter('Command must be "train", "optimize", or "show-layers".')
 
     def save_configuration(self, directory: pathlib.Path):
         if torch.distributed.get_rank() == 0:
