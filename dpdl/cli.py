@@ -64,7 +64,7 @@ def cli(
                 help='PyTorch Image Models (timm) model name',
                 rich_help_panel='Training options',
             )
-        ] = 'resnet50',
+        ] = 'resnetv2_50x1_bitm_in21k',
         validation_frequency: Annotated[
             float,
             typer.Option(
