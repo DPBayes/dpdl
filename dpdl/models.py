@@ -36,7 +36,9 @@ class ModelFactory:
         peft_model = get_peft_model(model, lora_config)
 
         trainable_params, all_params = peft_model.get_nb_trainable_parameters()
-        log.info(f'LoRA setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
+
+        if torch.distributed.get_rank() == 0:
+            log.info(f'LoRA setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
 
         return peft_model
 
