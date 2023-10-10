@@ -53,6 +53,18 @@ class ModelFactory:
 
             return lora_config
 
+        if configuration.model_name.startswith('resnetv2_50x1_bit'):
+            lora_config = LoraConfig(
+                lora_alpha=16,
+                lora_dropout=0.1,
+                r=8,
+                bias='none',
+                target_modules=r"stem\.conv|.*\.conv\d",
+                modules_to_save=['head.fc'],
+            )
+
+            return lora_config
+
         raise RuntimeError(f'No known LoRA configuration for model: {configuration.model_name}')
 
 class TimmModel(torch.nn.Module):
