@@ -1,6 +1,7 @@
 import logging
 import torch
 import typer
+import sys
 
 from typing import Optional, List
 from typing_extensions import Annotated
@@ -8,6 +9,7 @@ from typing_extensions import Annotated
 from .configurationmanager import ConfigurationManager
 from .hyperparameteroptimizer import HyperparameterOptimizer
 from .trainer import TrainerFactory
+from .models import ModelFactory
 from .utils import seed_everything
 from .experimentmanager import start_experiment_logging
 
@@ -18,7 +20,7 @@ def cli(
         command: Annotated[
             str,
             typer.Argument(
-                help='Command to run ("train" or "optimize")',
+                help='Command to run ("train", "optimize", or "show-layers")',
             )
         ],
         epochs: Annotated[
@@ -84,6 +86,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = True,
+        lora: Annotated[
+            bool,
+            typer.Option(
+                help='Use LoRA (Low Rank Adaptation)',
+                rich_help_panel='Training options',
+            )
+        ] = False,
         dataset_name: Annotated[
             str,
             typer.Option(
@@ -234,6 +243,17 @@ def cli(
     ):
 
     config_manager = ConfigurationManager(ctx.params)
+
+    if config_manager.get_command() == 'show-layers':
+        log.info(config_manager.configuration)
+        log.info('Showing model layers.')
+        model = ModelFactory.get_model(
+            config_manager.configuration,
+            config_manager.hyperparams,
+        )
+        model.show_layers()
+
+        return
 
     # ConfigurationManager knows our experiment directory, so let's start logging also there
     if torch.distributed.get_rank() == 0:
