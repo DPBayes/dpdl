@@ -2,7 +2,9 @@
 
 ## Questions/ideas
 
-None.
+- Use LoRA instead of FiLM?
+- Adam vs SGD with Momemntum?
+- ConvNeXT (and other modern convolutional nets) vs ResNet-50?
 
 ## TODO
 
