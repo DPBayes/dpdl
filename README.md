@@ -92,6 +92,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 - [ ] Possibility to finetune only the head of a model?
 - [ ] Repeat experiments with different seeds (do in CLI isntead?)
 - [ ] Image (re)size to CLI params
+- [ ] Split validation test from test set (if available) and keep training set intact like other do
 - [x] LoRA (Low Rank Adapation) for ViT and ResNet50
 - [x] Final training round with train + validation datasets
 - [x] Save the optuna study in experiment directory (if we want to try more trials)
