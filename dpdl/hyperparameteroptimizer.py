@@ -101,7 +101,14 @@ class HyperparameterOptimizer:
             for key, value in trial.params.items():
                 log.info(f' - {key}: {value}')
 
+        metrics = HyperparameterOptimizer._final_evaluation_round(study.best_trial.params, config_manager)
 
+        if torch.distributed.get_rank() == 0:
+            # save this study to experiment directory
+            save_study(config_manager, study, metrics)
+
+    @staticmethod
+    def _final_evaluation_round(best_params, config_manager):
         # lastly, we'll train with the training data and the validation data
         # using the best params to get a model that we can evaluate on the test
         # for the final accuracy set
@@ -112,7 +119,6 @@ class HyperparameterOptimizer:
         # so we pack them into a list for sending
         if torch.distributed.get_rank() == 0:
             # rank 0 is the source
-            best_params = study.best_trial.params
             broadcast_objects = [best_params]
         else:
             # other ranks receive
@@ -143,7 +149,7 @@ class HyperparameterOptimizer:
 
         # now we can evaluate the final performance of the best model
         if torch.distributed.get_rank() == 0:
-            log.info('Evaluatiing final model on the test set.')
+            log.info('Evaluating final model on the test set.')
 
         loss, metrics = trainer.test()
         if torch.distributed.get_rank() == 0:
@@ -154,9 +160,7 @@ class HyperparameterOptimizer:
             for key, value in metrics.items():
                 log.info(f' - {key}: {value:.4f}.')
 
-        if torch.distributed.get_rank() == 0:
-            # save this study to experiment directory
-            save_study(config_manager, study, metrics)
+        return metrics
 
     @staticmethod
     def objective(
