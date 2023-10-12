@@ -87,12 +87,12 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 ## TODO
 
 - [ ] Use FiLM adaptor instead of training head/all
-- [ ] Possibility to zero the head weights
 - [ ] BO search for learning rate in log space
-- [ ] Possibility to finetune only the head of a model?
 - [ ] Repeat experiments with different seeds (do in CLI isntead?)
 - [ ] Image (re)size to CLI params
 - [ ] Split validation test from test set (if available) and keep training set intact like other do
+- [ ] Possibility to finetune only the head of a model?
+- [x] Possibility to zero the head weights
 - [x] LoRA (Low Rank Adapation) for ViT and ResNet50
 - [x] Final training round with train + validation datasets
 - [x] Save the optuna study in experiment directory (if we want to try more trials)

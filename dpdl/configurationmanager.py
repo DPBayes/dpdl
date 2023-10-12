@@ -63,6 +63,7 @@ class Configuration(BaseModel):
     optuna_resume: bool = False
     subset_size: Optional[float]
     num_classes: Optional[int]
+    zero_head: bool = False
     lora: bool = False
 
     def __str__(self):
@@ -81,6 +82,7 @@ class Configuration(BaseModel):
             ('Subset size', self.subset_size),
             ('Num classes', self.num_classes),
             ('Use LoRA', self.lora),
+            ('Zero head weights', self.zero_head),
         ]
 
         if self.command == 'optimize':

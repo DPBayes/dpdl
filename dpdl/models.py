@@ -27,6 +27,9 @@ class ModelFactory:
             fix_model=configuration.modulevalidator_fix,
         )
 
+        if configuration.zero_head:
+            model.zero_head_weights()
+
         return model
 
     def _get_lora_model(configuration: Configuration, hyperparams: Hyperparameters):
@@ -100,6 +103,12 @@ class TimmModel(torch.nn.Module):
 
         for n, m in self.model.named_modules():
             log.info(f'{n}, {type(m)}')
+
+    def zero_head_weights(self):
+        classifier = self.model.get_classifier()
+        torch.nn.init.zeros_(classifier.weight)
+        if classifier.bias is not None:
+            torch.nn.init.zeros_(classifier.bias)
 
 class ImageClassificationModel(TimmModel):
     def __init__(

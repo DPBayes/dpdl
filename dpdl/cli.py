@@ -86,6 +86,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = True,
+        zero_head: Annotated[
+            bool,
+            typer.Option(
+                help='Set model head weights to zero',
+                rich_help_panel='Training options',
+            )
+        ] = False,
         lora: Annotated[
             bool,
             typer.Option(
