@@ -176,6 +176,7 @@ class HyperparameterOptimizer:
                     target_hyper,
                     optuna_config[target_hyper]['min'],
                     optuna_config[target_hyper]['max'],
+                    log=optuna_config[target_hyper].get('log_space', False),
                 )
 
             if optuna_config[target_hyper]['type'] == 'int':
