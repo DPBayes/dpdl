@@ -93,6 +93,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 - [ ] Image (re)size to CLI params
 - [ ] Split validation test from test set (if available) and keep training set intact like other do
 - [ ] Possibility to finetune only the head of a model?
+- [ ] When overwriting an experiment, also remove it from the main Optuna journal
 - [x] Possibility to zero the head weights
 - [x] LoRA (Low Rank Adapation) for ViT and ResNet50
 - [x] Final training round with train + validation datasets
