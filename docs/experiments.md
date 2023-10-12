@@ -13,13 +13,13 @@
 ## TODO
 
 - Use FiLM adaptor instead of training head/all
-- Zero the head weights
 - Save the optuna study in experiment directory (if we want to try more trials)
 - BO search for learning rate in log space
 - Repeat experiments with different seeds (confidence interval and to avoid getting stuck in bad local minima by chance)
 
 ## Handled questions/ideas
 
+- Zero the head weights
 - Use test set for calculating final accuracy
 - Which epsilons to use? Current plan of epsilon = \{1,2,...,8\} maybe too much?
     - Lots of action in the small epsilons so try epsilon = {0.25, 0.5, 1, 2, 4, 8}
