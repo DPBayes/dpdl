@@ -86,6 +86,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 ## TODO
 
+- [ ] Properly arrange GPU bindings
 - [ ] Use FiLM adaptor instead of training head/all
 - [ ] BO search for learning rate in log space
 - [ ] Repeat experiments with different seeds (do in CLI isntead?)
