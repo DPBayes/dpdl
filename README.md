@@ -89,12 +89,13 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 ## TODO
 
 - [ ] Properly arrange GPU bindings
+- [ ] Batch size finder
 - [ ] Use FiLM adaptor instead of training head/all
-- [ ] Repeat experiments with different seeds (do in CLI isntead?)
-- [ ] Image (re)size to CLI params
+- [ ] Repeat experiments with different seeds (do in CLI instead?)
 - [ ] Split validation test from test set (if available) and keep training set intact like other do
-- [ ] Possibility to finetune only the head of a model?
 - [ ] When overwriting an experiment, also remove it from the main Optuna journal
+- [ ] Image (re)size to CLI params
+- [ ] Possibility to finetune only the head of a model?
 - [x] BO search for learning rate in log space
 - [x] Possibility to zero the head weights
 - [x] LoRA (Low Rank Adapation) for ViT and ResNet50
