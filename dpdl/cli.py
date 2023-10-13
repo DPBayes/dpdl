@@ -247,6 +247,13 @@ def cli(
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
         ] = False,
+        optuna_sampler: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Optuna sampler (a class from optuna.samplers)',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = 'TPESampler',
     ):
 
     config_manager = ConfigurationManager(ctx.params)

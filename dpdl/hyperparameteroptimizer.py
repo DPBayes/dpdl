@@ -65,7 +65,8 @@ class HyperparameterOptimizer:
             journal_fpath = configuration.optuna_journal
 
             # we manually define the sampler to be able to set the seed
-            sampler = optuna.samplers.TPESampler(seed=configuration.seed)
+            sampler_cls = getattr(optuna.samplers, configuration.optuna_sampler)
+            sampler = sampler_cls(seed=configuration.seed)
 
             # we will store the information about the trials on disk in a journal file
             storage = optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(journal_fpath))
