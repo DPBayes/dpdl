@@ -100,6 +100,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = False,
+        film: Annotated[
+            bool,
+            typer.Option(
+                help='Use FiLM (Feature-wise Linear Modulation) adapter',
+                rich_help_panel='Training options',
+            )
+        ] = False,
         dataset_name: Annotated[
             str,
             typer.Option(
