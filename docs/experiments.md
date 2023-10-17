@@ -71,10 +71,23 @@ From the results of the analysis, we aim to develop methods for predicting good 
 We run 20 trials of Bayesian optimization using the following bounds for the other hypers
 
 ```
+batch_size:
+  options:
+  - 256
+  - 512
+  - 1024
+  - 2048
+  - 4096
+  - 8192
+  - 16384
+  - 32768
+  - 45000
+  type: categorical
 learning_rate:
-  max: 1.0e-2
+  max: 1.0e-1
   min: 1.0e-07
   type: float
+  log_space: True
 epochs:
   max: 200
   min: 1
