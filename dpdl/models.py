@@ -4,73 +4,28 @@ import timm
 import torch
 import torchmetrics
 
-from peft import get_peft_model, LoraConfig
-
 from .configurationmanager import Configuration, Hyperparameters
+from .peft import PeftFactory
 
 log = logging.getLogger(__name__)
 
 class ModelFactory:
     @staticmethod
     def get_model(configuration: Configuration, hyperparams: Hyperparameters):
-        if configuration.lora:
-            model = ModelFactory._get_lora_model(configuration, hyperparams)
-        else:
-            model = ModelFactory._get_basic_model(configuration, hyperparams)
-
-        return model
-
-    def _get_basic_model(configuration: Configuration, hyperparams: Hyperparameters):
         model = ImageClassificationModel(
             model_name=configuration.model_name,
             num_classes=configuration.num_classes,
             fix_model=configuration.modulevalidator_fix,
         )
 
+        # adjust the model if Parameter Efficient Fine Tuning (PEFT) is requested
+        model = PeftFactory.get_peft_model(model, configuration)
+
+        # finally, zero the head weights if requested
         if configuration.zero_head:
             model.zero_head_weights()
 
         return model
-
-    def _get_lora_model(configuration: Configuration, hyperparams: Hyperparameters):
-        model = ModelFactory._get_basic_model(configuration, hyperparams)
-
-        lora_config = ModelFactory._get_lora_config(configuration, hyperparams)
-        peft_model = get_peft_model(model, lora_config)
-
-        trainable_params, all_params = peft_model.get_nb_trainable_parameters()
-
-        if torch.distributed.get_rank() == 0:
-            log.info(f'LoRA setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
-
-        return peft_model
-
-    def _get_lora_config(configuration: Configuration, hyperparams: Hyperparameters):
-        if configuration.model_name.startswith('vit_base_patch16_224'):
-            lora_config = LoraConfig(
-                lora_alpha=16,
-                lora_dropout=0.1,
-                r=8,
-                bias='none',
-                target_modules=r".*\.patch_embed.proj|.*\.attn\.qkv|.*\.attn\.proj|.*\.mlp\.fc\d",
-                modules_to_save=['head'],
-            )
-
-            return lora_config
-
-        if configuration.model_name.startswith('resnetv2_50x1_bit'):
-            lora_config = LoraConfig(
-                lora_alpha=16,
-                lora_dropout=0.1,
-                r=8,
-                bias='none',
-                target_modules=r"stem\.conv|.*\.conv\d",
-                modules_to_save=['head.fc'],
-            )
-
-            return lora_config
-
-        raise RuntimeError(f'No known LoRA configuration for model: {configuration.model_name}')
 
 class TimmModel(torch.nn.Module):
     def __init__(
