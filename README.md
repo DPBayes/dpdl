@@ -88,6 +88,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 ## TODO
 
+- [ ] Image transformations from Timm
 - [ ] Properly arrange GPU bindings
 - [ ] Batch size finder
 - [ ] Use FiLM adaptor instead of training head/all
