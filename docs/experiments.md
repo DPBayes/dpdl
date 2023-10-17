@@ -2,21 +2,23 @@
 
 ## Individual experiments
 
-00 - [Batch size variation](00-experiment-batch-size-variation.md)
+[ ] [Batch size variation](00-experiment-batch-size-variation.md)
 
 ## Questions/ideas
 
-- Use LoRA instead of FiLM?
 - Adam vs SGD with Momentum?
-- ConvNeXT (and other modern convolutional nets) vs ResNet-50?
 
 ## TODO
 
-- Use FiLM adaptor instead of training head/all
 - Repeat experiments with different seeds (confidence interval and to avoid getting stuck in bad local minima by chance)
 
 ## Handled questions/ideas
 
+- ConvNeXT (and other modern convolutional nets) vs ResNet-50?
+    - ResNet-50 is fine.
+- Use LoRA instead of FiLM?
+    - We have both.
+- Use FiLM adaptor instead of training head/all
 - BO search for learning rate in log space
 - Zero the head weights
 - Save the optuna study in experiment directory (if we want to try more trials)
@@ -48,6 +50,7 @@
 
 ## Future experiments
 
+- From the DP-RAFT paper Antti had some ideas of experimenting with noise thresholding.
 - How does dataset imbalance affect the hypers?
 
 ## Goal of the experiments
@@ -61,8 +64,8 @@ From the results of the analysis, we aim to develop methods for predicting good 
 - We decouple the learning rate and clipping amount according to De et al. (2022).
 - We train either using FiLM adapters or LoRA.
 - We do _not_ train all parameters or head only.
-- For CIFAR100, we use the training set (50000 examples) as is. We then divide the given testing set (10000 examples) into a training set (5000 examples) and a validation set (5000 examples).
-- When training using a subset of the data, the training and validation data is divided according to the proportions. For examples, for 10% of CIFAR100 that is 5000 training examples and 500 validation/test examples.
+- For CIFAR100, we split the official training dataset (50k examples) into training set (45k examples) and validation set (5k) examples. We use the given testing set (10k examples) as is for evaluating the final model(s).
+- When training using a subset of the data, the training and validation data is divided according to the proportions. For examples, for 10% of CIFAR100 that is 4.5k training examples, 0.5k validation examples, and 1k test examples.
 - For the Bayesian optimization we use multiclass accuracy of the validation set as optimization objective.
 
 We run 20 trials of Bayesian optimization using the following bounds for the other hypers
@@ -82,7 +85,7 @@ max_grad_norm:
   type: float
 ```
 
-We then train a final model with the best params first on the training set and then on the validation set. The metrics for the final model are calculated using the test set (5000 examples).
+We then train a final model with the best params first on the training set and then on the validation set. The metrics for the final model are calculated using the test set (10k examples).
 
 ### General method overview in pseudo-code
 
