@@ -98,6 +98,23 @@ def start_experiment_logging(
     config_manager.save_configuration(experiment_directory)
     config_manager.save_hyperparameters(experiment_directory)
 
+    # if ovewriting, delete the possible existing study from optuna journal
+    if config_manager.configuration.overwrite_experiment:
+        _delete_optuna_study(config_manager)
+
+def _delete_optuna_study(config_manager: ConfigurationManager):
+    # storage is the main optuna journal file
+    journal_fpath = str(config_manager.configuration.optuna_journal) # optuna expects strings
+    storage = optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(journal_fpath))
+
+    experiment_name = config_manager.configuration.experiment_name
+
+    try:
+        optuna.delete_study(study_name=experiment_name, storage=storage)
+    except KeyError:
+        # study did not exist
+        pass
+
 def _get_git_hash():
     process = subprocess.Popen(['git', 'rev-parse', 'HEAD'], shell=False, stdout=subprocess.PIPE)
     git_hash = process.communicate()[0].strip()
