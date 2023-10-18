@@ -93,7 +93,6 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 - [ ] Batch size finder
 - [ ] Use FiLM adaptor instead of training head/all
 - [ ] Repeat experiments with different seeds (do in CLI instead?)
-- [ ] Split validation test from test set (if available) and keep training set intact like other do
 - [ ] Image (re)size to CLI params
 - [ ] Possibility to finetune only the head of a model?
 - [x] When overwriting an experiment, also remove it from the main Optuna journal
