@@ -18,12 +18,12 @@ class ModelFactory:
             fix_model=configuration.modulevalidator_fix,
         )
 
-        # adjust the model if Parameter Efficient Fine Tuning (PEFT) is requested
-        model = PeftFactory.get_peft_model(model, configuration)
-
-        # finally, zero the head weights if requested
+        # zero the head weights if requested
         if configuration.zero_head:
             model.zero_head_weights()
+
+        # adjust the model if Parameter Efficient Fine Tuning (PEFT) is requested
+        model = PeftFactory.get_peft_model(model, configuration)
 
         return model
 
