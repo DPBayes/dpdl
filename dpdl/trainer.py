@@ -214,6 +214,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         clipping_mode: str = 'flat',
         accountant: str = 'prv',
         poisson_sampling: bool = True,
+        normalize_clipping: bool = False,
         secure_mode: bool = False,
         target_epsilon: float = 0,
         target_delta: float = 0,
@@ -230,6 +231,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.physical_batch_size = physical_batch_size
         self.seed = seed
         self.poisson_sampling = poisson_sampling
+        self.normalize_clipping = normalize_clipping
 
         # setup opacus privacy engine
         self.privacy_engine = opacus.PrivacyEngine(accountant=accountant, secure_mode=secure_mode)
@@ -279,6 +281,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 epochs=self.epochs,
                 noise_generator=noise_generator,
                 poisson_sampling=self.poisson_sampling,
+                normalize_clipping=self.normalize_clipping,
             )
         else:
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
@@ -290,6 +293,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 clipping=self.clipping_mode,
                 noise_generator=noise_generator,
                 poisson_sampling=self.poisson_sampling,
+                normalize_clipping=self.normalize_clipping,
             )
 
         # put the DP'ifyed stuff back into Fabric wrappers
@@ -408,6 +412,7 @@ class TrainerFactory:
             target_epsilon=target_epsilon,
             target_delta=target_delta,
             poisson_sampling=configuration.poisson_sampling,
+            normalize_clipping=configuration.normalize_clipping,
             # config
             accountant=configuration.accountant,
             secure_mode=configuration.secure_mode,

@@ -184,6 +184,13 @@ def cli(
                 rich_help_panel='Opacus options',
             )
         ] = True,
+        normalize_clipping: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Normalize clipping (to decouple the learning rate and max_grad_norm)',
+                rich_help_panel='Opacus options',
+            )
+        ] = False,
         modulevalidator_fix: Annotated[
             Optional[bool],
             typer.Option(
