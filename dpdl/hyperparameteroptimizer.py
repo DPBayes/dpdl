@@ -65,8 +65,12 @@ class HyperparameterOptimizer:
             journal_fpath = configuration.optuna_journal
 
             # we manually define the sampler to be able to set the seed
-            sampler_cls = getattr(optuna.samplers, configuration.optuna_sampler)
-            sampler = sampler_cls(seed=configuration.seed)
+            if configuration.optuna_sampler == 'BoTorchSampler':
+                sampler_cls = getattr(optuna.integration, configuration.optuna_sampler)
+                sampler = sampler_cls(seed=configuration.seed)
+            else:
+                sampler_cls = getattr(optuna.samplers, configuration.optuna_sampler)
+                sampler = sampler_cls(seed=configuration.seed)
 
             # we will store the information about the trials on disk in a journal file
             storage = optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(journal_fpath))
@@ -102,7 +106,24 @@ class HyperparameterOptimizer:
             for key, value in trial.params.items():
                 log.info(f' - {key}: {value}')
 
-        metrics = HyperparameterOptimizer._final_evaluation_round(study.best_trial.params, config_manager)
+        # first we need to broadcast the best parameters to all ranks,
+        # so we pack them into a list for sending
+        if torch.distributed.get_rank() == 0:
+            # rank 0 is the source
+            best_params = study.best_trial.params
+            broadcast_objects = [best_params]
+        else:
+            # other ranks receive
+            broadcast_objects = [None]
+
+        # now, broadcast the list from rank 0 to all the other ranks
+        torch.distributed.broadcast_object_list(broadcast_objects, src=0)
+
+        # and finally, let's unpack the best params from the list
+        best_params = broadcast_objects[0]
+
+        # now we can train/evaluate for the final time with best params
+        metrics = HyperparameterOptimizer._final_evaluation_round(best_params, config_manager)
 
         if torch.distributed.get_rank() == 0:
             # save this study to experiment directory
@@ -115,21 +136,6 @@ class HyperparameterOptimizer:
         # for the final accuracy set
         if torch.distributed.get_rank() == 0:
             log.info('Training final model with best hyperparameters for evaluation.')
-
-        # first we need to broadcast the best parameters to all ranks,
-        # so we pack them into a list for sending
-        if torch.distributed.get_rank() == 0:
-            # rank 0 is the source
-            broadcast_objects = [best_params]
-        else:
-            # other ranks receive
-            broadcast_objects = [None]
-
-        # now, broadcast the list from rank 0 to all the other ranks
-        torch.distributed.broadcast_object_list(broadcast_objects, src=0)
-
-        # and finally, let's unpack the best params from the list
-        best_params = broadcast_objects[0]
 
         # update the training hypers to the best values from the optimization
         for hyper, best_value in best_params.items():
