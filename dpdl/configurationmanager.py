@@ -54,6 +54,7 @@ class Configuration(BaseModel):
     modulevalidator_fix: bool = False
     accountant: str = 'prv'
     poisson_sampling: bool = True
+    normalize_clipping: bool = False
     n_trials: int = 20
     target_hypers: List[str] = []
     optuna_target_metric: str = 'loss'
@@ -95,6 +96,7 @@ class Configuration(BaseModel):
                 ('Modulevalidator fix', self.modulevalidator_fix),
                 ('Accountant', self.accountant),
                 ('Poisson sampling', self.poisson_sampling),
+                ('Normalize clipping', self.normalize_clipping),
             ]
             attributes.extend(privacy_attributes)
 
