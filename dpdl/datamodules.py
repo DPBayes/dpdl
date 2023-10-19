@@ -2,6 +2,7 @@
 import logging
 import datasets
 import torch
+import torchvision
 
 from functools import partial
 from typing import Tuple
@@ -22,6 +23,8 @@ class DataModule:
         privacy: bool = True,
     ):
         super().__init__()
+
+        self.test_size = 0.1
         self.batch_size = batch_size
         self.physical_batch_size = physical_batch_size
         self.num_workers = num_workers
@@ -63,14 +66,14 @@ class ImageDataModule(DataModule):
         *,
         dataset_name: str = 'cifar10',
         num_classes: int = 10,
-        image_size: Tuple[int, int] = None,
+        transforms: torchvision.transforms.transforms.Compose = None,
         **kwargs
     ):
         super().__init__(**kwargs)
 
         self.num_classes = 10
-        self.image_size = image_size
         self.dataset_name = dataset_name
+        self.transforms = transforms
 
         self.dataset_label_fields = {
             'cifar100': 'fine_label',
@@ -205,7 +208,7 @@ class ImageDataModule(DataModule):
         self._load_and_preprocess_datasets()
 
     def _load_and_preprocess_datasets(self):
-        # load datasets and cache to disk
+        # load (and cache) datasets
         train_dataset = datasets.load_dataset(self.dataset_name, split='train')
         test_dataset = datasets.load_dataset(self.dataset_name, split='test')
 
@@ -214,15 +217,22 @@ class ImageDataModule(DataModule):
             train_dataset = self._get_stratified_subset(train_dataset)
             test_dataset = self._get_stratified_subset(test_dataset)
 
-        # apply image resizing if image_size is set
-        if self.image_size:
-            transform = partial(self._resize_transform, self.image_size)
-            train_dataset = train_dataset.map(transform, num_proc=self.num_workers, batched=True)
-            test_dataset = test_dataset.map(transform, num_proc=self.num_workers, batched=True)
+        # apply image resizing if we have transforms
+        if self.transforms:
+            train_dataset = train_dataset.map(
+                self._apply_transforms,
+                num_proc=self.num_workers,
+                batched=True,
+            )
+            test_dataset = test_dataset.map(
+                self._apply_transforms,
+                num_proc=self.num_workers,
+                batched=True,
+            )
 
         # split the train dataset into train and validation sets
         split_dataset = train_dataset.train_test_split(
-            test_size=0.1,
+            test_size=self.test_size,
             shuffle=False,
             seed=self.seed,
         )
@@ -233,36 +243,36 @@ class ImageDataModule(DataModule):
 
         # for the last training round, let's train with the training
         # and also also the validation dataset
-        # NB: Implementing this this way, as I've been thinking about that
-        #     maybe we should split the test dataset into training and validation,
-        #     instead of splitting the train dataset into testing and validation.
         self.train_and_valid_dataset = datasets.concatenate_datasets([
             self.train_dataset,
             self.val_dataset,
         ])
 
-    @staticmethod
-    def _resize_transform(image_size, examples):
-        examples['img'] = [image.resize(image_size) for image in examples['img']]
+    def _apply_transforms(self, examples):
+        examples['img'] = [self.transforms(image) for image in examples['img']]
         return examples
 
     @staticmethod
     def _collate_fn(label_field, batch):
         B = len(batch)
-        H, W, C = batch[0]['img'].shape
+        C, H, W = batch[0]['img'].shape
 
         images = torch.empty((B, C, H, W))
         labels = torch.empty(B, dtype=torch.long)
 
         for i in range(B):
-            images[i] = batch[i]['img'].permute(2, 0, 1)
+            images[i] = batch[i]['img']
             labels[i] = batch[i][label_field]
 
         return images, labels
 
 class DataModuleFactory:
     @staticmethod
-    def get_datamodule(configuration: Configuration, hyperparams: Hyperparameters) -> DataModule:
+    def get_datamodule(
+        configuration: Configuration,
+        hyperparams: Hyperparameters,
+        transforms: torchvision.transforms.transforms.Compose,
+    ) -> DataModule:
         datamodule = ImageDataModule(
             dataset_name=configuration.dataset_name,
             num_workers=configuration.num_workers,
@@ -271,7 +281,7 @@ class DataModuleFactory:
             seed=configuration.seed,
             batch_size=hyperparams.batch_size,
             privacy=configuration.privacy,
-            image_size=(224, 224),
+            transforms=transforms,
         )
 
         return datamodule
