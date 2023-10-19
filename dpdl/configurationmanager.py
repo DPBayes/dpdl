@@ -41,6 +41,7 @@ class Configuration(BaseModel):
     command: Literal['train', 'optimize', 'show-layers']
     privacy: bool = True
     model_name: str = 'resnet50'
+    optimizer: str = 'Adam'
     dataset_name: str = 'cifar10'
     physical_batch_size: int = 40
     num_workers: int = 8
@@ -74,6 +75,7 @@ class Configuration(BaseModel):
             ('Command', self.command),
             ('Privacy', self.privacy),
             ('Model name', self.model_name),
+            ('Optimizer', self.optimizer),
             ('Dataset name', self.dataset_name),
             ('Physical batch size', self.physical_batch_size),
             ('Num workers', self.num_workers),
