@@ -88,13 +88,13 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 ## TODO
 
-- [ ] Image transformations from Timm
 - [ ] Properly arrange GPU bindings
 - [ ] Batch size finder
-- [ ] Use FiLM adaptor instead of training head/all
 - [ ] Repeat experiments with different seeds (do in CLI instead?)
-- [ ] Image (re)size to CLI params
 - [ ] Possibility to finetune only the head of a model?
+- [x] Use image transformations included with the timm models
+- [x] Use FiLM adaptor instead of training head/all
+- [x] More optimizers? Optimizer as a CLI switch?
 - [x] When overwriting an experiment, also remove it from the main Optuna journal
 - [x] BO search for learning rate in log space
 - [x] Possibility to zero the head weights
@@ -111,5 +111,4 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 ## Maybe TODO
 
 - [ ] Validation/training loss logging?
-- [ ] More optimizers? Optimizer as a CLI switch?
 - [ ] Learning rate schedulers?
