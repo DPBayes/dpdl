@@ -27,6 +27,19 @@ class ModelFactory:
 
         return model
 
+    @staticmethod
+    def get_model_transforms(configuration: Configuration, hyperparams: Hyperparameters):
+        model = ImageClassificationModel(
+            model_name=configuration.model_name,
+            num_classes=configuration.num_classes,
+            fix_model=configuration.modulevalidator_fix,
+        )
+
+        model_config = timm.data.resolve_data_config({}, model=model.model)
+        transforms = timm.data.transforms_factory.create_transform(**model_config)
+
+        return transforms
+
 class TimmModel(torch.nn.Module):
     def __init__(
             self,

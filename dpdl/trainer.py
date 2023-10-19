@@ -383,9 +383,15 @@ class TrainerFactory:
     @staticmethod
     def _get_differentially_private_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
         # setup data, model, and optimizer
-        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
         model = ModelFactory.get_model(configuration, hyperparams)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
+
+        # before creating the data module, let's first get the image transformations
+        # from the pretrained model
+        transforms = ModelFactory.get_model_transforms(configuration, hyperparams)
+
+        # now we can create the datamodule that uses the transformations
+        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, transforms)
 
         callback_handler = CallbackHandler(
             CallbackFactory.get_callbacks(configuration, hyperparams)
