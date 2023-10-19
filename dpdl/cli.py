@@ -44,6 +44,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = 256,
+        optimizer: Annotated[
+            str,
+            typer.Option(
+                help='Optimizer',
+                rich_help_panel='Training options',
+            )
+        ] = 'Adam',
         physical_batch_size: Annotated[
             Optional[int],
             typer.Option(
