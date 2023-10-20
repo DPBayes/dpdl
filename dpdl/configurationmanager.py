@@ -91,7 +91,7 @@ class Configuration(BaseModel):
             ('Zero head weights', self.zero_head),
         ]
 
-        if self.command == 'optimize':
+        if self.privacy:
             privacy_attributes = [
                 ('Clipping mode', self.clipping_mode),
                 ('Secure mode', self.secure_mode),
