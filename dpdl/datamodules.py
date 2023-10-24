@@ -233,7 +233,7 @@ class ImageDataModule(DataModule):
         # split the train dataset into train and validation sets
         split_dataset = train_dataset.train_test_split(
             test_size=self.test_size,
-            shuffle=False,
+            shuffle=True,
             seed=self.seed,
         )
         self.train_dataset = split_dataset['train']
