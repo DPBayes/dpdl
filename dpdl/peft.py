@@ -109,7 +109,7 @@ class LoRA:
                 modules_to_save=['head'],
             )
 
-        if model_name.startswith('resnetv2_50x1_bitm_in21k'):
+        if model_name.startswith('resnetv2_50x1_bit'):
             return LoraConfig(
                 r=4,
                 bias='none',
