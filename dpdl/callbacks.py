@@ -59,6 +59,7 @@ class PrintStateCallback(Callback):
 
     def on_train_epoch_start(self, trainer, epoch):
         if self._is_global_zero(trainer):
+            log.info(f'----------------------------------')
             log.info(f'Starting training epoch {epoch+1}.')
 
     def on_train_epoch_end(self, trainer, epoch, loss, metrics):
