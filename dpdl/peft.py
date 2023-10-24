@@ -78,13 +78,13 @@ class FiLM:
                 modules_to_save=['head'],
             )
 
-        if model_name.startswith('resnetv2_50x1_bitm_in21k'):
+        if model_name.startswith('resnetv2_50x1_bit'):
             return FilmConfig(
                 target_modules=r'.*\.norm\d$',
                 modules_to_save=['head.fc'],
             )
 
-        raise RuntimeError(f'No known FiLM configuration for model: {configuration.model_name}')
+        raise RuntimeError(f'No known FiLM configuration for model: {model_name}')
 
 class LoRA:
     @staticmethod
