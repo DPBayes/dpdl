@@ -80,17 +80,20 @@ class Trainer:
     def fit_on_train_and_valid(self):
         # safe the current training dataloader as we are going to
         # temporarily change it.
-        original_dataloader = self.datamodule.train_dataloader
+        original_train_dataloader = self.datamodule.train_dataloader
+        original_valid_dataloader = self.datamodule.valid_dataloader
 
         # when all the training have been done, we want to train also
         # on the validation set to squeeze the last performance out
         self.datamodule.train_dataloader = self.datamodule._train_and_valid_dataloader
+        self.datamodule.valid_dataloader = self.datamodule._test_dataloader
 
         # now let's just fit as usual
         self.fit()
 
         # restore the original dataloader
-        self.datamodule.train_dataloader = original_dataloader
+        self.datamodule.train_dataloader = original_train_dataloader
+        self.datamodule.valid_dataloader = original_valid_dataloader
 
     def fit_one_epoch(self, epoch):
         self.model.train()
