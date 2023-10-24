@@ -117,4 +117,4 @@ class LoRA:
                 modules_to_save=['head.fc'],
             )
 
-        raise RuntimeError(f'No known LoRA configuration for model: {configuration.model_name}')
+        raise RuntimeError(f'No known LoRA configuration for model: {model_name}')
