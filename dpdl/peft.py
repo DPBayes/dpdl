@@ -31,7 +31,27 @@ class PeftFactory:
         if configuration.peft == 'film':
             return FiLM.get_peft_model(model, configuration.model_name)
 
+        if configuration.peft == 'head-only':
+            return HeadOnly.get_peft_model(model, configuration.model_name)
+
         raise RuntimeError(f'Unkown PEFT method: {configuration.peft}')
+
+class HeadOnly:
+    @staticmethod
+    def get_peft_model(model: torch.nn.Module, model_name: str):
+        # freeze all layers
+        for param in model.parameters():
+            param.requires_grad = False
+
+        # enable gradients for the head
+        model.get_classifier().requires_grad_(True)
+
+        trainable_params, all_params = get_nb_trainable_parameters(model)
+
+        if torch.distributed.get_rank() == 0:
+            log.info(f'Finetuning head only - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
+
+        return model
 
 @dataclass
 class FilmConfig:
