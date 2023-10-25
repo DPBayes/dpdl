@@ -67,7 +67,7 @@ class Configuration(BaseModel):
     subset_size: Optional[float]
     num_classes: Optional[int]
     zero_head: bool = False
-    peft: Literal['lora', 'film', 'head-only']
+    peft: Optional[Literal['lora', 'film', 'head-only']]
 
     def __str__(self):
         attributes = [
