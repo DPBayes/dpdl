@@ -392,14 +392,16 @@ class TrainerFactory:
 
     @staticmethod
     def _get_differentially_private_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
-        # Target delta calculation: A common heuristic is to use 1/N',
-        # with N' being the size of the dataset rounded up to the nearest power of 10.
+        # Target delta calculation: A common heuristic is to use 1/N', with N'
+        # being the size of the dataset rounded up to the nearest power of 10.
+        # To avoid too large values of delta, let's pick a somewhat sensible
+        # minimum of 1e-5.
         def _round_up_to_nearest_power_of_10(n):
             return 10 ** math.ceil(math.log10(n))
 
         def _calculate_target_delta(N):
             N_prime = _round_up_to_nearest_power_of_10(N)
-            return 1 / N_prime
+            return min(1e-5, 1 / N_prime)
 
         # setup data, model, and optimizer
         model = ModelFactory.get_model(configuration, hyperparams)
