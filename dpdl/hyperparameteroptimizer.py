@@ -147,11 +147,12 @@ class HyperparameterOptimizer:
         # no need to validate
         config_manager.configuration.validation_frequency = 0
 
-        # fit the model on the training set
         if torch.distributed.get_rank() == 0:
-            log.info('Training on the full training dataset (train + valid).')
+            log.info('!! Final training round on the full training dataset (train + valid) and evaluating on test.')
+            log.info('--------------------------------------------------------------------------------------------')
 
-        # now we can fit the model for the last time
+        # fit model using training AND validation data. we also use the test
+        # set for validation here.
         trainer.fit_on_train_and_valid()
 
         # now we can evaluate the final performance of the best model
