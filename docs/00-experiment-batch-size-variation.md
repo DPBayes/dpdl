@@ -7,7 +7,7 @@ We investigate the influence of varying batch sizes on the optimal configuration
 ## Methodology
 
 - Batch size variation: We vary the batch size systematically through a predefined set of values.
-  - Batch sizes are generated according to \{ 2^x | x = 8, 15 \}. We also include full batch.
+  - Batch sizes are generated according to \{ 2^x | x = 8, ..., 15 \}. We also include full batch.
 - Bayesian Optimization: For each batch size, we use Bayesian optimization to find the good values of the other hyperparameters (epochs, learning_rate, max_grad_norm).
 
 ## Model: Vision transformer (vit_base_patch16_224.augreg_in21k)
