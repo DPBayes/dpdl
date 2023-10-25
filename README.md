@@ -12,7 +12,11 @@ Many of the ideas that we are using come from [fastai](https://github.com/fastai
 
 ### Install dependencies
 
-`pip install torch opacus timm datasets typer[all] optuna torchmetrics pydantic peft`
+`pip install torch opacus timm datasets typer[all] optuna torchmetrics pydantic`
+
+We also need development version of Huggingface peft, the current version (0.5.0) has a bug with distributed
+
+`pip install git+https://github.com/huggingface/peft`
 
 ### Command line usage
 
@@ -88,6 +92,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 ## TODO
 
+- [ ] Fix target delta calculation
 - [ ] Properly arrange GPU bindings
 - [ ] Batch size finder
 - [ ] Repeat experiments with different seeds (do in CLI instead?)
