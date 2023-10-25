@@ -79,6 +79,9 @@ class TimmModel(torch.nn.Module):
         if classifier.bias is not None:
             torch.nn.init.zeros_(classifier.bias)
 
+    def get_classifier(self):
+        return self.model.get_classifier()
+
 class ImageClassificationModel(TimmModel):
     def __init__(
             self,

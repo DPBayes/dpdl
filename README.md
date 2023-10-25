@@ -95,7 +95,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 - [ ] Properly arrange GPU bindings
 - [ ] Batch size finder
 - [ ] Repeat experiments with different seeds (do in CLI instead?)
-- [ ] Possibility to finetune only the head of a model?
+- [x] Possibility to finetune only the head of a model?
 - [x] Fix target delta calculation
 - [x] Use image transformations included with the timm models
 - [x] Use FiLM adaptor instead of training head/all
