@@ -169,7 +169,7 @@ class Trainer:
         self.model.eval()
         torch.set_grad_enabled(False)
 
-        dataloader = self.datamodule.val_dataloader if mode == 'validate' else self.datamodule.test_dataloader
+        dataloader = self.datamodule.valid_dataloader if mode == 'validate' else self.datamodule.test_dataloader
 
         for batch_idx, batch in enumerate(dataloader):
             self._evaluate_one_batch(mode, batch_idx, batch)

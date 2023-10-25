@@ -33,7 +33,7 @@ class DataModule:
         self.privacy = privacy
 
         self._train_dataloader = None
-        self._val_dataloader = None
+        self._valid_dataloader = None
         self._test_dataloader = None
 
     @property
@@ -45,12 +45,12 @@ class DataModule:
         self._train_dataloader = dataloader
 
     @property
-    def val_dataloader(self):
-        return self._val_dataloader
+    def valid_dataloader(self):
+        return self._valid_dataloader
 
-    @val_dataloader.setter
-    def val_dataloader(self, dataloader):
-        self._val_dataloader = dataloader
+    @valid_dataloader.setter
+    def valid_dataloader(self, dataloader):
+        self._valid_dataloader = dataloader
 
     @property
     def test_dataloader(self):
@@ -122,7 +122,7 @@ class ImageDataModule(DataModule):
             worker_init_fn=seed_worker if self.seed else None,
         )
 
-        self._val_dataloader = torch.utils.data.DataLoader(
+        self._valid_dataloader = torch.utils.data.DataLoader(
             self.val_dataset.with_format('torch'),
             sampler=val_sampler,
             batch_size=self.physical_batch_size,
