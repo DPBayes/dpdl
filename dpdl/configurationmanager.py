@@ -67,8 +67,7 @@ class Configuration(BaseModel):
     subset_size: Optional[float]
     num_classes: Optional[int]
     zero_head: bool = False
-    lora: bool = False
-    film: bool = False
+    peft: Literal['lora', 'film', 'head-only']
 
     def __str__(self):
         attributes = [
@@ -86,9 +85,8 @@ class Configuration(BaseModel):
             ('Overwrite experiment', self.overwrite_experiment),
             ('Subset size', self.subset_size),
             ('Num classes', self.num_classes),
-            ('Use LoRA', self.lora),
-            ('Use FiLM', self.film),
             ('Zero head weights', self.zero_head),
+            ('PEFT method', self.peft),
         ]
 
         if self.privacy:

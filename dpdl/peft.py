@@ -25,13 +25,13 @@ def get_nb_trainable_parameters(model: torch.nn.Module):
 class PeftFactory:
     @staticmethod
     def get_peft_model(model: torch.nn.Module, configuration: Configuration):
-        if configuration.lora:
-            model = LoRA.get_peft_model(model, configuration.model_name)
+        if configuration.peft == 'lora':
+            return LoRA.get_peft_model(model, configuration.model_name)
 
-        if configuration.film:
-            model = FiLM.get_peft_model(model, configuration.model_name)
+        if configuration.peft == 'film':
+            return FiLM.get_peft_model(model, configuration.model_name)
 
-        return model
+        raise RuntimeError(f'Unkown PEFT method: {configuration.peft}')
 
 @dataclass
 class FilmConfig:

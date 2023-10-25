@@ -100,20 +100,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = False,
-        lora: Annotated[
-            bool,
+        peft: Annotated[
+            str,
             typer.Option(
-                help='Use LoRA (Low Rank Adaptation)',
+                help='Use Parameter Efficient Fine-tuning ("lora", "film", "head-only")',
                 rich_help_panel='Training options',
             )
-        ] = False,
-        film: Annotated[
-            bool,
-            typer.Option(
-                help='Use FiLM (Feature-wise Linear Modulation) adapter',
-                rich_help_panel='Training options',
-            )
-        ] = False,
+        ] = None,
         dataset_name: Annotated[
             str,
             typer.Option(
