@@ -6,6 +6,7 @@
 
 ## Questions/ideas
 
+- Use batch sizes that actually have effect on the sampling ratio. (Check Marlon's CSV.)
 - Adam vs SGD with Momentum?
 
 ## TODO
