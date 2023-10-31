@@ -16,6 +16,7 @@ class ModelFactory:
             model_name=configuration.model_name,
             num_classes=configuration.num_classes,
             fix_model=configuration.modulevalidator_fix,
+            pretrained=configuration.pretrained,
         )
 
         # zero the head weights?
@@ -34,6 +35,7 @@ class ModelFactory:
             model_name=configuration.model_name,
             num_classes=configuration.num_classes,
             fix_model=configuration.modulevalidator_fix,
+            pretrained=configuration.pretrained,
         )
 
         model_config = timm.data.resolve_data_config({}, model=model.model)
