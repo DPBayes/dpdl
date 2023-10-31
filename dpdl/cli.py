@@ -107,6 +107,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = None,
+        pretrained: Annotated[
+            bool,
+            typer.Option(
+                help='Use pretrained model',
+                rich_help_panel='Training options',
+            )
+        ] = True,
         dataset_name: Annotated[
             str,
             typer.Option(
