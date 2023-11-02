@@ -1,161 +1,181 @@
-# NB: Set datasets cache directory with the environment variable HF_DATASETS_CACHE
 import logging
 import datasets
 import torch
 import torchvision
-
 from functools import partial
 from typing import Tuple
-
 from dpdl.utils import seed_everything
 from .configurationmanager import Configuration, Hyperparameters
 
 log = logging.getLogger(__name__)
 
 class DataModule:
-    def __init__(
-        self,
+    def __init__(self,
+        dataset_name: str = 'default-dataset',
         batch_size: int = 64,
         physical_batch_size: int = 64,
         num_workers: int = 4,
         subset_size: float = None,
         seed: int = 0,
         privacy: bool = True,
+        test_size: float = 0.1,
     ):
-        super().__init__()
-
-        self.test_size = 0.1
+        self.dataset_name = dataset_name
         self.batch_size = batch_size
         self.physical_batch_size = physical_batch_size
         self.num_workers = num_workers
         self.seed = seed
         self.subset_size = subset_size
         self.privacy = privacy
+        self.test_size = test_size
 
-        self._train_dataloader = None
-        self._valid_dataloader = None
-        self._test_dataloader = None
-
-    @property
-    def train_dataloader(self):
-        return self._train_dataloader
-
-    @train_dataloader.setter
-    def train_dataloader(self, dataloader):
-        self._train_dataloader = dataloader
-
-    @property
-    def valid_dataloader(self):
-        return self._valid_dataloader
-
-    @valid_dataloader.setter
-    def valid_dataloader(self, dataloader):
-        self._valid_dataloader = dataloader
-
-    @property
-    def test_dataloader(self):
-        return self._test_dataloader
-
-    @test_dataloader.setter
-    def test_dataloader(self, dataloader):
-        self._test_dataloader = dataloader
-
-class ImageDataModule(DataModule):
-    def __init__(
-        self,
-        *,
-        dataset_name: str = 'cifar10',
-        num_classes: int = 10,
-        transforms: torchvision.transforms.transforms.Compose = None,
-        **kwargs
-    ):
-        super().__init__(**kwargs)
-
-        self.num_classes = 10
-        self.dataset_name = dataset_name
-        self.transforms = transforms
-
-        self.dataset_label_fields = {
-            'cifar100': 'fine_label',
+        self._dataloaders = {
+            'train': None,
+            'valid': None,
+            'test': None,
+            'train_and_valid': None,
         }
 
-        self._initialize_datasets()
-        self._initialize_dataloaders()
+        # for storing mapping from dataset to the dictionary
+        # key where the labels are stored.
+        self.dataset_label_fields = {}
+
+        # let's not collate batches by default
+        self.collate_fn = None
+
+    def get_dataloader(self, name):
+        # are dataloaders initialized?
+        if not self._dataloaders['train']:
+            self._initialize_datasets()
+            self._initialize_dataloaders()
+
+        return self._dataloaders.get(name)
+
+    def set_dataloader(self, name, dataloader):
+        self._dataloaders[name] = dataloader
+
+    def _initialize_datasets(self):
+        # first load the data only rank 0
+        if torch.distributed.get_rank() == 0:
+            self._load_and_preprocess_datasets()
+            torch.distributed.barrier()
+        else:
+            # other ranks will wait ehre
+            torch.distributed.barrier()
+
+            # then after all preprocessing is done, load the data
+            # on other ranks also. Huggingface datasets has cached
+            # everything on disk.
+            self._load_and_preprocess_datasets()
 
     def _initialize_dataloaders(self):
-        generator = torch.Generator()
-        if self.seed:
-            generator = generator.manual_seed(self.seed)
+        self._set_generators_and_seed_worker()
+        self._set_samplers_and_batch_size()
+        self._create_dataloaders()
 
-        def seed_worker(worker_id):
-            seed_everything(self.seed)
+    def _load_and_preprocess_datasets(self):
+        self._load_datasets()
+        self._apply_stratified_sampling()
+        self._split_train_dataset()
 
-        # for the DP case, Opacus handles distributed for use.
-        # otherwise, we need to use distributedsampler and divide
-        # the batch size by number of replicas
-        if not self.privacy:
-            train_sampler = torch.utils.data.distributed.DistributedSampler(
-                self.train_dataset.with_format('torch')
-            )
-
-            val_sampler = torch.utils.data.distributed.DistributedSampler(
-                self.val_dataset.with_format('torch')
-            )
-
-            test_sampler = torch.utils.data.distributed.DistributedSampler(
-                self.test_dataset.with_format('torch')
-            )
-
-            batch_size = self.batch_size // torch.distributed.get_world_size()
-        else:
-            train_sampler, val_sampler, test_sampler = None, None, None
-            batch_size = self.batch_size
-
-        self._train_dataloader = torch.utils.data.DataLoader(
-            self.train_dataset.with_format('torch'),
-            sampler=train_sampler,
-            batch_size=batch_size,
-            collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
-            num_workers=self.num_workers,
-            pin_memory=True,
-            generator=generator,
-            worker_init_fn=seed_worker if self.seed else None,
-        )
-
-        self._valid_dataloader = torch.utils.data.DataLoader(
-            self.val_dataset.with_format('torch'),
-            sampler=val_sampler,
-            batch_size=self.physical_batch_size,
-            collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
-            num_workers=self.num_workers,
-        )
-
-        self._test_dataloader = torch.utils.data.DataLoader(
-            self.test_dataset.with_format('torch'),
-            sampler=test_sampler,
-            batch_size=self.physical_batch_size,
-            collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
-            num_workers=self.num_workers,
-        )
-
-        self._train_and_valid_dataloader = torch.utils.data.DataLoader(
-            self.train_and_valid_dataset.with_format('torch'),
-            sampler=train_sampler,
-            batch_size=batch_size,
-            collate_fn=partial(self._collate_fn, self._get_dataset_label_field()),
-            num_workers=self.num_workers,
-            pin_memory=True,
-            generator=generator,
-            worker_init_fn=seed_worker if self.seed else None,
-        )
+    def _load_datasets(self):
+        self.train_dataset = datasets.load_dataset(self.dataset_name, split='train')
+        self.test_dataset = datasets.load_dataset(self.dataset_name, split='test')
 
     def _get_dataset_label_field(self):
-        if self.dataset_name in self.dataset_label_fields:
-            label_field = self.dataset_label_fields[self.dataset_name]
-        else:
-            label_field = 'label'
+        if self.dataset_label_fields is None:
+            # this is name of the dictionary key that contains the dataset labels
+            return 'label'
 
-        return label_field
+        return self.dataset_label_fields.get(self.dataset_name, 'label')
+
+    def _set_generators_and_seed_worker(self):
+        self.generator = torch.Generator()
+        if self.seed:
+            self.generator.manual_seed(self.seed)
+
+        # each dataloader will get a different seed
+        def seed_worker(worker_id):
+            worker_seed = self.seed + worker_id
+            torch.manual_seed(worker_seed)
+
+        self.seed_worker = seed_worker if self.seed else None
+
+    def _apply_stratified_sampling(self):
+        if self.subset_size:
+            self.train_dataset = self._get_stratified_subset(self.train_dataset)
+            self.test_dataset = self._get_stratified_subset(self.test_dataset)
+
+    def _split_train_dataset(self):
+        split_dataset = self.train_dataset.train_test_split(
+            test_size=self.test_size,
+            shuffle=True,
+            seed=self.seed,
+        )
+        self.train_dataset = split_dataset['train']
+        self.val_dataset = split_dataset['test']
+
+        # dataloader for the final training round where we train with
+        # the concatenated training and validation datasets.
+        self.train_and_valid_dataset = datasets.concatenate_datasets([self.train_dataset, self.val_dataset])
+
+    def _create_dataloaders(self):
+        self._dataloaders['train'] = torch.utils.data.DataLoader(
+            self.train_dataset.with_format('torch'),
+            sampler=self.train_sampler,
+            batch_size=self.batch_size,
+            collate_fn=self.collate_fn,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            generator=self.generator,
+            worker_init_fn=self.seed_worker
+        )
+
+        self._dataloaders['valid'] = torch.utils.data.DataLoader(
+            self.val_dataset.with_format('torch'),
+            sampler=self.val_sampler,
+            batch_size=self.physical_batch_size,
+            collate_fn=self.collate_fn,
+            num_workers=self.num_workers
+        )
+
+        self._dataloaders['test'] = torch.utils.data.DataLoader(
+            self.test_dataset.with_format('torch'),
+            sampler=self.test_sampler,
+            batch_size=self.physical_batch_size,
+            collate_fn=self.collate_fn,
+            num_workers=self.num_workers
+        )
+
+        # for the final training round, we will train using the train and
+        # validation datasets and evaluate on test set.
+        self._dataloaders['train_and_valid'] = torch.utils.data.DataLoader(
+            self.train_and_valid_dataset.with_format('torch'),
+            sampler=self.train_sampler,
+            batch_size=self.batch_size,
+            collate_fn=self.collate_fn,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            generator=self.generator,
+            worker_init_fn=self.seed_worker
+        )
+
+    def _set_samplers_and_batch_size(self):
+        # for the DP case, Opacus handles distributed for us. otherwise, we need
+        # to use distributedsampler and divide the batch size by number of replicas
+        if not self.privacy:
+            self.train_sampler = torch.utils.data.distributed.DistributedSampler(
+                self.train_dataset.with_format('torch')
+            )
+            self.val_sampler = torch.utils.data.distributed.DistributedSampler(
+                self.val_dataset.with_format('torch')
+            )
+            self.test_sampler = torch.utils.data.distributed.DistributedSampler(
+                self.test_dataset.with_format('torch')
+            )
+            self.batch_size //= torch.distributed.get_world_size()
+        else:
+            self.train_sampler, self.val_sampler, self.test_sampler = None, None, None
 
     def _get_stratified_subset(self, dataset):
         generator = torch.Generator()
@@ -194,59 +214,32 @@ class ImageDataModule(DataModule):
 
         return dataset.select(sampled_indices)
 
-    def _initialize_datasets(self):
-        # first load the data only in rank 0
-        if torch.distributed.get_rank() == 0:
-            self._load_and_preprocess_datasets()
+class ImageDataModule(DataModule):
+    def __init__(
+        self,
+        num_classes: int = 10,
+        transforms: torchvision.transforms.transforms.Compose = None,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
 
-        # other ranks will wait here
-        torch.distributed.barrier()
-
-        # then after all preprocessing is done, load the data
-        # on other ranks also. Huggingface datasets has cached
-        # everything on disk.
-        self._load_and_preprocess_datasets()
+        self.num_classes = num_classes
+        self.transforms = transforms
+        self.dataset_label_fields = {
+            'cifar100': 'fine_label',
+        }
+        self.collate_fn = partial(self._collate_fn, self._get_dataset_label_field())
 
     def _load_and_preprocess_datasets(self):
-        # load (and cache) datasets
-        train_dataset = datasets.load_dataset(self.dataset_name, split='train')
-        test_dataset = datasets.load_dataset(self.dataset_name, split='test')
+        self._load_datasets()
+        self._apply_stratified_sampling()
+        self._apply_transforms_to_datasets()
+        self._split_train_dataset()
 
-        # apply stratified sampling if subset_size is set
-        if self.subset_size:
-            train_dataset = self._get_stratified_subset(train_dataset)
-            test_dataset = self._get_stratified_subset(test_dataset)
-
-        # apply image resizing if we have transforms
+    def _apply_transforms_to_datasets(self):
         if self.transforms:
-            train_dataset = train_dataset.map(
-                self._apply_transforms,
-                num_proc=self.num_workers,
-                batched=True,
-            )
-            test_dataset = test_dataset.map(
-                self._apply_transforms,
-                num_proc=self.num_workers,
-                batched=True,
-            )
-
-        # split the train dataset into train and validation sets
-        split_dataset = train_dataset.train_test_split(
-            test_size=self.test_size,
-            shuffle=True,
-            seed=self.seed,
-        )
-        self.train_dataset = split_dataset['train']
-        self.val_dataset = split_dataset['test']
-
-        self.test_dataset = test_dataset
-
-        # for the last training round, let's train with the training
-        # and also also the validation dataset
-        self.train_and_valid_dataset = datasets.concatenate_datasets([
-            self.train_dataset,
-            self.val_dataset,
-        ])
+            self.train_dataset = self.train_dataset.map(self._apply_transforms, num_proc=self.num_workers, batched=True)
+            self.test_dataset = self.test_dataset.map(self._apply_transforms, num_proc=self.num_workers, batched=True)
 
     def _apply_transforms(self, examples):
         examples['img'] = [self.transforms(image) for image in examples['img']]

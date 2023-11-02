@@ -81,26 +81,26 @@ class Trainer:
     def fit_on_train_and_valid(self):
         # safe the current training dataloader as we are going to
         # temporarily change it.
-        original_train_dataloader = self.datamodule.train_dataloader
-        original_valid_dataloader = self.datamodule.valid_dataloader
+        original_train_dataloader = self.datamodule.get_dataloader('train')
+        original_valid_dataloader = self.datamodule.get_dataloader('valid')
 
         # when all the training have been done, we want to train also
         # on the validation set to squeeze the last performance out
-        self.datamodule.train_dataloader = self.datamodule._train_and_valid_dataloader
-        self.datamodule.valid_dataloader = self.datamodule._test_dataloader
+        self.datamodule.set_dataloader('train', self.datamodule.get_dataloader('train_and_valid'))
+        self.datamodule.set_dataloader('valid', self.datamodule.get_dataloader('test'))
 
         # now let's just fit as usual
         self.fit()
 
         # restore the original dataloader
-        self.datamodule.train_dataloader = original_train_dataloader
-        self.datamodule.valid_dataloader = original_valid_dataloader
+        self.datamodule.set_dataloader('train', original_train_dataloader)
+        self.datamodule.set_dataloader('valid', original_valid_dataloader)
 
     def fit_one_epoch(self, epoch):
         self.model.train()
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
-        for batch_idx, batch in enumerate(self.datamodule.train_dataloader):
+        for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
             self.fit_one_batch(batch_idx, batch)
 
         # compute the train loss for the epoch and reset
@@ -170,7 +170,8 @@ class Trainer:
         self.model.eval()
         torch.set_grad_enabled(False)
 
-        dataloader = self.datamodule.valid_dataloader if mode == 'validate' else self.datamodule.test_dataloader
+        dataloader_name = 'valid' if mode == 'validate' else 'test'
+        dataloader = self.datamodule.get_dataloader(dataloader_name)
 
         for batch_idx, batch in enumerate(dataloader):
             self._evaluate_one_batch(mode, batch_idx, batch)
@@ -270,7 +271,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
 
         optimizer = self.optimizer
-        train_dataloader = self.datamodule.train_dataloader
+        train_dataloader = self.datamodule.get_dataloader('train')
 
         # setup differential privacy for the model, optimize, and dataloader
         if self._has_target_privacy_params():
@@ -302,7 +303,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # put the DP'ifyed stuff back into Fabric wrappers
         self.model = dp_model
-        self.datamodule.train_dataloader = dp_dataloader
+        self.datamodule.set_dataloader('train', dp_dataloader)
         self.optimizer = dp_optimizer
 
     def get_epsilon(self, delta):
@@ -342,7 +343,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         with BatchMemoryManager(
-            data_loader=self.datamodule.train_dataloader,
+            data_loader=self.datamodule.get_dataloader('train'),
             max_physical_batch_size=self.physical_batch_size,
             optimizer=self.optimizer,
         ) as virtual_dataloader:
@@ -420,7 +421,7 @@ class TrainerFactory:
 
         # are we given a target epsilon?
         if hyperparams.target_epsilon is not None:
-            N = len(datamodule.train_dataloader.dataset)
+            N = len(datamodule.get_dataloader('train').dataset)
             target_delta = _calculate_target_delta(N)
             target_epsilon = hyperparams.target_epsilon
         else:
