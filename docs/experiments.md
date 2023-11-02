@@ -6,7 +6,7 @@
 
 ## Questions/ideas
 
-- Use batch sizes that actually have effect on the sampling ratio. (Check Marlon's CSV.)
+- Before running others stuff, experiment with FiLM vs LoRA.
 - Adam vs SGD with Momentum?
 
 ## TODO
@@ -15,6 +15,8 @@
 
 ## Handled questions/ideas
 
+- Use batch sizes that actually have effect on the sampling ratio. (Check Marlon's CSV.)
+    - We'll use B/N and use steps instead of epochs.
 - ConvNeXT (and other modern convolutional nets) vs ResNet-50?
     - ResNet-50 is fine.
 - Use LoRA instead of FiLM?

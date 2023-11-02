@@ -92,6 +92,8 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 ## TODO
 
+- [ ] Verify that zeroing the head works
+- [ ] Use steps instead of epochs to avoid problems with Opacus sample rate
 - [ ] Properly arrange GPU bindings
 - [ ] Batch size finder
 - [ ] Repeat experiments with different seeds (do in CLI instead?)
