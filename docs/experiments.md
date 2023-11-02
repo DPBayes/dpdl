@@ -53,6 +53,7 @@
 
 - From the DP-RAFT paper Antti had some ideas of experimenting with noise thresholding.
 - How does dataset imbalance affect the hypers?
+- How does the number of trainable parameters affect hypers?
 
 ## Goal of the experiments
 
