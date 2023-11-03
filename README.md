@@ -92,6 +92,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 ## TODO
 
+- [ ] Use/test torch.compile()
 - [ ] Verify that zeroing the head works
 - [ ] Use steps instead of epochs to avoid problems with Opacus sample rate
 - [ ] Properly arrange GPU bindings
