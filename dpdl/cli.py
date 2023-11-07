@@ -29,7 +29,14 @@ def cli(
                 help='Number of epochs to train',
                 rich_help_panel='Training options',
             )
-        ] = 10,
+        ] = None,
+        total_steps: Annotated[
+            int,
+            typer.Option(
+                help='Total number of steps',
+                rich_help_panel='Training options',
+            )
+        ] = None,
         learning_rate: Annotated[
             float,
             typer.Option(

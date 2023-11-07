@@ -9,7 +9,8 @@ from typing import Optional, List, Literal
 log = logging.getLogger(__name__)
 
 class Hyperparameters(BaseModel):
-    epochs: int = 10
+    epochs: int = None
+    total_steps: int = None
     batch_size: int = 64
     learning_rate: float = 1e-3
     noise_multiplier: Optional[float]
@@ -20,6 +21,7 @@ class Hyperparameters(BaseModel):
     def __str__(self):
         hypers = [
             ('Epochs', self.epochs),
+            ('Total steps', self.total_steps),
             ('Batch size', self.batch_size),
             ('Learning rate', self.learning_rate),
         ]
@@ -122,10 +124,14 @@ class Configuration(BaseModel):
 class ConfigurationManager:
     def __init__(self, cli_params: dict):
         self.command = cli_params['command']
+
+        # XXX: Move these checks to pydantic validator?
         self._check_command()
 
         self.configuration = Configuration(**cli_params)
         self.hyperparams = Hyperparameters(**cli_params)
+
+        self._check_epochs_and_steps()
 
         # Opacus calculates noise multiplier is target epsilon is given
         if self.hyperparams.target_epsilon is not None:
@@ -140,6 +146,13 @@ class ConfigurationManager:
 
     def get_command(self):
         return self.command
+
+    def _check_epochs_and_steps(self):
+        if self.hyperparams.epochs and self.hyperparams.total_steps:
+            raise typer.BadParameter('You should provide either "epochs" or "total_steps", not both.')
+
+        if any([self.hyperparams.epochs, self.hyperparams.total_steps]):
+            raise typer.BadParameter('Please, provide either "epochs" or "total_steps".')
 
     def _check_command(self):
         if self.command not in ['train', 'optimize', 'show-layers']:
