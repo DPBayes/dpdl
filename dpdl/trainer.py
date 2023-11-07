@@ -32,11 +32,10 @@ class Trainer:
 
         # generic params
         epochs: int = 10,
+        total_steps: int = None,
         validation_frequency: int = 1,
         seed: int = 0,
         physical_batch_size: int = 40,
-        #checkpoint_dir: str = "./checkpoints",
-        #checkpoint_frequency: int = 1,
         callback_handler: CallbackHandler = None,
     ):
 
@@ -44,6 +43,7 @@ class Trainer:
         self.optimizer = optimizer
         self.datamodule = datamodule
         self.epochs = epochs
+        self.total_steps = total_steps
         self.validation_frequency = validation_frequency
         self.seed = seed
         self.physical_batch_size = physical_batch_size
@@ -59,6 +59,9 @@ class Trainer:
         else:
             self.callback_handler = callback_handler
 
+        if self.epochs and self.total_steps:
+            raise ValueError('You should provide either "epochs" or "total_steps", not both.')
+
         self.setup()
 
     def setup(self):
@@ -70,13 +73,31 @@ class Trainer:
     def fit(self):
         self.callback_handler.call('on_train_start', self)
 
+        if self.total_steps:
+            self._fit_total_steps()
+        else:
+            self._fit_epochs()
+
+        self.callback_handler.call('on_train_end', self)
+
+    def _fit_total_steps(self):
+        step = 0
+        while step < self.total_steps:
+            for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
+                self.fit_one_batch(batch_idx, batch)
+
+            step += 1
+            if step >= total_steps:
+                break
+
+        self.validate()
+
+    def _fit_epochs(self):
         for epoch in range(self.epochs):
             self.fit_one_epoch(epoch)
 
             if self.validation_frequency and epoch % self.validation_frequency == 0:
                 self.validate(epoch)
-
-        self.callback_handler.call('on_train_end', self)
 
     def fit_on_train_and_valid(self):
         # safe the current training dataloader as we are going to
@@ -287,6 +308,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 noise_generator=noise_generator,
                 poisson_sampling=self.poisson_sampling,
                 normalize_clipping=self.normalize_clipping,
+                total_steps=self.total_steps,
             )
         else:
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
@@ -313,6 +335,19 @@ class DifferentiallyPrivateTrainer(Trainer):
         # the model is wrapped inside Opacus, and Opacus distributed.
         # let's unwrap the vanilla model and return it
         return self.model._module.module
+
+    def _fit_total_steps(self):
+        # if 'total_steps' is set then Opacus will do the stepping for us.
+        # more precisely: the total dataloader will have exactly 'total_steps'
+        # batches.
+        steps = 0
+        for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
+            self.fit_one_batch(batch_idx, batch)
+            steps += 1
+
+        assert steps == self.total_steps
+
+        self.validate()
 
     def fit_one_batch(self, batch_idx, batch):
         self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
@@ -386,6 +421,7 @@ class TrainerFactory:
             datamodule=datamodule,
             callback_handler=callback_handler,
             epochs=hyperparams.epochs,
+            total_steps=hyperparams.total_steps,
             seed=configuration.seed,
         )
 
@@ -435,6 +471,7 @@ class TrainerFactory:
             datamodule=datamodule,
             # hypers
             epochs=hyperparams.epochs,
+            total_steps=hyperparams.total_steps,
             noise_multiplier=hyperparams.noise_multiplier,
             max_grad_norm=hyperparams.max_grad_norm,
             target_epsilon=target_epsilon,
