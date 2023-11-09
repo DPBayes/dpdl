@@ -30,10 +30,10 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = None,
-        total_steps: Annotated[
-            int,
+        use_steps: Annotated[
+            bool,
             typer.Option(
-                help='Total number of steps',
+                help='Convert epochs to total steps',
                 rich_help_panel='Training options',
             )
         ] = None,

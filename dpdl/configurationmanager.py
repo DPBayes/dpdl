@@ -10,7 +10,6 @@ log = logging.getLogger(__name__)
 
 class Hyperparameters(BaseModel):
     epochs: int = None
-    total_steps: int = None
     batch_size: int = 64
     learning_rate: float = 1e-3
     noise_multiplier: Optional[float]
@@ -21,7 +20,6 @@ class Hyperparameters(BaseModel):
     def __str__(self):
         hypers = [
             ('Epochs', self.epochs),
-            ('Total steps', self.total_steps),
             ('Batch size', self.batch_size),
             ('Learning rate', self.learning_rate),
         ]
@@ -71,6 +69,7 @@ class Configuration(BaseModel):
     zero_head: bool = False
     peft: Optional[Literal['lora', 'film', 'head-only']]
     pretrained: bool = True
+    use_steps: Optional[bool] = False
 
     def __str__(self):
         attributes = [
@@ -91,6 +90,7 @@ class Configuration(BaseModel):
             ('Zero head weights', self.zero_head),
             ('PEFT method', self.peft),
             ('Use pretrained model', self.pretrained),
+            ('Convert epochs to steps', self.use_steps),
         ]
 
         if self.privacy:
@@ -131,8 +131,6 @@ class ConfigurationManager:
         self.configuration = Configuration(**cli_params)
         self.hyperparams = Hyperparameters(**cli_params)
 
-        self._check_epochs_and_steps()
-
         # Opacus calculates noise multiplier is target epsilon is given
         if self.hyperparams.target_epsilon is not None:
             if torch.distributed.get_rank() == 0:
@@ -146,13 +144,6 @@ class ConfigurationManager:
 
     def get_command(self):
         return self.command
-
-    def _check_epochs_and_steps(self):
-        if self.hyperparams.epochs and self.hyperparams.total_steps:
-            raise typer.BadParameter('You should provide either "epochs" or "total_steps", not both.')
-
-        if any([self.hyperparams.epochs, self.hyperparams.total_steps]):
-            raise typer.BadParameter('Please, provide either "epochs" or "total_steps".')
 
     def _check_command(self):
         if self.command not in ['train', 'optimize', 'show-layers']:

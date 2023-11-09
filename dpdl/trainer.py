@@ -185,6 +185,9 @@ class Trainer:
     def test(self):
         return self._evaluate('test')
 
+    def get_dataloader(self, name):
+        return self.datamodule.get_dataloader(name)
+
     def _evaluate(self, mode, epoch=None):
         self.callback_handler.call(f'on_{mode}_epoch_start', self, epoch)
 
@@ -399,6 +402,14 @@ class DifferentiallyPrivateTrainer(Trainer):
 
 class TrainerFactory:
     @staticmethod
+    def get_trainer(config_manager: ConfigurationManager) -> Trainer:
+        # are we differentially private?
+        if config_manager.configuration.privacy:
+            return TrainerFactory._get_differentially_private_trainer(config_manager.configuration, config_manager.hyperparams)
+
+        return TrainerFactory._get_basic_trainer(config_manager.configuration, config_manager.hyperparams)
+
+    @staticmethod
     def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
         # setup data, model, and optimizer
         model = ModelFactory.get_model(configuration, hyperparams)
@@ -414,14 +425,16 @@ class TrainerFactory:
             CallbackFactory.get_callbacks(configuration, hyperparams)
         )
 
+        epochs, total_steps = TrainerFactory._get_epochs_and_steps(config_manager, datamodule)
+
         # instantiate a trainer without dp
         trainer = Trainer(
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
             callback_handler=callback_handler,
-            epochs=hyperparams.epochs,
-            total_steps=hyperparams.total_steps,
+            epochs=epochs,
+            total_steps=total_steps,
             seed=configuration.seed,
         )
 
@@ -440,6 +453,18 @@ class TrainerFactory:
             N_prime = _round_up_to_nearest_power_of_10(N)
             return min(1e-5, 1 / N_prime)
 
+        def _get_target_privacy_params(hyperparams):
+            # are we given a target epsilon?
+            if hyperparams.target_epsilon is not None:
+                N = len(datamodule.get_dataloader('train').dataset)
+                target_delta = _calculate_target_delta(N)
+                target_epsilon = hyperparams.target_epsilon
+            else:
+                target_delta = None
+                target_epsilon = None
+
+            return target_delta, target_epsilon
+
         # setup data, model, and optimizer
         model = ModelFactory.get_model(configuration, hyperparams)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
@@ -455,14 +480,8 @@ class TrainerFactory:
             CallbackFactory.get_callbacks(configuration, hyperparams)
         )
 
-        # are we given a target epsilon?
-        if hyperparams.target_epsilon is not None:
-            N = len(datamodule.get_dataloader('train').dataset)
-            target_delta = _calculate_target_delta(N)
-            target_epsilon = hyperparams.target_epsilon
-        else:
-            target_delta = None
-            target_epsilon = None
+        target_delta, target_epsilon = _get_target_privacy_params(hyperparams)
+        epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
         # instantiate a differentialy private trained
         trainer = DifferentiallyPrivateTrainer(
@@ -470,8 +489,8 @@ class TrainerFactory:
             optimizer=optimizer,
             datamodule=datamodule,
             # hypers
-            epochs=hyperparams.epochs,
-            total_steps=hyperparams.total_steps,
+            epochs=epochs,
+            total_steps=total_steps,
             noise_multiplier=hyperparams.noise_multiplier,
             max_grad_norm=hyperparams.max_grad_norm,
             target_epsilon=target_epsilon,
@@ -490,10 +509,18 @@ class TrainerFactory:
         return trainer
 
     @staticmethod
-    def get_trainer(config_manager: ConfigurationManager) -> Trainer:
-        # are we differentially private?
-        if config_manager.configuration.privacy:
-            return TrainerFactory._get_differentially_private_trainer(config_manager.configuration, config_manager.hyperparams)
+    def _get_epochs_and_steps(configuration, hyperparams, datamodule):
+        # use steps instead of epochs?
+        if configuration.use_steps:
+            train_dataloader = datamodule.get_dataloader('train')
+            B = train_dataloader.batch_size
+            N = len(train_dataloader.dataset)
+            total_steps = int((N*hyperparams.epochs) / B)
 
-        return TrainerFactory._get_basic_trainer(config_manager.configuration, config_manager.hyperparams)
+            epochs = None
+        else:
+            total_steps = None
+            epochs = hyperparams.epochs
+
+        return epochs, total_steps
 
