@@ -7,7 +7,7 @@ We aim to evaluate the effectiveness of different Parameter Efficient Fine-tunin
 ## Methodology
 
 - **PEFT Methods**: We will compare two PEFT methods—FiLM and LoRA.
-- **Hyperparameter Optimization**: We will use Bayesian optimization to fine-tune all hyperparameters (epochs, learning_rate, batch_size, max_grad_norm) for each PEFT method.
+- **Hyperparameter Optimization**: We will use Bayesian optimization to fine-tune all hyperparameters, specifically batch size, epochs, learning rate, and max gradient norm, for each PEFT method.
 - **Epsilon Values**: We will conduct experiments for each PEFT method with differential privacy guarantees at epsilon values of 1.0 and 8.0.
 
 ## Models
@@ -26,6 +26,7 @@ Both models are pretrained on ImageNet-21k.
 
 For each combination of PEFT method, model, dataset, and epsilon value, we will record:
 
+- Optimized batch size
 - Optimized epochs
 - Optimized learning rate
 - Optimized max gradient norm
@@ -37,46 +38,47 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 #### Vision Transformer (vit_base_patch16_224.augreg_in21k)
 
-| PEFT Method | Epsilon | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
-|-------------|---------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 1.0     |                  |                         |                             |          |
-| LoRA        | 1.0     |                  |                         |                             |          |
-| FiLM        | 8.0     |                  |                         |                             |          |
-| LoRA        | 8.0     |                  |                         |                             |          |
+| PEFT Method | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| FiLM        | 1.0     |                      |                  |                         |                             |          |
+| LoRA        | 1.0     |                      |                  |                         |                             |          |
+| FiLM        | 8.0     |                      |                  |                         |                             |          |
+| LoRA        | 8.0     |                      |                  |                         |                             |          |
 
 #### ResNet-50 (resnetv2_50x1_bit.goog_in21k)
 
-| PEFT Method | Epsilon | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
-|-------------|---------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 1.0     |                  |                         |                             |          |
-| LoRA        | 1.0     |                  |                         |                             |          |
-| FiLM        | 8.0     |                  |                         |                             |          |
-| LoRA        | 8.0     |                  |                         |                             |          |
+| PEFT Method | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| FiLM        | 1.0     |                      |                  |                         |                             |          |
+| LoRA        | 1.0     |                      |                  |                         |                             |          |
+| FiLM        | 8.0     |                      |                  |                         |                             |          |
+| LoRA        | 8.0     |                      |                  |                         |                             |          |
 
 ### CIFAR-100 (10% and 100% subsets)
 
 #### Vision Transformer (vit_base_patch16_224.augreg_in21k)
 
-| PEFT Method | Dataset Subset | Epsilon | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
-|-------------|----------------|---------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 10%            | 1.0     |                  |                         |                             |          |
-| LoRA        | 10%            | 1.0     |                  |                         |                             |          |
-| FiLM        | 100%           | 1.0     |                  |                         |                             |          |
-| LoRA        | 100%           | 1.0     |                  |                         |                             |          |
-| FiLM        | 10%            | 8.0     |                  |                         |                             |          |
-| LoRA        | 10%            | 8.0     |                  |                         |                             |          |
-| FiLM        | 100%           | 8.0     |                  |                         |                             |          |
-| LoRA        | 100%           | 8.0     |                  |                         |                             |          |
+| PEFT Method | Dataset Subset | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|----------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| FiLM        | 10%            | 1.0     |                      |                  |                         |                             |          |
+| LoRA        | 10%            | 1.0     |                      |                  |                         |                             |          |
+| FiLM        | 100%           | 1.0     |                      |                  |                         |                             |          |
+| LoRA        | 100%           | 1.0     |                      |                  |                         |                             |          |
+| FiLM        | 10%            | 8.0     |                      |                  |                         |                             |          |
+| LoRA        | 10%            | 8.0     |                      |                  |                         |                             |          |
+| FiLM        | 100%           | 8.0     |                      |                  |                         |                             |          |
+| LoRA        | 100%           | 8.0     |                      |                  |                         |                             |          |
 
 #### ResNet-50 (resnetv2_50x1_bit.goog_in21k)
 
-| PEFT Method | Dataset Subset | Epsilon | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
-|-------------|----------------|---------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 10%            | 1.0     |                  |                         |                             |          |
-| LoRA        | 10%            | 1.0     |                  |                         |                             |          |
-| FiLM        | 100%           | 1.0     |                  |                         |                             |          |
-| LoRA        | 100%           | 1.0     |                  |                         |                             |          |
-| FiLM        | 10%            | 8.0     |                  |                         |                             |          |
-| LoRA        | 10%            | 8.0     |                  |                         |                             |          |
-| FiLM        | 100%           | 8.0     |                  |                         |                             |          |
-| LoRA        | 100%           | 8.0     |                  |                         |                             |          |
+| PEFT Method | Dataset Subset | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|----------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| FiLM        | 10%            | 1.0     |                      |                  |                         |                             |          |
+| LoRA        | 10%            | 1.0     |                      |                  |                         |                             |          |
+| FiLM        | 100%           | 1.0     |                      |                  |                         |                             |          |
+| LoRA        | 100%           | 1.0     |                      |                  |                         |                             |          |
+| FiLM        | 10%            | 8.0     |                      |                  |                         |                             |          |
+| LoRA        | 10%            | 8.0     |                      |                  |                         |                             |          |
+| FiLM        | 100%           | 8.0     |                      |                  |                         |                             |          |
+| LoRA        | 100%           | 8.0     |                      |                  |                         |                             |          |
+
