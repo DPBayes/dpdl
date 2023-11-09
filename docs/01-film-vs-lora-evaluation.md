@@ -7,8 +7,8 @@ We aim to evaluate the effectiveness of different Parameter Efficient Fine-tunin
 ## Methodology
 
 - **PEFT Methods**: We will compare two PEFT methods—FiLM and LoRA.
-- **Hyperparameter Optimization**: We will use Bayesian optimization to fine-tune all hyperparameters, specifically batch size, epochs, learning rate, and max gradient norm, for each PEFT method.
-- **Epsilon Values**: We will conduct experiments for each PEFT method with differential privacy guarantees at epsilon values of 1.0 and 8.0.
+- **Hyperparameter Optimization**: We will use Bayesian optimization to fine-tune all hyperparameters, including batch size, epochs, learning rate, and max gradient norm, for each PEFT method.
+- **Epsilon Values**: We will conduct experiments for each PEFT method with differential privacy guarantees at epsilon values of 0.25, 1, and 4.
 
 ## Models
 
@@ -40,19 +40,23 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 | PEFT Method | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 1.0     |                      |                  |                         |                             |          |
-| LoRA        | 1.0     |                      |                  |                         |                             |          |
-| FiLM        | 8.0     |                      |                  |                         |                             |          |
-| LoRA        | 8.0     |                      |                  |                         |                             |          |
+| FiLM        | 0.25    |                      |                  |                         |                             |          |
+| LoRA        | 0.25    |                      |                  |                         |                             |          |
+| FiLM        | 1       |                      |                  |                         |                             |          |
+| LoRA        | 1       |                      |                  |                         |                             |          |
+| FiLM        | 4       |                      |                  |                         |                             |          |
+| LoRA        | 4       |                      |                  |                         |                             |          |
 
 #### ResNet-50 (resnetv2_50x1_bit.goog_in21k)
 
 | PEFT Method | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 1.0     |                      |                  |                         |                             |          |
-| LoRA        | 1.0     |                      |                  |                         |                             |          |
-| FiLM        | 8.0     |                      |                  |                         |                             |          |
-| LoRA        | 8.0     |                      |                  |                         |                             |          |
+| FiLM        | 0.25    |                      |                  |                         |                             |          |
+| LoRA        | 0.25    |                      |                  |                         |                             |          |
+| FiLM        | 1       |                      |                  |                         |                             |          |
+| LoRA        | 1       |                      |                  |                         |                             |          |
+| FiLM        | 4       |                      |                  |                         |                             |          |
+| LoRA        | 4       |                      |                  |                         |                             |          |
 
 ### CIFAR-100 (10% and 100% subsets)
 
@@ -60,25 +64,32 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 | PEFT Method | Dataset Subset | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |-------------|----------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 10%            | 1.0     |                      |                  |                         |                             |          |
-| LoRA        | 10%            | 1.0     |                      |                  |                         |                             |          |
-| FiLM        | 100%           | 1.0     |                      |                  |                         |                             |          |
-| LoRA        | 100%           | 1.0     |                      |                  |                         |                             |          |
-| FiLM        | 10%            | 8.0     |                      |                  |                         |                             |          |
-| LoRA        | 10%            | 8.0     |                      |                  |                         |                             |          |
-| FiLM        | 100%           | 8.0     |                      |                  |                         |                             |          |
-| LoRA        | 100%           | 8.0     |                      |                  |                         |                             |          |
+| FiLM        | 10%            | 0.25    |                      |                  |                         |                             |          |
+| LoRA        | 10%            | 0.25    |                      |                  |                         |                             |          |
+| FiLM        | 10%            | 1       |                      |                  |                         |                             |          |
+| LoRA        | 10%            | 1       |                      |                  |                         |                             |          |
+| FiLM        | 10%            | 4       |                      |                  |                         |                             |          |
+| LoRA        | 10%            | 4       |                      |                  |                         |                             |          |
+| FiLM        | 100%           | 0.25    |                      |                  |                         |                             |          |
+| LoRA        | 100%           | 0.25    |                      |                  |                         |                             |          |
+| FiLM        | 100%           | 1       |                      |                  |                         |                             |          |
+| LoRA        | 100%           | 1       |                      |                  |                         |                             |          |
+| FiLM        | 100%           | 4       |                      |                  |                         |                             |          |
+| LoRA        | 100%           | 4       |                      |                  |                         |                             |          |
 
 #### ResNet-50 (resnetv2_50x1_bit.goog_in21k)
 
 | PEFT Method | Dataset Subset | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |-------------|----------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 10%            | 1.0     |                      |                  |                         |                             |          |
-| LoRA        | 10%            | 1.0     |                      |                  |                         |                             |          |
-| FiLM        | 100%           | 1.0     |                      |                  |                         |                             |          |
-| LoRA        | 100%           | 1.0     |                      |                  |                         |                             |          |
-| FiLM        | 10%            | 8.0     |                      |                  |                         |                             |          |
-| LoRA        | 10%            | 8.0     |                      |                  |                         |                             |          |
-| FiLM        | 100%           | 8.0     |                      |                  |                         |                             |          |
-| LoRA        | 100%           | 8.0     |                      |                  |                         |                             |          |
-
+| FiLM        | 10%            | 0.25    |                      |                  |                         |                             |          |
+| LoRA        | 10%            | 0.25    |                      |                  |                         |                             |          |
+| FiLM        | 10%            | 1       |                      |                  |                         |                             |          |
+| LoRA        | 10%            | 1       |                      |                  |                         |                             |          |
+| FiLM        | 10%            | 4       |                      |                  |                         |                             |          |
+| LoRA        | 10%            | 4       |                      |                  |                         |                             |          |
+| FiLM        | 100%           | 0.25    |                      |                  |                         |                             |          |
+| LoRA        | 100%           | 0.25    |                      |                  |                         |                             |          |
+| FiLM        | 100%           | 1       |                      |                  |                         |                             |          |
+| LoRA        | 100%           | 1       |                      |                  |                         |                             |          |
+| FiLM        | 100%           | 4       |                      |                  |                         |                             |          |
+| LoRA        | 100%           | 4       |                      |                  |                         |                             |          |
