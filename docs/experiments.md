@@ -68,6 +68,7 @@ From the results of the analysis, we aim to develop methods for predicting good 
 ## General method overview
 
 - We decouple the learning rate and clipping amount according to De et al. (2022).
+- We convert `epochs` to total number of steps. Most importantly, this enables us to use smooth sample rates. When using epochs, Opacus forces the sample rate to be of form `int(1/i)` where `i` is the number of batches in an epoch.
 - We train either using FiLM adapters or LoRA.
 - We do _not_ train all parameters or head only.
 - For CIFAR100, we split the official training dataset (50k examples) into training set (45k examples) and validation set (5k) examples. We use the given testing set (10k examples) as is for evaluating the final model(s).
