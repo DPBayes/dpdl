@@ -48,12 +48,6 @@ class Trainer:
         self.seed = seed
         self.physical_batch_size = physical_batch_size
 
-        # use torchmetrics mean aggregation to track the losses
-        self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()
-
-        # for validation and test sets
-        self.evaluation_loss = torchmetrics.aggregation.MeanMetric().cuda()
-
         if not callback_handler:
             self.callback_handler = CallbackHandler()
         else:
@@ -124,14 +118,10 @@ class Trainer:
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
             self.fit_one_batch(batch_idx, batch)
 
-        # compute the train loss for the epoch and reset
-        epoch_loss = self.train_loss.compute()
-        self.train_loss.reset()
-
         # compute the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
 
-        self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss, metrics)
+        self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
     def _unwrap_model(self):
         # the model is wrapped inside torch distributed,
@@ -175,8 +165,6 @@ class Trainer:
         # after accumulating the gradients for all the sub batches we can finally update weights.
         self.optimizer.step()
 
-        self.train_loss.update(batch_loss)
-
         self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss)
 
     def validate(self, epoch=None):
@@ -191,19 +179,19 @@ class Trainer:
     def _evaluate(self, mode, epoch=None):
         self.callback_handler.call(f'on_{mode}_epoch_start', self, epoch)
 
+        # record the mean loss, as we need to return it when
+        # performing hyperparameter optimization
+        metric = torchmetrics.aggregation.MeanMetric().cuda()
+
         self.model.eval()
         torch.set_grad_enabled(False)
 
-        dataloader_name = 'valid' if mode == 'validate' else 'test'
+        dataloader_name = 'valid' if mode == 'validation' else 'test'
         dataloader = self.datamodule.get_dataloader(dataloader_name)
 
         for batch_idx, batch in enumerate(dataloader):
-            self._evaluate_one_batch(mode, batch_idx, batch)
-
-        # let's just use the same loss for both test and validation,
-        # as we reset them anyway after the evaluation is done
-        loss = self.evaluation_loss.compute()
-        self.evaluation_loss.reset()
+            loss = self._evaluate_one_batch(mode, batch_idx, batch)
+            metric.update(loss)
 
         # similarly for metrics
         metrics = self._unwrap_model().valid_metrics.compute()
@@ -212,8 +200,13 @@ class Trainer:
         torch.set_grad_enabled(True)
         self.model.train()
 
-        self.callback_handler.call(f'on_{mode}_epoch_end', self, epoch, loss, metrics)
-        return loss, metrics
+        self.callback_handler.call(f'on_{mode}_epoch_end', self, epoch, metrics)
+
+        # compute the total loss
+        evaluation_loss = metric.compute()
+        metric.reset()
+
+        return evaluation_loss, metrics
 
     def _evaluate_one_batch(self, mode, batch_idx, batch):
         self.callback_handler.call(f'on_{mode}_batch_start', self, batch_idx, batch)
@@ -226,12 +219,12 @@ class Trainer:
         loss = self._unwrap_model().criterion(logits, y)
         loss = loss.item()
 
-        self.evaluation_loss.update(loss)
-
         preds = torch.argmax(logits, dim=1)
         self._unwrap_model().valid_metrics.update(preds, y)
 
         self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss)
+
+        return loss
 
 class DifferentiallyPrivateTrainer(Trainer):
     def __init__(
@@ -326,7 +319,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 normalize_clipping=self.normalize_clipping,
             )
 
-        # put the DP'ifyed stuff back into Fabric wrappers
+        # now we can start using the DP'ifyed stuff
         self.model = dp_model
         self.datamodule.set_dataloader('train', dp_dataloader)
         self.optimizer = dp_optimizer
@@ -367,9 +360,6 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         loss = loss.item()
 
-        # update the mean loss
-        self.train_loss.update(loss)
-
         # update metrics if there are any
         preds = torch.argmax(logits, dim=1)
         self._unwrap_model().train_metrics(preds, y)
@@ -390,15 +380,11 @@ class DifferentiallyPrivateTrainer(Trainer):
             for batch_idx, batch in enumerate(virtual_dataloader):
                 self.fit_one_batch(batch_idx, batch)
 
-        # compute and reset the training loss
-        epoch_loss = self.train_loss.compute()
-        self.train_loss.reset()
-
         # compute and reset the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
         self._unwrap_model().train_metrics.reset()
 
-        self.callback_handler.call('on_train_epoch_end', self, epoch, epoch_loss, metrics)
+        self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
 class TrainerFactory:
     @staticmethod
