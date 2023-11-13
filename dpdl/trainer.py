@@ -414,7 +414,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.optimizer.zero_grad()
 
         X, y = batch
-        if torch.distributed.get_rank() == 0:
 
         X = X.cuda(non_blocking=True)
         y = y.cuda(non_blocking=True)
