@@ -76,15 +76,46 @@ class Trainer:
 
     def _fit_total_steps(self):
         step = 0
+        virtual_epoch = 0
+
+        steps_per_epoch = self._calculate_steps_per_epoch()
+
         while step < self.total_steps:
+            if step % steps_per_epoch == 0:
+                self._handle_virtual_epoch_start(virtual_epoch)
+
             for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
+                if step >= self.total_steps:
+                    break
+
+                if step % steps_per_epoch == 0:
+                    self._handle_virtual_epoch_start(virtual_epoch)
+
                 self.fit_one_batch(batch_idx, batch)
+                step += 1
 
-            step += 1
-            if step >= total_steps:
-                break
+                if step % steps_per_epoch == 0:
+                    self._handle_virtual_epoch_end(virtual_epoch)
+                    virtual_epoch += 1
 
-        self.validate()
+                    if self.validation_frequency and virtual_epoch % self.validation_frequency == 0:
+                        self.validate(virtual_epoch)
+
+    def _handle_virtual_epoch_start(self, epoch):
+        self.callback_handler.call('on_train_epoch_start', self, epoch)
+
+    def _handle_virtual_epoch_end(self, epoch):
+        # compute the epoch metrics
+        metrics = self._unwrap_model().train_metrics.compute()
+        self._unwrap_model().train_metrics.reset()
+
+        self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
+
+    def _calculate_steps_per_epoch(self):
+        data_size = len(self.datamodule.get_dataloader('train').dataset)
+        batch_size = self.datamodule.batch_size
+        log.info(f'_calculate_steps_per_epoch() WE HAVE DATA SIZE {data_size} and BATCH SIZE {batch_size}')
+        return data_size // batch_size
 
     def _fit_epochs(self):
         for epoch in range(self.epochs):
@@ -120,6 +151,7 @@ class Trainer:
 
         # compute the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
+        self._unwrap_model().train_metrics.reset()
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
@@ -178,12 +210,12 @@ class Trainer:
 
     def _evaluate(self, mode, epoch=None):
         self.callback_handler.call(f'on_{mode}_epoch_start', self, epoch)
-
-        # record the mean loss, as we need to return it when
-        # performing hyperparameter optimization
-        metric = torchmetrics.aggregation.MeanMetric().cuda()
-
         self.model.eval()
+
+        # record the loss separately, as we need to return it when
+        # performing hyperparameter optimization
+        evaluation_loss = 0
+
         torch.set_grad_enabled(False)
 
         dataloader_name = 'valid' if mode == 'validation' else 'test'
@@ -191,20 +223,17 @@ class Trainer:
 
         for batch_idx, batch in enumerate(dataloader):
             loss = self._evaluate_one_batch(mode, batch_idx, batch)
-            metric.update(loss)
+            evaluation_loss += loss
 
-        # similarly for metrics
+        evaluation_loss /= len(dataloader)
+
         metrics = self._unwrap_model().valid_metrics.compute()
         self._unwrap_model().valid_metrics.reset()
 
         torch.set_grad_enabled(True)
+
         self.model.train()
-
         self.callback_handler.call(f'on_{mode}_epoch_end', self, epoch, metrics)
-
-        # compute the total loss
-        evaluation_loss = metric.compute()
-        metric.reset()
 
         return evaluation_loss, metrics
 
@@ -333,23 +362,60 @@ class DifferentiallyPrivateTrainer(Trainer):
         return self.model._module.module
 
     def _fit_total_steps(self):
-        # if 'total_steps' is set then Opacus will do the stepping for us.
+        step = 0
+        virtual_epoch = 0
+        steps_per_epoch = self._calculate_steps_per_epoch()
+
+        # calculate the number of physical batches per logical batch
+        physical_batches_per_logical_batch = self.datamodule.batch_size // self.physical_batch_size
+
+        # keep track of the physical batches, in order to count
+        # the number of logical batches processed.
+        physical_batch_count = 0
+
+        # if 'total_steps' is set then Opacus will do the stepping for us, or
         # more precisely: the total dataloader will have exactly 'total_steps'
-        # batches.
-        steps = 0
-        for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
-            self.fit_one_batch(batch_idx, batch)
-            steps += 1
+        # batches. However, the logic is bit more complicated, since the logical
+        # are split into physical ones if necessary.
+        with BatchMemoryManager(
+            data_loader=self.datamodule.get_dataloader('train'),
+            max_physical_batch_size=self.physical_batch_size,
+            optimizer=self.optimizer,
+        ) as virtual_dataloader:
+            for batch_idx, batch in enumerate(virtual_dataloader):
+                self.fit_one_batch(batch_idx, batch)
+                physical_batch_count += 1
 
-        assert steps == self.total_steps
+                # check if a logical batch is completed
+                if physical_batch_count == physical_batches_per_logical_batch:
+                    step += 1
+                    physical_batch_count = 0  # Reset for the next logical batch
 
-        self.validate()
+                    # handle virtual epoch start and end
+                    if step % steps_per_epoch == 0:
+                        self._handle_virtual_epoch_start(virtual_epoch)
+
+                    if step % steps_per_epoch == 0:
+                        self._handle_virtual_epoch_end(virtual_epoch)
+                        virtual_epoch += 1
+
+                        # Validation check
+                        if self.validation_frequency and virtual_epoch % self.validation_frequency == 0:
+                            self.validate(virtual_epoch)
+
+                    # Break if total steps reached
+                    if step >= self.total_steps:
+                        break
+
+        assert step == self.total_steps
 
     def fit_one_batch(self, batch_idx, batch):
         self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
         self.optimizer.zero_grad()
 
         X, y = batch
+        if torch.distributed.get_rank() == 0:
+
         X = X.cuda(non_blocking=True)
         y = y.cuda(non_blocking=True)
 
