@@ -1,4 +1,5 @@
 import logging
+import math
 import torch
 import torchmetrics
 
@@ -49,16 +50,18 @@ class Callback:
     def on_test_batch_end(self, trainer, batch_idx, batch, loss):
         pass
 
-    def _log_metrics(self, metrics):
+    def _log_metrics(self, metrics, annotation='Metrics'):
         if not metrics:
             return
 
-        log.info('Metrics:')
+        log.info(annotation + ':')
         for key, value in metrics.items():
             log.info(f' - {key}: {value:.4f}.')
 
-class RecordEpochLossCallback(Callback):
-    def __init__(self):
+class RecordEpochStatsCallback(Callback):
+    def __init__(self, use_steps=False):
+        self.use_steps = use_steps
+
         # use torchmetrics mean aggregation to track the losses
         self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()
 
@@ -67,7 +70,10 @@ class RecordEpochLossCallback(Callback):
 
     def on_train_start(self, trainer):
         if self._is_global_zero(trainer):
-            log.info(f'!!! Starting training for {trainer.epochs} epochs.')
+            if self.use_steps:
+                log.info(f'!!! Starting training for {trainer.total_steps} steps.')
+            else:
+                log.info(f'!!! Starting training for {trainer.epochs} epochs.')
 
     def on_train_end(self, trainer):
         if self._is_global_zero(trainer):
@@ -76,27 +82,31 @@ class RecordEpochLossCallback(Callback):
     def on_train_epoch_start(self, trainer, epoch):
         if self._is_global_zero(trainer):
             log.info(f'----------------------------------')
-            log.info(f'Starting training epoch {epoch+1}.')
+            if not self.use_steps:
+                log.info(f'Starting training epoch {epoch+1}.')
+            else:
+                log.info(f'Starting training approximate epoch {epoch+1}.')
 
     def on_train_epoch_end(self, trainer, epoch, metrics):
         loss = self.train_loss.compute()
         self.train_loss.reset()
 
         if self._is_global_zero(trainer):
-            log.info(f'Epoch {epoch+1} finished. Loss: {loss:.4f}.')
-            self._log_metrics(metrics)
+            if not self.use_steps:
+                log.info(f'Epoch {epoch+1} finished. Loss: {loss:.4f}.')
+            else:
+                log.info(f'Approximate epoch {epoch+1} finished. Loss: {loss:.4f}.')
+
+            self._log_metrics(metrics, 'Train metrics')
 
     def on_validation_epoch_end(self, trainer, epoch, metrics):
         loss = self.evaluation_loss.compute()
         self.evaluation_loss.reset()
 
         if self._is_global_zero(trainer):
-            if epoch:
-                log.info(f'Validation epoch {epoch+1} finished. Loss: {loss:.4f}.')
-            else:
-                log.info(f'Validation finished. Loss: {loss:.4f}.')
+            log.info(f'Validation finished. Loss: {loss:.4f}.')
 
-            self._log_metrics(metrics)
+            self._log_metrics(metrics, 'Validation metrics')
 
     def on_test_epoch_end(self, trainer, epoch, metrics):
         loss = self.evaluation_loss.compute()
@@ -104,7 +114,7 @@ class RecordEpochLossCallback(Callback):
 
         if self._is_global_zero(trainer):
             log.info(f'Test finished. Loss: {loss:.4f}.')
-            self._log_metrics(metrics)
+            self._log_metrics(metrics, 'Test metrics')
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss):
         self.train_loss.update(loss)
@@ -119,7 +129,7 @@ class CallbackFactory:
     @staticmethod
     def get_callbacks(configuration: Configuration, hyperparams: Hyperparameters) -> List[Callback]:
         callbacks = [
-            RecordEpochLossCallback(),
+            RecordEpochStatsCallback(use_steps=configuration.use_steps),
         ]
 
         return callbacks
