@@ -15,47 +15,10 @@
 
 - Repeat experiments with different seeds (confidence interval and to avoid getting stuck in bad local minima by chance)
 
-## Handled questions/ideas
-
-- Use batch sizes that actually have effect on the sampling ratio. (Check Marlon's CSV.)
-    - We'll use B/N and use steps instead of epochs.
-- ConvNeXT (and other modern convolutional nets) vs ResNet-50?
-    - ResNet-50 is fine.
-- Use LoRA instead of FiLM?
-    - We have both.
-- Use FiLM adaptor instead of training head/all
-- BO search for learning rate in log space
-- Zero the head weights
-- Save the optuna study in experiment directory (if we want to try more trials)
-- Use test set for calculating final accuracy
-- Which epsilons to use? Current plan of epsilon = \{1,2,...,8\} maybe too much?
-    - Lots of action in the small epsilons so try epsilon = {0.25, 0.5, 1, 2, 4, 8}
-- How about comparing the results against subsampling ratio instead of batch size?
-    - Let's not do this.
-- Compare with adaptive clipping?
-    - Could be a good idea. Interesting would be to benchmark all the adaptive methods.
-- Are the steps in batch sizes too dense?
-    - Yes. Make the larger end of batch sizes less dense by growing f.ex. exponentially.
-- Fixed vs optimized epochs?
-    - Optimize epochs.
-- Other datasets?
-    - Ditch CIFAR10 (too easy)
-    - Use full CIFAR100 and 10% subset CIFAR100
-    - Later, let's use also SVHN
-- Other models?
-    - ResNet-50 and ViT are good because other papers use them
-- Other metrics to track/optimize?
-    - Let's just use accuracy
-- Search hypers in log space from some params?
-    - Yes, for example learning rate.
-- Sensitivity analysis of individual hypers?
-    - Maybe later.
-- Define baseline hypers?
-    - If we do the sensitivity analysis.
-
 ## Future experiments
 
 - From the DP-RAFT paper Antti had some ideas of experimenting with noise thresholding.
+- How hypers transfer from PEFT method Head only to LoRA, FiLM, None?
 - How does dataset imbalance affect the hypers?
 - How does the number of trainable parameters affect hypers?
 
@@ -133,4 +96,42 @@ We then train a final model with the best params first on the training set and t
 6. final_metric_value <- evaluate_model(final_model, test_data)
 
 7. Report the final metric value
+
+## Handled questions/ideas
+
+- Use batch sizes that actually have effect on the sampling ratio. (Check Marlon's CSV.)
+    - We'll use B/N and use steps instead of epochs.
+- ConvNeXT (and other modern convolutional nets) vs ResNet-50?
+    - ResNet-50 is fine.
+- Use LoRA instead of FiLM?
+    - We have both.
+- Use FiLM adaptor instead of training head/all
+- BO search for learning rate in log space
+- Zero the head weights
+- Save the optuna study in experiment directory (if we want to try more trials)
+- Use test set for calculating final accuracy
+- Which epsilons to use? Current plan of epsilon = \{1,2,...,8\} maybe too much?
+    - Lots of action in the small epsilons so try epsilon = {0.25, 0.5, 1, 2, 4, 8}
+- How about comparing the results against subsampling ratio instead of batch size?
+    - Let's not do this.
+- Compare with adaptive clipping?
+    - Could be a good idea. Interesting would be to benchmark all the adaptive methods.
+- Are the steps in batch sizes too dense?
+    - Yes. Make the larger end of batch sizes less dense by growing f.ex. exponentially.
+- Fixed vs optimized epochs?
+    - Optimize epochs.
+- Other datasets?
+    - Ditch CIFAR10 (too easy)
+    - Use full CIFAR100 and 10% subset CIFAR100
+    - Later, let's use also SVHN
+- Other models?
+    - ResNet-50 and ViT are good because other papers use them
+- Other metrics to track/optimize?
+    - Let's just use accuracy
+- Search hypers in log space from some params?
+    - Yes, for example learning rate.
+- Sensitivity analysis of individual hypers?
+    - Maybe later.
+- Define baseline hypers?
+    - If we do the sensitivity analysis.
 
