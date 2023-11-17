@@ -10,6 +10,7 @@
 
 - Before running others stuff, experiment with FiLM vs LoRA.
 - Adam vs SGD with Momentum?
+- More trials! Gauri noticed that we need about 50 trials to find the hyperparameters.
 
 ## TODO
 
