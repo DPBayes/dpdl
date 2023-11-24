@@ -70,8 +70,8 @@ class RecordEpochStatsCallback(Callback):
             if self.use_steps:
                 batch_size = trainer.datamodule.batch_size
                 data_size = len(trainer.get_dataloader('train').dataset)
-                steps_per_epoch = data_size // batch_size
-                epochs = trainer.total_steps // steps_per_epoch
+                steps_per_epoch = data_size / batch_size
+                epochs = math.ceil(trainer.total_steps / steps_per_epoch)
 
                 log.info(f'!!! Starting training for approximately {epochs} epochs ({trainer.total_steps} steps).')
             else:
