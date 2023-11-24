@@ -62,16 +62,18 @@ class RecordEpochStatsCallback(Callback):
     def __init__(self, use_steps=False):
         self.use_steps = use_steps
 
-        # use torchmetrics mean aggregation to track the losses
         self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()
-
-        # for validation and test sets
-        self.evaluation_loss = torchmetrics.aggregation.MeanMetric().cuda()
+        self.evaluation_loss = torchmetrics.aggregation.MeanMetric(sync_on_compute=False).cuda()
 
     def on_train_start(self, trainer):
         if self._is_global_zero(trainer):
             if self.use_steps:
-                log.info(f'!!! Starting training for {trainer.total_steps} steps.')
+                batch_size = trainer.datamodule.batch_size
+                data_size = len(trainer.get_dataloader('train').dataset)
+                steps_per_epoch = data_size // batch_size
+                epochs = trainer.total_steps // steps_per_epoch
+
+                log.info(f'!!! Starting training for approximately {epochs} epochs ({trainer.total_steps} steps).')
             else:
                 log.info(f'!!! Starting training for {trainer.epochs} epochs.')
 
@@ -80,8 +82,10 @@ class RecordEpochStatsCallback(Callback):
             log.info('!!! Training finished.')
 
     def on_train_epoch_start(self, trainer, epoch):
+        self.train_loss.reset()
+
         if self._is_global_zero(trainer):
-            log.info(f'----------------------------------')
+            log.info(f'--------------------------------------------------')
             if not self.use_steps:
                 log.info(f'Starting training epoch {epoch+1}.')
             else:
@@ -89,7 +93,6 @@ class RecordEpochStatsCallback(Callback):
 
     def on_train_epoch_end(self, trainer, epoch, metrics):
         loss = self.train_loss.compute()
-        self.train_loss.reset()
 
         if self._is_global_zero(trainer):
             if not self.use_steps:
@@ -99,28 +102,25 @@ class RecordEpochStatsCallback(Callback):
 
             self._log_metrics(metrics, 'Train metrics')
 
+    def on_train_batch_end(self, trainer, batch_idx, batch, loss):
+        self.train_loss.update(loss)
+
     def on_validation_epoch_end(self, trainer, epoch, metrics):
         loss = self.evaluation_loss.compute()
         self.evaluation_loss.reset()
 
-        if self._is_global_zero(trainer):
-            log.info(f'Validation finished. Loss: {loss:.4f}.')
+        log.info(f'Validation finished. Loss: {loss:.4f}.')
+        self._log_metrics(metrics, 'Validation metrics')
 
-            self._log_metrics(metrics, 'Validation metrics')
+    def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
+        self.evaluation_loss.update(loss)
 
     def on_test_epoch_end(self, trainer, epoch, metrics):
         loss = self.evaluation_loss.compute()
         self.evaluation_loss.reset()
 
-        if self._is_global_zero(trainer):
-            log.info(f'Test finished. Loss: {loss:.4f}.')
-            self._log_metrics(metrics, 'Test metrics')
-
-    def on_train_batch_end(self, trainer, batch_idx, batch, loss):
-        self.train_loss.update(loss)
-
-    def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
-        self.evaluation_loss.update(loss)
+        log.info(f'Test finished. Loss: {loss:.4f}.')
+        self._log_metrics(metrics, 'Test metrics')
 
     def on_test_batch_end(self, trainer, batch_idx, batch, loss):
         self.evaluation_loss.update(loss)
