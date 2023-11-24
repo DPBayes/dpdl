@@ -110,13 +110,21 @@ class ImageClassificationModel(TimmModel):
 
         self._criterion = torch.nn.CrossEntropyLoss().cuda()
 
-        # let's track the accuracy
+        # let's track the training accuracy
         self.train_metrics = torchmetrics.MetricCollection([
-            torchmetrics.classification.MulticlassAccuracy(num_classes=self.num_classes),
+            torchmetrics.classification.MulticlassAccuracy(
+                num_classes=self.num_classes,
+            ).cuda(),
         ])
 
+        # we only validate on rank 0, so there's no need to
+        # synchronize when calculating the metrics. although,
+        # the flag is probably redundant.
         self.valid_metrics = torchmetrics.MetricCollection([
-            torchmetrics.classification.MulticlassAccuracy(num_classes=self.num_classes),
+            torchmetrics.classification.MulticlassAccuracy(
+                num_classes=self.num_classes,
+                sync_on_compute=False,
+            ).cuda(),
         ])
 
     def criterion(self, logits, y):

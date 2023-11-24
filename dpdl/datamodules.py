@@ -167,15 +167,12 @@ class DataModule:
             self.train_sampler = torch.utils.data.distributed.DistributedSampler(
                 self.train_dataset.with_format('torch')
             )
-            self.val_sampler = torch.utils.data.distributed.DistributedSampler(
-                self.val_dataset.with_format('torch')
-            )
-            self.test_sampler = torch.utils.data.distributed.DistributedSampler(
-                self.test_dataset.with_format('torch')
-            )
             self.batch_size //= torch.distributed.get_world_size()
         else:
-            self.train_sampler, self.val_sampler, self.test_sampler = None, None, None
+            self.train_sampler = None
+
+        # we will validate and test only on rank 0
+        self.val_sampler, self.test_sampler = None, None
 
     def _get_stratified_subset(self, dataset):
         generator = torch.Generator()
