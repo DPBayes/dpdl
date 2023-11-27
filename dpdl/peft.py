@@ -121,9 +121,13 @@ class LoRA:
 
     @staticmethod
     def _get_config(model_name: str):
+        # default rank
+        lora_rank = 4
+
         if model_name.startswith('vit_base_patch16_224'):
             return LoraConfig(
-                r=4,
+                r=lora_rank,
+                alpha=lora_rank*2,
                 bias='none',
                 target_modules=r'patched_embed\.proj|.*\.attn\.qkv|.*\.attn_proj|.*\.mlp\.fc\d',
                 modules_to_save=['head'],
@@ -131,9 +135,10 @@ class LoRA:
 
         if model_name.startswith('resnetv2_50x1_bit'):
             return LoraConfig(
-                r=4,
+                r=lora_rank,
+                alpha=lora_rank*2,
                 bias='none',
-                target_modules=r'stem\.conv|.*\.downsample\.conv|.*\.conv\d|head.fc',
+                target_modules=r'stem\.conv|.*\.downsample\.conv|.*\.conv\d',
                 modules_to_save=['head.fc'],
             )
 
