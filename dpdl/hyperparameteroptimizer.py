@@ -142,7 +142,7 @@ class HyperparameterOptimizer:
             setattr(config_manager.hyperparams, hyper, best_value)
 
         # construct the final model
-        trainer = TrainerFactory.get_trainer(config_manager)
+        trainer = TrainerFactory.get_trainer(config_manager, train_on_valid=True)
 
         # no need to validate
         config_manager.configuration.validation_frequency = 0
@@ -159,9 +159,22 @@ class HyperparameterOptimizer:
         if torch.distributed.get_rank() == 0:
             log.info('Evaluating final model on the test set.')
 
-        loss, metrics = trainer.test()
         if torch.distributed.get_rank() == 0:
+            loss, metrics = trainer.test()
             log.info(f'Final loss: {loss:.4f}')
+
+            # let's share the loss and metrics with other ranks
+            # rank 0 is the source
+            broadcast_objects = [loss, metrics]
+        else:
+            # other ranks receive
+            broadcast_objects = [None, None]
+
+        # now, broadcast the list from rank 0 to all the other ranks
+        torch.distributed.broadcast_object_list(broadcast_objects, src=0)
+
+        # now all the ranks have access to the metrics
+        loss, metrics = broadcast_objects
 
         if metrics and torch.distributed.get_rank() == 0:
             log.info('Final metrics:')
@@ -220,7 +233,21 @@ class HyperparameterOptimizer:
         trainer.fit()
 
         # optimization objective is the validation loss
-        loss, metrics = trainer.validate()
+        if torch.distributed.get_rank() == 0:
+            loss, metrics = trainer.validate()
+
+            # let's share the loss and metrics with other ranks
+            # rank 0 is the source
+            broadcast_objects = [loss, metrics]
+        else:
+            # other ranks receive
+            broadcast_objects = [None, None]
+
+        # now, broadcast the list from rank 0 to all the other ranks
+        torch.distributed.broadcast_object_list(broadcast_objects, src=0)
+
+        # now all the ranks have access to the metrics
+        loss, metrics = broadcast_objects
 
         # find the correct metric value to use as optimization objective
         target_metric = config_manager.configuration.optuna_target_metric

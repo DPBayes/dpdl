@@ -109,8 +109,9 @@ class RecordEpochStatsCallback(Callback):
         loss = self.evaluation_loss.compute()
         self.evaluation_loss.reset()
 
-        log.info(f'Validation finished. Loss: {loss:.4f}.')
-        self._log_metrics(metrics, 'Validation metrics')
+        if torch.distributed.get_rank() == 0:
+            log.info(f'Validation finished. Loss: {loss:.4f}.')
+            self._log_metrics(metrics, 'Validation metrics')
 
     def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
         self.evaluation_loss.update(loss)
@@ -119,8 +120,9 @@ class RecordEpochStatsCallback(Callback):
         loss = self.evaluation_loss.compute()
         self.evaluation_loss.reset()
 
-        log.info(f'Test finished. Loss: {loss:.4f}.')
-        self._log_metrics(metrics, 'Test metrics')
+        if torch.distributed.get_rank() == 0:
+            log.info(f'Test finished. Loss: {loss:.4f}.')
+            self._log_metrics(metrics, 'Test metrics')
 
     def on_test_batch_end(self, trainer, batch_idx, batch, loss):
         self.evaluation_loss.update(loss)
