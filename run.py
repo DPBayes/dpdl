@@ -14,28 +14,32 @@ def main():
     log = configure_logger()
 
     world_size = os.getenv('WORLD_SIZE')
+    rank = os.getenv('RANK')
     local_rank = os.getenv('LOCAL_RANK')
 
-    if world_size is None or local_rank is None:
-        log.error("Missing environment variables 'WORLD_SIZE' and 'LOCAL_RANK'. This script should be "
-                  "started with the 'torch.distributed.run' module, like this: \n"
-                  "python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=<# of GPUS> --rdzv_endpoint=localhost:<PORT> run.py")
+    if world_size is None or local_rank is None or rank is None:
+        log.error("Script not correctly started: Environment variables 'WORLD_SIZE', 'RANK', and 'LOCAL_RANK' missing.")
         sys.exit(1)
 
-    log.info(f'Initializing worker for training.')
-
-    torch.distributed.init_process_group(backend='nccl')
+    world_size = int(world_size)
     local_rank = int(local_rank)
-    log.info(f'Rank {local_rank} initialized.')
+    rank = int(rank)
 
-    torch.cuda.set_device(local_rank)
+    log.info(f'Rank {rank} initializing - our world size is {world_size} and local rank is {local_rank}.')
+
+    # Initialize the process group
+    torch.distributed.init_process_group(backend='nccl', world_size=world_size, rank=rank)
+
+    log.info(f'Rank {rank} initialized.')
 
     if torch.distributed.get_rank() == 0:
-        log.info(f'All ranks initialized.')
+        log.info('All ranks initialized.')
 
     typer.run(cli)
 
     torch.distributed.destroy_process_group()
+
+    log.info('And we are done!')
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
