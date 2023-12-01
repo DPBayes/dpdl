@@ -1,18 +1,46 @@
 #!/bin/bash
 
+show_help() {
+    echo "Usage: $0 script_name [options...]"
+    echo ""
+    echo "script_name               Name of the script to be created."
+    echo ""
+    echo "Options:"
+    echo "  --help                  Show this help message."
+    echo "  project                 Slurm project (default: project_462000213)."
+    echo "  partition               Slurm partition (default: standard-g)."
+    echo "  gpus                    Number of GPUs (default: 8)."
+    echo "  time                    Time allocation (default: 1:00:00, 00:15:00 for dev-g)."
+    echo "  mem_per_gpu             Memory per GPU (default: 60G)."
+    echo "  cpus_per_task           Number of CPUs per task (default: 7)."
+    echo ""
+    echo "Example:"
+    echo "  $0 run.sh project_462000213 small-g 1"
+}
+
+# Check for --help option
+if [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
 # First argument is the script name, defaults to "run8.sh" if not provided
-script_name=${1:-"run8.sh"}
+script_name=$1
+if [[ "$script_name" == "" ]]; then
+    show_help
+    exit 0
+fi
 
 # Wrapper script sets the environment variables after "srun" has been called
 wrapper_script="run_wrapper.sh"
 
-project=${PROJECT:-"project_462000213"}
-partition=${2:-"standard-g"}
-gpus=${3:-8}
-time=${4:-"1:00:00"}
-ntasks_per_node=${5:-8}
-cpus_per_task=${6:-7}
-mem_per_gpu=${7:-"60G"}
+project=${2:-"project_462000213"}
+partition=${3:-"standard-g"}
+gpus=${4:-8}
+ntasks_per_node=$gpus
+time=${5:-"1:00:00"}
+mem_per_gpu=${6:-"60G"}
+cpus_per_task=${7:-7}
 exclusive="--exclusive"
 cpu_bind_mask="0xfe000000000000,0xfe00000000000000,0xfe0000,0xfe000000,0xfe,0xfe00,0xfe00000000,0xfe0000000000"
 nodes=1
@@ -32,9 +60,6 @@ fi
 # Create the wrapper script dynamically
 cat <<EOF > $wrapper_script
 #!/bin/bash
-
-# Fix for illegal memory access with convolutional networks
-export MIOPEN_DEBUG_CONV_CK_IGEMM_FWD_V6R1_DLOPS_NCHW=0
 
 # Distributed settings
 export MASTER_PORT=\$(expr 30000 + \$(echo -n \$SLURM_JOBID | tail -c 4))
@@ -69,6 +94,9 @@ cat <<EOF > $script_name
 module use /appl/local/csc/modulefiles/
 module load pytorch
 module list
+
+# Fix for illegal memory access with convolutional networks
+export MIOPEN_DEBUG_CONV_CK_IGEMM_FWD_V6R1_DLOPS_NCHW=0
 
 # Project specific settings
 export PROJECT="$project"
