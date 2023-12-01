@@ -235,11 +235,20 @@ class ImageDataModule(DataModule):
 
     def _apply_transforms_to_datasets(self):
         if self.transforms:
-            self.train_dataset = self.train_dataset.map(self._apply_transforms, num_proc=self.num_workers, batched=True)
-            self.test_dataset = self.test_dataset.map(self._apply_transforms, num_proc=self.num_workers, batched=True)
+            # XXX: For some reason num_proc > 1 started causing hangs.
+            #      Also default batch size (1000) seems to hang, even
+            #      with one process.
+            self.train_dataset = self.train_dataset.map(self._apply_transforms, num_proc=1, batched=True, batch_size=256)
+            self.test_dataset = self.test_dataset.map(self._apply_transforms, num_proc=1, batched=True, batch_size=256)
 
     def _apply_transforms(self, examples):
         examples['img'] = [self.transforms(image) for image in examples['img']]
+
+        # log an empty line to see progress in logs,
+        # otherwise something buffer the output. flushing
+        # of the log handlers did not seem to help.
+        log.info('')
+
         return examples
 
     @staticmethod
