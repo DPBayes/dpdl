@@ -21,7 +21,8 @@
 - From the DP-RAFT paper Antti had some ideas of experimenting with noise thresholding.
 - How hypers transfer from PEFT method Head only to LoRA, FiLM, None?
 - How does dataset imbalance affect the hypers?
-- How does the number of trainable parameters affect hypers?
+- How does the number of trainable parameters affect the optimized hypers?
+- Sensitivity analysis of hypers: Which hypers need to be tuned exactly and which are more robust.
 
 ## Goal of the experiments
 
