@@ -22,6 +22,12 @@ def get_nb_trainable_parameters(model: torch.nn.Module):
 
     return trainable_params, all_param
 
+def print_trainable_modules(model: torch.nn.Module):
+    log.info('Trainable modules:')
+    for module_name, module in model.named_modules():
+        if any(p.requires_grad for p in module.parameters()):
+            log.info(module_name)
+
 class PeftFactory:
     @staticmethod
     def get_peft_model(model: torch.nn.Module, configuration: Configuration):
@@ -49,7 +55,10 @@ class HeadOnly:
         trainable_params, all_params = get_nb_trainable_parameters(model)
 
         if torch.distributed.get_rank() == 0:
+            print_trainable_modules(model)
+
             log.info(f'Finetuning head only - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
+
 
         return model
 
@@ -72,20 +81,16 @@ class FiLM:
             param.requires_grad = False
 
         # we enable the gradient for all parameters in matching modules
-        for name, module in model.named_modules():
-            if pattern.match(name):
-                for param in module.parameters():
+        for module_name, module in model.named_modules():
+            if pattern.match(module_name) or module_name in film_config.modules_to_save:
+                for name, param in module.named_parameters():
                     param.requires_grad = True
-
-        # if there are any modules (such as head) that we want to train,
-        # let's enable gradients here
-        for name, param in model.named_parameters():
-            if name in film_config.modules_to_save:
-                param.requires_grad = True
 
         trainable_params, all_params = get_nb_trainable_parameters(model)
 
         if torch.distributed.get_rank() == 0:
+            print_trainable_modules(model)
+
             log.info(f'FiLM setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
 
         return model
@@ -95,13 +100,13 @@ class FiLM:
         if model_name.startswith('vit_base_patch16_224'):
             return FilmConfig(
                 target_modules=r'.*\.norm\d?',
-                modules_to_save=['head'],
+                modules_to_save=['model.head'],
             )
 
         if model_name.startswith('resnetv2_50x1_bit'):
             return FilmConfig(
                 target_modules=r'.*\.norm\d$',
-                modules_to_save=['head.fc'],
+                modules_to_save=['model.head.fc'],
             )
 
         raise RuntimeError(f'No known FiLM configuration for model: {model_name}')
@@ -115,6 +120,7 @@ class LoRA:
         trainable_params, all_params = get_nb_trainable_parameters(lora_model)
 
         if torch.distributed.get_rank() == 0:
+            print_trainable_modules(model)
             log.info(f'LoRA setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
 
         return lora_model
@@ -124,10 +130,13 @@ class LoRA:
         # default rank
         lora_rank = 4
 
+        # general recommendation for alpha is 2*rank
+        lora_alpha = 2*lora_rank
+
         if model_name.startswith('vit_base_patch16_224'):
             return LoraConfig(
                 r=lora_rank,
-                alpha=lora_rank*2,
+                lora_alpha=lora_alpha,
                 bias='none',
                 target_modules=r'patched_embed\.proj|.*\.attn\.qkv|.*\.attn_proj|.*\.mlp\.fc\d',
                 modules_to_save=['head'],
@@ -136,7 +145,7 @@ class LoRA:
         if model_name.startswith('resnetv2_50x1_bit'):
             return LoraConfig(
                 r=lora_rank,
-                alpha=lora_rank*2,
+                lora_alpha=lora_alpha,
                 bias='none',
                 target_modules=r'stem\.conv|.*\.downsample\.conv|.*\.conv\d',
                 modules_to_save=['head.fc'],
