@@ -93,7 +93,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 ## TODO
 
 - [ ] Verify that zeroing the head works
-- [ ] Properly arrange GPU bindings
+- [x] Properly arrange GPU bindings
 - [ ] Batch size finder
 - [ ] Repeat experiments with different seeds (do in CLI instead?)
 - [x] Use/test torch.compile() (does not work with Opacus)
