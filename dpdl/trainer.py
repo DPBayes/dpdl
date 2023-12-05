@@ -121,24 +121,6 @@ class Trainer:
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
-    def fit_on_train_and_valid(self):
-        # safe the current training dataloader as we are going to
-        # temporarily change it.
-        original_train_dataloader = self.datamodule.get_dataloader('train')
-        original_valid_dataloader = self.datamodule.get_dataloader('valid')
-
-        # when all the training have been done, we want to train also
-        # on the validation set to squeeze the last performance out
-        self.datamodule.set_dataloader('train', self.datamodule.get_dataloader('train_and_valid'))
-        self.datamodule.set_dataloader('valid', self.datamodule.get_dataloader('test'))
-
-        # now let's just fit as usual
-        self.fit()
-
-        # restore the original dataloader
-        self.datamodule.set_dataloader('train', original_train_dataloader)
-        self.datamodule.set_dataloader('valid', original_valid_dataloader)
-
     def fit_one_epoch(self, epoch):
         self.model.train()
         self.callback_handler.call('on_train_epoch_start', self, epoch)
@@ -195,6 +177,8 @@ class Trainer:
         return self._evaluate('validation', epoch)
 
     def test(self):
+        # XXX: We have 'evaluation_mode' to train on train+validation datasets
+        #      and validate on test set. Remove this later?
         return self._evaluate('test')
 
     def get_dataloader(self, name):
@@ -460,15 +444,15 @@ class DifferentiallyPrivateTrainer(Trainer):
 
 class TrainerFactory:
     @staticmethod
-    def get_trainer(config_manager: ConfigurationManager, train_on_valid: bool = False) -> Trainer:
+    def get_trainer(config_manager: ConfigurationManager) -> Trainer:
         # are we differentially private?
         if config_manager.configuration.privacy:
-            return TrainerFactory._get_differentially_private_trainer(config_manager.configuration, config_manager.hyperparams, train_on_valid)
+            return TrainerFactory._get_differentially_private_trainer(config_manager.configuration, config_manager.hyperparams)
 
-        return TrainerFactory._get_basic_trainer(config_manager.configuration, config_manager.hyperparams, train_on_valid)
+        return TrainerFactory._get_basic_trainer(config_manager.configuration, config_manager.hyperparams)
 
     @staticmethod
-    def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters, train_on_valid: bool = False) -> Trainer:
+    def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
         # setup data, model, and optimizer
         model = ModelFactory.get_model(configuration, hyperparams)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
@@ -483,7 +467,7 @@ class TrainerFactory:
             CallbackFactory.get_callbacks(configuration, hyperparams)
         )
 
-        epochs, total_steps = TrainerFactory._get_epochs_and_steps(config_manager, datamodule, train_on_valid)
+        epochs, total_steps = TrainerFactory._get_epochs_and_steps(config_manager, datamodule)
 
         # instantiate a trainer without dp
         trainer = Trainer(
@@ -499,7 +483,7 @@ class TrainerFactory:
         return trainer
 
     @staticmethod
-    def _get_differentially_private_trainer(configuration: Configuration, hyperparams: Hyperparameters, train_on_valid: bool = False) -> Trainer:
+    def _get_differentially_private_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
         # Target delta calculation: A common heuristic is to use 1/N', with N'
         # being the size of the dataset rounded up to the nearest power of 10.
         # To avoid too large values of delta, let's pick a somewhat sensible
@@ -539,7 +523,7 @@ class TrainerFactory:
         )
 
         target_delta, target_epsilon = _get_target_privacy_params(hyperparams)
-        epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule, train_on_valid)
+        epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
         # instantiate a differentialy private trained
         trainer = DifferentiallyPrivateTrainer(
@@ -571,17 +555,14 @@ class TrainerFactory:
         configuration: Configuration,
         hyperparams: Hyperparameters,
         datamodule: DataModule,
-        train_on_valid: bool = False,
     ):
         # use steps instead of epochs?
         if configuration.use_steps:
-            dataloader_name = 'train_and_valid' if train_on_valid else 'train'
-            dataloader = datamodule.get_dataloader(dataloader_name)
+            dataloader = datamodule.get_dataloader('train')
 
             B = dataloader.batch_size
             N = len(dataloader.dataset)
             total_steps = math.ceil((N*hyperparams.epochs) / B)
-
             epochs = None
         else:
             total_steps = None

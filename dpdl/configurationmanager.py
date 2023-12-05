@@ -70,6 +70,7 @@ class Configuration(BaseModel):
     peft: Optional[Literal['lora', 'film', 'head-only']]
     pretrained: bool = True
     use_steps: Optional[bool] = False
+    evaluation_mode: Optional[bool] = False
 
     def __str__(self):
         attributes = [
@@ -91,6 +92,7 @@ class Configuration(BaseModel):
             ('PEFT method', self.peft),
             ('Use pretrained model', self.pretrained),
             ('Convert epochs to steps', self.use_steps),
+            ('Evaluation mode', self.evaluation_mode),
         ]
 
         if self.privacy:
