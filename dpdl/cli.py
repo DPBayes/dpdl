@@ -36,7 +36,7 @@ def cli(
                 help='Convert epochs to total steps',
                 rich_help_panel='Training options',
             )
-        ] = None,
+        ] = False,
         learning_rate: Annotated[
             float,
             typer.Option(
@@ -121,6 +121,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = True,
+        evaluation_mode: Annotated[
+            bool,
+            typer.Option(
+                help='Enable evaluation mode (train on train+valid and validate on test)',
+                rich_help_panel='Training options',
+            )
+        ] = False,
         dataset_name: Annotated[
             str,
             typer.Option(
@@ -311,8 +318,8 @@ def cli(
             log.info(config_manager.configuration)
 
         seed_everything(config_manager.configuration.seed)
-        trainer = TrainerFactory.get_trainer(config_manager)
 
+        trainer = TrainerFactory.get_trainer(config_manager)
         trainer.fit()
 
     if config_manager.get_command() == 'optimize':

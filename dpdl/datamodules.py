@@ -19,6 +19,8 @@ class DataModule:
         seed: int = 0,
         privacy: bool = True,
         test_size: float = 0.1,
+        evaluation_mode: bool = False,
+        transforms: torchvision.transforms.transforms.Compose = None,
     ):
         self.dataset_name = dataset_name
         self.batch_size = batch_size
@@ -28,12 +30,12 @@ class DataModule:
         self.subset_size = subset_size
         self.privacy = privacy
         self.test_size = test_size
+        self.evaluation_mode = evaluation_mode
+        self.transforms = transforms
 
         self._dataloaders = {
             'train': None,
             'valid': None,
-            'test': None,
-            'train_and_valid': None,
         }
 
         # for storing mapping from dataset to the dictionary
@@ -57,7 +59,7 @@ class DataModule:
     def _initialize_datasets(self):
         # first load the data only rank 0
         if torch.distributed.get_rank() == 0:
-            self._load_and_preprocess_datasets()
+            self._load_datasets()
             torch.distributed.barrier()
         else:
             # other ranks will wait ehre
@@ -66,21 +68,39 @@ class DataModule:
             # then after all preprocessing is done, load the data
             # on other ranks also. Huggingface datasets has cached
             # everything on disk.
-            self._load_and_preprocess_datasets()
+            self._load_datasets()
+
+        # if subset of datasetr is requested, we'll do stratified sampling
+        if self.subset_size:
+            self.train_dataset = self._get_stratified_subset(self.train_dataset)
+            self.val_dataset = self._get_stratified_subset(self.val_dataset)
+
+    def _load_datasets(self):
+        self.train_dataset = datasets.load_dataset(self.dataset_name, split='train')
+        self.val_dataset = datasets.load_dataset(self.dataset_name, split='test')
+
+        # apply possible tranformations
+        self._apply_transforms_to_datasets()
+
+        if self.evaluation_mode:
+            return
+
+        # otherwise, we load and split the train dataset into train and valid
+        split_dataset = self.train_dataset.train_test_split(
+            test_size=self.test_size,
+            shuffle=True,
+            seed=self.seed,
+        )
+        self.train_dataset = split_dataset['train']
+        self.val_dataset = split_dataset['test']
+
+    def _apply_transforms_to_datasets(self):
+        return # no default transforms
 
     def _initialize_dataloaders(self):
         self._set_generators_and_seed_worker()
         self._set_samplers_and_batch_size()
         self._create_dataloaders()
-
-    def _load_and_preprocess_datasets(self):
-        self._load_datasets()
-        self._apply_stratified_sampling()
-        self._split_train_dataset()
-
-    def _load_datasets(self):
-        self.train_dataset = datasets.load_dataset(self.dataset_name, split='train')
-        self.test_dataset = datasets.load_dataset(self.dataset_name, split='test')
 
     def _get_dataset_label_field(self):
         if self.dataset_label_fields is None:
@@ -101,24 +121,6 @@ class DataModule:
 
         self.seed_worker = seed_worker if self.seed else None
 
-    def _apply_stratified_sampling(self):
-        if self.subset_size:
-            self.train_dataset = self._get_stratified_subset(self.train_dataset)
-            self.test_dataset = self._get_stratified_subset(self.test_dataset)
-
-    def _split_train_dataset(self):
-        split_dataset = self.train_dataset.train_test_split(
-            test_size=self.test_size,
-            shuffle=True,
-            seed=self.seed,
-        )
-        self.train_dataset = split_dataset['train']
-        self.val_dataset = split_dataset['test']
-
-        # dataloader for the final training round where we train with
-        # the concatenated training and validation datasets.
-        self.train_and_valid_dataset = datasets.concatenate_datasets([self.train_dataset, self.val_dataset])
-
     def _create_dataloaders(self):
         self._dataloaders['train'] = torch.utils.data.DataLoader(
             self.train_dataset.with_format('torch'),
@@ -137,27 +139,6 @@ class DataModule:
             batch_size=self.physical_batch_size,
             collate_fn=self.collate_fn,
             num_workers=self.num_workers
-        )
-
-        self._dataloaders['test'] = torch.utils.data.DataLoader(
-            self.test_dataset.with_format('torch'),
-            sampler=self.test_sampler,
-            batch_size=self.physical_batch_size,
-            collate_fn=self.collate_fn,
-            num_workers=self.num_workers
-        )
-
-        # for the final training round, we will train using the train and
-        # validation datasets and evaluate on test set.
-        self._dataloaders['train_and_valid'] = torch.utils.data.DataLoader(
-            self.train_and_valid_dataset.with_format('torch'),
-            sampler=self.train_sampler,
-            batch_size=self.batch_size,
-            collate_fn=self.collate_fn,
-            num_workers=self.num_workers,
-            pin_memory=True,
-            generator=self.generator,
-            worker_init_fn=self.seed_worker
         )
 
     def _set_samplers_and_batch_size(self):
@@ -215,23 +196,15 @@ class ImageDataModule(DataModule):
     def __init__(
         self,
         num_classes: int = 10,
-        transforms: torchvision.transforms.transforms.Compose = None,
         **kwargs
     ):
         super().__init__(**kwargs)
 
         self.num_classes = num_classes
-        self.transforms = transforms
         self.dataset_label_fields = {
             'cifar100': 'fine_label',
         }
         self.collate_fn = partial(self._collate_fn, self._get_dataset_label_field())
-
-    def _load_and_preprocess_datasets(self):
-        self._load_datasets()
-        self._apply_stratified_sampling()
-        self._apply_transforms_to_datasets()
-        self._split_train_dataset()
 
     def _apply_transforms_to_datasets(self):
         if self.transforms:
@@ -239,16 +212,16 @@ class ImageDataModule(DataModule):
             #      Also default batch size (1000) seems to hang, even
             #      with one process.
             self.train_dataset = self.train_dataset.map(self._apply_transforms, num_proc=1, batched=True, batch_size=256)
-            self.test_dataset = self.test_dataset.map(self._apply_transforms, num_proc=1, batched=True, batch_size=256)
+            self.val_dataset = self.val_dataset.map(self._apply_transforms, num_proc=1, batched=True, batch_size=256)
 
     def _apply_transforms(self, examples):
-        examples['img'] = [self.transforms(image) for image in examples['img']]
-
         # log an empty line to see progress in logs,
         # otherwise something buffer the output. flushing
         # of the log handlers did not seem to help.
+
         log.info('')
 
+        examples['img'] = [self.transforms(image) for image in examples['img']]
         return examples
 
     @staticmethod
@@ -281,6 +254,7 @@ class DataModuleFactory:
             batch_size=hyperparams.batch_size,
             privacy=configuration.privacy,
             transforms=transforms,
+            evaluation_mode=configuration.evaluation_mode,
         )
 
         return datamodule

@@ -141,11 +141,14 @@ class HyperparameterOptimizer:
         for hyper, best_value in best_params.items():
             setattr(config_manager.hyperparams, hyper, best_value)
 
-        # construct the final model
-        trainer = TrainerFactory.get_trainer(config_manager, train_on_valid=True)
+        # enable evaluation mode (train on train+valid and validate on test)
+        config_manager.configuration.evaluation_mode = True
 
         # no need to validate
         config_manager.configuration.validation_frequency = 0
+
+        # construct the final model
+        trainer = TrainerFactory.get_trainer(config_manager)
 
         if torch.distributed.get_rank() == 0:
             log.info('!! Final training round on the full training dataset (train + valid) and evaluating on test.')
@@ -153,14 +156,14 @@ class HyperparameterOptimizer:
 
         # fit model using training AND validation data. we also use the test
         # set for validation here.
-        trainer.fit_on_train_and_valid()
+        trainer.fit()
 
         # now we can evaluate the final performance of the best model
         if torch.distributed.get_rank() == 0:
             log.info('Evaluating final model on the test set.')
 
         if torch.distributed.get_rank() == 0:
-            loss, metrics = trainer.test()
+            loss, metrics = trainer.validate()
             log.info(f'Final loss: {loss:.4f}')
 
             # let's share the loss and metrics with other ranks
