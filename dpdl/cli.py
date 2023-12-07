@@ -1,4 +1,5 @@
 import logging
+import time
 import torch
 import typer
 import sys
@@ -11,7 +12,7 @@ from .hyperparameteroptimizer import HyperparameterOptimizer
 from .trainer import TrainerFactory
 from .models import ModelFactory
 from .utils import seed_everything
-from .experimentmanager import start_experiment_logging
+from .experimentmanager import start_experiment_logging, log_runtime
 
 log = logging.getLogger(__name__)
 
@@ -320,7 +321,14 @@ def cli(
         seed_everything(config_manager.configuration.seed)
 
         trainer = TrainerFactory.get_trainer(config_manager)
+
+        start_time = time.time()
         trainer.fit()
+        end_time = time.time()
+
+        # log the runtime
+        if torch.distributed.get_rank() == 0:
+            log_runtime(config_manager, start_time, end_time)
 
     if config_manager.get_command() == 'optimize':
         if torch.distributed.get_rank() == 0:
@@ -328,5 +336,12 @@ def cli(
             log.info(config_manager.configuration)
 
         seed_everything(config_manager.configuration.seed)
+
+        start_time = time.time()
         HyperparameterOptimizer.optimize_hypers(config_manager)
+        end_time = time.time()
+
+        # log the runtime
+        if torch.distributed.get_rank() == 0:
+            log_runtime(config_manager, start_time, end_time)
 
