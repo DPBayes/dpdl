@@ -94,6 +94,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 - [ ] Batch size finder
 - [ ] Repeat experiments with different seeds (do in CLI instead?)
+- [x] Log runtime, gpu type, and gpu count
 - [x] Properly arrange GPU bindings
 - [x] Verify that zeroing the head works
 - [x] Use/test torch.compile() (does not work with Opacus)

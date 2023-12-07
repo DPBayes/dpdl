@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import pathlib
@@ -6,6 +7,7 @@ import shutil
 import subprocess
 
 import optuna
+import torch
 
 from .configurationmanager import ConfigurationManager
 
@@ -101,6 +103,33 @@ def start_experiment_logging(
     # if ovewriting, delete the possible existing study from optuna journal
     if config_manager.configuration.overwrite_experiment:
         _delete_optuna_study(config_manager)
+
+    # log the gpu type and count
+    _log_gpus(config_manager)
+
+def log_runtime(config_manager, start_time, end_time):
+    elapsed = end_time - start_time
+    elapsed_timedelta = datetime.timedelta(seconds=elapsed)
+
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+
+    with open(f'{full_log_dir}/runtime', 'w') as fh:
+        fh.write(f'{elapsed_timedelta}\n')
+
+def _log_gpus(config_manager):
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+
+    with open(f'{full_log_dir}/gpu_type', 'w') as fh:
+        gpu_name = torch.cuda.get_device_name()
+        fh.write(f'{gpu_name}\n')
+
+    with open(f'{full_log_dir}/gpu_count', 'w') as fh:
+        gpu_count = torch.distributed.get_world_size()
+        fh.write(f'{gpu_count}\n')
 
 def _delete_optuna_study(config_manager: ConfigurationManager):
     # storage is the main optuna journal file
