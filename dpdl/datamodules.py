@@ -1,13 +1,16 @@
-import logging
 import datasets
+import logging
+import math
 import torch
 import torchvision
+
 from functools import partial
 from typing import Tuple
 from dpdl.utils import seed_everything
 from .configurationmanager import Configuration, Hyperparameters
 
 log = logging.getLogger(__name__)
+
 
 class DataModule:
     def __init__(self,
@@ -170,7 +173,7 @@ class DataModule:
             label_indices = torch.where(labels == label)[0]
 
             # determine the number of samples needed for this label
-            num_samples = int(len(label_indices) * self.subset_size)
+            num_samples = math.ceil(len(label_indices) * self.subset_size)
 
             # generate a random permutation of the label indices
             random_indices = torch.randperm(len(label_indices), generator=generator)
