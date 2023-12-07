@@ -53,9 +53,7 @@ class Trainer:
 
     def setup(self):
         self.model = self.model.cuda()
-
-        local_rank = torch.distributed.get_rank()
-        self.model = torch.nn.parallel.DistributedDataParallel(self.model, device_ids=[local_rank])
+        self.model = torch.nn.parallel.DistributedDataParallel(self.model)
 
     def fit(self):
         self.callback_handler.call('on_train_start', self)
@@ -83,9 +81,10 @@ class Trainer:
         virtual_epoch = 0
         steps_per_epoch = self._calculate_steps_per_epoch()
 
-        while step < self.total_steps:
-            self._handle_virtual_epoch_start(virtual_epoch)
+        # start the first virtual epoch
+        self._handle_virtual_epoch_start(virtual_epoch)
 
+        while step < self.total_steps:
             for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
                 if step >= self.total_steps:
                     break
@@ -104,12 +103,14 @@ class Trainer:
                         # other ranks will wait for validation
                         torch.distributed.barrier()
 
-                    # Check if we need to continue training
+                    # are we finished?
                     if step >= self.total_steps:
                         break
 
-                    # Start the next virtual epoch
+                    # start the next virtual epoch
                     self._handle_virtual_epoch_start(virtual_epoch)
+
+        assert step == self.total_steps, f'Mismatch in total steps count: Expected {self.total_steps} total steps, but stepped {step} times!'
 
     def _handle_virtual_epoch_start(self, epoch):
         self.callback_handler.call('on_train_epoch_start', self, epoch)
@@ -171,7 +172,7 @@ class Trainer:
         # after accumulating the gradients for all the sub batches we can finally update weights.
         self.optimizer.step()
 
-        self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss)
+        self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, batch_loss)
 
     def validate(self, epoch=None):
         return self._evaluate('validation', epoch)
@@ -467,7 +468,7 @@ class TrainerFactory:
             CallbackFactory.get_callbacks(configuration, hyperparams)
         )
 
-        epochs, total_steps = TrainerFactory._get_epochs_and_steps(config_manager, datamodule)
+        epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
         # instantiate a trainer without dp
         trainer = Trainer(
