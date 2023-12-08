@@ -297,7 +297,7 @@ def cli(
     if config_manager.get_command() == 'show-layers':
         log.info(config_manager.configuration)
         log.info('Showing model layers.')
-        model = ModelFactory.get_model(
+        model, _ = ModelFactory.get_model(
             config_manager.configuration,
             config_manager.hyperparams,
         )
