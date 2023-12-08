@@ -382,7 +382,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 self.fit_one_batch(batch_idx, batch)
 
                 # and next we check for epoch end
-                if logical_batch_completed and step % steps_per_epoch == 0:
+                if (logical_batch_completed and step % steps_per_epoch == 0) or step == self.total_steps:
                     logical_batch_completed = False
 
                     self._handle_virtual_epoch_end(virtual_epoch)
