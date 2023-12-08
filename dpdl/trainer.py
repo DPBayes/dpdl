@@ -455,13 +455,10 @@ class TrainerFactory:
     @staticmethod
     def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
         # setup data, model, and optimizer
-        model = ModelFactory.get_model(configuration, hyperparams)
+        model, transforms = ModelFactory.get_model(configuration, hyperparams)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
-        # from the pretrained model
-        transforms = ModelFactory.get_model_transforms(configuration, hyperparams)
-
-        # now we can create the datamodule that uses the transformations
+        # datamodule needs also the associate transformations
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, transforms)
 
         callback_handler = CallbackHandler(
@@ -509,12 +506,8 @@ class TrainerFactory:
             return target_delta, target_epsilon
 
         # setup data, model, and optimizer
-        model = ModelFactory.get_model(configuration, hyperparams)
+        model, transforms = ModelFactory.get_model(configuration, hyperparams)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
-
-        # before creating the data module, let's first get the image transformations
-        # from the pretrained model
-        transforms = ModelFactory.get_model_transforms(configuration, hyperparams)
 
         # now we can create the datamodule that uses the transformations
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, transforms)
