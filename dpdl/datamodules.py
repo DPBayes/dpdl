@@ -78,12 +78,17 @@ class DataModule:
             self.train_dataset = self._get_stratified_subset(self.train_dataset)
             self.val_dataset = self._get_stratified_subset(self.val_dataset)
 
+        if torch.distributed.get_rank() == 0:
+            # apply possible tranformations
+            self._apply_transforms_to_datasets()
+            torch.distributed.barrier()
+        else:
+            torch.distributed.barrier()
+            self._apply_transforms_to_datasets()
+
     def _load_datasets(self):
         self.train_dataset = datasets.load_dataset(self.dataset_name, split='train')
         self.val_dataset = datasets.load_dataset(self.dataset_name, split='test')
-
-        # apply possible tranformations
-        self._apply_transforms_to_datasets()
 
         if self.evaluation_mode:
             return
@@ -210,22 +215,18 @@ class ImageDataModule(DataModule):
         self.collate_fn = partial(self._collate_fn, self._get_dataset_label_field())
 
     def _apply_transforms_to_datasets(self):
+        def _apply_transforms(transforms, examples):
+            examples['img'] = [transforms(image) for image in examples['img']]
+            return examples
+
         if self.transforms:
+            transforms_func = partial(_apply_transforms, self.transforms)
+
             # XXX: For some reason num_proc > 1 started causing hangs.
             #      Also default batch size (1000) seems to hang, even
             #      with one process.
-            self.train_dataset = self.train_dataset.map(self._apply_transforms, num_proc=1, batched=True, batch_size=256)
-            self.val_dataset = self.val_dataset.map(self._apply_transforms, num_proc=1, batched=True, batch_size=256)
-
-    def _apply_transforms(self, examples):
-        # log an empty line to see progress in logs,
-        # otherwise something buffer the output. flushing
-        # of the log handlers did not seem to help.
-
-        log.info('')
-
-        examples['img'] = [self.transforms(image) for image in examples['img']]
-        return examples
+            self.train_dataset = self.train_dataset.map(transforms_func, num_proc=1, batched=True, batch_size=256)
+            self.val_dataset = self.val_dataset.map(transforms_func, num_proc=1, batched=True, batch_size=256)
 
     @staticmethod
     def _collate_fn(label_field, batch):
