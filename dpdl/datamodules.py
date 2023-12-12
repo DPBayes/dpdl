@@ -73,8 +73,8 @@ class DataModule:
             # everything on disk.
             self._load_datasets()
 
-        # if subset of datasetr is requested, we'll do stratified sampling
-        if self.subset_size:
+        # if subset of dataset is requested, we'll do stratified sampling
+        if self.subset_size is not None and self.subset_size < 1.0:
             self.train_dataset = self._get_stratified_subset(self.train_dataset)
             self.val_dataset = self._get_stratified_subset(self.val_dataset)
 
