@@ -30,6 +30,11 @@ do
     do
         for subset_size in "${SUBSET_SIZES[@]}"
         do
+            # Skip 100% subset for CIFAR-10
+            if [ "$dataset" = "cifar10" ] && [ "$subset_size" = "1.0" ]; then
+                continue
+            fi
+
             for peft_method in $PEFT_METHODS
             do
                 for epsilon in $EPSILONS
