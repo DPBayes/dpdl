@@ -15,6 +15,7 @@ DATASETS=("cifar10" "cifar100")
 SUBSET_SIZES=("0.1" "1.0")
 
 # Other settings
+OVERWRITE_EXPERIMENT="--no-overwrite-experiment"
 SEED=42
 N_TRIALS=50
 PEFT="--peft"
@@ -69,7 +70,9 @@ do
                         --experiment-name $EXPERIMENT_NAME \
                         $PEFT $peft_method \
                         $PRIVACY \
-                        --overwrite-experiment $USE_STEPS $NORMALIZE_CLIPPING
+                        $USE_STEPS \
+                        $NORMALIZE_CLIPPING \
+                        $OVERWRITE_EXPERIMENT
                 done
             done
         done
