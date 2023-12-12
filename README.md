@@ -12,11 +12,11 @@ Many of the ideas that we are using come from [fastai](https://github.com/fastai
 
 ### Install dependencies
 
-`pip install torch opacus timm datasets typer[all] optuna torchmetrics pydantic`
+`pip install torch timm datasets typer[all] optuna torchmetrics pydantic peft`
 
-We also need development version of Huggingface peft, the current version (0.5.0) has a bug with distributed
+We also need to install our own fork of Opacus, as we have some modifications there
 
-`pip install git+https://github.com/huggingface/peft`
+`pip install -e git+https://github.com/DPBayes/opacus@total_steps#egg=opacus
 
 ### Command line usage
 
