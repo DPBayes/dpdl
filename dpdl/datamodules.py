@@ -73,11 +73,6 @@ class DataModule:
             # everything on disk.
             self._load_datasets()
 
-        # if subset of dataset is requested, we'll do stratified sampling
-        if self.subset_size is not None and self.subset_size < 1.0:
-            self.train_dataset = self._get_stratified_subset(self.train_dataset)
-            self.val_dataset = self._get_stratified_subset(self.val_dataset)
-
         if torch.distributed.get_rank() == 0:
             # apply possible tranformations
             self._apply_transforms_to_datasets()
@@ -85,6 +80,11 @@ class DataModule:
         else:
             torch.distributed.barrier()
             self._apply_transforms_to_datasets()
+
+        # if subset of dataset is requested, we'll do stratified sampling
+        if self.subset_size is not None and self.subset_size < 1.0:
+            self.train_dataset = self._get_stratified_subset(self.train_dataset)
+            self.val_dataset = self._get_stratified_subset(self.val_dataset)
 
     def _load_datasets(self):
         self.train_dataset = datasets.load_dataset(self.dataset_name, split='train')
