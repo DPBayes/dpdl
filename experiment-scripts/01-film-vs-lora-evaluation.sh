@@ -68,6 +68,7 @@ do
                         --optuna-target-metric MulticlassAccuracy \
                         --optuna-direction maximize \
                         --experiment-name $EXPERIMENT_NAME \
+                        --log-dir $LOG_DIR \
                         $PEFT $peft_method \
                         $PRIVACY \
                         $USE_STEPS \
