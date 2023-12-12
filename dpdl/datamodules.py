@@ -98,6 +98,7 @@ class DataModule:
             test_size=self.test_size,
             shuffle=True,
             seed=self.seed,
+            stratify_by_column=self._get_dataset_label_field(),
         )
         self.train_dataset = split_dataset['train']
         self.val_dataset = split_dataset['test']
@@ -164,41 +165,12 @@ class DataModule:
         self.val_sampler, self.test_sampler = None, None
 
     def _get_stratified_subset(self, dataset):
-        generator = torch.Generator()
-        if self.seed:
-            generator.manual_seed(self.seed)
-
-        label_field = self._get_dataset_label_field()
-        labels = torch.tensor(dataset[label_field])
-        unique_labels = labels.unique()
-
-        sampled_indices = []
-        for label in unique_labels:
-            # find the indices of the dataset where the current label is present
-            label_indices = torch.where(labels == label)[0]
-
-            # determine the number of samples needed for this label
-            num_samples = math.ceil(len(label_indices) * self.subset_size)
-
-            # generate a random permutation of the label indices
-            random_indices = torch.randperm(len(label_indices), generator=generator)
-
-            # select the first 'num_samples' indices
-            chosen_indices = random_indices[:num_samples]
-
-            # retrieve the dataset indices corresponding to the chosen label indices
-            chosen_dataset_indices = label_indices[chosen_indices].tolist()
-
-            # extend the final list of sampled indices
-            sampled_indices.extend(chosen_dataset_indices)
-
-        # generate a random permutation for the final list of sampled indices
-        random_order = torch.randperm(len(sampled_indices), generator=generator)
-
-        # reorder the sampled indices randomly
-        sampled_indices = torch.tensor(sampled_indices)[random_order].tolist()
-
-        return dataset.select(sampled_indices)
+        split_dataset = self.train_dataset.train_test_split(
+            test_size=self.subset_size,
+            seed=self.seed,
+            stratify_by_column=self._get_dataset_label_field(),
+        )
+        return split_dataset['test']
 
 class ImageDataModule(DataModule):
     def __init__(
