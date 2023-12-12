@@ -35,6 +35,13 @@ do
                 continue
             fi
 
+            # Set number of classes based on the dataset
+            if [ "$dataset" = "cifar10" ]; then
+                NUM_CLASSES=10
+            elif [ "$dataset" = "cifar100" ]; then
+                NUM_CLASSES=100
+            fi
+
             for peft_method in $PEFT_METHODS
             do
                 for epsilon in $EPSILONS
@@ -47,7 +54,7 @@ do
                         --model-name $model \
                         --dataset-name $dataset \
                         --subset-size $subset_size \
-                        --num-classes 10 \
+                        --num-classes $NUM_CLASSES \
                         --target-hypers epochs \
                         --target-hypers batch_size \
                         --target-hypers learning_rate \
