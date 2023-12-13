@@ -22,7 +22,7 @@ PRIVACY="--privacy"
 USE_STEPS="--use-steps"
 NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
-OPTUNA_JOURNAL="$LOG_DIR/optuna_journal.log"
+OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna_journal.log"
 OPTUNA_RESUME="--no-optuna-resume" # should we resume the study?
 OVERWRITE_EXPERIMENT="--no-overwrite-experiment"
 
