@@ -289,7 +289,7 @@ def cli(
                 help='Optuna sampler (a class from optuna.samplers)',
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
-        ] = 'TPESampler',
+        ] = 'BoTorchSampler',
     ):
 
     config_manager = ConfigurationManager(ctx.params)

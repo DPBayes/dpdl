@@ -63,7 +63,7 @@ class Configuration(BaseModel):
     optuna_config: str = 'conf/optuna_hypers.conf'
     optuna_journal: str = 'optuna-journal.log'
     optuna_resume: bool = False
-    optuna_sampler: str = 'TPESampler'
+    optuna_sampler: str = 'BoTorchSampler'
     subset_size: Optional[float]
     num_classes: Optional[int]
     zero_head: bool = False
