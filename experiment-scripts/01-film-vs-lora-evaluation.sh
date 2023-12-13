@@ -16,7 +16,7 @@ SUBSET_SIZES=("0.1" "1.0")
 
 # Other settings
 SEED=42
-N_TRIALS=50
+N_TRIALS=20
 PEFT="--peft"
 PRIVACY="--privacy"
 USE_STEPS="--use-steps"
