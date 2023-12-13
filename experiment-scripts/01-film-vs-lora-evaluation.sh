@@ -15,7 +15,8 @@ DATASETS=("cifar10" "cifar100")
 SUBSET_SIZES=("0.1" "1.0")
 
 # Other settings
-OVERWRITE_EXPERIMENT="--overwrite-experiment" # we are requeuing so enable overwrite
+OVERWRITE_EXPERIMENT="--no-overwrite-experiment"
+OPTUNA_RESUME="--no-optuna-resume" # should we resume the study?
 SEED=42
 N_TRIALS=50
 PEFT="--peft"
@@ -50,7 +51,7 @@ do
                     EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_${peft_method}_Epsilon${epsilon}"
                     OPTUNA_CONFIG="conf/optuna_hypers-subset${subset_size}.conf"
 
-                    sbatch --requeue -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                    sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                         --num-workers 7 \
                         --model-name $model \
                         --dataset-name $dataset \
