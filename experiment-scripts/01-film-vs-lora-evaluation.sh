@@ -15,8 +15,6 @@ DATASETS=("cifar10" "cifar100")
 SUBSET_SIZES=("0.1" "1.0")
 
 # Other settings
-OVERWRITE_EXPERIMENT="--no-overwrite-experiment"
-OPTUNA_RESUME="--no-optuna-resume" # should we resume the study?
 SEED=42
 N_TRIALS=50
 PEFT="--peft"
@@ -24,6 +22,9 @@ PRIVACY="--privacy"
 USE_STEPS="--use-steps"
 NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
+OPTUNA_JOURNAL="$LOG_DIR/optuna_journal.log"
+OPTUNA_RESUME="--no-optuna-resume" # should we resume the study?
+OVERWRITE_EXPERIMENT="--no-overwrite-experiment"
 
 # Loop over configurations
 for model in "${MODELS[@]}"
@@ -74,7 +75,9 @@ do
                         $PRIVACY \
                         $USE_STEPS \
                         $NORMALIZE_CLIPPING \
-                        $OVERWRITE_EXPERIMENT
+                        $OVERWRITE_EXPERIMENT \
+                        $OPTUNA_RESUME \
+                        $OPTUNA_JOURNAL
                 done
             done
         done
