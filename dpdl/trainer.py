@@ -476,6 +476,7 @@ class TrainerFactory:
             epochs=epochs,
             total_steps=total_steps,
             seed=configuration.seed,
+            validation_frequency=configuration.validation_frequency,
         )
 
         return trainer
@@ -540,6 +541,7 @@ class TrainerFactory:
             physical_batch_size=configuration.physical_batch_size,
             seed=configuration.seed,
             callback_handler=callback_handler,
+            validation_frequency=configuration.validation_frequency,
         )
 
         return trainer
