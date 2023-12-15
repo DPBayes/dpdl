@@ -1,0 +1,33 @@
+Configuration:
+  Command                : optimize
+  Privacy                : True
+  Model name             : vit_base_patch16_224.augreg_in21k
+  Optimizer              : Adam
+  Dataset name           : cifar100
+  Physical batch size    : 40
+  Num workers            : 7
+  Validation frequency   : 1.0
+  Seed                   : 42
+  Log dir                : /projappl/project_462000288/experiment-data/01-film-vs-lora-evaluation__Extension_Subset0.1_Trials50
+  Experiment dame        : vit_base_patch16_224.augreg_in21k_cifar100_Subset0.1_film_Epsilon0.25__Extension_Subset0.1_Trials50
+  Overwrite experiment   : True
+  Subset size            : 0.1
+  Num classes            : 100
+  Zero head weights      : False
+  PEFT method            : film
+  Use pretrained model   : True
+  Convert epochs to steps: True
+  Evaluation mode        : False
+  Clipping mode          : flat
+  Secure mode            : False
+  Modulevalidator fix    : False
+  Accountant             : prv
+  Poisson sampling       : True
+  Normalize clipping     : True
+  N trials               : 50
+  Target hypers          : epochs, batch_size, learning_rate, max_grad_norm
+  Optuna target metric   : MulticlassAccuracy
+  Optuna direction       : maximize
+  Optuna config          : conf/optuna_hypers-subset0.1.conf
+  Optuna journal         : /projappl/project_462000288/experiment-data/01-film-vs-lora-evaluation__Extension_Subset0.1_Trials50/optuna_journal.log
+  Optuna resume          : False

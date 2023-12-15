@@ -1,0 +1,1 @@
+{"epochs": 150, "batch_size": 4096, "learning_rate": 0.0034316430585785112, "max_grad_norm": 0.2}
