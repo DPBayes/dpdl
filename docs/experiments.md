@@ -2,9 +2,8 @@
 
 ## Individual experiments
 
-[x] [FiLM vs LoRA evaluation](01-film-vs-lora-evaluation.md)
-
-[ ] [Batch size variation](00-experiment-batch-size-variation.md)
+- [x] [FiLM vs LoRA evaluation](01-film-vs-lora-evaluation.md)
+- [ ] [Batch size variation](00-experiment-batch-size-variation.md)
 
 ## Questions/ideas
 
