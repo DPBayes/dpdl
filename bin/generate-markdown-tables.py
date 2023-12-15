@@ -18,9 +18,10 @@ def generate_markdown_tables(data):
         epsilon = value['hyperparameters']['target_epsilon']
         batch_size = value['best_params']['batch_size']
         peft = value['configuration']['peft']
+        n_trials = value['configuration']['n_trials']
         accuracy = format_float(value['best_value'])
 
-        table_key = (dataset_name, model_name)
+        table_key = (dataset_name, model_name, f'{int(subset_size * 100)}%')
         if table_key not in tables:
             tables[table_key] = []
 
@@ -30,7 +31,7 @@ def generate_markdown_tables(data):
             'epsilon': epsilon,
             'batch_size': batch_size,
             'epochs': value['best_params']['epochs'],
-            'learning_rate': format_float(value['best_params']['learning_rate']),
+            'learning_rate': format_float(value['best_params']['learning_rate'], 6),
             'max_grad_norm': format_float(value['best_params']['max_grad_norm']),
             'accuracy': accuracy
         })
@@ -38,14 +39,14 @@ def generate_markdown_tables(data):
     # Generate Markdown sorted by dataset, model, subset size, epsilon, and PEFT method
     markdown_output = ''
     for dataset in ['cifar10', 'cifar100']:
-        for (dataset_name, model), rows in tables.items():
+        for ((dataset_name, model, subset), rows) in sorted(tables.items()):
             if dataset_name == dataset:
-                markdown_output += f'### {dataset.upper()}\n\n#### {model}\n\n'
-                markdown_output += '| PEFT Method | Dataset Subset | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |\n'
-                markdown_output += '|-------------|----------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|\n'
+                markdown_output += f'### {dataset.upper()} ({subset} Subset, {n_trials} Trials)\n\n#### {model}\n\n'
+                markdown_output += '| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |\n'
+                markdown_output += '|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|\n'
 
-                for row in sorted(rows, key=lambda x: (x['subset'], x['epsilon'], x['peft'])):
-                    markdown_output += f"| {row['peft']} | {row['subset']} | {row['epsilon']} | {row['batch_size']} | {row['epochs']} | {row['learning_rate']} | {row['max_grad_norm']} | {row['accuracy']} |\n"
+                for row in sorted(rows, key=lambda x: (x['epsilon'], x['peft'])):
+                    markdown_output += f"| {row['peft']} | {row['epsilon']} | {row['batch_size']} | {row['epochs']} | {row['learning_rate']} | {row['max_grad_norm']} | {row['accuracy']} |\n"
 
                 markdown_output += '\n'
 
