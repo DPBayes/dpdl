@@ -34,62 +34,124 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 ## Results
 
-### CIFAR-10 (10% subset)
+### CIFAR10 (10% Subset, 20 Trials)
 
-#### Vision Transformer (vit_base_patch16_224.augreg_in21k)
+#### resnetv2_50x1_bit.goog_in21k
 
-| PEFT Method | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 0.25    |                      |                  |                         |                             |          |
-| LoRA        | 0.25    |                      |                  |                         |                             |          |
-| FiLM        | 1       |                      |                  |                         |                             |          |
-| LoRA        | 1       |                      |                  |                         |                             |          |
-| FiLM        | 4       |                      |                  |                         |                             |          |
-| LoRA        | 4       |                      |                  |                         |                             |          |
+| film | 0.25 | 4500 | 70 | 0.002912 | 1.24 | 0.82 |
+| lora | 0.25 | 4500 | 67 | 0.002658 | 1.03 | 0.79 |
+| film | 1.0 | 4500 | 53 | 0.003320 | 1.61 | 0.92 |
+| lora | 1.0 | 4500 | 73 | 0.002729 | 1.34 | 0.90 |
+| film | 4.0 | 512 | 114 | 0.001560 | 0.74 | 0.95 |
+| lora | 4.0 | 4500 | 75 | 0.003496 | 0.99 | 0.94 |
 
-#### ResNet-50 (resnetv2_50x1_bit.goog_in21k)
+#### vit_base_patch16_224.augreg_in21k
 
-| PEFT Method | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 0.25    |                      |                  |                         |                             |          |
-| LoRA        | 0.25    |                      |                  |                         |                             |          |
-| FiLM        | 1       |                      |                  |                         |                             |          |
-| LoRA        | 1       |                      |                  |                         |                             |          |
-| FiLM        | 4       |                      |                  |                         |                             |          |
-| LoRA        | 4       |                      |                  |                         |                             |          |
+| film | 0.25 | 4500 | 84 | 0.003055 | 1.62 | 0.88 |
+| lora | 0.25 | 4500 | 67 | 0.002806 | 1.16 | 0.88 |
+| film | 1.0 | 4500 | 66 | 0.002358 | 0.58 | 0.96 |
+| lora | 1.0 | 4500 | 69 | 0.002092 | 1.70 | 0.96 |
+| film | 4.0 | 512 | 78 | 0.001434 | 0.20 | 0.98 |
+| lora | 4.0 | 4500 | 77 | 0.003036 | 2.13 | 0.99 |
 
-### CIFAR-100 (10% and 100% subsets)
+### CIFAR10 (10% Subset, 50 Trials)
 
-#### Vision Transformer (vit_base_patch16_224.augreg_in21k)
+#### resnetv2_50x1_bit.goog_in21k
 
-| PEFT Method | Dataset Subset | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
-|-------------|----------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 10%            | 0.25    |                      |                  |                         |                             |          |
-| LoRA        | 10%            | 0.25    |                      |                  |                         |                             |          |
-| FiLM        | 10%            | 1       |                      |                  |                         |                             |          |
-| LoRA        | 10%            | 1       |                      |                  |                         |                             |          |
-| FiLM        | 10%            | 4       |                      |                  |                         |                             |          |
-| LoRA        | 10%            | 4       |                      |                  |                         |                             |          |
-| FiLM        | 100%           | 0.25    |                      |                  |                         |                             |          |
-| LoRA        | 100%           | 0.25    |                      |                  |                         |                             |          |
-| FiLM        | 100%           | 1       |                      |                  |                         |                             |          |
-| LoRA        | 100%           | 1       |                      |                  |                         |                             |          |
-| FiLM        | 100%           | 4       |                      |                  |                         |                             |          |
-| LoRA        | 100%           | 4       |                      |                  |                         |                             |          |
+| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| film | 0.25 | 4500 | 88 | 0.002956 | 1.24 | 0.83 |
+| lora | 0.25 | 4500 | 69 | 0.002954 | 0.81 | 0.80 |
+| film | 1.0 | 4500 | 52 | 0.003443 | 1.61 | 0.92 |
+| lora | 1.0 | 4500 | 74 | 0.002967 | 1.24 | 0.92 |
+| film | 4.0 | 512 | 109 | 0.001789 | 1.36 | 0.95 |
+| lora | 4.0 | 4500 | 77 | 0.003449 | 0.96 | 0.95 |
 
-#### ResNet-50 (resnetv2_50x1_bit.goog_in21k)
+#### vit_base_patch16_224.augreg_in21k
 
-| PEFT Method | Dataset Subset | Epsilon | Optimized Batch Size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
-|-------------|----------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
-| FiLM        | 10%            | 0.25    |                      |                  |                         |                             |          |
-| LoRA        | 10%            | 0.25    |                      |                  |                         |                             |          |
-| FiLM        | 10%            | 1       |                      |                  |                         |                             |          |
-| LoRA        | 10%            | 1       |                      |                  |                         |                             |          |
-| FiLM        | 10%            | 4       |                      |                  |                         |                             |          |
-| LoRA        | 10%            | 4       |                      |                  |                         |                             |          |
-| FiLM        | 100%           | 0.25    |                      |                  |                         |                             |          |
-| LoRA        | 100%           | 0.25    |                      |                  |                         |                             |          |
-| FiLM        | 100%           | 1       |                      |                  |                         |                             |          |
-| LoRA        | 100%           | 1       |                      |                  |                         |                             |          |
-| FiLM        | 100%           | 4       |                      |                  |                         |                             |          |
-| LoRA        | 100%           | 4       |                      |                  |                         |                             |          |
+| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| film | 0.25 | 4500 | 84 | 0.003564 | 1.62 | 0.89 |
+| lora | 0.25 | 4500 | 64 | 0.002730 | 1.37 | 0.89 |
+| film | 1.0 | 4500 | 77 | 0.002739 | 0.52 | 0.96 |
+| lora | 1.0 | 4500 | 69 | 0.002092 | 1.70 | 0.96 |
+| film | 4.0 | 4096 | 150 | 0.003432 | 0.20 | 0.99 |
+| lora | 4.0 | 4500 | 73 | 0.002497 | 1.98 | 0.99 |
+
+### CIFAR100 (10% Subset, 20 Trials)
+
+#### resnetv2_50x1_bit.goog_in21k
+
+| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| film | 0.25 | 4500 | 99 | 0.003687 | 2.33 | 0.04 |
+| lora | 0.25 | 4500 | 131 | 0.002147 | 0.60 | 0.05 |
+| film | 1.0 | 4500 | 64 | 0.003116 | 1.69 | 0.29 |
+| lora | 1.0 | 4500 | 77 | 0.003629 | 1.83 | 0.29 |
+| film | 4.0 | 4500 | 76 | 0.004504 | 1.66 | 0.74 |
+| lora | 4.0 | 4500 | 73 | 0.002554 | 1.43 | 0.70 |
+
+#### vit_base_patch16_224.augreg_in21k
+
+| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| film | 0.25 | 4500 | 72 | 0.004300 | 2.15 | 0.07 |
+| lora | 0.25 | 256 | 123 | 0.000562 | 6.97 | 0.04 |
+| film | 1.0 | 512 | 91 | 0.003061 | 2.30 | 0.56 |
+| lora | 1.0 | 4500 | 77 | 0.003654 | 1.25 | 0.38 |
+| film | 4.0 | 512 | 84 | 0.002352 | 0.70 | 0.86 |
+| lora | 4.0 | 4500 | 67 | 0.002799 | 1.16 | 0.86 |
+
+### CIFAR100 (10% Subset, 50 Trials)
+
+#### resnetv2_50x1_bit.goog_in21k
+
+| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| film | 0.25 | 4500 | 83 | 0.002598 | 2.37 | 0.05 |
+| lora | 0.25 | 4500 | 125 | 0.002917 | 1.68 | 0.06 |
+| film | 1.0 | 4500 | 57 | 0.003803 | 1.81 | 0.32 |
+| lora | 1.0 | 4500 | 77 | 0.003629 | 1.83 | 0.29 |
+| film | 4.0 | 4500 | 76 | 0.004504 | 1.66 | 0.74 |
+| lora | 4.0 | 4500 | 73 | 0.002554 | 1.43 | 0.70 |
+
+#### vit_base_patch16_224.augreg_in21k
+
+| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| film | 0.25 | 4500 | 94 | 0.002715 | 2.98 | 0.08 |
+| lora | 0.25 | 256 | 91 | 0.000440 | 6.55 | 0.06 |
+| film | 1.0 | 512 | 90 | 0.003173 | 3.09 | 0.58 |
+| lora | 1.0 | 4500 | 75 | 0.003480 | 1.33 | 0.42 |
+| film | 4.0 | 512 | 122 | 0.001558 | 2.40 | 0.86 |
+| lora | 4.0 | 4500 | 72 | 0.002988 | 1.56 | 0.87 |
+
+### CIFAR100 (100% Subset, 20 Trials)
+
+#### resnetv2_50x1_bit.goog_in21k
+
+| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| film | 0.25 | 45000 | 79 | 0.002686 | 1.51 | 0.60 |
+| lora | 0.25 | 45000 | 75 | 0.002624 | 0.96 | 0.56 |
+| film | 1.0 | 45000 | 79 | 0.002674 | 1.41 | 0.78 |
+| lora | 1.0 | 45000 | 65 | 0.002699 | 1.10 | 0.73 |
+| film | 4.0 | 45000 | 51 | 0.002974 | 1.73 | 0.83 |
+| lora | 4.0 | 45000 | 70 | 0.003377 | 1.35 | 0.80 |
+
+#### vit_base_patch16_224.augreg_in21k
+
+| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
+|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|
+| film | 0.25 | 2048 | 71 | 0.002014 | 4.83 | 0.75 |
+| lora | 0.25 | 45000 | 93 | 0.003083 | 1.92 | 0.76 |
+| film | 1.0 | 2048 | 83 | 0.000634 | 4.52 | 0.87 |
+| lora | 1.0 | 45000 | 63 | 0.002848 | 2.29 | 0.89 |
+| film | 4.0 | 45000 | 78 | 0.003256 | 3.63 | 0.91 |
+| lora | 4.0 | 45000 | 79 | 0.002337 | 1.38 | 0.92 |
+
+
