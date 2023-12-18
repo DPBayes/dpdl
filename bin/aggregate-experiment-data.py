@@ -10,19 +10,16 @@ def read_text_file(file_path):
     with open(file_path, 'r') as file:
         return file.read().strip()
 
-def process_experiment_directory(parent_directory, filter_str=None):
-    all_data = {}
+def process_experiment_directory(directory):
+    data = {}
 
-    for directory in os.listdir(parent_directory):
-        if filter_str and filter_str not in directory:
-            continue
+    print(f'Processing experiments in directory: {directory}')
 
-        print(f'Processing experiment: {directory}')
-
-        experiment_path = os.path.join(parent_directory, directory)
+    for entry in os.listdir(directory):
+        experiment_path = os.path.join(directory, entry)
         if os.path.isdir(experiment_path):
             try:
-                data = {
+                experiment_data = {
                     'best_params': read_json_file(os.path.join(experiment_path, 'best-params.json')),
                     'best_value': read_text_file(os.path.join(experiment_path, 'best-value')),
                     'hyperparameters': read_json_file(os.path.join(experiment_path, 'hyperparameters.json')),
@@ -32,23 +29,22 @@ def process_experiment_directory(parent_directory, filter_str=None):
                     'runtime': read_text_file(os.path.join(experiment_path, 'runtime')),
                     'git_hash': read_text_file(os.path.join(experiment_path, 'git-hash'))
                 }
-                all_data[directory] = data
+                data[entry] = experiment_data
             except Exception as e:
                 raise Exception(f'Error processing {experiment_path}: {e}')
-
-    return all_data
+    return data
 
 def main():
-    if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print('Usage: python script.py <parent_directory> [filter_str]')
+    if len(sys.argv) < 2:
+        print('Usage: python script.py <directory1> [<directory2> ...]')
         sys.exit(1)
 
-    parent_directory = sys.argv[1]
-    filter_str = sys.argv[2] if len(sys.argv) == 3 else None
-    combined_data = process_experiment_directory(parent_directory, filter_str)
+    all_data = {}
+    for directory in sys.argv[1:]:
+        all_data.update(process_experiment_directory(directory))
 
     with open('aggregated_data.json', 'w') as outfile:
-        json.dump(combined_data, outfile, indent=4)
+        json.dump(all_data, outfile, indent=4)
 
 if __name__ == '__main__':
     main()
