@@ -1,12 +1,12 @@
 ##########################################
 ### Experiment: 01-film-vs-lora-evaluation
-### Extension: Subset: 0.1, Trials: 50
+### Extension: Subset: 0.1, Full batch
 ### Extension: Full batch only
 ##########################################
 
 # Base configurations
-EXPERIMENT_BASE="01-film-vs-lora-evaluation__Extension_Subset0.1_Trials50_FullBatch"
-LOG_DIR="/projappl/$PROJECT/dpdl/experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_Trials50_FullBatch/data"
+EXPERIMENT_BASE="01-film-vs-lora-evaluation__Extension_Subset0.1_FullBatch"
+LOG_DIR="/projappl/$PROJECT/dpdl/experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_FullBatch/data"
 mkdir -p $LOG_DIR
 
 # Experiment parameters
@@ -54,7 +54,7 @@ do
                     EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_${peft_method}_Epsilon${epsilon}__Extension_Subset0.1_Trials50_FullBatch"
                     OPTUNA_CONFIG="conf/optuna_hypers-subset${subset_size}.conf"
 
-                    sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                    echo sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                         --num-workers 7 \
                         --model-name $model \
                         --dataset-name $dataset \
