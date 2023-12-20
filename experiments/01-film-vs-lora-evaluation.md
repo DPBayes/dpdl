@@ -123,37 +123,37 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 ##### Accuracy by Model, PEFT method, and Epsilon
 
-![Accuracy by Model PEFT and Epsilon CIFAR100 100%](01-film-vs-lora-evaluation/images/accuracy_by_model_peft_and_epsilon_cifar100_100%_plot.png)
+![Accuracy by Model PEFT and Epsilon CIFAR100 100%25](01-film-vs-lora-evaluation/images/accuracy_by_model_peft_and_epsilon_cifar100_100%25_plot.png)
 
-![Accuracy by Model PEFT and Epsilon CIFAR100 10%](01-film-vs-lora-evaluation/images/accuracy_by_model_peft_and_epsilon_cifar100_10%_plot.png)
+![Accuracy by Model PEFT and Epsilon CIFAR100 10%25](01-film-vs-lora-evaluation/images/accuracy_by_model_peft_and_epsilon_cifar100_10%25_plot.png)
 
-![Accuracy by Model PEFT and Epsilon CIFAR10 10%](01-film-vs-lora-evaluation/images/accuracy_by_model_peft_and_epsilon_cifar10_10%_plot.png)
+![Accuracy by Model PEFT and Epsilon CIFAR10 10%25](01-film-vs-lora-evaluation/images/accuracy_by_model_peft_and_epsilon_cifar10_10%25_plot.png)
 
 ##### Accuracy trends
 
-![Accuracy Trend CIFAR100 100%](01-film-vs-lora-evaluation/images/accuracy_trend_cifar100_100%_plot.png)
+![Accuracy Trend CIFAR100 100%25](01-film-vs-lora-evaluation/images/accuracy_trend_cifar100_100%25_plot.png)
 
-![Accuracy Trend CIFAR100 10%](01-film-vs-lora-evaluation/images/accuracy_trend_cifar100_10%_plot.png)
+![Accuracy Trend CIFAR100 10%25](01-film-vs-lora-evaluation/images/accuracy_trend_cifar100_10%25_plot.png)
 
-![Accuracy Trend CIFAR10 10%](01-film-vs-lora-evaluation/images/accuracy_trend_cifar10_10%_plot.png)
+![Accuracy Trend CIFAR10 10%25](01-film-vs-lora-evaluation/images/accuracy_trend_cifar10_10%25_plot.png)
 
-##### Hyperparameter transfer from 10% of CIFAR10 to 100% CIFAR10
+##### Hyperparameter transfer from 10%25 of CIFAR10 to 100%25 CIFAR10
 
-![Hyper Transfer 10% to 100% Batch Size Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_batch%20size_film_plot.png)
+![Hyper Transfer 10%25 to 100%25 Batch Size Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_batch%2520size_film_plot.png)
 
-![Hyper Transfer 10% to 100% Batch Size Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_batch%20size_lora_plot.png)
+![Hyper Transfer 10%25 to 100%25 Batch Size Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_batch%2520size_lora_plot.png)
 
-![Hyper Transfer 10% to 100% Epochs Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_epochs_film_plot.png)
+![Hyper Transfer 10%25 to 100%25 Epochs Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_epochs_film_plot.png)
 
-![Hyper Transfer 10% to 100% Epochs Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_epochs_lora_plot.png)
+![Hyper Transfer 10%25 to 100%25 Epochs Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_epochs_lora_plot.png)
 
-![Hyper Transfer 10% to 100% Learning Rate Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_learning%20rate_film_plot.png)
+![Hyper Transfer 10%25 to 100%25 Learning Rate Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_learning%2520rate_film_plot.png)
 
-![Hyper Transfer 10% to 100% Learning Rate Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_learning%20rate_lora_plot.png)
+![Hyper Transfer 10%25 to 100%25 Learning Rate Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_learning%2520rate_lora_plot.png)
 
-![Hyper Transfer 10% to 100% Max Grad Norm Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_max%20grad%20norm_film_plot.png)
+![Hyper Transfer 10%25 to 100%25 Max Grad Norm Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_max%2520grad%2520norm_film_plot.png)
 
-![Hyper Transfer 10% to 100% Max Grad Norm Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_max%20grad%20norm_lora_plot.png)
+![Hyper Transfer 10%25 to 100%25 Max Grad Norm Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_max%2520grad%2520norm_lora_plot.png)
 
 ---
 
@@ -215,21 +215,21 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 ##### Accuracy 20 vs 50 Trials
 
-![Accuracy 20 vs 50 Trials CIFAR100 ResNet Film 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_resnet_Film_10%_plot.png)
+![Accuracy 20 vs 50 Trials CIFAR100 ResNet Film 10%25](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_resnet_Film_10%25_plot.png)
 
-![Accuracy 20 vs 50 Trials CIFAR100 ResNet Lora 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_resnet_Lora_10%_plot.png)
+![Accuracy 20 vs 50 Trials CIFAR100 ResNet Lora 10%25](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_resnet_Lora_10%25_plot.png)
 
-![Accuracy 20 vs 50 Trials CIFAR100 ViT Film 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_vit_Film_10%_plot.png)
+![Accuracy 20 vs 50 Trials CIFAR100 ViT Film 10%25](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_vit_Film_10%25_plot.png)
 
-![Accuracy 20 vs 50 Trials CIFAR100 ViT Lora 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_vit_Lora_10%_plot.png)
+![Accuracy 20 vs 50 Trials CIFAR100 ViT Lora 10%25](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_vit_Lora_10%25_plot.png)
 
-![Accuracy 20 vs 50 Trials CIFAR10 ResNet Film 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_resnet_Film_10%_plot.png)
+![Accuracy 20 vs 50 Trials CIFAR10 ResNet Film 10%25](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_resnet_Film_10%25_plot.png)
 
-![Accuracy 20 vs 50 Trials CIFAR10 ResNet Lora 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_resnet_Lora_10%_plot.png)
+![Accuracy 20 vs 50 Trials CIFAR10 ResNet Lora 10%25](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_resnet_Lora_10%25_plot.png)
 
-![Accuracy 20 vs 50 Trials CIFAR10 ViT Film 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_vit_Film_10%_plot.png)
+![Accuracy 20 vs 50 Trials CIFAR10 ViT Film 10%25](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_vit_Film_10%25_plot.png)
 
-![Accuracy 20 vs 50 Trials CIFAR10 ViT Lora 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_vit_Lora_10%_plot.png)
+![Accuracy 20 vs 50 Trials CIFAR10 ViT Lora 10%25](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_vit_Lora_10%25_plot.png)
 
 ---
 
@@ -291,6 +291,6 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 ##### Accuracy full batch vs Optimized batch size
 
-![Accuracy Fullbatch vs Optimized by Model PEFT and Epsilon CIFAR100 10%](01-film-vs-lora-evaluation/images/accuracy_fullbatch_vs_optimized_by_model_peft_and_epsilon_cifar100_10%_plot.png)
-![Accuracy Fullbatch vs Optimized by Model PEFT and Epsilon CIFAR10 10%](01-film-vs-lora-evaluation/images/accuracy_fullbatch_vs_optimized_by_model_peft_and_epsilon_cifar10_10%_plot.png)
+![Accuracy Fullbatch vs Optimized by Model PEFT and Epsilon CIFAR100 10%25](01-film-vs-lora-evaluation/images/accuracy_fullbatch_vs_optimized_by_model_peft_and_epsilon_cifar100_10%25_plot.png)
+![Accuracy Fullbatch vs Optimized by Model PEFT and Epsilon CIFAR10 10%25](01-film-vs-lora-evaluation/images/accuracy_fullbatch_vs_optimized_by_model_peft_and_epsilon_cifar10_10%25_plot.png)
 
