@@ -137,7 +137,7 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 ![Accuracy Trend CIFAR10 10%25](01-film-vs-lora-evaluation/images/accuracy_trend_cifar10_10%25_plot.png)
 
-##### Hyperparameter transfer from 10%25 of CIFAR10 to 100%25 CIFAR10
+##### Hyperparameter transfer from 10% of CIFAR10 to 100% CIFAR10
 
 ![Hyper Transfer 10%25 to 100%25 Batch Size Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_batch%2520size_film_plot.png)
 
