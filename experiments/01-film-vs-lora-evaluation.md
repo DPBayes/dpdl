@@ -294,3 +294,103 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 ![Accuracy Fullbatch vs Optimized by Model PEFT and Epsilon CIFAR100 10%25](01-film-vs-lora-evaluation/images/accuracy_fullbatch_vs_optimized_by_model_peft_and_epsilon_cifar100_10%25_plot.png)
 ![Accuracy Fullbatch vs Optimized by Model PEFT and Epsilon CIFAR10 10%25](01-film-vs-lora-evaluation/images/accuracy_fullbatch_vs_optimized_by_model_peft_and_epsilon_cifar10_10%25_plot.png)
 
+##### Hyperparameter importances
+
+###### Hyper Importances ResNetv2 CIFAR100 10% Film Epsilon 0.25 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR100 10% Film Epsilon 0.25 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar100_Subset10%25_Film_Epsilon0.25_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR100 10% Film Epsilon 1.0 FullBatch
+
+###### Hyper Importances ResNetv2 CIFAR100 10% Film Epsilon 1.0 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR100 10% Film Epsilon 1.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar100_Subset10%25_Film_Epsilon1.0_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR100 10% Film Epsilon 4.0 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR100 10% Film Epsilon 4.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar100_Subset10%25_Film_Epsilon4.0_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR100 10% Lora Epsilon 0.25 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR100 10% Lora Epsilon 0.25 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar100_Subset10%25_Lora_Epsilon0.25_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR100 10% Lora Epsilon 1.0 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR100 10% Lora Epsilon 1.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar100_Subset10%25_Lora_Epsilon1.0_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR100 10% Lora Epsilon 4.0 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR100 10% Lora Epsilon 4.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar100_Subset10%25_Lora_Epsilon4.0_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR10 10% Film Epsilon 0.25 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR10 10% Film Epsilon 0.25 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar10_Subset10%25_Film_Epsilon0.25_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR10 10% Film Epsilon 1.0 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR10 10% Film Epsilon 1.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar10_Subset10%25_Film_Epsilon1.0_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR10 10% Film Epsilon 4.0 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR10 10% Film Epsilon 4.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar10_Subset10%25_Film_Epsilon4.0_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR10 10% Lora Epsilon 0.25 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR10 10% Lora Epsilon 0.25 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar10_Subset10%25_Lora_Epsilon0.25_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR10 10% Lora Epsilon 1.0 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR10 10% Lora Epsilon 1.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar10_Subset10%25_Lora_Epsilon1.0_FullBatch_plot.png)
+
+###### Hyper Importances ResNetv2 CIFAR10 10% Lora Epsilon 4.0 FullBatch
+
+![Hyper Importances ResNetv2 CIFAR10 10% Lora Epsilon 4.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_resnetv2_cifar10_Subset10%25_Lora_Epsilon4.0_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR100 10% Film Epsilon 0.25 FullBatch
+
+![Hyper Importances ViT CIFAR100 10% Film Epsilon 0.25 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar100_Subset10%25_Film_Epsilon0.25_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR100 10% Film Epsilon 1.0 FullBatch
+
+![Hyper Importances ViT CIFAR100 10% Film Epsilon 1.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar100_Subset10%25_Film_Epsilon1.0_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR100 10% Film Epsilon 4.0 FullBatch
+
+![Hyper Importances ViT CIFAR100 10% Film Epsilon 4.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar100_Subset10%25_Film_Epsilon4.0_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR100 10% Lora Epsilon 0.25 FullBatch
+
+![Hyper Importances ViT CIFAR100 10% Lora Epsilon 0.25 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar100_Subset10%25_Lora_Epsilon0.25_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR100 10% Lora Epsilon 1.0 FullBatch
+
+![Hyper Importances ViT CIFAR100 10% Lora Epsilon 1.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar100_Subset10%25_Lora_Epsilon1.0_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR100 10% Lora Epsilon 4.0 FullBatch
+
+![Hyper Importances ViT CIFAR100 10% Lora Epsilon 4.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar100_Subset10%25_Lora_Epsilon4.0_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR10 10% Film Epsilon 0.25 FullBatch
+
+![Hyper Importances ViT CIFAR10 10% Film Epsilon 0.25 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar10_Subset10%25_Film_Epsilon0.25_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR10 10% Film Epsilon 1.0 FullBatch
+
+![Hyper Importances ViT CIFAR10 10% Film Epsilon 1.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar10_Subset10%25_Film_Epsilon1.0_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR10 10% Film Epsilon 4.0 FullBatch
+
+![Hyper Importances ViT CIFAR10 10% Film Epsilon 4.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar10_Subset10%25_Film_Epsilon4.0_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR10 10% Lora Epsilon 0.25 FullBatch
+
+![Hyper Importances ViT CIFAR10 10% Lora Epsilon 0.25 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar10_Subset10%25_Lora_Epsilon0.25_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR10 10% Lora Epsilon 1.0 FullBatch
+
+![Hyper Importances ViT CIFAR10 10% Lora Epsilon 1.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar10_Subset10%25_Lora_Epsilon1.0_FullBatch_plot.png)
+
+###### Hyper Importances ViT CIFAR10 10% Lora Epsilon 4.0 FullBatch
+
+![Hyper Importances ViT CIFAR10 10% Lora Epsilon 4.0 FullBatch](01-film-vs-lora-evaluation/images/hyper_importances_vit_cifar10_Subset10%25_Lora_Epsilon4.0_FullBatch_plot.png)
+
