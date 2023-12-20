@@ -4,6 +4,8 @@
 |------------|----------|
 | [Run script](../experiments/01-film-vs-lora-evaluation/scripts/run.sh) | [Raw data](../experiments/01-film-vs-lora-evaluation/data/) |
 | [Run script - Extension 50 Trials, 10% Subset](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_Trials50/scripts/run.sh) | [Raw data](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_Trials50/data/) |
+| [Run script - Extension Full batch, 10% Subset](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_FullBatch/scripts/run.sh) | [Raw data](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_FullBatch/data/) |
+
 ## Objective
 We aim to evaluate the effectiveness of different Parameter Efficient Fine-tuning (PEFT) methods—FiLM and LoRA—in the context of differentially private deep learning to determine the most suitable method for our future experiments.
 
@@ -117,6 +119,42 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 | film | 4.0 | 45000 | 78 | 0.003256 | 3.63 | 0.91 |
 | lora | 4.0 | 45000 | 79 | 0.002337 | 1.38 | 0.92 |
 
+#### Plots
+
+##### Accuracy by Model, PEFT method, and Epsilon
+
+![Accuracy by Model PEFT and Epsilon CIFAR100 100%](01-film-vs-lora-evaluation/images/accuracy_by_model_peft_and_epsilon_cifar100_100%_plot.png)
+
+![Accuracy by Model PEFT and Epsilon CIFAR100 10%](01-film-vs-lora-evaluation/images/accuracy_by_model_peft_and_epsilon_cifar100_10%_plot.png)
+
+![Accuracy by Model PEFT and Epsilon CIFAR10 10%](01-film-vs-lora-evaluation/images/accuracy_by_model_peft_and_epsilon_cifar10_10%_plot.png)
+
+##### Accuracy trends
+
+![Accuracy Trend CIFAR100 100%](01-film-vs-lora-evaluation/images/accuracy_trend_cifar100_100%_plot.png)
+
+![Accuracy Trend CIFAR100 10%](01-film-vs-lora-evaluation/images/accuracy_trend_cifar100_10%_plot.png)
+
+![Accuracy Trend CIFAR10 10%](01-film-vs-lora-evaluation/images/accuracy_trend_cifar10_10%_plot.png)
+
+##### Hyperparameter transfer from 10% of CIFAR10 to 100% CIFAR10
+
+![Hyper Transfer 10% to 100% Batch Size Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_batch%20size_film_plot.png)
+
+![Hyper Transfer 10% to 100% Batch Size Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_batch%20size_lora_plot.png)
+
+![Hyper Transfer 10% to 100% Epochs Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_epochs_film_plot.png)
+
+![Hyper Transfer 10% to 100% Epochs Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_epochs_lora_plot.png)
+
+![Hyper Transfer 10% to 100% Learning Rate Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_learning%20rate_film_plot.png)
+
+![Hyper Transfer 10% to 100% Learning Rate Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_learning%20rate_lora_plot.png)
+
+![Hyper Transfer 10% to 100% Max Grad Norm Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_max%20grad%20norm_film_plot.png)
+
+![Hyper Transfer 10% to 100% Max Grad Norm Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%_to_100%_max%20grad%20norm_lora_plot.png)
+
 ---
 
 ### 01-film-vs-lora-evaluation - Extension 50 Trials, 10% Subset
@@ -173,6 +211,26 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 | film | 4.0 | 512 | 122 | 0.001558 | 2.40 | 0.86 |
 | lora | 4.0 | 4500 | 72 | 0.002988 | 1.56 | 0.87 |
 
+#### Plots
+
+##### Accuracy 20 vs 50 Trials
+
+![Accuracy 20 vs 50 Trials CIFAR100 ResNet Film 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_resnet_Film_10%_plot.png)
+
+![Accuracy 20 vs 50 Trials CIFAR100 ResNet Lora 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_resnet_Lora_10%_plot.png)
+
+![Accuracy 20 vs 50 Trials CIFAR100 ViT Film 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_vit_Film_10%_plot.png)
+
+![Accuracy 20 vs 50 Trials CIFAR100 ViT Lora 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar100_vit_Lora_10%_plot.png)
+
+![Accuracy 20 vs 50 Trials CIFAR10 ResNet Film 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_resnet_Film_10%_plot.png)
+
+![Accuracy 20 vs 50 Trials CIFAR10 ResNet Lora 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_resnet_Lora_10%_plot.png)
+
+![Accuracy 20 vs 50 Trials CIFAR10 ViT Film 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_vit_Film_10%_plot.png)
+
+![Accuracy 20 vs 50 Trials CIFAR10 ViT Lora 10%](01-film-vs-lora-evaluation/images/accuracy_20_vs_50_trials_cifar10_vit_Lora_10%_plot.png)
+
 ---
 
 ### 01-film-vs-lora-evaluation - Extension Full batch, 10% Subset
@@ -228,4 +286,11 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 | lora | 1.0 | 4500 | 92 | 0.005141 | 2.16 | 0.12 |
 | film | 4.0 | 4500 | 56 | 0.005771 | 5.07 | 0.83 |
 | lora | 4.0 | 4500 | 70 | 0.003248 | 1.74 | 0.86 |
+
+#### Plots
+
+##### Accuracy full batch vs Optimized batch size
+
+![Accuracy Fullbatch vs Optimized by Model PEFT and Epsilon CIFAR100 10%](01-film-vs-lora-evaluation/images/accuracy_fullbatch_vs_optimized_by_model_peft_and_epsilon_cifar100_10%_plot.png)
+![Accuracy Fullbatch vs Optimized by Model PEFT and Epsilon CIFAR10 10%](01-film-vs-lora-evaluation/images/accuracy_fullbatch_vs_optimized_by_model_peft_and_epsilon_cifar10_10%_plot.png)
 

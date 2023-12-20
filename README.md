@@ -6,7 +6,7 @@ Many of the ideas that we are using come from [fastai](https://github.com/fastai
 
 ## Experiments
 
-![Experiment documentation is here.](docs/experiments.md)
+![Experiment documentation is here.](experiments/)
 
 ## Installation and usage
 
