@@ -41,7 +41,7 @@ def generate_markdown_tables(data):
     for dataset in ['cifar10', 'cifar100']:
         for ((dataset_name, model, subset), rows) in sorted(tables.items()):
             if dataset_name == dataset:
-                markdown_output += f'### {dataset.upper()} ({subset} Subset, {n_trials} Trials)\n\n#### {model}\n\n'
+                markdown_output += f'#### {dataset.upper()} ({subset} Subset, {n_trials} Trials)\n\n##### {model}\n\n'
                 markdown_output += '| PEFT Method | Epsilon | Optimized batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |\n'
                 markdown_output += '|-------------|---------|----------------------|------------------|-------------------------|-----------------------------|----------|\n'
 
