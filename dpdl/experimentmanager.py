@@ -66,7 +66,7 @@ def _copy_optuna_study_to_experiment_dir(config_manager: ConfigurationManager):
     # destination storage is under the experiment directory
     log_dir = config_manager.configuration.log_dir
     experiment_name = config_manager.configuration.experiment_name
-    dst_journal_fpath = str(pathlib.Path(f'{log_dir}/{experiment_name}/optuna-journal.log'))
+    dst_journal_fpath = str(pathlib.Path(f'{log_dir}/{experiment_name}/optuna.journal'))
     dst_storage = optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(dst_journal_fpath))
 
     # now copy this experiment's journal to the experiment directory
