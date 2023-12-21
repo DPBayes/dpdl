@@ -147,13 +147,13 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 ![Hyper Transfer 10%25 to 100%25 Epochs Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_epochs_lora_plot.png)
 
-![Hyper Transfer 10%25 to 100%25 Learning Rate Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_learning%2520rate_film_plot.png)
+![Hyper Transfer 10%25 to 100%25 Learning Rate Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_learning%20rate_film_plot.png)
 
-![Hyper Transfer 10%25 to 100%25 Learning Rate Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_learning%2520rate_lora_plot.png)
+![Hyper Transfer 10%25 to 100%25 Learning Rate Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_learning%20rate_lora_plot.png)
 
-![Hyper Transfer 10%25 to 100%25 Max Grad Norm Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_max%2520grad%2520norm_film_plot.png)
+![Hyper Transfer 10%25 to 100%25 Max Grad Norm Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_max%2520grad%20norm_film_plot.png)
 
-![Hyper Transfer 10%25 to 100%25 Max Grad Norm Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_max%2520grad%2520norm_lora_plot.png)
+![Hyper Transfer 10%25 to 100%25 Max Grad Norm Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_max%2520grad%20norm_lora_plot.png)
 
 ---
 
