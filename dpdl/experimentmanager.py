@@ -56,6 +56,17 @@ def save_study(
 
     _copy_optuna_study_to_experiment_dir(config_manager)
 
+    _copy_optuna_config_to_experiment_dir(config_manager)
+
+def _copy_optuna_config_to_experiment_dir(config_manager: ConfigurationManager):
+    src_path = config_manager.configuration.optuna_config
+
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    dst_path = pathlib.Path(f'{log_dir}/{experiment_name}/optuna.conf')
+
+    shutil.copy(src_path, dst_path)
+
 def _copy_optuna_study_to_experiment_dir(config_manager: ConfigurationManager):
     experiment_name = config_manager.configuration.experiment_name
 
