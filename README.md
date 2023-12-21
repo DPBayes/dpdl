@@ -92,7 +92,7 @@ Add a new optimizer in [optimizers](dpdl/optimizers.py).
 
 ## TODO
 
-- [ ] Batch size finder
+- [ ] Instead of optimizing batch sizes, let's optimize sample rates.
 - [ ] Repeat experiments with different seeds (do in CLI instead?)
 - [x] Log runtime, gpu type, and gpu count
 - [x] Properly arrange GPU bindings
