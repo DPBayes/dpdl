@@ -275,7 +275,7 @@ def cli(
                 help='Optuna journal (logging) file path',
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
-        ] = 'optuna-journal.log',
+        ] = 'optuna.journal',
         optuna_resume: Annotated[
             Optional[bool],
             typer.Option(
