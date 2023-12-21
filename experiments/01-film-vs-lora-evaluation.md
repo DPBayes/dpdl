@@ -139,9 +139,9 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 ##### Hyperparameter transfer from 10% of CIFAR10 to 100% CIFAR10
 
-![Hyper Transfer 10%25 to 100%25 Batch Size Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_batch%2520size_film_plot.png)
+![Hyper Transfer 10%25 to 100%25 Batch Size Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_batch%20size_film_plot.png)
 
-![Hyper Transfer 10%25 to 100%25 Batch Size Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_batch%2520size_lora_plot.png)
+![Hyper Transfer 10%25 to 100%25 Batch Size Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_batch%20size_lora_plot.png)
 
 ![Hyper Transfer 10%25 to 100%25 Epochs Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_epochs_film_plot.png)
 
@@ -151,9 +151,9 @@ For each combination of PEFT method, model, dataset, and epsilon value, we will 
 
 ![Hyper Transfer 10%25 to 100%25 Learning Rate Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_learning%20rate_lora_plot.png)
 
-![Hyper Transfer 10%25 to 100%25 Max Grad Norm Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_max%2520grad%20norm_film_plot.png)
+![Hyper Transfer 10%25 to 100%25 Max Grad Norm Film](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_max%20grad%20norm_film_plot.png)
 
-![Hyper Transfer 10%25 to 100%25 Max Grad Norm Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_max%2520grad%20norm_lora_plot.png)
+![Hyper Transfer 10%25 to 100%25 Max Grad Norm Lora](01-film-vs-lora-evaluation/images/hyper_transfer_10%25_to_100%25_max%20grad%20norm_lora_plot.png)
 
 ---
 
