@@ -3,26 +3,41 @@ import pathlib
 import torch
 import typer
 
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 from typing import Optional, List, Literal
 
 log = logging.getLogger(__name__)
 
 class Hyperparameters(BaseModel):
     epochs: int = None
-    batch_size: int = 64
+    batch_size: int = 0
+    sample_rate: float = 0
     learning_rate: float = 1e-3
     noise_multiplier: Optional[float]
     max_grad_norm: Optional[float]
     target_epsilon: Optional[float]
     privacy: bool = True # Only used in __str__
 
+    @root_validator
+    def check_batch_size_or_sample_rate(cls, values):
+        batch_size, sample_rate = values.get('batch_size'), values.get('sample_rate')
+
+        if all([batch_size, sample_rate]) or not any([batch_size, sample_rate]):
+            raise ValueError('Either batch_size or sample_rate must be set, but not both.')
+
+        return values
+
     def __str__(self):
         hypers = [
             ('Epochs', self.epochs),
-            ('Batch size', self.batch_size),
             ('Learning rate', self.learning_rate),
         ]
+
+        if self.batch_size:
+            hypers.append(('Batch size', self.batch_size))
+
+        if self.sample_rate:
+            hypers.append(('Sample rate', self.sample_rate))
 
         if self.privacy:
             privacy_hypers = [
@@ -71,6 +86,15 @@ class Configuration(BaseModel):
     pretrained: bool = True
     use_steps: Optional[bool] = False
     evaluation_mode: Optional[bool] = False
+
+    @root_validator(pre=True)
+    def check_command(cls, values):
+        command = values.get('command')
+
+        if command not in ['train', 'optimize', 'show-layers']:
+            raise ValueError('Command must be "train", "optimize", or "show-layers".')
+
+        return values
 
     def __str__(self):
         attributes = [
@@ -127,9 +151,6 @@ class ConfigurationManager:
     def __init__(self, cli_params: dict):
         self.command = cli_params['command']
 
-        # XXX: Move these checks to pydantic validator?
-        self._check_command()
-
         self.configuration = Configuration(**cli_params)
         self.hyperparams = Hyperparameters(**cli_params)
 
@@ -146,10 +167,6 @@ class ConfigurationManager:
 
     def get_command(self):
         return self.command
-
-    def _check_command(self):
-        if self.command not in ['train', 'optimize', 'show-layers']:
-            raise typer.BadParameter('Command must be "train", "optimize", or "show-layers".')
 
     def save_configuration(self, directory: pathlib.Path):
         if torch.distributed.get_rank() == 0:
