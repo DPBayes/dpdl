@@ -46,12 +46,19 @@ def cli(
             )
         ] = 1e-3,
         batch_size: Annotated[
-            int,
+            Optional[int],
             typer.Option(
                 help='Batch size',
                 rich_help_panel='Training options',
             )
-        ] = 256,
+        ] = 0,
+        sample_rate: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Sample rate',
+                rich_help_panel='Training options',
+            )
+        ] = 0,
         optimizer: Annotated[
             str,
             typer.Option(

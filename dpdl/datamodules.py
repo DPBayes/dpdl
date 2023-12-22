@@ -16,6 +16,7 @@ class DataModule:
     def __init__(self,
         dataset_name: str = 'default-dataset',
         batch_size: int = 64,
+        sample_rate: float = 0,
         physical_batch_size: int = 64,
         num_workers: int = 4,
         subset_size: float = None,
@@ -27,6 +28,7 @@ class DataModule:
     ):
         self.dataset_name = dataset_name
         self.batch_size = batch_size
+        self.sample_rate = sample_rate
         self.physical_batch_size = physical_batch_size
         self.num_workers = num_workers
         self.seed = seed
@@ -48,12 +50,20 @@ class DataModule:
         # let's not collate batches by default
         self.collate_fn = None
 
-    def get_dataloader(self, name):
-        # are dataloaders initialized?
-        if not self._dataloaders['train']:
-            self._initialize_datasets()
-            self._initialize_dataloaders()
+    def initialize(self):
+        self._initialize_datasets()
 
+        # if sample_rate is set, we set train batch size to int(sample_rate*N)
+        if self.sample_rate > 0:
+            batch_size = int(self.sample_rate * len(self.train_dataset))
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.')
+            self.batch_size = batch_size
+
+        self._initialize_dataloaders()
+
+    def get_dataloader(self, name):
         return self._dataloaders.get(name)
 
     def set_dataloader(self, name, dataloader):
@@ -228,10 +238,13 @@ class DataModuleFactory:
             subset_size=configuration.subset_size,
             seed=configuration.seed,
             batch_size=hyperparams.batch_size,
+            sample_rate=hyperparams.sample_rate,
             privacy=configuration.privacy,
             transforms=transforms,
             evaluation_mode=configuration.evaluation_mode,
         )
+
+        datamodule.initialize()
 
         return datamodule
 
