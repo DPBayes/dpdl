@@ -10,8 +10,8 @@ log = logging.getLogger(__name__)
 
 class Hyperparameters(BaseModel):
     epochs: int = None
-    batch_size: int = 0
-    sample_rate: float = 0
+    batch_size: int = None
+    sample_rate: float = None
     learning_rate: float = 1e-3
     noise_multiplier: Optional[float]
     max_grad_norm: Optional[float]
@@ -22,7 +22,7 @@ class Hyperparameters(BaseModel):
     def check_batch_size_or_sample_rate(cls, values):
         batch_size, sample_rate = values.get('batch_size'), values.get('sample_rate')
 
-        if all([batch_size, sample_rate]) or not any([batch_size, sample_rate]):
+        if all([batch_size, sample_rate]):
             raise ValueError('Either batch_size or sample_rate must be set, but not both.')
 
         return values
@@ -31,13 +31,9 @@ class Hyperparameters(BaseModel):
         hypers = [
             ('Epochs', self.epochs),
             ('Learning rate', self.learning_rate),
+            ('Batch size', self.batch_size),
+            ('Sample rate', self.sample_rate),
         ]
-
-        if self.batch_size:
-            hypers.append(('Batch size', self.batch_size))
-
-        if self.sample_rate:
-            hypers.append(('Sample rate', self.sample_rate))
 
         if self.privacy:
             privacy_hypers = [
