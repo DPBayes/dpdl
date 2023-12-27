@@ -51,14 +51,14 @@ def cli(
                 help='Batch size',
                 rich_help_panel='Training options',
             )
-        ] = 0,
+        ] = None,
         sample_rate: Annotated[
             Optional[float],
             typer.Option(
                 help='Sample rate',
                 rich_help_panel='Training options',
             )
-        ] = 0,
+        ] = None,
         optimizer: Annotated[
             str,
             typer.Option(
