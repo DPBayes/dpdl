@@ -61,6 +61,10 @@ class DataModule:
                 log.info(f'Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.')
             self.batch_size = batch_size
 
+        # we use batch size of -1 to signal full batch
+        if self.batch_size == -1:
+            self.batch_size = len(self.train_dataset)
+
         self._initialize_dataloaders()
 
     def get_dataloader(self, name):
