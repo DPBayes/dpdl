@@ -40,21 +40,26 @@ do
         for subset_size in "${SUBSET_SIZES[@]}"
         do
             if [ "$subset_size" == "0.1" ]; then
-                BATCH_SIZES="256 512 1024 2048 4096 full"
+                BATCH_SIZES="256 512 1024 2048 4096 -1"
                 EPSILONS="0.25 0.5 1 2 4 8"
             else
-                BATCH_SIZES="256 512 1024 2048 4096 8192 16384 32768 full"
+                BATCH_SIZES="256 512 1024 2048 4096 8192 16384 32768 -1"
                 EPSILONS="1"
             fi
+
+            OPTUNA_CONFIG="conf/optuna_hypers-subset${subset_size}.conf"
 
             for epsilon in $EPSILONS
             do
                 for batch_size in $BATCH_SIZES
                 do
-                    EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_BatchSize${batch_size}"
-                    OPTUNA_CONFIG="conf/optuna_hypers-subset${subset_size}.conf"
+                    if [ "$batch_size" == "-1" ]; then
+                        EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_FullBatch"
+                    else
+                        EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_BatchSize${batch_size}"
+                    fi
 
-                    echo sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                    sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                         --num-workers 7 \
                         --model-name $model \
                         --dataset-name $dataset \
@@ -73,6 +78,7 @@ do
                         --optuna-direction maximize \
                         --experiment-name $EXPERIMENT_NAME \
                         --log-dir $LOG_DIR \
+                        $ZERO_HEAD \
                         $PEFT \
                         $PRIVACY \
                         $USE_STEPS \
