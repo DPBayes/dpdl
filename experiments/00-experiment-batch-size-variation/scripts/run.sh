@@ -65,7 +65,7 @@ do
                         --dataset-name $dataset \
                         --subset-size $subset_size \
                         --num-classes $NUM_CLASSES \
-                        --batch_size $batch_size \
+                        --batch-size $batch_size \
                         --target-hypers epochs \
                         --target-hypers learning_rate \
                         --target-hypers max_grad_norm \
