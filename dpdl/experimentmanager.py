@@ -168,13 +168,13 @@ def _create_experiment_directory(
 
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
-    if full_log_dir.exists() and not overwrite:
-        raise FileExistsError(f'The directory {full_log_dir} already exists and not asked to overwrite.')
-
     if full_log_dir.exists() and overwrite:
+        log.info(f'Experiment directory {full_log_dir} exists, removing it and restarting experiment.')
         shutil.rmtree(full_log_dir)
+        full_log_dir.mkdir(parents=True)
 
-    full_log_dir.mkdir(parents=True)
+    if full_log_dir.exists() and not overwrite:
+        log.info(f'Experiment directory {full_log_dir} exists, resuming experiment.')
 
     return full_log_dir
 
