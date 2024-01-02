@@ -11,6 +11,8 @@ import torch
 
 from .configurationmanager import ConfigurationManager
 
+log = logging.getLogger(__name__)
+
 def save_study(
         config_manager: ConfigurationManager,
         study: optuna.study.Study,
