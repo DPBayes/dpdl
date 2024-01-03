@@ -22,7 +22,6 @@ PEFT="--peft film"
 
 # Other settings
 SEED=42
-N_TRIALS=20
 PRIVACY="--privacy"
 USE_STEPS="--use-steps"
 NORMALIZE_CLIPPING="--normalize-clipping"
