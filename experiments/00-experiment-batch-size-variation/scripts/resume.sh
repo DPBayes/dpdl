@@ -6,6 +6,9 @@
 # Experiment name to be resumed
 RESUME_EXPERIMENT=$1
 
+# We also have an option to set the number of trials to run
+N_TRIALS=${2:-20}
+
 # Base configurations
 EXPERIMENT_BASE="00-experiment-batch-size-variation"
 LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
