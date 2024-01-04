@@ -2,9 +2,9 @@
 
 | Run script | Raw data |
 |------------|----------|
-| [Run script](../experiments/01-film-vs-lora-evaluation/scripts/run.sh) | [Raw data](../experiments/01-film-vs-lora-evaluation/data/) |
-| [Run script - Extension 50 Trials, 10% Subset](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_Trials50/scripts/run.sh) | [Raw data](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_Trials50/data/) |
-| [Run script - Extension Full batch, 10% Subset](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_FullBatch/scripts/run.sh) | [Raw data](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_FullBatch/data/) |
+| [Run script](../experiments/01-film-vs-lora-evaluation/scripts/run.sh) | [Raw data](../experiments/01-film-vs-lora-evaluation/data.zip) |
+| [Run script - Extension 50 Trials, 10% Subset](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_Trials50/scripts/run.sh) | [Raw data](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_Trials50/data.zip) |
+| [Run script - Extension Full batch, 10% Subset](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_FullBatch/scripts/run.sh) | [Raw data](../experiments/01-film-vs-lora-evaluation__Extension_Subset0.1_FullBatch/data.zip) |
 
 ## Objective
 We aim to evaluate the effectiveness of different Parameter Efficient Fine-tuning (PEFT) methods—FiLM and LoRA—in the context of differentially private deep learning to determine the most suitable method for our future experiments.
