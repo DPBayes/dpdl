@@ -16,8 +16,8 @@ mkdir -p $LOG_DIR
 
 # Experiment parameters
 MODELS=("vit_base_patch16_224.augreg_in21k" "resnetv2_50x1_bit.goog_in21k")
-DATASETS=("cifar10" "cifar100")  # Adjust as necessary, e.g., add "cifar10" if needed
-SUBSET_SIZES=("0.1" "1.0")  # Assuming you want 10% and full dataset for CIFAR-100
+DATASETS=("cifar10" "cifar100")
+SUBSET_SIZES=("0.1" "1.0")
 PEFT="--peft film"
 
 # Other settings
@@ -27,8 +27,12 @@ USE_STEPS="--use-steps"
 NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
 OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
-OPTUNA_RESUME="--optuna-resume" # should we resume the study?
-OVERWRITE_EXPERIMENT="--no-overwrite-experiment" # we don't want to overwrite, but resume
+
+# we want to resume the optuna studies, so let's signal that
+OPTUNA_RESUME="--optuna-resume"
+
+# as we are resuming, we don't want to overwrite the experiment!
+OVERWRITE_EXPERIMENT="--no-overwrite-experiment"
 
 # Loop over configurations
 for model in "${MODELS[@]}"

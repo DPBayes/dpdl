@@ -10,8 +10,8 @@ mkdir -p $LOG_DIR
 
 # Experiment parameters
 MODELS=("vit_base_patch16_224.augreg_in21k" "resnetv2_50x1_bit.goog_in21k")
-DATASETS=("cifar10" "cifar100")  # Adjust as necessary, e.g., add "cifar10" if needed
-SUBSET_SIZES=("0.1" "1.0")  # Assuming you want 10% and full dataset for CIFAR-100
+DATASETS=("cifar10" "cifar100")
+SUBSET_SIZES=("0.1" "1.0")
 PEFT="--peft film"
 
 # Other settings
@@ -22,8 +22,11 @@ USE_STEPS="--use-steps"
 NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
 OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
-OPTUNA_RESUME="--no-optuna-resume" # should we resume the study?
-OVERWRITE_EXPERIMENT="--overwrite-experiment" # for easy requeuing
+
+# these two are for easy requeing: if the jobs get stuck at the
+# beginning, we can just `scontrol requeue <jobid>`
+OPTUNA_RESUME="--no-optuna-resume"
+OVERWRITE_EXPERIMENT="--overwrite-experiment"
 
 # Loop over configurations
 for model in "${MODELS[@]}"
