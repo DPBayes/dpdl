@@ -5,6 +5,14 @@
 | [Run script](../experiments/00-experiment-batch-size-variation/scripts/run.sh) | [Raw data](../experiments/00-experiment-batch-size-variation/data.zip) |
 | [Run script - Extension CIFAR100, Subset 1.0, Epsilon 0.1](../experiments/00-experiment-batch-size-variation__Extension_cifar100_Subset1.0_Epsilon0.1/scripts/run.sh) | Pending |
 
+## Motivation
+
+In differential private deep learning, understanding how different hyperparameters affect privacy and model performance is critical. Our goal is to investigate the relationship between key hyperparameters, particularly learning rate, batch size and maximum gradient norm, and their impact on the privacy-utility trade-off. We anticipate, this understanding to enable us to optimize models more effectively within the limits of privacy budgets.
+
+Current methods for finding the optimal hyperparameter settings are often expensive and time-consuming. By systematically exploring and using Bayesian optimization, we aim to identify patterns and relationships that can lead to faster and more efficient model tuning. This work is not just about achieving better model accuracy within privacy constraints; it's about enhancing the entire process of model development in the realm of DP.
+
+The insights from this study are expected to improve our strategies for hyperparameter selection in differential private deep learning, leading to models that are both more powerful and privacy-conscious.
+
 ## Objective
 
 We investigate the influence of varying batch sizes on the optimal configurations of _all_ the other hyperparameters (epochs, learning_rate, max_grad_norm) using Bayesian optimization, starting with 10% of the data and then using 100% of the data for epsilon=1.
@@ -22,13 +30,13 @@ We investigate the influence of varying batch sizes on the optimal configuration
 
 ## Datasets
 
-- **CIFAR-100**: Evaluate using both 10% and 100% of the dataset.
-- **CIFAR-10 (10% Subset)**: Initially, run experiments with 10% of CIFAR-10.
-- **CIFAR-100 (10% Subset)**: Initially, run experiments with 10% of CIFAR-100.
+- **CIFAR-10 (10% Subset)**: We utilize a 10% subset of CIFAR-10, focusing on initial insights and quicker iterations. The full dataset is not used as it presents less challenge and may not provide meaningful differentiation for hyperparameter tuning.
+- **CIFAR-100 (10% Subset)**: We start with a 10% subset of CIFAR-100, enabling rapid preliminary analysis and quicker turnarounds in the initial phases of our experimentation.
+- **CIFAR-100 and CIFAR-10 (Full Dataset)**: We extend our experimentation to the full CIFAR-100 dataset to thoroughly understand model performance in more complex scenarios. However, due to the considerable resources required, we initially limit these experiments to epsilon=1.0.
 
 ## Epsilon Values
 
-Conduct experiments with epsilon values of \{0.25, 0.5, 1, 2, 4, 8\}. For 100% of CIFAR-100, repeat the experiment only with epsilon=1.
+We conduct experiments with epsilon values of \{0.25, 0.5, 1, 2, 4, 8\}. For 100% of CIFAR-10 and CIFAR-100, we repeat the experiment only with epsilon=1.
 
 ## Experiment Setup
 
@@ -42,7 +50,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 
 ## Results
 
-#### resnetv2_50x1_bit.goog_in21k on cifar10 (10.0% Subset) - Epsilon 0.25
+#### resnetv2_50x1_bit.goog_in21k on cifar10 (10% Subset) - Epsilon 0.25
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -53,18 +61,18 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 103 | 0.000358 | 0.66 | 0.85 |
 | Full batch | 103 | 0.000358 | 0.66 | 0.83 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar10 (10.0% Subset) - Epsilon 0.5
+#### resnetv2_50x1_bit.goog_in21k on cifar10 (10% Subset) - Epsilon 0.5
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
 | 256 | 103 | 0.000358 | 0.66 | 0.90 |
 | 512 | 103 | 0.000358 | 0.66 | 0.90 |
 | 1024 | 103 | 0.000358 | 0.66 | 0.88 |
-| 2048 | 53 | 0.000000 | 10.00 | 0.89 |
+| 2048 | 53 | 0.000000 | 100 | 0.89 |
 | 4096 | 87 | 0.000006 | 6.20 | 0.89 |
 | Full batch | 67 | 0.002566 | 0.20 | 0.91 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar10 (10.0% Subset) - Epsilon 1.0
+#### resnetv2_50x1_bit.goog_in21k on cifar10 (10% Subset) - Epsilon 1.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -75,7 +83,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 102 | 0.000442 | 7.47 | 0.92 |
 | Full batch | 132 | 0.001660 | 0.20 | 0.91 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar10 (10.0% Subset) - Epsilon 2.0
+#### resnetv2_50x1_bit.goog_in21k on cifar10 (10% Subset) - Epsilon 2.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -86,7 +94,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 130 | 0.000466 | 1.96 | 0.92 |
 | Full batch | 74 | 0.003058 | 0.20 | 0.93 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar10 (10.0% Subset) - Epsilon 4.0
+#### resnetv2_50x1_bit.goog_in21k on cifar10 (10% Subset) - Epsilon 4.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -97,7 +105,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 127 | 0.000635 | 2.05 | 0.94 |
 | Full batch | 86 | 0.001169 | 1.07 | 0.94 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar10 (10.0% Subset) - Epsilon 8.0
+#### resnetv2_50x1_bit.goog_in21k on cifar10 (10% Subset) - Epsilon 8.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -108,7 +116,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 42 | 0.010348 | 0.85 | 0.96 |
 | Full batch | 79 | 0.004977 | 0.56 | 0.96 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar10 (100.0% Subset) - Epsilon 1.0
+#### resnetv2_50x1_bit.goog_in21k on cifar10 (100% Subset) - Epsilon 1.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -122,7 +130,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 32768 | 73 | 0.005944 | 0.32 | 0.95 |
 | Full batch | 84 | 0.002569 | 0.20 | 0.95 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar100 (10.0% Subset) - Epsilon 0.25
+#### resnetv2_50x1_bit.goog_in21k on cifar100 (10% Subset) - Epsilon 0.25
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -133,7 +141,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 103 | 0.000358 | 0.66 | 0.04 |
 | Full batch | 192 | 0.001287 | 5.40 | 0.05 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar100 (10.0% Subset) - Epsilon 0.5
+#### resnetv2_50x1_bit.goog_in21k on cifar100 (10% Subset) - Epsilon 0.5
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -144,7 +152,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 200 | 0.001803 | 2.05 | 0.15 |
 | Full batch | 200 | 0.001816 | 6.26 | 0.14 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar100 (10.0% Subset) - Epsilon 1.0
+#### resnetv2_50x1_bit.goog_in21k on cifar100 (10% Subset) - Epsilon 1.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -155,7 +163,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 57 | 0.004018 | 2.27 | 0.31 |
 | Full batch | 58 | 0.002291 | 0.20 | 0.32 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar100 (10.0% Subset) - Epsilon 2.0
+#### resnetv2_50x1_bit.goog_in21k on cifar100 (10% Subset) - Epsilon 2.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -166,18 +174,18 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 85 | 0.002192 | 3.73 | 0.57 |
 | Full batch | 59 | 0.002987 | 8.32 | 0.58 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar100 (10.0% Subset) - Epsilon 4.0
+#### resnetv2_50x1_bit.goog_in21k on cifar100 (10% Subset) - Epsilon 4.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
 | 256 | 141 | 0.000465 | 0.20 | 0.73 |
 | 512 | 40 | 0.002112 | 0.20 | 0.73 |
 | 1024 | 140 | 0.001261 | 0.20 | 0.73 |
-| 2048 | 61 | 0.002304 | 10.00 | 0.73 |
+| 2048 | 61 | 0.002304 | 100 | 0.73 |
 | 4096 | 90 | 0.007371 | 0.20 | 0.73 |
 | Full batch | 132 | 0.002786 | 0.20 | 0.74 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar100 (10.0% Subset) - Epsilon 8.0
+#### resnetv2_50x1_bit.goog_in21k on cifar100 (10% Subset) - Epsilon 8.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -188,7 +196,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 129 | 0.002697 | 0.20 | 0.83 |
 | Full batch | 44 | 0.008800 | 1.33 | 0.84 |
 
-#### resnetv2_50x1_bit.goog_in21k on cifar100 (100.0% Subset) - Epsilon 1.0
+#### resnetv2_50x1_bit.goog_in21k on cifar100 (100% Subset) - Epsilon 1.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -202,7 +210,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 32768 | 74 | 0.001925 | 0.20 | 0.78 |
 | Full batch | 71 | 0.003514 | 0.20 | 0.79 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar10 (10.0% Subset) - Epsilon 0.25
+#### vit_base_patch16_224.augreg_in21k on cifar10 (10% Subset) - Epsilon 0.25
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -213,7 +221,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 151 | 0.001178 | 0.20 | 0.90 |
 | Full batch | 154 | 0.002511 | 0.20 | 0.90 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar10 (10.0% Subset) - Epsilon 0.5
+#### vit_base_patch16_224.augreg_in21k on cifar10 (10% Subset) - Epsilon 0.5
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -224,7 +232,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 117 | 0.000442 | 5.68 | 0.93 |
 | Full batch | 168 | 0.000891 | 0.20 | 0.94 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar10 (10.0% Subset) - Epsilon 1.0
+#### vit_base_patch16_224.augreg_in21k on cifar10 (10% Subset) - Epsilon 1.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -235,7 +243,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 67 | 0.000442 | 6.00 | 0.96 |
 | Full batch | 68 | 0.000442 | 5.17 | 0.96 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar10 (10.0% Subset) - Epsilon 2.0
+#### vit_base_patch16_224.augreg_in21k on cifar10 (10% Subset) - Epsilon 2.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -246,7 +254,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 144 | 0.004442 | 0.20 | 0.97 |
 | Full batch | 139 | 0.004877 | 0.20 | 0.97 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar10 (10.0% Subset) - Epsilon 4.0
+#### vit_base_patch16_224.augreg_in21k on cifar10 (10% Subset) - Epsilon 4.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -257,7 +265,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 58 | 0.004962 | 0.59 | 0.98 |
 | Full batch | 92 | 0.005141 | 2.16 | 0.98 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar10 (10.0% Subset) - Epsilon 8.0
+#### vit_base_patch16_224.augreg_in21k on cifar10 (10% Subset) - Epsilon 8.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -268,7 +276,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 84 | 0.003689 | 0.20 | 0.99 |
 | Full batch | 92 | 0.005141 | 2.16 | 0.98 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar10 (100.0% Subset) - Epsilon 1.0
+#### vit_base_patch16_224.augreg_in21k on cifar10 (100% Subset) - Epsilon 1.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -282,18 +290,18 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 32768 | 74 | 0.002550 | 0.20 | 0.99 |
 | Full batch | 90 | 0.005129 | 0.20 | 0.98 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar100 (10.0% Subset) - Epsilon 0.25
+#### vit_base_patch16_224.augreg_in21k on cifar100 (10% Subset) - Epsilon 0.25
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
 | 256 | 37 | 0.000007 | 5.34 | 0.08 |
 | 512 | 158 | 0.000442 | 5.73 | 0.07 |
 | 1024 | 37 | 0.000007 | 5.34 | 0.09 |
-| 2048 | 82 | 0.000012 | 10.00 | 0.09 |
+| 2048 | 82 | 0.000012 | 100 | 0.09 |
 | 4096 | 162 | 0.000014 | 8.25 | 0.09 |
 | Full batch | 176 | 0.000442 | 4.33 | 0.10 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar100 (10.0% Subset) - Epsilon 0.5
+#### vit_base_patch16_224.augreg_in21k on cifar100 (10% Subset) - Epsilon 0.5
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -304,7 +312,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 141 | 0.002348 | 0.96 | 0.23 |
 | Full batch | 190 | 0.003369 | 0.50 | 0.21 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar100 (10.0% Subset) - Epsilon 1.0
+#### vit_base_patch16_224.augreg_in21k on cifar100 (10% Subset) - Epsilon 1.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -315,18 +323,18 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 200 | 0.005765 | 3.63 | 0.51 |
 | Full batch | 157 | 0.001286 | 6.26 | 0.46 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar100 (10.0% Subset) - Epsilon 2.0
+#### vit_base_patch16_224.augreg_in21k on cifar100 (10% Subset) - Epsilon 2.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
-| 256 | 200 | 0.000544 | 10.00 | 0.75 |
+| 256 | 200 | 0.000544 | 100 | 0.75 |
 | 512 | 103 | 0.000358 | 0.66 | 0.71 |
 | 1024 | 65 | 0.008695 | 0.20 | 0.72 |
 | 2048 | 135 | 0.001593 | 7.93 | 0.74 |
 | 4096 | 87 | 0.002814 | 0.48 | 0.72 |
 | Full batch | 57 | 0.010826 | 0.75 | 0.71 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar100 (10.0% Subset) - Epsilon 4.0
+#### vit_base_patch16_224.augreg_in21k on cifar100 (10% Subset) - Epsilon 4.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -337,7 +345,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 103 | 0.002767 | 1.78 | 0.85 |
 | Full batch | 49 | 0.004626 | 1.49 | 0.84 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar100 (10.0% Subset) - Epsilon 8.0
+#### vit_base_patch16_224.augreg_in21k on cifar100 (10% Subset) - Epsilon 8.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|
@@ -348,7 +356,7 @@ For each combination of model, dataset, batch size, and epsilon value, record:
 | 4096 | 70 | 0.002066 | 2.85 | 0.91 |
 | Full batch | 75 | 0.003252 | 1.79 | 0.92 |
 
-#### vit_base_patch16_224.augreg_in21k on cifar100 (100.0% Subset) - Epsilon 1.0
+#### vit_base_patch16_224.augreg_in21k on cifar100 (100% Subset) - Epsilon 1.0
 
 | Batch size | Optimized epochs | Optimized learning rate | Optimized max gradient norm | Accuracy |
 |------------|------------------|-------------------------|-----------------------------|----------|

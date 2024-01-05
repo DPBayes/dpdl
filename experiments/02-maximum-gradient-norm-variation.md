@@ -10,7 +10,7 @@ The insights from this study are expected to improve our strategies for hyperpar
 
 ## Objective
 
-The goal is to investigate the impact of varying maximum gradient norms on the optimized configuration of _all_ the other hyperparameters (epochs, learning_rate, batch_size) using Bayesian optimization. The study starts with 10% of the data and then uses 100% of the data for epsilon=1.
+The goal is to investigate the impact of varying maximum gradient norms on the optimized configuration of _all_ the other hyperparameters (epochs, learning_rate, batch_size) using Bayesian optimization. We start with 10% of the CIFAR-10 and CIFAR-100 and then use 100% of the data for epsilon=1.
 
 ## Methodology
 
@@ -27,20 +27,20 @@ The goal is to investigate the impact of varying maximum gradient norms on the o
 
 - **CIFAR-10 (10% Subset)**: We utilize a 10% subset of CIFAR-10, focusing on initial insights and quicker iterations. The full dataset is not used as it presents less challenge and may not provide meaningful differentiation for hyperparameter tuning.
 - **CIFAR-100 (10% Subset)**: We start with a 10% subset of CIFAR-100, enabling rapid preliminary analysis and quicker turnarounds in the initial phases of our experimentation.
-- **CIFAR-100 (Full Dataset)**: We extend our experimentation to the full CIFAR-100 dataset to thoroughly understand model performance in more complex scenarios. However, due to the considerable resources required, we initially limit these experiments to epsilon=1.0.
+- **CIFAR-100 and CIFAR-10 (Full Dataset)**: We extend our experimentation to the full datasets to better understand model performance. However, due to the considerable resources required, we initially limit these experiments to epsilon=1.0.
 
 ## Epsilon Values
 
-Conduct experiments with epsilon values of {0.25, 0.5, 1, 2, 4, 8}. For 100% of CIFAR-100, repeat the experiment only with epsilon=1.
+We conduct experiments with epsilon values of \{0.25, 0.5, 1, 2, 4, 8\}. For 100% of CIFAR-10 and CIFAR-100, we repeat the experiment only with epsilon=1.
 
 ## Experiment Setup
 
 For each combination of model, dataset, maximum gradient norm, and epsilon value, record:
 
-- Maximum gradient norm used
-- Optimized batch size
+- The maximum gradient norm used
 - Optimized epochs
 - Optimized learning rate
+- Optimized batch size
 - Accuracy
 
 ### Vision Transformer (vit_base_patch16_224.augreg_in21k)
