@@ -42,7 +42,7 @@ We conduct experiments with epsilon values of \{0.25, 0.5, 1, 2, 4, 8\}. For 100
 
 For each combination of model, dataset, batch size, and epsilon value, record:
 
-- Optimized batch size
+- The batch size used
 - Optimized epochs
 - Optimized learning rate
 - Optimized max gradient norm
