@@ -4,6 +4,7 @@
 
 - [x] [FiLM vs LoRA evaluation](01-film-vs-lora-evaluation.md)
 - [ ] [Batch size variation](00-experiment-batch-size-variation.md)
+- [ ] [Maximum gradient norm variation](02-maximum-gradient-norm-variation.md)
 
 ## Questions/ideas
 
