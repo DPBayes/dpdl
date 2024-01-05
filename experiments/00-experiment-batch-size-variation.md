@@ -1,5 +1,10 @@
 # Batch size variation
 
+| Run script | Raw data |
+|------------|----------|
+| [Run script](../experiments/00-experiment-batch-size-variation/scripts/run.sh) | [Raw data](../experiments/00-experiment-batch-size-variation/data.zip) |
+| [Run script - Extension CIFAR100, Subset 1.0, Epsilon 0.1](../experiments/00-experiment-batch-size-variation__Extension_cifar100_Subset1.0_Epsilon0.1/scripts/run.sh) | Pending |
+
 ## Objective
 
 We investigate the influence of varying batch sizes on the optimal configurations of _all_ the other hyperparameters (epochs, learning_rate, max_grad_norm) using Bayesian optimization, starting with 10% of the data and then using 100% of the data for epsilon=1.
