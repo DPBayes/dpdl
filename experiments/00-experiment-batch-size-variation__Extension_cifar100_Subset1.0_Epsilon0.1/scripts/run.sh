@@ -50,7 +50,7 @@ do
                         EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_BatchSize${batch_size}"
                     fi
 
-                    echo sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                    sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                         --num-workers 7 \
                         --model-name $model \
                         --dataset-name $dataset \
