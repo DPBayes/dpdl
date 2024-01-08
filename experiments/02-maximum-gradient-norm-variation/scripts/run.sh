@@ -8,6 +8,10 @@ EXPERIMENT_BASE="02-maximum-gradient-norm-variation"
 LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
 mkdir -p $LOG_DIR
 
+# We keep track of submitted jobs here
+JOB_STATUS_LOG="$LOG_DIR/submitted_jobs.log"
+touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
+
 # Experiment parameters
 MODELS=("vit_base_patch16_224.augreg_in21k" "resnetv2_50x1_bit.goog_in21k")
 DATASETS=("cifar10" "cifar100")
@@ -27,6 +31,11 @@ OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
 # beginning, we can just `scontrol requeue <jobid>`
 OPTUNA_RESUME="--no-optuna-resume"
 OVERWRITE_EXPERIMENT="--overwrite-experiment"
+
+# Function to check if a job has been submitted
+function is_job_submitted() {
+    grep -Fxq "$1" $JOB_STATUS_LOG
+}
 
 # Loop over configurations
 for model in "${MODELS[@]}"
@@ -54,38 +63,54 @@ do
             do
                 for epsilon in $EPSILONS
                 do
-
                     EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_MaxGradNorm${max_grad_norm}"
 
-                    sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
-                        --num-workers 7 \
-                        --model-name $model \
-                        --dataset-name $dataset \
-                        --subset-size $subset_size \
-                        --num-classes $NUM_CLASSES \
-                        --target-hypers epochs \
-                        --target-hypers learning_rate \
-                        --target-hypers batch_size \
-                        --max-grad-norm $max_grad_norm \
-                        --target-epsilon $epsilon \
-                        --n-trials $N_TRIALS \
-                        --seed $SEED \
-                        --physical-batch-size 40 \
-                        --optuna-config $OPTUNA_CONFIG \
-                        --optuna-target-metric MulticlassAccuracy \
-                        --optuna-direction maximize \
-                        --experiment-name $EXPERIMENT_NAME \
-                        --log-dir $LOG_DIR \
-                        $ZERO_HEAD \
-                        $PEFT \
-                        $PRIVACY \
-                        $USE_STEPS \
-                        $NORMALIZE_CLIPPING \
-                        $OVERWRITE_EXPERIMENT \
-                        $OPTUNA_RESUME \
-                        $OPTUNA_JOURNAL
+                    # Check if this job has already been submitted
+                    if is_job_submitted $EXPERIMENT_NAME; then
+                        echo "!!! Already submitted: $EXPERIMENT_NAME"
+                    else
+                        # Submit the job and capture its success or failure
+                        echo sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                            --num-workers 7 \
+                            --model-name $model \
+                            --dataset-name $dataset \
+                            --subset-size $subset_size \
+                            --num-classes $NUM_CLASSES \
+                            --target-hypers epochs \
+                            --target-hypers learning_rate \
+                            --target-hypers batch_size \
+                            --max-grad-norm $max_grad_norm \
+                            --target-epsilon $epsilon \
+                            --n-trials $N_TRIALS \
+                            --seed $SEED \
+                            --physical-batch-size 40 \
+                            --optuna-config $OPTUNA_CONFIG \
+                            --optuna-target-metric MulticlassAccuracy \
+                            --optuna-direction maximize \
+                            --experiment-name $EXPERIMENT_NAME \
+                            --log-dir $LOG_DIR \
+                            $ZERO_HEAD \
+                            $PEFT \
+                            $PRIVACY \
+                            $USE_STEPS \
+                            $NORMALIZE_CLIPPING \
+                            $OVERWRITE_EXPERIMENT \
+                            $OPTUNA_RESUME \
+                            $OPTUNA_JOURNAL
+
+                        SBATCH_EXIT_CODE=$?
+
+                        if [ $SBATCH_EXIT_CODE -eq 0 ]; then
+                            echo "Job $EXPERIMENT_NAME submitted successfully."
+                            echo $EXPERIMENT_NAME >> $JOB_STATUS_LOG  # Log the submission
+                        else
+                            echo "Submission of $EXPERIMENT_NAME failed with exit code $SBATCH_EXIT_CODE."
+                            exit
+                        fi
+                    fi
                 done
             done
         done
     done
 done
+
