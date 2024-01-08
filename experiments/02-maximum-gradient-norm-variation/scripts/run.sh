@@ -55,7 +55,8 @@ do
                 for epsilon in $EPSILONS
                 do
 
-                    # Submit the job
+                    EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_MaxGradNorm${max_grad_norm}"
+
                     sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                         --num-workers 7 \
                         --model-name $model \
