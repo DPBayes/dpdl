@@ -15,7 +15,7 @@ The goal is to investigate the impact of varying maximum gradient norms on the o
 ## Methodology
 
 - **Maximum Gradient Norm Variation**: Systematically vary the maximum gradient norm through the following set values:
-  - Max gradient norms: {0.1, 0.18, 0.32, 0.56, 1.0, 1.78, 3.16, 5.62, 10}.
+  - Max gradient norms: {0.1, 0.18, 0.32, 0.56, 1.0, 1.78, 3.16, 5.62, 10} (`np.round(np.geomspace(0.1, 10, 9), 2)`)
 - **Bayesian Optimization**: We use Bayesian optimization to find good values of the other hyperparameters (epochs, learning_rate, batch_size) for each maximum gradient norm.
 
 ## Models
