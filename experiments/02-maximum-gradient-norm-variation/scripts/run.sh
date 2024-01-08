@@ -70,7 +70,7 @@ do
                         echo "!!! Already submitted: $EXPERIMENT_NAME"
                     else
                         # Submit the job and capture its success or failure
-                        echo sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                        sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                             --num-workers 7 \
                             --model-name $model \
                             --dataset-name $dataset \
