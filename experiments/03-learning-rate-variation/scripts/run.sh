@@ -63,7 +63,7 @@ do
             do
                 for epsilon in $EPSILONS
                 do
-                    EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_LR${learning_rate}"
+                    EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_LearningRate${learning_rate}"
 
                     # Check if this job has already been submitted
                     if is_job_submitted $EXPERIMENT_NAME; then
