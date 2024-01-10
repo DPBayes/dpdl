@@ -5,7 +5,7 @@
 - [x] [FiLM vs LoRA evaluation](01-film-vs-lora-evaluation.md)
 - [ ] [Batch size variation](00-experiment-batch-size-variation.md)
 - [ ] [Maximum gradient norm variation](02-maximum-gradient-norm-variation.md)
-
+- [ ] [Learning rate variation](03-learning-rate-variation.md)
 ## Questions/ideas
 
 - Before running others stuff, experiment with FiLM vs LoRA.
@@ -53,7 +53,7 @@ batch_size:
   - 8192
   - 16384
   - 32768
-  - 45000
+  - Full batch
   type: categorical
 learning_rate:
   max: 1.0e-1

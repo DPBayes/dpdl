@@ -43,6 +43,8 @@ For each combination of model, dataset, maximum gradient norm, and epsilon value
 - Optimized batch size
 - Accuracy
 
+## Results
+
 ### Vision Transformer (vit_base_patch16_224.augreg_in21k)
 
 #### CIFAR-10 (10% Subset)
