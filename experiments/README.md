@@ -6,6 +6,8 @@
 - [ ] [Batch size variation](00-experiment-batch-size-variation.md)
 - [ ] [Maximum gradient norm variation](02-maximum-gradient-norm-variation.md)
 - [ ] [Learning rate variation](03-learning-rate-variation.md)
+- [ ] [Epoch variation](04-epoch-variation.md)
+
 ## Questions/ideas
 
 - Before running others stuff, experiment with FiLM vs LoRA.
