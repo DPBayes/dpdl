@@ -16,7 +16,7 @@ touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 MODELS=("vit_base_patch16_224.augreg_in21k" "resnetv2_50x1_bit.goog_in21k")
 DATASETS=("cifar10" "cifar100")
 SUBSET_SIZES=("0.1" "1.0")
-LEARNING_RATES=("0.000001" "0.000003" "0.000010" "0.000032" "0.000100" "0.000316" "0.001000" "0.003162" "0.010000" "0.031623" "0.100000")
+LEARNING_RATES=("0.000001" "0.000003" "0.00001" "0.000032" "0.0001" "0.000316" "0.001" "0.003162" "0.01" "0.031623" "0.1")
 
 # Other settings
 SEED=42
