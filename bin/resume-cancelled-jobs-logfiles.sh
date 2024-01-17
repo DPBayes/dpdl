@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if ! python -c "import optuna" &> /dev/null; then
+    echo "Error: 'optuna' module not found. Please make sure you have correct environment activated."
+    exit 1
+fi
+
 MAX_TRIALS=${1:-20}
 
 for file in slurm-*.out; do
@@ -23,7 +28,7 @@ for file in slurm-*.out; do
         if [ ! -f "experiments/$experiment_base/$experiment_name/data/runtime" ]; then
             # Check if the experiment is running in Slurm
             if squeue --me -o "%.150j" | grep -q "$experiment_name"; then
-                echo "Experiment $experiment_name is currently running."
+                echo "Experiment $experiment_name is already in queue."
             else
                 echo "Job for experiment $experiment_name is not in queue, resuming.."
 
@@ -35,7 +40,8 @@ for file in slurm-*.out; do
 
                 # Resume the experiment
                 if [ "$remaining_trials" -gt -1 ]; then
-                    bash "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
+                    echo "Running:" "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
+                    #bash "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
                     echo " -> Experiment resumed."
                 fi
 
