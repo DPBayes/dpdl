@@ -47,7 +47,7 @@ do
             do
                 for batch_size in $BATCH_SIZES
                 do
-                    for seed in $SEEDS
+                    for seed in "${SEEDS[@]}"
                     do
                         LOG_DIR="/projappl/$PROJECT/dpdl/experiments/${EXPERIMENT_BASE}__Extension_Seed${seed}/data"
                         mkdir -p $LOG_DIR
@@ -60,7 +60,7 @@ do
                             EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_BatchSize${batch_size}"
                         fi
 
-                        sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                        echo sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                             --num-workers 7 \
                             --model-name $model \
                             --dataset-name $dataset \
