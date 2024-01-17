@@ -5,7 +5,6 @@
 
 # Base configurations
 EXPERIMENT_BASE="00-experiment-batch-size-variation"
-mkdir -p $LOG_DIR
 
 # Experiment parameters
 MODELS=("vit_base_patch16_224.augreg_in21k" "resnetv2_50x1_bit.goog_in21k")
@@ -52,6 +51,7 @@ do
                     for seed in $SEEDS
                     do
                         LOG_DIR="/projappl/$PROJECT/dpdl/experiments/${EXPERIMENT_BASE}__Extension_Seed${seed}/data"
+                        mkdir -p $LOG_DIR
 
                         if [ "$batch_size" == "-1" ]; then
                             EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_FullBatch"
