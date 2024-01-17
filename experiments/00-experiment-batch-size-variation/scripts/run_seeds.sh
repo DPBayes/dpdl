@@ -5,7 +5,6 @@
 
 # Base configurations
 EXPERIMENT_BASE="00-experiment-batch-size-variation"
-LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
 mkdir -p $LOG_DIR
 
 # Experiment parameters
@@ -13,6 +12,8 @@ MODELS=("vit_base_patch16_224.augreg_in21k" "resnetv2_50x1_bit.goog_in21k")
 DATASETS=("cifar10" "cifar100")
 SUBSET_SIZES=("0.1")
 PEFT="--peft film"
+BATCH_SIZES="256 512 1024 2048 4096 -1"
+EPSILONS="0.25 0.5 1 2 4 8"
 
 # Other settings
 SEEDS=("43" "44")
