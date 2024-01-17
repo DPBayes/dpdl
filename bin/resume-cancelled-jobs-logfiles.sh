@@ -4,7 +4,7 @@ MAX_TRIALS=${1:-20}
 
 for file in slurm-*.out; do
     # Check if the file contains the text "CANCELLED"
-    if grep -q "CANCELLED" "$file"; then
+    if grep -q "JOB.*CANCELLED.*DUE TO TIME LIMIT" "$file"; then
         # Extract the experiment name
         experiment_name=$(echo "$file" | sed -E 's/slurm-(.*)\.[0-9]+\.out/\1/')
 
