@@ -21,7 +21,6 @@ PRIVACY="--privacy"
 USE_STEPS="--use-steps"
 NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
-OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
 
 # these two are for easy requeing: if the jobs get stuck at the
 # beginning, we can just `scontrol requeue <jobid>`
@@ -52,6 +51,8 @@ do
                     do
                         LOG_DIR="/projappl/$PROJECT/dpdl/experiments/${EXPERIMENT_BASE}__Extension_Seed${seed}/data"
                         mkdir -p $LOG_DIR
+
+                        OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
 
                         if [ "$batch_size" == "-1" ]; then
                             EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_FullBatch"
