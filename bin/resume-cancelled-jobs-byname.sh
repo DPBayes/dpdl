@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if ! python -c "import optuna" &> /dev/null; then
+    echo "Error: 'optuna' module not found. Please make sure you have correct environment activated."
+    exit 1
+fi
+
 # Function to display usage/help
 usage() {
     echo "Usage: $0 <EXPERIMENT_BASE> <MAX_TRIALS> <EXPERIMENT_NAME>"
