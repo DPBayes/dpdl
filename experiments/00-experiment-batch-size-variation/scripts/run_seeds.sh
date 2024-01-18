@@ -55,12 +55,12 @@ do
                         OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
 
                         if [ "$batch_size" == "-1" ]; then
-                            EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_FullBatch"
+                            EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_Seed${seed}_FullBatch"
                         else
-                            EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_BatchSize${batch_size}"
+                            EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_Seed${seed}_BatchSize${batch_size}"
                         fi
 
-                        echo sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                        sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                             --num-workers 7 \
                             --model-name $model \
                             --dataset-name $dataset \
