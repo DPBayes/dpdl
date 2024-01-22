@@ -8,7 +8,7 @@ fi
 MAX_TRIALS=${1:-20}
 
 for file in slurm-*.out; do
-    # Check if the file contains the text "CANCELLED"
+    # Check if the jobs was cancelled due to time out
     if grep -q "JOB.*CANCELLED.*DUE TO TIME LIMIT" "$file"; then
         # Extract the experiment name
         experiment_name=$(echo "$file" | sed -E 's/slurm-(.*)\.[0-9]+\.out/\1/')
@@ -24,9 +24,15 @@ for file in slurm-*.out; do
             continue
         fi
 
-        # Check for the existence of the runtime file
+        # Check if a seed is present in the experiment name and adjust experiment_base
+        if [[ $experiment_name =~ Seed([0-9]+) ]]; then
+            seed=${BASH_REMATCH[1]}
+            experiment_base="${experiment_base}__Extension_Seed${seed}"
+        fi
+
+        # Check that the job hasn't been completed
         if [ ! -f "experiments/$experiment_base/$experiment_name/data/runtime" ]; then
-            # Check if the experiment is running in Slurm
+            # Check if the experiment isin Slurm queue
             if squeue --me -o "%.150j" | grep -q "$experiment_name"; then
                 echo "Experiment $experiment_name is already in queue."
             else
@@ -41,7 +47,7 @@ for file in slurm-*.out; do
                 # Resume the experiment
                 if [ "$remaining_trials" -gt -1 ]; then
                     echo "Running:" "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
-                    #bash "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
+                    bash "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
                     echo " -> Experiment resumed."
                 fi
 
