@@ -45,11 +45,13 @@ for file in slurm-*.out; do
                 remaining_trials=$((MAX_TRIALS - n_trials))
 
                 # Resume the experiment
-                if [ "$remaining_trials" -gt -1 ]; then
-                    echo "Running:" "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
-                    bash "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
-                    echo " -> Experiment resumed."
+                if [ "$remaining_trials" -lt 0 ]; then
+                    remaining_trials = 0  # Just the final training round
                 fi
+
+                echo "Running:" "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
+                bash "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
+                echo " -> Experiment resumed."
 
             fi
         else

@@ -29,6 +29,8 @@ N_TRIALS=$(python bin/get_n_trials.py --optuna-journal "$EXPERIMENT_BASE"/data/o
 REMAINING_TRIALS=$((MAX_TRIALS - N_TRIALS))
 
 # Resume the experiment
-if [ "$REMAINING_TRIALS" -gt -1 ]; then
-    bash "$EXPERIMENT_BASE/scripts/resume.sh" "$EXPERIMENT_NAME" "$REMAINING_TRIALS"
+if [ "$REMAINING_TRIALS" -lt 0 ]; then
+    REMAINING_TRIALS=0  # Just the final training round
 fi
+
+bash "$EXPERIMENT_BASE/scripts/resume.sh" "$EXPERIMENT_NAME" "$REMAINING_TRIALS"
