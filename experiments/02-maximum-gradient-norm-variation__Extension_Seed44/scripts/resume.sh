@@ -4,7 +4,7 @@
 ##########################################################
 
 # Base configurations
-EXPERIMENT_BASE="02-maximum-gradient-norm-variation__Extension_Seed43"
+EXPERIMENT_BASE="02-maximum-gradient-norm-variation__Extension_Seed44"
 LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
 mkdir -p $LOG_DIR
 
@@ -63,7 +63,7 @@ do
                     EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_Seed${SEED}_MaxGradNorm${max_grad_norm}"
 
                     if [ "$RESUME_EXPERIMENT" == "$EXPERIMENT_NAME" ]; then
-                        echo sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                        sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                             --num-workers 7 \
                             --model-name $model \
                             --dataset-name $dataset \
