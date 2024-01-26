@@ -1,16 +1,28 @@
 import optuna
 import typer
 import sys
+import os
 
 def get_optuna_storage(optuna_journal_fname):
+    if not os.path.exists(optuna_journal_fname):
+        print(f'Error: Optuna journal file "{optuna_journal_fname}" not found.')
+        sys.exit(1)
+
     storage = optuna.storages.JournalStorage(
         optuna.storages.JournalFileStorage(optuna_journal_fname),
     )
     return storage
 
 def get_number_of_trials(storage, study_name):
-    study_id = storage.get_study_id_from_name(study_name)
-    return storage.get_n_trials(study_id)
+    try:
+        study_id = storage.get_study_id_from_name(study_name)
+        return storage.get_n_trials(study_id)
+    except KeyError:
+        print(f'Error: Study "{study_name}" does not exist.')
+        sys.exit(1)
+    except Exception as e:
+        print(f'An unexpected error occurred: {e}')
+        sys.exit(1)
 
 def main(optuna_journal: str = '../optuna.journal', study_name: str = ''):
     """
