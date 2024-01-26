@@ -22,15 +22,19 @@ EXPERIMENT_BASE=$1
 MAX_TRIALS=$2
 EXPERIMENT_NAME=${3:-$LOG_PATTERN}
 
-# Get the number of completed trials using the Python script
-N_TRIALS=$(python bin/get_n_trials.py --optuna-journal "$EXPERIMENT_BASE"/data/optuna.journal --study-name "$EXPERIMENT_NAME")
+if squeue --me -o "%.150j" | grep -q "$EXPERIMENT_NAME"; then
+    echo "Experiment $EXPERIMENT_NAME is already in queue."
+else
+    # Get the number of completed trials using the Python script
+    N_TRIALS=$(python bin/get_n_trials.py --optuna-journal "$EXPERIMENT_BASE"/data/optuna.journal --study-name "$EXPERIMENT_NAME")
 
-# Calculate remaining trials
-REMAINING_TRIALS=$((MAX_TRIALS - N_TRIALS))
+    # Calculate remaining trials
+    REMAINING_TRIALS=$((MAX_TRIALS - N_TRIALS))
 
-# Resume the experiment
-if [ "$REMAINING_TRIALS" -lt 0 ]; then
-    REMAINING_TRIALS=0  # Just the final training round
+    # Resume the experiment
+    if [ "$REMAINING_TRIALS" -lt 0 ]; then
+        REMAINING_TRIALS=0  # Just the final training round
+    fi
+
+    bash "$EXPERIMENT_BASE/scripts/resume.sh" "$EXPERIMENT_NAME" "$REMAINING_TRIALS"
 fi
-
-bash "$EXPERIMENT_BASE/scripts/resume.sh" "$EXPERIMENT_NAME" "$REMAINING_TRIALS"
