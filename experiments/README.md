@@ -7,16 +7,11 @@
 - [ ] [Maximum gradient norm variation](02-maximum-gradient-norm-variation.md)
 - [ ] [Learning rate variation](03-learning-rate-variation.md)
 - [ ] [Epoch variation](04-epoch-variation.md)
+- [ ] [Signal to Noise ratio for batch size variation](05-signal-to-noise-ratio-for-batch-size-variation.md)
 
 ## Questions/ideas
 
-- Before running others stuff, experiment with FiLM vs LoRA.
 - Adam vs SGD with Momentum?
-- More trials! Gauri noticed that we need about 50 trials to find the hyperparameters.
-
-## TODO
-
-- Repeat experiments with different seeds (confidence interval and to avoid getting stuck in bad local minima by chance)
 
 ## Future experiments
 
@@ -138,4 +133,7 @@ We then train a final model with the best params first on the training set and t
     - Maybe later.
 - Define baseline hypers?
     - If we do the sensitivity analysis.
-
+- Before running others stuff, experiment with FiLM vs LoRA.
+    - FiLM seems to do very well without need to tune extra hypers.
+- More trials! Gauri noticed that we need about 50 trials to find the hyperparameters.
+    - When using decocouple learning rate and maximum gradient norm there are no siginificant advantages of using 50 trials instead of 20.
