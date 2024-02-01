@@ -256,6 +256,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         target_delta: float = 0,
         physical_batch_size: int = 64,
         seed: int = 0,
+        record_grad_and_noise: bool = False,
         **kwargs,
     ):
 
@@ -270,7 +271,17 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.normalize_clipping = normalize_clipping
 
         # setup opacus privacy engine
-        self.privacy_engine = opacus.PrivacyEngine(accountant=accountant, secure_mode=secure_mode)
+        privacy_engine_args = {
+            'accountant': accountant,
+            'secure_mode': secure_mode,
+        }
+
+        if record_grad_and_noise:
+            # the argument is only supported in Opacus installed
+            # from our `record_grad_and_noise` branch
+            privacy_engine_args['record_grad_and_noise'] = True
+
+        self.privacy_engine = opacus.PrivacyEngine(**privacy_engine_args)
 
         super().__init__(**kwargs)
 
@@ -381,10 +392,11 @@ class DifferentiallyPrivateTrainer(Trainer):
                 # let's fit this physical batch
                 self.fit_one_batch(batch_idx, batch)
 
+                if logical_batch_completed:
+                    self.callback_handler.call('on_train_step', self)
+
                 # and next we check for epoch end
                 if (logical_batch_completed and step % steps_per_epoch == 0) or step == self.total_steps:
-                    logical_batch_completed = False
-
                     self._handle_virtual_epoch_end(virtual_epoch)
 
                     if self.validation_frequency and virtual_epoch % self.validation_frequency == 0:
@@ -399,6 +411,8 @@ class DifferentiallyPrivateTrainer(Trainer):
                     if step < self.total_steps:
                         virtual_epoch += 1
                         self._handle_virtual_epoch_start(virtual_epoch)
+
+                logical_batch_completed = False
 
         assert step == self.total_steps, f'Mismatch in total steps count: Expected {self.total_steps} total steps, but stepped {step} times!'
 
@@ -542,6 +556,7 @@ class TrainerFactory:
             seed=configuration.seed,
             callback_handler=callback_handler,
             validation_frequency=configuration.validation_frequency,
+            record_grad_and_noise=configuration.record_snr,
         )
 
         return trainer
