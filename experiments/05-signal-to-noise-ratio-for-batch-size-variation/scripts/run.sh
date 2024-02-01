@@ -12,7 +12,7 @@ LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
 mkdir -p $LOG_DIR
 
 # Path to JSON file containing aggregated data
-AGGREGATED_DATA_JSON="../../00-experiment-batch-size-variation/processed-data/aggregated_data.json"
+AGGREGATED_DATA_JSON="experiments/00-experiment-batch-size-variation/processed-data/aggregated_data.json"
 
 # Job submission log file to track submitted experiments
 JOB_STATUS_LOG="$LOG_DIR/submitted_jobs.log"
