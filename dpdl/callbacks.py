@@ -1,5 +1,8 @@
+import csv
 import logging
 import math
+import os
+import pathlib
 import torch
 import torchmetrics
 
@@ -25,6 +28,8 @@ class Callback:
         pass
     def on_train_end(self, trainer):
         pass
+    def on_train_step(self, trainer):
+        pass
     def on_train_epoch_start(self, trainer, epoch):
         pass
     def on_train_epoch_end(self, trainer, epoch, epoch_loss):
@@ -35,7 +40,7 @@ class Callback:
         pass
     def on_validation_epoch_start(self, trainer, epoch):
         pass
-    def on_validation_epoch_end(self, trainer, epoch, valid_loss, metrics):
+    def on_validation_epoch_end(self, trainer, epoch, metrics):
         pass
     def on_validation_batch_start(self, trainer, batch_idx, batch):
         pass
@@ -127,12 +132,51 @@ class RecordEpochStatsCallback(Callback):
     def on_test_batch_end(self, trainer, batch_idx, batch, loss):
         self.evaluation_loss.update(loss)
 
+class RecordSNR(Callback):
+    def __init__(self, log_dir: str = None):
+        self.log_dir = log_dir
+        self.grad_means = []
+        self.noise_means = []
+        self.snr_values = []
+
+    def on_train_step(self, trainer):
+        if torch.distributed.get_rank() == 0:
+            grad_mean = trainer.optimizer._previous_grad.mean()
+            noise_mean = trainer.optimizer._previous_noise.mean()
+            snr = grad_mean / noise_mean if noise_mean != 0 else float('inf')
+
+            self.grad_means.append(grad_mean.item())
+            self.noise_means.append(noise_mean.item())
+            self.snr_values.append(snr.item())
+
+            log.info(f'- Grad Mean: {grad_mean}, Noise Mean: {noise_mean}')
+
+    def on_train_end(self, trainer, *args, **kwargs):
+        if torch.distributed.get_rank() == 0:
+            file_path = os.path.join(self.log_dir, 'signal-to-noise-ratio.csv')
+
+            with open(file_path, 'w', newline='') as fh:
+                writer = csv.writer(fh)
+                writer.writerow(['Step', 'Grad_Mean', 'Noise_Mean', 'SNR'])
+
+                for step in range(len(self.grad_means)):
+                    writer.writerow([step, self.grad_means[step], self.noise_means[step], self.snr_values[step]])
+
+            log.info(f'Signal-to-Noise ratio data saved at {file_path}')
+
 class CallbackFactory:
     @staticmethod
     def get_callbacks(configuration: Configuration, hyperparams: Hyperparameters) -> List[Callback]:
         callbacks = [
             RecordEpochStatsCallback(use_steps=configuration.use_steps),
         ]
+
+        if configuration.record_snr:
+            log_dir = configuration.log_dir
+            experiment_name = configuration.experiment_name
+            full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+
+            callbacks.append(RecordSNR(log_dir=full_log_dir))
 
         return callbacks
 
