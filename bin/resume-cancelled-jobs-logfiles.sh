@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 if ! python -c "import optuna" &> /dev/null; then
     echo "Error: 'optuna' module not found. Please make sure you have correct environment activated."
     exit 1
@@ -41,17 +43,22 @@ for file in slurm-*.out; do
                 # Get the number of completed trials using the Python script
                 n_trials=$(python bin/get_n_trials.py --optuna-journal experiments/"$experiment_base"/data/optuna.journal --study-name "$experiment_name")
 
-                # Calculate remaining trials
-                remaining_trials=$((MAX_TRIALS - n_trials))
+                re='^[0-9]+$'
+                if ! [[ $n_trials =~ $re ]]; then
+                    echo $n_trials
+                else
+                    # Calculate remaining trials
+                    remaining_trials=$((MAX_TRIALS - n_trials))
 
-                # Resume the experiment
-                if [ "$remaining_trials" -lt 0 ]; then
-                    remaining_trials = 0  # Just the final training round
+                    # Resume the experiment
+                    if [ "$remaining_trials" -lt 0 ]; then
+                        remaining_trials = 0  # Just the final training round
+                    fi
+
+                    echo "Running:" "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
+                    bash "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
+                    echo " -> Experiment resumed."
                 fi
-
-                echo "Running:" "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
-                bash "experiments/$experiment_base/scripts/resume.sh" "$experiment_name" "$remaining_trials"
-                echo " -> Experiment resumed."
 
             fi
         else
