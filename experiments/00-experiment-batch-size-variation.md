@@ -1,10 +1,5 @@
 # Batch size variation
 
-| Run script | Raw data |
-|------------|----------|
-| [Run script](../experiments/00-experiment-batch-size-variation/scripts/run.sh) | [Raw data](../experiments/00-experiment-batch-size-variation/data.zip) |
-| [Run script - Extension CIFAR100, Subset 1.0, Epsilon 0.1](../experiments/00-experiment-batch-size-variation__Extension_cifar100_Subset1.0_Epsilon0.1/scripts/run.sh) | Pending |
-
 ## Motivation
 
 In differential private deep learning, understanding how different hyperparameters affect privacy and model performance is critical. Our goal is to investigate the relationship between key hyperparameters, particularly learning rate, batch size and maximum gradient norm, and their impact on the privacy-utility trade-off. We anticipate, this understanding to enable us to optimize models more effectively within the limits of privacy budgets.
