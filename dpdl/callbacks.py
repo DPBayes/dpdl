@@ -149,8 +149,6 @@ class RecordSNR(Callback):
             self.noise_norms.append(noise_norm)
             self.snr_values.append(snr)
 
-            log.info(f'- Grad Mean: {grad_norm}, Noise Mean: {noise_norm}')
-
     def on_train_end(self, trainer, *args, **kwargs):
         if torch.distributed.get_rank() == 0:
             file_path = os.path.join(self.log_dir, 'signal-to-noise-ratio.csv')
