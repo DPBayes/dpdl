@@ -41,17 +41,12 @@ def save_study(
     with open(full_log_dir / 'final-metrics', 'w') as fh:
         json.dump(final_metrics, fh)
 
-    with open(full_log_dir / 'git-hash', 'w') as fh:
-        git_hash = _get_git_hash()
-        fh.write(str(git_hash) + '\n')
-
     with open(full_log_dir / 'results-and-configuration.json', 'w') as fh:
         d = {}
         d['best_params'] = study.best_params
         d['best_value'] = study.best_value
         d['configuration'] = config_manager.configuration.dict()
         d['final_metrics'] = final_metrics
-        d['git-hash'] = study.best_value
         d['hyperparameters'] = config_manager.hyperparams.dict()
 
         json.dump(d, fh)
@@ -119,6 +114,17 @@ def start_experiment_logging(
 
     # log the gpu type and count
     _log_gpus(config_manager)
+
+    _log_git_hash(config_manager)
+
+def _log_git_hash(config_manager):
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+
+    with open(full_log_dir / 'git-hash', 'w') as fh:
+        git_hash = _get_git_hash()
+        fh.write(str(git_hash) + '\n')
 
 def log_runtime(config_manager, start_time, end_time):
     elapsed = end_time - start_time
