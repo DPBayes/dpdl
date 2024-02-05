@@ -3,6 +3,7 @@ import os
 import json
 import sys
 import re
+import csv
 
 def read_json_file(file_path):
     with open(file_path, 'r') as file:
@@ -12,13 +13,16 @@ def read_text_file(file_path):
     with open(file_path, 'r') as file:
         return file.read().strip()
 
-def process_experiment_directory(directory, pattern=None):
+def read_csv_file(file_path):
+    with open(file_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        return list(reader)
 
+def process_experiment_directory(directory, pattern=None):
     data = {}
 
     print(f'Processing experiments in directory: {directory}')
     for entry in os.listdir(directory):
-        # Skip the entry if it does not match the pattern
         if pattern and not re.match(pattern, entry):
             continue
 
@@ -26,20 +30,34 @@ def process_experiment_directory(directory, pattern=None):
         if os.path.isdir(experiment_path):
             try:
                 experiment_data = {
-                    'best_params': read_json_file(os.path.join(experiment_path, 'best-params.json')),
-                    'best_value': read_text_file(os.path.join(experiment_path, 'best-value')),
                     'hyperparameters': read_json_file(os.path.join(experiment_path, 'hyperparameters.json')),
                     'configuration': read_json_file(os.path.join(experiment_path, 'configuration.json')),
                     'gpu_count': read_text_file(os.path.join(experiment_path, 'gpu_count')),
                     'gpu_type': read_text_file(os.path.join(experiment_path, 'gpu_type')),
                     'runtime': read_text_file(os.path.join(experiment_path, 'runtime')),
-                    'git_hash': read_text_file(os.path.join(experiment_path, 'git-hash'))
                 }
+
+                git_hash_file_path = os.path.join(experiment_path, 'git-hash')
+                if os.path.exists(git_hash_file_path):
+                    experiment_data['git_hash'] = read_text_file(git_hash_file_path)
+
+                best_value_file_path = os.path.join(experiment_path, 'best-value')
+                if os.path.exists(best_value_file_path):
+                    experiment_data['best_value'] = read_text_file(best_value_file_path),
+
+                best_params_file_path = os.path.join(experiment_path, 'best-params.json')
+                if os.path.exists(best_params_file_path):
+                    experiment_data['best_params'] = read_json_file(best_params_file_path),
+
+                snr_file_path = os.path.join(experiment_path, 'signal-to-noise-ratio.csv')
+                if os.path.exists(snr_file_path):
+                    experiment_data['signal_to_noise_ratio'] = read_csv_file(snr_file_path)
+
                 data[entry] = experiment_data
+
             except Exception as e:
                 raise Exception(f'Error processing {experiment_path}: {e}')
     return data
-
 
 def main():
     parser = argparse.ArgumentParser(description='Aggregate experiment data.')
