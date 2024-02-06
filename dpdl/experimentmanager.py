@@ -137,6 +137,14 @@ def log_runtime(config_manager, start_time, end_time):
     with open(f'{full_log_dir}/runtime', 'w') as fh:
         fh.write(f'{elapsed_timedelta}\n')
 
+def log_test_accuracy(config_manager, accuracy):
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+
+    with open(f'{full_log_dir}/test_accuracy', 'w') as fh:
+        fh.write(f'{accuracy}\n')
+
 def _log_gpus(config_manager):
     log_dir = config_manager.configuration.log_dir
     experiment_name = config_manager.configuration.experiment_name
