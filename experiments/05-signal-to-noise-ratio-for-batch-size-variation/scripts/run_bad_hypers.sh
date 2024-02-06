@@ -11,7 +11,7 @@ mkdir -p $LOG_DIR
 
 # Path to JSON file containing bad hyperparameters
 # NB: Use bin/find_bad_hypers.py to generate one.
-BAD_HYPERS_JSON="bad_hypers.json"
+BAD_HYPERS_JSON=${1:-"bad_hypers.json"}
 
 # Job submission log file to track submitted experiments
 JOB_STATUS_LOG="$LOG_DIR/submitted_jobs.log"
