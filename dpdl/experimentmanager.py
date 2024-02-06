@@ -137,13 +137,15 @@ def log_runtime(config_manager, start_time, end_time):
     with open(f'{full_log_dir}/runtime', 'w') as fh:
         fh.write(f'{elapsed_timedelta}\n')
 
-def log_test_accuracy(config_manager, accuracy):
+def log_test_metrics(config_manager, metrics):
     log_dir = config_manager.configuration.log_dir
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
-    with open(f'{full_log_dir}/test_accuracy', 'w') as fh:
-        fh.write(f'{accuracy}\n')
+    metrics = _untensorify_dict(metrics)
+
+    with open(f'{full_log_dir}/test_metrics', 'w') as fh:
+        json.dump(metrics, fh)
 
 def _log_gpus(config_manager):
     log_dir = config_manager.configuration.log_dir

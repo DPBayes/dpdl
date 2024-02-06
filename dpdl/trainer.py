@@ -178,8 +178,6 @@ class Trainer:
         return self._evaluate('validation', epoch)
 
     def test(self):
-        # XXX: We have 'evaluation_mode' to train on train+validation datasets
-        #      and validate on test set. Remove this later?
         return self._evaluate('test')
 
     def get_dataloader(self, name):

@@ -12,7 +12,7 @@ from .hyperparameteroptimizer import HyperparameterOptimizer
 from .trainer import TrainerFactory
 from .models import ModelFactory
 from .utils import seed_everything
-from .experimentmanager import start_experiment_logging, log_runtime, log_test_accuracy
+from .experimentmanager import start_experiment_logging, log_runtime, log_test_metrics
 
 log = logging.getLogger(__name__)
 
@@ -340,12 +340,12 @@ def cli(
         trainer.fit()
         end_time = time.time()
 
-
-        # log the runtime
+        # log test accuracy and run time
         if torch.distributed.get_rank() == 0:
-            test_accuracy = trainer.test()
-            log_test_accuracy(config_manager, test_accuracy)
+            log.info('Evaluating on test set..')
+            _, test_metrics = trainer.test()
 
+            log_test_metrics(config_manager, test_metrics)
             log_runtime(config_manager, start_time, end_time)
 
     if config_manager.get_command() == 'optimize':

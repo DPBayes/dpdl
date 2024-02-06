@@ -41,6 +41,7 @@ class DataModule:
         self._dataloaders = {
             'train': None,
             'valid': None,
+            'test': None,
         }
 
         # for storing mapping from dataset to the dictionary
@@ -114,6 +115,8 @@ class DataModule:
             seed=self.seed,
             stratify_by_column=self._get_dataset_label_field(),
         )
+
+        self.test_dataset = self.val_dataset
         self.train_dataset = split_dataset['train']
         self.val_dataset = split_dataset['test']
 
@@ -164,6 +167,15 @@ class DataModule:
             num_workers=self.num_workers
         )
 
+        if self.test_dataset:
+            self._dataloaders['test'] = torch.utils.data.DataLoader(
+                self.test_dataset.with_format('torch'),
+                sampler=self.test_sampler,
+                batch_size=self.physical_batch_size,
+                collate_fn=self.collate_fn,
+                num_workers=self.num_workers
+            )
+
     def _set_samplers_and_batch_size(self):
         # for the DP case, Opacus handles distributed for us. otherwise, we need
         # to use distributedsampler and divide the batch size by number of replicas
@@ -213,6 +225,8 @@ class ImageDataModule(DataModule):
             #      with one process.
             self.train_dataset = self.train_dataset.map(transforms_func, num_proc=1, batched=True, batch_size=256)
             self.val_dataset = self.val_dataset.map(transforms_func, num_proc=1, batched=True, batch_size=256)
+            if self.test_dataset:
+                self.test_dataset = self.test_dataset.map(transforms_func, num_proc=1, batched=True, batch_size=256)
 
     @staticmethod
     def _collate_fn(label_field, batch):
