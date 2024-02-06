@@ -184,7 +184,7 @@ class Trainer:
         return self.datamodule.get_dataloader(name)
 
     def _evaluate(self, mode, epoch=None):
-        self.callback_handler.call(f'on_{mode}_epoch_start', self)
+        self.callback_handler.call(f'on_{mode}_epoch_start', self, epoch)
         self.model.eval()
         torch.set_grad_enabled(False)
 
@@ -207,7 +207,7 @@ class Trainer:
         torch.set_grad_enabled(True)
         self.model.train()
 
-        self.callback_handler.call(f'on_{mode}_epoch_end', self, evaluation_loss, metrics)
+        self.callback_handler.call(f'on_{mode}_epoch_end', self, epoch, metrics)
 
         return evaluation_loss, metrics
 
