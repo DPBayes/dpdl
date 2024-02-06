@@ -46,9 +46,9 @@ class Callback:
         pass
     def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
         pass
-    def on_test_epoch_start(self, trainer, epoch):
+    def on_test_epoch_start(self, trainer):
         pass
-    def on_test_epoch_end(self, trainer, epoch, valid_loss, metrics):
+    def on_test_epoch_end(self, trainer, loss, metrics):
         pass
     def on_test_batch_start(self, trainer, batch_idx, batch):
         pass
@@ -121,7 +121,7 @@ class RecordEpochStatsCallback(Callback):
     def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
         self.evaluation_loss.update(loss)
 
-    def on_test_epoch_end(self, trainer, epoch, metrics):
+    def on_test_epoch_end(self, trainer, test_loss, metrics):
         loss = self.evaluation_loss.compute()
         self.evaluation_loss.reset()
 
