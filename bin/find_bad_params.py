@@ -96,16 +96,17 @@ if __name__ == '__main__':
 
                 experiment_name = bad_params_df['experiment_name'].item()
                 bad_hypers[experiment_name] = {
-                    'accuracy': bad_params_df['value'].tolist(),
-                    'best_accuracy': bad_params_df['best_value'].tolist(),
-                    'batch_size': bad_params_df['batch_size'].tolist(),
-                    'learning_rate': bad_params_df['params_learning_rate'].tolist(),
-                    'optimal_learning_rate': bad_params_df['optimal_learning_rate'].tolist(),
-                    'epochs': bad_params_df['params_epochs'].tolist(),
-                    'optimal_epochs': bad_params_df['optimal_epochs'].tolist(),
-                    'max_grad_norm': bad_params_df['params_max_grad_norm'].tolist(),
-                    'optimal_max_grad_norm': bad_params_df['optimal_max_grad_norm'].tolist()
+                    'accuracy': bad_params_df['value'].item(),
+                    'best_accuracy': bad_params_df['best_value'].item(),
+                    'batch_size': bad_params_df['batch_size'].item(),
+                    'learning_rate': bad_params_df['params_learning_rate'].item(),
+                    'optimal_learning_rate': bad_params_df['optimal_learning_rate'].item(),
+                    'epochs': bad_params_df['params_epochs'].item(),
+                    'optimal_epochs': bad_params_df['optimal_epochs'].item(),
+                    'max_grad_norm': bad_params_df['params_max_grad_norm'].item(),
+                    'optimal_max_grad_norm': bad_params_df['optimal_max_grad_norm'].item()
                 }
     with open('bad_hypers.json', 'w') as f:
+        print(f'Saving bad hypers to `bad_hypers.json`...')
         json.dump(bad_hypers, f, indent=4)
 
