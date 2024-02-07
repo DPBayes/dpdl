@@ -1,1 +1,0 @@
-{"epochs": 59, "batch_size": -1, "sample_rate": null, "learning_rate": 0.002986982033782052, "noise_multiplier": null, "max_grad_norm": 8.32484587174829, "target_epsilon": 2.0, "privacy": true}
