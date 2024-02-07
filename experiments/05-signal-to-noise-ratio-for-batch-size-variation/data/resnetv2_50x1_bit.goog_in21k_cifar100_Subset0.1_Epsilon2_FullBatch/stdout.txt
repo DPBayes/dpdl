@@ -1,0 +1,594 @@
+2024-02-01 17:14:14,385 - dpdl.configurationmanager - INFO - Configuration saved to /projappl/project_462000288/dpdl/experiments/05-signal-to-noise-ratio-for-batch-size-variation/data/resnetv2_50x1_bit.goog_in21k_cifar100_Subset0.1_Epsilon2_FullBatch.
+2024-02-01 17:14:14,391 - dpdl.configurationmanager - INFO - Hyperparameters saved to /projappl/project_462000288/dpdl/experiments/05-signal-to-noise-ratio-for-batch-size-variation/data/resnetv2_50x1_bit.goog_in21k_cifar100_Subset0.1_Epsilon2_FullBatch/.
+2024-02-01 17:14:17,731 - dpdl.cli - INFO - Starting training.
+2024-02-01 17:14:17,731 - dpdl.cli - INFO - Hyperparameters:
+  Epochs          : 59
+  Learning rate   : 0.002986982033782052
+  Batch size      : -1
+  Sample rate     : None
+  Noise multiplier: None
+  Max grad norn   : 8.32484587174829
+  Target epsilon  : 2.0
+
+2024-02-01 17:14:17,731 - dpdl.cli - INFO - Configuration:
+  Command                : train
+  Privacy                : True
+  Model name             : resnetv2_50x1_bit.goog_in21k
+  Optimizer              : Adam
+  Dataset name           : cifar100
+  Physical batch size    : 40
+  Num workers            : 7
+  Validation frequency   : 1.0
+  Seed                   : 42
+  Log dir                : /projappl/project_462000288/dpdl/experiments/05-signal-to-noise-ratio-for-batch-size-variation/data
+  Experiment dame        : resnetv2_50x1_bit.goog_in21k_cifar100_Subset0.1_Epsilon2_FullBatch
+  Overwrite experiment   : True
+  Subset size            : 0.1
+  Num classes            : 100
+  Zero head weights      : True
+  PEFT method            : film
+  Use pretrained model   : True
+  Convert epochs to steps: True
+  Evaluation mode        : False
+  Clipping mode          : flat
+  Secure mode            : False
+  Modulevalidator fix    : False
+  Accountant             : prv
+  Poisson sampling       : True
+  Normalize clipping     : True
+  Record SNR             : True
+
+2024-02-01 17:14:19,993 - dpdl.peft - INFO - Trainable modules:
+2024-02-01 17:14:19,993 - dpdl.peft - INFO - 
+2024-02-01 17:14:19,993 - dpdl.peft - INFO - model
+2024-02-01 17:14:19,993 - dpdl.peft - INFO - model.stages
+2024-02-01 17:14:19,993 - dpdl.peft - INFO - model.stages.0
+2024-02-01 17:14:19,993 - dpdl.peft - INFO - model.stages.0.blocks
+2024-02-01 17:14:19,993 - dpdl.peft - INFO - model.stages.0.blocks.0
+2024-02-01 17:14:19,993 - dpdl.peft - INFO - model.stages.0.blocks.0.norm1
+2024-02-01 17:14:19,993 - dpdl.peft - INFO - model.stages.0.blocks.0.norm2
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.0.blocks.0.norm3
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.0.blocks.1
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.0.blocks.1.norm1
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.0.blocks.1.norm2
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.0.blocks.1.norm3
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.0.blocks.2
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.0.blocks.2.norm1
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.0.blocks.2.norm2
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.0.blocks.2.norm3
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.1
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.1.blocks
+2024-02-01 17:14:19,994 - dpdl.peft - INFO - model.stages.1.blocks.0
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.0.norm1
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.0.norm2
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.0.norm3
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.1
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.1.norm1
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.1.norm2
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.1.norm3
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.2
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.2.norm1
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.2.norm2
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.2.norm3
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.3
+2024-02-01 17:14:19,995 - dpdl.peft - INFO - model.stages.1.blocks.3.norm1
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.1.blocks.3.norm2
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.1.blocks.3.norm3
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.2
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.2.blocks
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.2.blocks.0
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.2.blocks.0.norm1
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.2.blocks.0.norm2
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.2.blocks.0.norm3
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.2.blocks.1
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.2.blocks.1.norm1
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.2.blocks.1.norm2
+2024-02-01 17:14:19,996 - dpdl.peft - INFO - model.stages.2.blocks.1.norm3
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.2
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.2.norm1
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.2.norm2
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.2.norm3
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.3
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.3.norm1
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.3.norm2
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.3.norm3
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.4
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.4.norm1
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.4.norm2
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.4.norm3
+2024-02-01 17:14:19,997 - dpdl.peft - INFO - model.stages.2.blocks.5
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.2.blocks.5.norm1
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.2.blocks.5.norm2
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.2.blocks.5.norm3
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.3
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.3.blocks
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.3.blocks.0
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.3.blocks.0.norm1
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.3.blocks.0.norm2
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.3.blocks.0.norm3
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.3.blocks.1
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.3.blocks.1.norm1
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.3.blocks.1.norm2
+2024-02-01 17:14:19,998 - dpdl.peft - INFO - model.stages.3.blocks.1.norm3
+2024-02-01 17:14:19,999 - dpdl.peft - INFO - model.stages.3.blocks.2
+2024-02-01 17:14:19,999 - dpdl.peft - INFO - model.stages.3.blocks.2.norm1
+2024-02-01 17:14:19,999 - dpdl.peft - INFO - model.stages.3.blocks.2.norm2
+2024-02-01 17:14:19,999 - dpdl.peft - INFO - model.stages.3.blocks.2.norm3
+2024-02-01 17:14:19,999 - dpdl.peft - INFO - model.head
+2024-02-01 17:14:19,999 - dpdl.peft - INFO - model.head.fc
+2024-02-01 17:14:19,999 - dpdl.peft - INFO - FiLM setup done - trainable params: 246,244 || all params: 23,705,252 || trainable%: 1.0387740235792473
+2024-02-01 17:14:29,175 - dpdl.callbacks - INFO - !!! Starting training for approximately 59 epochs (59 steps).
+2024-02-01 17:14:41,131 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:14:41,131 - dpdl.callbacks - INFO - Starting training approximate epoch 1.
+2024-02-01 17:14:56,018 - dpdl.callbacks - INFO - Approximate epoch 1 finished. Loss: 4.6052.
+2024-02-01 17:14:56,018 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:14:56,018 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0100.
+2024-02-01 17:15:02,625 - dpdl.callbacks - INFO - Validation finished. Loss: 4.5297.
+2024-02-01 17:15:02,625 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:15:02,625 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0335.
+2024-02-01 17:15:02,628 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:15:02,628 - dpdl.callbacks - INFO - Starting training approximate epoch 2.
+2024-02-01 17:15:10,496 - dpdl.callbacks - INFO - Approximate epoch 2 finished. Loss: 4.5464.
+2024-02-01 17:15:10,496 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:15:10,496 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0262.
+2024-02-01 17:15:16,609 - dpdl.callbacks - INFO - Validation finished. Loss: 4.4603.
+2024-02-01 17:15:16,609 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:15:16,609 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0350.
+2024-02-01 17:15:16,612 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:15:16,612 - dpdl.callbacks - INFO - Starting training approximate epoch 3.
+2024-02-01 17:15:24,826 - dpdl.callbacks - INFO - Approximate epoch 3 finished. Loss: 4.4861.
+2024-02-01 17:15:24,826 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:15:24,826 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0309.
+2024-02-01 17:15:31,229 - dpdl.callbacks - INFO - Validation finished. Loss: 4.3802.
+2024-02-01 17:15:39,139 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:15:39,139 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0485.
+2024-02-01 17:15:39,143 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:15:39,144 - dpdl.callbacks - INFO - Starting training approximate epoch 4.
+2024-02-01 17:15:46,893 - dpdl.callbacks - INFO - Approximate epoch 4 finished. Loss: 4.4064.
+2024-02-01 17:15:50,323 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:15:50,323 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0391.
+2024-02-01 17:15:56,873 - dpdl.callbacks - INFO - Validation finished. Loss: 4.2815.
+2024-02-01 17:16:02,404 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:16:02,405 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0535.
+2024-02-01 17:16:02,407 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:16:02,408 - dpdl.callbacks - INFO - Starting training approximate epoch 5.
+2024-02-01 17:16:10,839 - dpdl.callbacks - INFO - Approximate epoch 5 finished. Loss: 4.3121.
+2024-02-01 17:16:18,205 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:16:18,206 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0502.
+2024-02-01 17:16:24,137 - dpdl.callbacks - INFO - Validation finished. Loss: 4.1840.
+2024-02-01 17:16:36,614 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:16:36,615 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0865.
+2024-02-01 17:16:36,618 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:16:36,618 - dpdl.callbacks - INFO - Starting training approximate epoch 6.
+2024-02-01 17:16:44,470 - dpdl.callbacks - INFO - Approximate epoch 6 finished. Loss: 4.2167.
+2024-02-01 17:16:55,678 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:16:55,678 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0722.
+2024-02-01 17:17:01,749 - dpdl.callbacks - INFO - Validation finished. Loss: 4.0844.
+2024-02-01 17:17:09,612 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:17:09,613 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0960.
+2024-02-01 17:17:09,632 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:17:09,633 - dpdl.callbacks - INFO - Starting training approximate epoch 7.
+2024-02-01 17:17:17,376 - dpdl.callbacks - INFO - Approximate epoch 7 finished. Loss: 4.1212.
+2024-02-01 17:17:24,060 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:17:24,061 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0847.
+2024-02-01 17:17:32,277 - dpdl.callbacks - INFO - Validation finished. Loss: 3.9841.
+2024-02-01 17:17:39,535 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:17:39,536 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1155.
+2024-02-01 17:17:39,539 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:17:39,539 - dpdl.callbacks - INFO - Starting training approximate epoch 8.
+2024-02-01 17:17:47,429 - dpdl.callbacks - INFO - Approximate epoch 8 finished. Loss: 4.0264.
+2024-02-01 17:17:53,543 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:17:53,543 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0956.
+2024-02-01 17:17:59,437 - dpdl.callbacks - INFO - Validation finished. Loss: 3.8815.
+2024-02-01 17:18:08,651 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:18:08,652 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1340.
+2024-02-01 17:18:08,655 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:18:08,655 - dpdl.callbacks - INFO - Starting training approximate epoch 9.
+2024-02-01 17:18:16,899 - dpdl.callbacks - INFO - Approximate epoch 9 finished. Loss: 3.9325.
+2024-02-01 17:18:21,064 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:18:21,064 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1118.
+2024-02-01 17:18:27,073 - dpdl.callbacks - INFO - Validation finished. Loss: 3.7827.
+2024-02-01 17:18:33,701 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:18:33,701 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1535.
+2024-02-01 17:18:33,705 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:18:33,705 - dpdl.callbacks - INFO - Starting training approximate epoch 10.
+2024-02-01 17:18:41,784 - dpdl.callbacks - INFO - Approximate epoch 10 finished. Loss: 3.8410.
+2024-02-01 17:18:47,273 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:18:47,274 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1269.
+2024-02-01 17:18:53,237 - dpdl.callbacks - INFO - Validation finished. Loss: 3.6854.
+2024-02-01 17:19:03,101 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:19:03,101 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1605.
+2024-02-01 17:19:03,104 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:19:03,104 - dpdl.callbacks - INFO - Starting training approximate epoch 11.
+2024-02-01 17:19:10,912 - dpdl.callbacks - INFO - Approximate epoch 11 finished. Loss: 3.7516.
+2024-02-01 17:19:15,231 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:19:15,231 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1444.
+2024-02-01 17:19:22,565 - dpdl.callbacks - INFO - Validation finished. Loss: 3.5897.
+2024-02-01 17:19:31,821 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:19:31,822 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1805.
+2024-02-01 17:19:31,825 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:19:31,825 - dpdl.callbacks - INFO - Starting training approximate epoch 12.
+2024-02-01 17:19:39,640 - dpdl.callbacks - INFO - Approximate epoch 12 finished. Loss: 3.6620.
+2024-02-01 17:19:47,671 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:19:47,671 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1620.
+2024-02-01 17:19:53,685 - dpdl.callbacks - INFO - Validation finished. Loss: 3.4991.
+2024-02-01 17:20:03,849 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:20:03,850 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1870.
+2024-02-01 17:20:03,855 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:20:03,855 - dpdl.callbacks - INFO - Starting training approximate epoch 13.
+2024-02-01 17:20:11,834 - dpdl.callbacks - INFO - Approximate epoch 13 finished. Loss: 3.5772.
+2024-02-01 17:20:22,489 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:20:22,490 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1740.
+2024-02-01 17:20:29,093 - dpdl.callbacks - INFO - Validation finished. Loss: 3.4104.
+2024-02-01 17:20:41,231 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:20:41,232 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1960.
+2024-02-01 17:20:41,235 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:20:41,235 - dpdl.callbacks - INFO - Starting training approximate epoch 14.
+2024-02-01 17:20:49,490 - dpdl.callbacks - INFO - Approximate epoch 14 finished. Loss: 3.4958.
+2024-02-01 17:20:58,216 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:20:58,217 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.1907.
+2024-02-01 17:21:04,577 - dpdl.callbacks - INFO - Validation finished. Loss: 3.3234.
+2024-02-01 17:21:09,196 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:21:09,196 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2215.
+2024-02-01 17:21:09,199 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:21:09,199 - dpdl.callbacks - INFO - Starting training approximate epoch 15.
+2024-02-01 17:21:16,927 - dpdl.callbacks - INFO - Approximate epoch 15 finished. Loss: 3.4185.
+2024-02-01 17:21:19,045 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:21:19,045 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2087.
+2024-02-01 17:21:25,321 - dpdl.callbacks - INFO - Validation finished. Loss: 3.2382.
+2024-02-01 17:21:30,627 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:21:30,627 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2300.
+2024-02-01 17:21:30,632 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:21:30,632 - dpdl.callbacks - INFO - Starting training approximate epoch 16.
+2024-02-01 17:21:38,258 - dpdl.callbacks - INFO - Approximate epoch 16 finished. Loss: 3.3450.
+2024-02-01 17:21:42,638 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:21:42,640 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2204.
+2024-02-01 17:21:48,877 - dpdl.callbacks - INFO - Validation finished. Loss: 3.1569.
+2024-02-01 17:21:48,877 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:21:48,877 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2435.
+2024-02-01 17:21:48,880 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:21:48,880 - dpdl.callbacks - INFO - Starting training approximate epoch 17.
+2024-02-01 17:21:56,712 - dpdl.callbacks - INFO - Approximate epoch 17 finished. Loss: 3.2744.
+2024-02-01 17:21:57,390 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:21:57,390 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2313.
+2024-02-01 17:22:04,835 - dpdl.callbacks - INFO - Validation finished. Loss: 3.0764.
+2024-02-01 17:22:04,837 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:22:04,838 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2725.
+2024-02-01 17:22:04,851 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:22:04,851 - dpdl.callbacks - INFO - Starting training approximate epoch 18.
+2024-02-01 17:22:13,120 - dpdl.callbacks - INFO - Approximate epoch 18 finished. Loss: 3.2050.
+2024-02-01 17:22:13,120 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:22:13,120 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2489.
+2024-02-01 17:22:22,121 - dpdl.callbacks - INFO - Validation finished. Loss: 2.9988.
+2024-02-01 17:22:22,121 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:22:22,121 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2920.
+2024-02-01 17:22:22,124 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:22:22,124 - dpdl.callbacks - INFO - Starting training approximate epoch 19.
+2024-02-01 17:22:30,089 - dpdl.callbacks - INFO - Approximate epoch 19 finished. Loss: 3.1360.
+2024-02-01 17:22:30,089 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:22:30,089 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2629.
+2024-02-01 17:22:36,581 - dpdl.callbacks - INFO - Validation finished. Loss: 2.9212.
+2024-02-01 17:22:36,581 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:22:36,581 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3045.
+2024-02-01 17:22:36,584 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:22:36,584 - dpdl.callbacks - INFO - Starting training approximate epoch 20.
+2024-02-01 17:22:44,517 - dpdl.callbacks - INFO - Approximate epoch 20 finished. Loss: 3.0691.
+2024-02-01 17:22:44,517 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:22:44,517 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2738.
+2024-02-01 17:22:50,757 - dpdl.callbacks - INFO - Validation finished. Loss: 2.8480.
+2024-02-01 17:22:50,757 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:22:50,757 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3135.
+2024-02-01 17:22:50,760 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:22:50,760 - dpdl.callbacks - INFO - Starting training approximate epoch 21.
+2024-02-01 17:22:59,049 - dpdl.callbacks - INFO - Approximate epoch 21 finished. Loss: 3.0041.
+2024-02-01 17:22:59,050 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:22:59,050 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2818.
+2024-02-01 17:23:07,413 - dpdl.callbacks - INFO - Validation finished. Loss: 2.7762.
+2024-02-01 17:23:07,413 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:23:07,413 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3320.
+2024-02-01 17:23:07,416 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:23:07,416 - dpdl.callbacks - INFO - Starting training approximate epoch 22.
+2024-02-01 17:23:15,554 - dpdl.callbacks - INFO - Approximate epoch 22 finished. Loss: 2.9399.
+2024-02-01 17:23:15,554 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:23:15,554 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.2936.
+2024-02-01 17:23:21,457 - dpdl.callbacks - INFO - Validation finished. Loss: 2.7057.
+2024-02-01 17:23:21,458 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:23:21,459 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3285.
+2024-02-01 17:23:21,472 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:23:21,472 - dpdl.callbacks - INFO - Starting training approximate epoch 23.
+2024-02-01 17:23:29,723 - dpdl.callbacks - INFO - Approximate epoch 23 finished. Loss: 2.8780.
+2024-02-01 17:23:29,724 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:23:29,724 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3060.
+2024-02-01 17:23:35,997 - dpdl.callbacks - INFO - Validation finished. Loss: 2.6403.
+2024-02-01 17:23:35,997 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:23:35,997 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3335.
+2024-02-01 17:23:36,000 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:23:36,000 - dpdl.callbacks - INFO - Starting training approximate epoch 24.
+2024-02-01 17:23:44,407 - dpdl.callbacks - INFO - Approximate epoch 24 finished. Loss: 2.8179.
+2024-02-01 17:23:44,407 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:23:44,407 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3160.
+2024-02-01 17:23:50,797 - dpdl.callbacks - INFO - Validation finished. Loss: 2.5810.
+2024-02-01 17:23:50,797 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:23:50,797 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3535.
+2024-02-01 17:23:50,800 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:23:50,800 - dpdl.callbacks - INFO - Starting training approximate epoch 25.
+2024-02-01 17:23:58,734 - dpdl.callbacks - INFO - Approximate epoch 25 finished. Loss: 2.7625.
+2024-02-01 17:23:58,734 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:23:58,734 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3282.
+2024-02-01 17:24:04,637 - dpdl.callbacks - INFO - Validation finished. Loss: 2.5252.
+2024-02-01 17:24:04,637 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:24:04,637 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3600.
+2024-02-01 17:24:04,640 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:24:04,640 - dpdl.callbacks - INFO - Starting training approximate epoch 26.
+2024-02-01 17:24:12,519 - dpdl.callbacks - INFO - Approximate epoch 26 finished. Loss: 2.7103.
+2024-02-01 17:24:12,519 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:24:12,519 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3384.
+2024-02-01 17:24:18,633 - dpdl.callbacks - INFO - Validation finished. Loss: 2.4710.
+2024-02-01 17:24:18,633 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:24:18,633 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3640.
+2024-02-01 17:24:18,636 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:24:18,636 - dpdl.callbacks - INFO - Starting training approximate epoch 27.
+2024-02-01 17:24:26,699 - dpdl.callbacks - INFO - Approximate epoch 27 finished. Loss: 2.6600.
+2024-02-01 17:24:26,699 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:24:26,699 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3478.
+2024-02-01 17:24:32,805 - dpdl.callbacks - INFO - Validation finished. Loss: 2.4207.
+2024-02-01 17:24:32,805 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:24:32,805 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3800.
+2024-02-01 17:24:32,808 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:24:32,808 - dpdl.callbacks - INFO - Starting training approximate epoch 28.
+2024-02-01 17:24:41,049 - dpdl.callbacks - INFO - Approximate epoch 28 finished. Loss: 2.6135.
+2024-02-01 17:24:41,049 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:24:41,049 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3598.
+2024-02-01 17:24:48,933 - dpdl.callbacks - INFO - Validation finished. Loss: 2.3722.
+2024-02-01 17:24:48,933 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:24:48,933 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3995.
+2024-02-01 17:24:48,936 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:24:48,936 - dpdl.callbacks - INFO - Starting training approximate epoch 29.
+2024-02-01 17:24:56,855 - dpdl.callbacks - INFO - Approximate epoch 29 finished. Loss: 2.5694.
+2024-02-01 17:24:56,855 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:24:56,855 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3704.
+2024-02-01 17:25:02,665 - dpdl.callbacks - INFO - Validation finished. Loss: 2.3250.
+2024-02-01 17:25:02,665 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:25:02,665 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4040.
+2024-02-01 17:25:02,668 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:25:02,668 - dpdl.callbacks - INFO - Starting training approximate epoch 30.
+2024-02-01 17:25:10,756 - dpdl.callbacks - INFO - Approximate epoch 30 finished. Loss: 2.5257.
+2024-02-01 17:25:10,756 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:25:10,756 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3804.
+2024-02-01 17:25:16,749 - dpdl.callbacks - INFO - Validation finished. Loss: 2.2831.
+2024-02-01 17:25:16,749 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:25:16,749 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4125.
+2024-02-01 17:25:16,752 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:25:16,752 - dpdl.callbacks - INFO - Starting training approximate epoch 31.
+2024-02-01 17:25:24,895 - dpdl.callbacks - INFO - Approximate epoch 31 finished. Loss: 2.4842.
+2024-02-01 17:25:24,896 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:25:24,896 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3878.
+2024-02-01 17:25:30,901 - dpdl.callbacks - INFO - Validation finished. Loss: 2.2457.
+2024-02-01 17:25:30,901 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:25:30,901 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4170.
+2024-02-01 17:25:30,904 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:25:30,904 - dpdl.callbacks - INFO - Starting training approximate epoch 32.
+2024-02-01 17:25:39,295 - dpdl.callbacks - INFO - Approximate epoch 32 finished. Loss: 2.4444.
+2024-02-01 17:25:39,295 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:25:39,295 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.3933.
+2024-02-01 17:25:45,257 - dpdl.callbacks - INFO - Validation finished. Loss: 2.2099.
+2024-02-01 17:25:45,257 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:25:45,257 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4320.
+2024-02-01 17:25:45,260 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:25:45,260 - dpdl.callbacks - INFO - Starting training approximate epoch 33.
+2024-02-01 17:25:53,336 - dpdl.callbacks - INFO - Approximate epoch 33 finished. Loss: 2.4056.
+2024-02-01 17:25:53,337 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:25:53,337 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4016.
+2024-02-01 17:25:59,517 - dpdl.callbacks - INFO - Validation finished. Loss: 2.1762.
+2024-02-01 17:25:59,517 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:25:59,517 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4430.
+2024-02-01 17:25:59,520 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:25:59,520 - dpdl.callbacks - INFO - Starting training approximate epoch 34.
+2024-02-01 17:26:07,673 - dpdl.callbacks - INFO - Approximate epoch 34 finished. Loss: 2.3677.
+2024-02-01 17:26:07,673 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:26:07,673 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4111.
+2024-02-01 17:26:13,577 - dpdl.callbacks - INFO - Validation finished. Loss: 2.1422.
+2024-02-01 17:26:13,577 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:26:13,577 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4565.
+2024-02-01 17:26:13,580 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:26:13,580 - dpdl.callbacks - INFO - Starting training approximate epoch 35.
+2024-02-01 17:26:21,762 - dpdl.callbacks - INFO - Approximate epoch 35 finished. Loss: 2.3310.
+2024-02-01 17:26:21,762 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:26:21,762 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4182.
+2024-02-01 17:26:27,757 - dpdl.callbacks - INFO - Validation finished. Loss: 2.1100.
+2024-02-01 17:26:27,757 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:26:27,757 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4585.
+2024-02-01 17:26:27,760 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:26:27,760 - dpdl.callbacks - INFO - Starting training approximate epoch 36.
+2024-02-01 17:26:35,948 - dpdl.callbacks - INFO - Approximate epoch 36 finished. Loss: 2.2942.
+2024-02-01 17:26:35,948 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:26:35,948 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4280.
+2024-02-01 17:26:41,877 - dpdl.callbacks - INFO - Validation finished. Loss: 2.0806.
+2024-02-01 17:26:41,877 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:26:41,877 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4665.
+2024-02-01 17:26:41,880 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:26:41,880 - dpdl.callbacks - INFO - Starting training approximate epoch 37.
+2024-02-01 17:26:49,904 - dpdl.callbacks - INFO - Approximate epoch 37 finished. Loss: 2.2597.
+2024-02-01 17:26:49,904 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:26:49,904 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4360.
+2024-02-01 17:26:55,805 - dpdl.callbacks - INFO - Validation finished. Loss: 2.0516.
+2024-02-01 17:26:55,805 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:26:55,805 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4720.
+2024-02-01 17:26:55,808 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:26:55,808 - dpdl.callbacks - INFO - Starting training approximate epoch 38.
+2024-02-01 17:27:04,008 - dpdl.callbacks - INFO - Approximate epoch 38 finished. Loss: 2.2264.
+2024-02-01 17:27:04,008 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:27:04,008 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4424.
+2024-02-01 17:27:09,897 - dpdl.callbacks - INFO - Validation finished. Loss: 2.0258.
+2024-02-01 17:27:09,897 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:27:09,897 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4850.
+2024-02-01 17:27:09,900 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:27:09,900 - dpdl.callbacks - INFO - Starting training approximate epoch 39.
+2024-02-01 17:27:17,727 - dpdl.callbacks - INFO - Approximate epoch 39 finished. Loss: 2.1962.
+2024-02-01 17:27:17,727 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:27:17,728 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4487.
+2024-02-01 17:27:23,677 - dpdl.callbacks - INFO - Validation finished. Loss: 2.0000.
+2024-02-01 17:27:23,677 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:27:23,677 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4940.
+2024-02-01 17:27:23,680 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:27:23,680 - dpdl.callbacks - INFO - Starting training approximate epoch 40.
+2024-02-01 17:27:31,942 - dpdl.callbacks - INFO - Approximate epoch 40 finished. Loss: 2.1675.
+2024-02-01 17:27:31,942 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:27:31,942 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4544.
+2024-02-01 17:27:38,077 - dpdl.callbacks - INFO - Validation finished. Loss: 1.9758.
+2024-02-01 17:27:38,077 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:27:38,077 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4925.
+2024-02-01 17:27:38,080 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:27:38,080 - dpdl.callbacks - INFO - Starting training approximate epoch 41.
+2024-02-01 17:27:46,079 - dpdl.callbacks - INFO - Approximate epoch 41 finished. Loss: 2.1398.
+2024-02-01 17:27:46,079 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:27:46,079 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4602.
+2024-02-01 17:27:54,053 - dpdl.callbacks - INFO - Validation finished. Loss: 1.9517.
+2024-02-01 17:27:54,053 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:27:54,053 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4900.
+2024-02-01 17:27:54,056 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:27:54,056 - dpdl.callbacks - INFO - Starting training approximate epoch 42.
+2024-02-01 17:28:02,047 - dpdl.callbacks - INFO - Approximate epoch 42 finished. Loss: 2.1132.
+2024-02-01 17:28:02,047 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:28:02,047 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4642.
+2024-02-01 17:28:08,277 - dpdl.callbacks - INFO - Validation finished. Loss: 1.9301.
+2024-02-01 17:28:08,277 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:28:08,277 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4950.
+2024-02-01 17:28:08,282 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:28:08,282 - dpdl.callbacks - INFO - Starting training approximate epoch 43.
+2024-02-01 17:28:16,578 - dpdl.callbacks - INFO - Approximate epoch 43 finished. Loss: 2.0889.
+2024-02-01 17:28:16,578 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:28:16,578 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4707.
+2024-02-01 17:28:22,655 - dpdl.callbacks - INFO - Validation finished. Loss: 1.9077.
+2024-02-01 17:28:22,657 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:28:22,658 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4950.
+2024-02-01 17:28:22,670 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:28:22,670 - dpdl.callbacks - INFO - Starting training approximate epoch 44.
+2024-02-01 17:28:30,927 - dpdl.callbacks - INFO - Approximate epoch 44 finished. Loss: 2.0644.
+2024-02-01 17:28:30,927 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:28:30,927 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4778.
+2024-02-01 17:28:36,889 - dpdl.callbacks - INFO - Validation finished. Loss: 1.8878.
+2024-02-01 17:28:36,889 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:28:36,889 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5025.
+2024-02-01 17:28:36,892 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:28:36,892 - dpdl.callbacks - INFO - Starting training approximate epoch 45.
+2024-02-01 17:28:44,902 - dpdl.callbacks - INFO - Approximate epoch 45 finished. Loss: 2.0406.
+2024-02-01 17:28:44,902 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:28:44,902 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4796.
+2024-02-01 17:28:50,769 - dpdl.callbacks - INFO - Validation finished. Loss: 1.8660.
+2024-02-01 17:28:50,769 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:28:50,769 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5115.
+2024-02-01 17:28:50,772 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:28:50,772 - dpdl.callbacks - INFO - Starting training approximate epoch 46.
+2024-02-01 17:28:59,012 - dpdl.callbacks - INFO - Approximate epoch 46 finished. Loss: 2.0157.
+2024-02-01 17:28:59,013 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:28:59,013 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4851.
+2024-02-01 17:29:07,237 - dpdl.callbacks - INFO - Validation finished. Loss: 1.8433.
+2024-02-01 17:29:07,237 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:29:07,237 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5090.
+2024-02-01 17:29:07,240 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:29:07,240 - dpdl.callbacks - INFO - Starting training approximate epoch 47.
+2024-02-01 17:29:15,528 - dpdl.callbacks - INFO - Approximate epoch 47 finished. Loss: 1.9895.
+2024-02-01 17:29:15,528 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:29:15,528 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4902.
+2024-02-01 17:29:21,565 - dpdl.callbacks - INFO - Validation finished. Loss: 1.8196.
+2024-02-01 17:29:21,565 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:29:21,565 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5120.
+2024-02-01 17:29:21,570 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:29:21,570 - dpdl.callbacks - INFO - Starting training approximate epoch 48.
+2024-02-01 17:29:29,781 - dpdl.callbacks - INFO - Approximate epoch 48 finished. Loss: 1.9634.
+2024-02-01 17:29:29,782 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:29:29,782 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.4936.
+2024-02-01 17:29:35,757 - dpdl.callbacks - INFO - Validation finished. Loss: 1.7983.
+2024-02-01 17:29:35,757 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:29:35,757 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5185.
+2024-02-01 17:29:35,760 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:29:35,760 - dpdl.callbacks - INFO - Starting training approximate epoch 49.
+2024-02-01 17:29:44,136 - dpdl.callbacks - INFO - Approximate epoch 49 finished. Loss: 1.9385.
+2024-02-01 17:29:44,136 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:29:44,136 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5004.
+2024-02-01 17:29:50,753 - dpdl.callbacks - INFO - Validation finished. Loss: 1.7776.
+2024-02-01 17:29:50,753 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:29:50,753 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5295.
+2024-02-01 17:29:50,756 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:29:50,756 - dpdl.callbacks - INFO - Starting training approximate epoch 50.
+2024-02-01 17:29:58,884 - dpdl.callbacks - INFO - Approximate epoch 50 finished. Loss: 1.9144.
+2024-02-01 17:29:58,884 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:29:58,884 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5064.
+2024-02-01 17:30:04,793 - dpdl.callbacks - INFO - Validation finished. Loss: 1.7586.
+2024-02-01 17:30:04,793 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:30:04,793 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5415.
+2024-02-01 17:30:04,796 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:30:04,796 - dpdl.callbacks - INFO - Starting training approximate epoch 51.
+2024-02-01 17:30:13,026 - dpdl.callbacks - INFO - Approximate epoch 51 finished. Loss: 1.8926.
+2024-02-01 17:30:13,026 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:30:13,026 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5136.
+2024-02-01 17:30:18,945 - dpdl.callbacks - INFO - Validation finished. Loss: 1.7407.
+2024-02-01 17:30:18,945 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:30:18,945 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5425.
+2024-02-01 17:30:18,948 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:30:18,948 - dpdl.callbacks - INFO - Starting training approximate epoch 52.
+2024-02-01 17:30:27,123 - dpdl.callbacks - INFO - Approximate epoch 52 finished. Loss: 1.8718.
+2024-02-01 17:30:27,123 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:30:27,123 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5153.
+2024-02-01 17:30:33,873 - dpdl.callbacks - INFO - Validation finished. Loss: 1.7236.
+2024-02-01 17:30:33,873 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:30:33,873 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5450.
+2024-02-01 17:30:33,876 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:30:33,876 - dpdl.callbacks - INFO - Starting training approximate epoch 53.
+2024-02-01 17:30:41,823 - dpdl.callbacks - INFO - Approximate epoch 53 finished. Loss: 1.8524.
+2024-02-01 17:30:41,823 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:30:41,823 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5196.
+2024-02-01 17:30:47,689 - dpdl.callbacks - INFO - Validation finished. Loss: 1.7073.
+2024-02-01 17:30:47,689 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:30:47,689 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5400.
+2024-02-01 17:30:47,692 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:30:47,692 - dpdl.callbacks - INFO - Starting training approximate epoch 54.
+2024-02-01 17:30:55,874 - dpdl.callbacks - INFO - Approximate epoch 54 finished. Loss: 1.8350.
+2024-02-01 17:30:55,875 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:30:55,875 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5240.
+2024-02-01 17:31:01,881 - dpdl.callbacks - INFO - Validation finished. Loss: 1.6918.
+2024-02-01 17:31:01,881 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:31:01,881 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5425.
+2024-02-01 17:31:01,884 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:31:01,884 - dpdl.callbacks - INFO - Starting training approximate epoch 55.
+2024-02-01 17:31:10,161 - dpdl.callbacks - INFO - Approximate epoch 55 finished. Loss: 1.8178.
+2024-02-01 17:31:10,161 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:31:10,161 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5300.
+2024-02-01 17:31:16,121 - dpdl.callbacks - INFO - Validation finished. Loss: 1.6736.
+2024-02-01 17:31:16,121 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:31:16,121 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5515.
+2024-02-01 17:31:16,124 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:31:16,124 - dpdl.callbacks - INFO - Starting training approximate epoch 56.
+2024-02-01 17:31:24,221 - dpdl.callbacks - INFO - Approximate epoch 56 finished. Loss: 1.8007.
+2024-02-01 17:31:24,221 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:31:24,221 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5362.
+2024-02-01 17:31:30,177 - dpdl.callbacks - INFO - Validation finished. Loss: 1.6576.
+2024-02-01 17:31:30,177 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:31:30,177 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5665.
+2024-02-01 17:31:30,180 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:31:30,180 - dpdl.callbacks - INFO - Starting training approximate epoch 57.
+2024-02-01 17:31:38,440 - dpdl.callbacks - INFO - Approximate epoch 57 finished. Loss: 1.7856.
+2024-02-01 17:31:38,440 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:31:38,440 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5382.
+2024-02-01 17:31:44,365 - dpdl.callbacks - INFO - Validation finished. Loss: 1.6424.
+2024-02-01 17:31:44,365 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:31:44,365 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5770.
+2024-02-01 17:31:44,368 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:31:44,368 - dpdl.callbacks - INFO - Starting training approximate epoch 58.
+2024-02-01 17:31:52,839 - dpdl.callbacks - INFO - Approximate epoch 58 finished. Loss: 1.7691.
+2024-02-01 17:31:52,839 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:31:52,840 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5431.
+2024-02-01 17:31:58,753 - dpdl.callbacks - INFO - Validation finished. Loss: 1.6272.
+2024-02-01 17:31:58,753 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:31:58,753 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5810.
+2024-02-01 17:31:58,756 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:31:58,756 - dpdl.callbacks - INFO - Starting training approximate epoch 59.
+2024-02-01 17:32:06,433 - dpdl.callbacks - INFO - Approximate epoch 59 finished. Loss: 1.7524.
+2024-02-01 17:32:06,433 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:32:06,433 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5460.
+2024-02-01 17:32:12,437 - dpdl.callbacks - INFO - Validation finished. Loss: 1.6128.
+2024-02-01 17:32:12,437 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:32:12,437 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.5835.
+2024-02-01 17:32:12,829 - dpdl.callbacks - INFO - !!! Training finished.
+2024-02-01 17:32:12,833 - dpdl.callbacks - INFO - Signal-to-Noise ratio data saved at /projappl/project_462000288/dpdl/experiments/05-signal-to-noise-ratio-for-batch-size-variation/data/resnetv2_50x1_bit.goog_in21k_cifar100_Subset0.1_Epsilon2_FullBatch/signal-to-noise-ratio.csv

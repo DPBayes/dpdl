@@ -1,0 +1,8 @@
+Hyperparameters:
+  Epochs          : 37
+  Learning rate   : 6.690421166498795e-06
+  Batch size      : 256
+  Sample rate     : None
+  Noise multiplier: None
+  Max grad norn   : 5.342613029995931
+  Target epsilon  : 0.25

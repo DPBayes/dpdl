@@ -1,0 +1,1206 @@
+2024-02-01 16:54:26,336 - dpdl.configurationmanager - INFO - Configuration saved to /projappl/project_462000288/dpdl/experiments/05-signal-to-noise-ratio-for-batch-size-variation/data/resnetv2_50x1_bit.goog_in21k_cifar100_Subset0.1_Epsilon0.25_BatchSize512.
+2024-02-01 16:54:26,341 - dpdl.configurationmanager - INFO - Hyperparameters saved to /projappl/project_462000288/dpdl/experiments/05-signal-to-noise-ratio-for-batch-size-variation/data/resnetv2_50x1_bit.goog_in21k_cifar100_Subset0.1_Epsilon0.25_BatchSize512/.
+2024-02-01 16:54:29,603 - dpdl.cli - INFO - Starting training.
+2024-02-01 16:54:29,603 - dpdl.cli - INFO - Hyperparameters:
+  Epochs          : 65
+  Learning rate   : 1.0547383621352028e-06
+  Batch size      : 512
+  Sample rate     : None
+  Noise multiplier: None
+  Max grad norn   : 3.0033984051830593
+  Target epsilon  : 0.25
+
+2024-02-01 16:54:29,603 - dpdl.cli - INFO - Configuration:
+  Command                : train
+  Privacy                : True
+  Model name             : resnetv2_50x1_bit.goog_in21k
+  Optimizer              : Adam
+  Dataset name           : cifar100
+  Physical batch size    : 40
+  Num workers            : 7
+  Validation frequency   : 1.0
+  Seed                   : 42
+  Log dir                : /projappl/project_462000288/dpdl/experiments/05-signal-to-noise-ratio-for-batch-size-variation/data
+  Experiment dame        : resnetv2_50x1_bit.goog_in21k_cifar100_Subset0.1_Epsilon0.25_BatchSize512
+  Overwrite experiment   : True
+  Subset size            : 0.1
+  Num classes            : 100
+  Zero head weights      : True
+  PEFT method            : film
+  Use pretrained model   : True
+  Convert epochs to steps: True
+  Evaluation mode        : False
+  Clipping mode          : flat
+  Secure mode            : False
+  Modulevalidator fix    : False
+  Accountant             : prv
+  Poisson sampling       : True
+  Normalize clipping     : True
+  Record SNR             : True
+
+2024-02-01 16:54:31,894 - dpdl.peft - INFO - Trainable modules:
+2024-02-01 16:54:31,894 - dpdl.peft - INFO - 
+2024-02-01 16:54:31,894 - dpdl.peft - INFO - model
+2024-02-01 16:54:31,894 - dpdl.peft - INFO - model.stages
+2024-02-01 16:54:31,894 - dpdl.peft - INFO - model.stages.0
+2024-02-01 16:54:31,894 - dpdl.peft - INFO - model.stages.0.blocks
+2024-02-01 16:54:31,894 - dpdl.peft - INFO - model.stages.0.blocks.0
+2024-02-01 16:54:31,894 - dpdl.peft - INFO - model.stages.0.blocks.0.norm1
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.0.blocks.0.norm2
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.0.blocks.0.norm3
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.0.blocks.1
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.0.blocks.1.norm1
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.0.blocks.1.norm2
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.0.blocks.1.norm3
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.0.blocks.2
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.0.blocks.2.norm1
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.0.blocks.2.norm2
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.0.blocks.2.norm3
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.1
+2024-02-01 16:54:31,895 - dpdl.peft - INFO - model.stages.1.blocks
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.0
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.0.norm1
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.0.norm2
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.0.norm3
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.1
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.1.norm1
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.1.norm2
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.1.norm3
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.2
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.2.norm1
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.2.norm2
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.2.norm3
+2024-02-01 16:54:31,896 - dpdl.peft - INFO - model.stages.1.blocks.3
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.1.blocks.3.norm1
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.1.blocks.3.norm2
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.1.blocks.3.norm3
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.2
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.2.blocks
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.2.blocks.0
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.2.blocks.0.norm1
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.2.blocks.0.norm2
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.2.blocks.0.norm3
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.2.blocks.1
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.2.blocks.1.norm1
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.2.blocks.1.norm2
+2024-02-01 16:54:31,897 - dpdl.peft - INFO - model.stages.2.blocks.1.norm3
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.2
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.2.norm1
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.2.norm2
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.2.norm3
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.3
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.3.norm1
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.3.norm2
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.3.norm3
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.4
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.4.norm1
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.4.norm2
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.4.norm3
+2024-02-01 16:54:31,898 - dpdl.peft - INFO - model.stages.2.blocks.5
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.2.blocks.5.norm1
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.2.blocks.5.norm2
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.2.blocks.5.norm3
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.3
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.3.blocks
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.3.blocks.0
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.3.blocks.0.norm1
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.3.blocks.0.norm2
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.3.blocks.0.norm3
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.3.blocks.1
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.3.blocks.1.norm1
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.3.blocks.1.norm2
+2024-02-01 16:54:31,899 - dpdl.peft - INFO - model.stages.3.blocks.1.norm3
+2024-02-01 16:54:31,900 - dpdl.peft - INFO - model.stages.3.blocks.2
+2024-02-01 16:54:31,900 - dpdl.peft - INFO - model.stages.3.blocks.2.norm1
+2024-02-01 16:54:31,900 - dpdl.peft - INFO - model.stages.3.blocks.2.norm2
+2024-02-01 16:54:31,900 - dpdl.peft - INFO - model.stages.3.blocks.2.norm3
+2024-02-01 16:54:31,900 - dpdl.peft - INFO - model.head
+2024-02-01 16:54:31,900 - dpdl.peft - INFO - model.head.fc
+2024-02-01 16:54:31,900 - dpdl.peft - INFO - FiLM setup done - trainable params: 246,244 || all params: 23,705,252 || trainable%: 1.0387740235792473
+2024-02-01 16:54:40,649 - dpdl.callbacks - INFO - !!! Starting training for approximately 66 epochs (572 steps).
+2024-02-01 16:54:48,003 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:54:48,004 - dpdl.callbacks - INFO - Starting training approximate epoch 1.
+2024-02-01 16:54:57,818 - dpdl.callbacks - INFO - - Grad Mean: 8.358505249023438, Noise Mean: 19227.71484375
+2024-02-01 16:54:58,888 - dpdl.callbacks - INFO - - Grad Mean: 8.211554527282715, Noise Mean: 19282.775390625
+2024-02-01 16:54:59,966 - dpdl.callbacks - INFO - - Grad Mean: 7.927856922149658, Noise Mean: 19235.97265625
+2024-02-01 16:55:01,019 - dpdl.callbacks - INFO - - Grad Mean: 7.831264495849609, Noise Mean: 19230.125
+2024-02-01 16:55:02,048 - dpdl.callbacks - INFO - - Grad Mean: 8.25609016418457, Noise Mean: 19156.265625
+2024-02-01 16:55:03,090 - dpdl.callbacks - INFO - - Grad Mean: 7.5712361335754395, Noise Mean: 19250.6875
+2024-02-01 16:55:04,156 - dpdl.callbacks - INFO - - Grad Mean: 8.852890014648438, Noise Mean: 19219.412109375
+2024-02-01 16:55:05,189 - dpdl.callbacks - INFO - - Grad Mean: 8.840093612670898, Noise Mean: 19228.169921875
+2024-02-01 16:55:06,216 - dpdl.callbacks - INFO - - Grad Mean: 7.901167392730713, Noise Mean: 19302.220703125
+2024-02-01 16:55:06,491 - dpdl.callbacks - INFO - Approximate epoch 1 finished. Loss: 4.6052.
+2024-02-01 16:55:06,491 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:55:06,491 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0097.
+2024-02-01 16:55:13,284 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6052.
+2024-02-01 16:55:13,284 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:55:13,284 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0045.
+2024-02-01 16:55:13,287 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:55:13,287 - dpdl.callbacks - INFO - Starting training approximate epoch 2.
+2024-02-01 16:55:14,648 - dpdl.callbacks - INFO - - Grad Mean: 7.545833110809326, Noise Mean: 19217.982421875
+2024-02-01 16:55:15,844 - dpdl.callbacks - INFO - - Grad Mean: 9.234760284423828, Noise Mean: 19191.796875
+2024-02-01 16:55:16,901 - dpdl.callbacks - INFO - - Grad Mean: 7.502355575561523, Noise Mean: 19232.53515625
+2024-02-01 16:55:17,930 - dpdl.callbacks - INFO - - Grad Mean: 8.634243965148926, Noise Mean: 19193.197265625
+2024-02-01 16:55:18,954 - dpdl.callbacks - INFO - - Grad Mean: 8.140589714050293, Noise Mean: 19250.90625
+2024-02-01 16:55:19,976 - dpdl.callbacks - INFO - - Grad Mean: 8.519128799438477, Noise Mean: 19278.71875
+2024-02-01 16:55:20,995 - dpdl.callbacks - INFO - - Grad Mean: 8.62896728515625, Noise Mean: 19179.525390625
+2024-02-01 16:55:22,014 - dpdl.callbacks - INFO - - Grad Mean: 8.424392700195312, Noise Mean: 19234.390625
+2024-02-01 16:55:23,036 - dpdl.callbacks - INFO - - Grad Mean: 7.930191993713379, Noise Mean: 19227.455078125
+2024-02-01 16:55:23,046 - dpdl.callbacks - INFO - Approximate epoch 2 finished. Loss: 4.6052.
+2024-02-01 16:55:23,046 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:55:23,047 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0058.
+2024-02-01 16:55:28,888 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6051.
+2024-02-01 16:55:28,888 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:55:28,888 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0090.
+2024-02-01 16:55:28,891 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:55:28,891 - dpdl.callbacks - INFO - Starting training approximate epoch 3.
+2024-02-01 16:55:30,228 - dpdl.callbacks - INFO - - Grad Mean: 8.77740478515625, Noise Mean: 19257.080078125
+2024-02-01 16:55:31,346 - dpdl.callbacks - INFO - - Grad Mean: 8.435151100158691, Noise Mean: 19228.521484375
+2024-02-01 16:55:32,369 - dpdl.callbacks - INFO - - Grad Mean: 7.826375961303711, Noise Mean: 19237.966796875
+2024-02-01 16:55:33,392 - dpdl.callbacks - INFO - - Grad Mean: 7.498281955718994, Noise Mean: 19245.248046875
+2024-02-01 16:55:34,407 - dpdl.callbacks - INFO - - Grad Mean: 8.172303199768066, Noise Mean: 19241.484375
+2024-02-01 16:55:35,430 - dpdl.callbacks - INFO - - Grad Mean: 7.317630290985107, Noise Mean: 19203.515625
+2024-02-01 16:55:36,451 - dpdl.callbacks - INFO - - Grad Mean: 8.48183822631836, Noise Mean: 19227.16015625
+2024-02-01 16:55:37,468 - dpdl.callbacks - INFO - - Grad Mean: 8.550569534301758, Noise Mean: 19235.654296875
+2024-02-01 16:55:38,494 - dpdl.callbacks - INFO - - Grad Mean: 9.084099769592285, Noise Mean: 19215.609375
+2024-02-01 16:55:38,504 - dpdl.callbacks - INFO - Approximate epoch 3 finished. Loss: 4.6051.
+2024-02-01 16:55:38,504 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:55:38,504 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0085.
+2024-02-01 16:55:44,224 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6051.
+2024-02-01 16:55:44,224 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:55:44,224 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0090.
+2024-02-01 16:55:44,227 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:55:44,227 - dpdl.callbacks - INFO - Starting training approximate epoch 4.
+2024-02-01 16:55:45,670 - dpdl.callbacks - INFO - - Grad Mean: 8.583930015563965, Noise Mean: 19254.853515625
+2024-02-01 16:55:46,871 - dpdl.callbacks - INFO - - Grad Mean: 7.80281925201416, Noise Mean: 19240.81640625
+2024-02-01 16:55:47,898 - dpdl.callbacks - INFO - - Grad Mean: 7.695285797119141, Noise Mean: 19193.416015625
+2024-02-01 16:55:48,911 - dpdl.callbacks - INFO - - Grad Mean: 8.351202964782715, Noise Mean: 19224.669921875
+2024-02-01 16:55:49,935 - dpdl.callbacks - INFO - - Grad Mean: 7.891207695007324, Noise Mean: 19202.3125
+2024-02-01 16:55:50,953 - dpdl.callbacks - INFO - - Grad Mean: 8.331075668334961, Noise Mean: 19234.05078125
+2024-02-01 16:55:51,978 - dpdl.callbacks - INFO - - Grad Mean: 8.930126190185547, Noise Mean: 19186.556640625
+2024-02-01 16:55:53,003 - dpdl.callbacks - INFO - - Grad Mean: 8.88461971282959, Noise Mean: 19268.48828125
+2024-02-01 16:55:54,024 - dpdl.callbacks - INFO - - Grad Mean: 8.688629150390625, Noise Mean: 19233.072265625
+2024-02-01 16:55:54,034 - dpdl.callbacks - INFO - Approximate epoch 4 finished. Loss: 4.6051.
+2024-02-01 16:55:54,034 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:55:54,035 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0113.
+2024-02-01 16:55:59,812 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6051.
+2024-02-01 16:55:59,812 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:55:59,812 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0165.
+2024-02-01 16:55:59,815 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:55:59,815 - dpdl.callbacks - INFO - Starting training approximate epoch 5.
+2024-02-01 16:56:01,164 - dpdl.callbacks - INFO - - Grad Mean: 7.7691521644592285, Noise Mean: 19266.3359375
+2024-02-01 16:56:02,629 - dpdl.callbacks - INFO - - Grad Mean: 6.953842639923096, Noise Mean: 19227.935546875
+2024-02-01 16:56:03,673 - dpdl.callbacks - INFO - - Grad Mean: 7.684701442718506, Noise Mean: 19231.5625
+2024-02-01 16:56:04,695 - dpdl.callbacks - INFO - - Grad Mean: 6.8061113357543945, Noise Mean: 19154.015625
+2024-02-01 16:56:05,704 - dpdl.callbacks - INFO - - Grad Mean: 8.143982887268066, Noise Mean: 19171.56640625
+2024-02-01 16:56:06,725 - dpdl.callbacks - INFO - - Grad Mean: 8.535588264465332, Noise Mean: 19207.8828125
+2024-02-01 16:56:07,753 - dpdl.callbacks - INFO - - Grad Mean: 7.811636924743652, Noise Mean: 19232.6875
+2024-02-01 16:56:08,773 - dpdl.callbacks - INFO - - Grad Mean: 7.694361209869385, Noise Mean: 19226.755859375
+2024-02-01 16:56:09,793 - dpdl.callbacks - INFO - - Grad Mean: 7.494348526000977, Noise Mean: 19252.51171875
+2024-02-01 16:56:09,803 - dpdl.callbacks - INFO - Approximate epoch 5 finished. Loss: 4.6051.
+2024-02-01 16:56:09,803 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:56:09,803 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0115.
+2024-02-01 16:56:16,332 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6051.
+2024-02-01 16:56:16,332 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:56:16,333 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0145.
+2024-02-01 16:56:16,335 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:56:16,335 - dpdl.callbacks - INFO - Starting training approximate epoch 6.
+2024-02-01 16:56:17,681 - dpdl.callbacks - INFO - - Grad Mean: 7.881992816925049, Noise Mean: 19230.984375
+2024-02-01 16:56:18,879 - dpdl.callbacks - INFO - - Grad Mean: 8.604218482971191, Noise Mean: 19211.048828125
+2024-02-01 16:56:20,170 - dpdl.callbacks - INFO - - Grad Mean: 7.002455234527588, Noise Mean: 19271.791015625
+2024-02-01 16:56:21,194 - dpdl.callbacks - INFO - - Grad Mean: 7.919734001159668, Noise Mean: 19238.455078125
+2024-02-01 16:56:22,206 - dpdl.callbacks - INFO - - Grad Mean: 8.955343246459961, Noise Mean: 19196.37890625
+2024-02-01 16:56:23,727 - dpdl.callbacks - INFO - - Grad Mean: 9.314830780029297, Noise Mean: 19230.341796875
+2024-02-01 16:56:24,740 - dpdl.callbacks - INFO - - Grad Mean: 8.375182151794434, Noise Mean: 19203.103515625
+2024-02-01 16:56:25,765 - dpdl.callbacks - INFO - - Grad Mean: 8.64096450805664, Noise Mean: 19221.294921875
+2024-02-01 16:56:26,777 - dpdl.callbacks - INFO - - Grad Mean: 8.91761302947998, Noise Mean: 19274.419921875
+2024-02-01 16:56:26,789 - dpdl.callbacks - INFO - Approximate epoch 6 finished. Loss: 4.6051.
+2024-02-01 16:56:26,789 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:56:26,789 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0119.
+2024-02-01 16:56:32,776 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6050.
+2024-02-01 16:56:32,777 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:56:32,777 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0120.
+2024-02-01 16:56:32,780 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:56:32,780 - dpdl.callbacks - INFO - Starting training approximate epoch 7.
+2024-02-01 16:56:34,456 - dpdl.callbacks - INFO - - Grad Mean: 7.392503261566162, Noise Mean: 19255.642578125
+2024-02-01 16:56:35,513 - dpdl.callbacks - INFO - - Grad Mean: 7.805746078491211, Noise Mean: 19206.583984375
+2024-02-01 16:56:36,540 - dpdl.callbacks - INFO - - Grad Mean: 7.967624187469482, Noise Mean: 19145.255859375
+2024-02-01 16:56:37,563 - dpdl.callbacks - INFO - - Grad Mean: 8.750914573669434, Noise Mean: 19207.630859375
+2024-02-01 16:56:38,584 - dpdl.callbacks - INFO - - Grad Mean: 8.83204174041748, Noise Mean: 19238.166015625
+2024-02-01 16:56:39,611 - dpdl.callbacks - INFO - - Grad Mean: 8.201111793518066, Noise Mean: 19208.4921875
+2024-02-01 16:56:40,627 - dpdl.callbacks - INFO - - Grad Mean: 8.476554870605469, Noise Mean: 19216.8515625
+2024-02-01 16:56:41,644 - dpdl.callbacks - INFO - - Grad Mean: 7.389151573181152, Noise Mean: 19288.169921875
+2024-02-01 16:56:42,669 - dpdl.callbacks - INFO - - Grad Mean: 8.295371055603027, Noise Mean: 19281.890625
+2024-02-01 16:56:42,681 - dpdl.callbacks - INFO - Approximate epoch 7 finished. Loss: 4.6051.
+2024-02-01 16:56:42,681 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:56:42,681 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0129.
+2024-02-01 16:56:48,492 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6050.
+2024-02-01 16:56:48,492 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:56:48,493 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0050.
+2024-02-01 16:56:48,495 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:56:48,495 - dpdl.callbacks - INFO - Starting training approximate epoch 8.
+2024-02-01 16:56:49,811 - dpdl.callbacks - INFO - - Grad Mean: 8.648785591125488, Noise Mean: 19196.408203125
+2024-02-01 16:56:50,927 - dpdl.callbacks - INFO - - Grad Mean: 8.439868927001953, Noise Mean: 19246.265625
+2024-02-01 16:56:51,951 - dpdl.callbacks - INFO - - Grad Mean: 7.942878246307373, Noise Mean: 19225.9609375
+2024-02-01 16:56:52,974 - dpdl.callbacks - INFO - - Grad Mean: 8.006552696228027, Noise Mean: 19228.330078125
+2024-02-01 16:56:54,000 - dpdl.callbacks - INFO - - Grad Mean: 7.670017242431641, Noise Mean: 19243.30859375
+2024-02-01 16:56:55,020 - dpdl.callbacks - INFO - - Grad Mean: 7.415755271911621, Noise Mean: 19231.052734375
+2024-02-01 16:56:56,044 - dpdl.callbacks - INFO - - Grad Mean: 7.4254374504089355, Noise Mean: 19186.5703125
+2024-02-01 16:56:57,071 - dpdl.callbacks - INFO - - Grad Mean: 8.526270866394043, Noise Mean: 19266.185546875
+2024-02-01 16:56:58,093 - dpdl.callbacks - INFO - - Grad Mean: 7.915210247039795, Noise Mean: 19247.29296875
+2024-02-01 16:56:58,103 - dpdl.callbacks - INFO - Approximate epoch 8 finished. Loss: 4.6050.
+2024-02-01 16:56:58,103 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:56:58,103 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0097.
+2024-02-01 16:57:03,912 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6050.
+2024-02-01 16:57:03,913 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:57:03,913 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0000.
+2024-02-01 16:57:03,915 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:57:03,916 - dpdl.callbacks - INFO - Starting training approximate epoch 9.
+2024-02-01 16:57:05,009 - dpdl.callbacks - INFO - - Grad Mean: 8.062333106994629, Noise Mean: 19211.4453125
+2024-02-01 16:57:06,105 - dpdl.callbacks - INFO - - Grad Mean: 7.041698455810547, Noise Mean: 19197.248046875
+2024-02-01 16:57:07,129 - dpdl.callbacks - INFO - - Grad Mean: 8.723921775817871, Noise Mean: 19229.4609375
+2024-02-01 16:57:08,147 - dpdl.callbacks - INFO - - Grad Mean: 8.792954444885254, Noise Mean: 19188.615234375
+2024-02-01 16:57:09,170 - dpdl.callbacks - INFO - - Grad Mean: 8.319517135620117, Noise Mean: 19270.099609375
+2024-02-01 16:57:10,196 - dpdl.callbacks - INFO - - Grad Mean: 9.192996978759766, Noise Mean: 19234.892578125
+2024-02-01 16:57:11,217 - dpdl.callbacks - INFO - - Grad Mean: 7.716368675231934, Noise Mean: 19229.2890625
+2024-02-01 16:57:12,234 - dpdl.callbacks - INFO - - Grad Mean: 8.170135498046875, Noise Mean: 19275.0390625
+2024-02-01 16:57:13,258 - dpdl.callbacks - INFO - - Grad Mean: 7.037801742553711, Noise Mean: 19278.568359375
+2024-02-01 16:57:13,267 - dpdl.callbacks - INFO - Approximate epoch 9 finished. Loss: 4.6050.
+2024-02-01 16:57:13,267 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:57:13,268 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0074.
+2024-02-01 16:57:19,044 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6050.
+2024-02-01 16:57:19,044 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:57:19,045 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0045.
+2024-02-01 16:57:19,047 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:57:19,048 - dpdl.callbacks - INFO - Starting training approximate epoch 10.
+2024-02-01 16:57:20,369 - dpdl.callbacks - INFO - - Grad Mean: 8.798972129821777, Noise Mean: 19260.525390625
+2024-02-01 16:57:21,436 - dpdl.callbacks - INFO - - Grad Mean: 8.120478630065918, Noise Mean: 19216.376953125
+2024-02-01 16:57:22,464 - dpdl.callbacks - INFO - - Grad Mean: 9.17685317993164, Noise Mean: 19214.33203125
+2024-02-01 16:57:23,478 - dpdl.callbacks - INFO - - Grad Mean: 7.865766525268555, Noise Mean: 19238.84765625
+2024-02-01 16:57:24,493 - dpdl.callbacks - INFO - - Grad Mean: 8.85566520690918, Noise Mean: 19190.763671875
+2024-02-01 16:57:25,516 - dpdl.callbacks - INFO - - Grad Mean: 7.638701915740967, Noise Mean: 19248.56640625
+2024-02-01 16:57:26,543 - dpdl.callbacks - INFO - - Grad Mean: 8.01928424835205, Noise Mean: 19218.958984375
+2024-02-01 16:57:27,569 - dpdl.callbacks - INFO - - Grad Mean: 7.581676006317139, Noise Mean: 19250.736328125
+2024-02-01 16:57:28,577 - dpdl.callbacks - INFO - - Grad Mean: 8.562393188476562, Noise Mean: 19232.92578125
+2024-02-01 16:57:28,598 - dpdl.callbacks - INFO - Approximate epoch 10 finished. Loss: 4.6050.
+2024-02-01 16:57:28,598 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:57:28,599 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0095.
+2024-02-01 16:57:34,592 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6050.
+2024-02-01 16:57:34,592 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:57:34,592 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0120.
+2024-02-01 16:57:34,595 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:57:34,595 - dpdl.callbacks - INFO - Starting training approximate epoch 11.
+2024-02-01 16:57:35,847 - dpdl.callbacks - INFO - - Grad Mean: 8.58945083618164, Noise Mean: 19190.4296875
+2024-02-01 16:57:37,185 - dpdl.callbacks - INFO - - Grad Mean: 7.809393882751465, Noise Mean: 19247.19140625
+2024-02-01 16:57:38,253 - dpdl.callbacks - INFO - - Grad Mean: 8.120463371276855, Noise Mean: 19254.259765625
+2024-02-01 16:57:39,277 - dpdl.callbacks - INFO - - Grad Mean: 9.058138847351074, Noise Mean: 19290.732421875
+2024-02-01 16:57:40,301 - dpdl.callbacks - INFO - - Grad Mean: 8.139543533325195, Noise Mean: 19208.572265625
+2024-02-01 16:57:41,318 - dpdl.callbacks - INFO - - Grad Mean: 8.089006423950195, Noise Mean: 19230.27734375
+2024-02-01 16:57:42,346 - dpdl.callbacks - INFO - - Grad Mean: 7.700775623321533, Noise Mean: 19206.21484375
+2024-02-01 16:57:43,369 - dpdl.callbacks - INFO - - Grad Mean: 8.372004508972168, Noise Mean: 19213.10546875
+2024-02-01 16:57:44,393 - dpdl.callbacks - INFO - - Grad Mean: 7.899397373199463, Noise Mean: 19278.083984375
+2024-02-01 16:57:44,407 - dpdl.callbacks - INFO - Approximate epoch 11 finished. Loss: 4.6050.
+2024-02-01 16:57:44,407 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:57:44,407 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0151.
+2024-02-01 16:57:50,608 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6050.
+2024-02-01 16:57:50,609 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:57:50,609 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0175.
+2024-02-01 16:57:50,612 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:57:50,612 - dpdl.callbacks - INFO - Starting training approximate epoch 12.
+2024-02-01 16:57:51,833 - dpdl.callbacks - INFO - - Grad Mean: 8.159668922424316, Noise Mean: 19232.390625
+2024-02-01 16:57:53,015 - dpdl.callbacks - INFO - - Grad Mean: 8.208938598632812, Noise Mean: 19242.7734375
+2024-02-01 16:57:54,045 - dpdl.callbacks - INFO - - Grad Mean: 7.789193153381348, Noise Mean: 19217.87109375
+2024-02-01 16:57:55,074 - dpdl.callbacks - INFO - - Grad Mean: 8.292640686035156, Noise Mean: 19238.71484375
+2024-02-01 16:57:56,096 - dpdl.callbacks - INFO - - Grad Mean: 8.292786598205566, Noise Mean: 19237.279296875
+2024-02-01 16:57:57,113 - dpdl.callbacks - INFO - - Grad Mean: 8.443763732910156, Noise Mean: 19225.57421875
+2024-02-01 16:57:58,135 - dpdl.callbacks - INFO - - Grad Mean: 7.597290992736816, Noise Mean: 19181.001953125
+2024-02-01 16:57:59,163 - dpdl.callbacks - INFO - - Grad Mean: 9.454398155212402, Noise Mean: 19253.76953125
+2024-02-01 16:58:00,676 - dpdl.callbacks - INFO - - Grad Mean: 9.598130226135254, Noise Mean: 19224.396484375
+2024-02-01 16:58:00,685 - dpdl.callbacks - INFO - Approximate epoch 12 finished. Loss: 4.6049.
+2024-02-01 16:58:00,685 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:58:00,685 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0135.
+2024-02-01 16:58:06,480 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6049.
+2024-02-01 16:58:06,481 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:58:06,481 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0100.
+2024-02-01 16:58:06,483 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:58:06,483 - dpdl.callbacks - INFO - Starting training approximate epoch 13.
+2024-02-01 16:58:07,589 - dpdl.callbacks - INFO - - Grad Mean: 7.94118595123291, Noise Mean: 19207.7578125
+2024-02-01 16:58:08,896 - dpdl.callbacks - INFO - - Grad Mean: 9.205639839172363, Noise Mean: 19215.02734375
+2024-02-01 16:58:09,960 - dpdl.callbacks - INFO - - Grad Mean: 8.170157432556152, Noise Mean: 19197.31640625
+2024-02-01 16:58:10,982 - dpdl.callbacks - INFO - - Grad Mean: 7.58468770980835, Noise Mean: 19258.466796875
+2024-02-01 16:58:12,009 - dpdl.callbacks - INFO - - Grad Mean: 7.941040515899658, Noise Mean: 19242.544921875
+2024-02-01 16:58:13,036 - dpdl.callbacks - INFO - - Grad Mean: 8.06460952758789, Noise Mean: 19206.42578125
+2024-02-01 16:58:14,061 - dpdl.callbacks - INFO - - Grad Mean: 7.403047561645508, Noise Mean: 19214.107421875
+2024-02-01 16:58:15,088 - dpdl.callbacks - INFO - - Grad Mean: 8.427081108093262, Noise Mean: 19234.05078125
+2024-02-01 16:58:16,115 - dpdl.callbacks - INFO - - Grad Mean: 8.649923324584961, Noise Mean: 19233.205078125
+2024-02-01 16:58:16,126 - dpdl.callbacks - INFO - Approximate epoch 13 finished. Loss: 4.6049.
+2024-02-01 16:58:16,126 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:58:16,126 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0150.
+2024-02-01 16:58:21,880 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6049.
+2024-02-01 16:58:21,880 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:58:21,881 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0120.
+2024-02-01 16:58:21,883 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:58:21,883 - dpdl.callbacks - INFO - Starting training approximate epoch 14.
+2024-02-01 16:58:23,201 - dpdl.callbacks - INFO - - Grad Mean: 8.266606330871582, Noise Mean: 19232.693359375
+2024-02-01 16:58:24,374 - dpdl.callbacks - INFO - - Grad Mean: 9.110749244689941, Noise Mean: 19275.49609375
+2024-02-01 16:58:25,400 - dpdl.callbacks - INFO - - Grad Mean: 8.483498573303223, Noise Mean: 19241.37109375
+2024-02-01 16:58:26,424 - dpdl.callbacks - INFO - - Grad Mean: 8.2061767578125, Noise Mean: 19222.794921875
+2024-02-01 16:58:27,449 - dpdl.callbacks - INFO - - Grad Mean: 6.752351760864258, Noise Mean: 19220.814453125
+2024-02-01 16:58:28,477 - dpdl.callbacks - INFO - - Grad Mean: 8.647852897644043, Noise Mean: 19256.36328125
+2024-02-01 16:58:29,501 - dpdl.callbacks - INFO - - Grad Mean: 7.243107795715332, Noise Mean: 19222.85546875
+2024-02-01 16:58:30,528 - dpdl.callbacks - INFO - - Grad Mean: 8.060554504394531, Noise Mean: 19177.623046875
+2024-02-01 16:58:31,550 - dpdl.callbacks - INFO - - Grad Mean: 8.167777061462402, Noise Mean: 19214.388671875
+2024-02-01 16:58:31,560 - dpdl.callbacks - INFO - Approximate epoch 14 finished. Loss: 4.6049.
+2024-02-01 16:58:31,561 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:58:31,561 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0167.
+2024-02-01 16:58:37,400 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6049.
+2024-02-01 16:58:37,401 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:58:37,401 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0145.
+2024-02-01 16:58:37,403 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:58:37,403 - dpdl.callbacks - INFO - Starting training approximate epoch 15.
+2024-02-01 16:58:38,838 - dpdl.callbacks - INFO - - Grad Mean: 8.529007911682129, Noise Mean: 19257.453125
+2024-02-01 16:58:39,983 - dpdl.callbacks - INFO - - Grad Mean: 7.803169250488281, Noise Mean: 19237.60546875
+2024-02-01 16:58:41,004 - dpdl.callbacks - INFO - - Grad Mean: 7.87460470199585, Noise Mean: 19225.177734375
+2024-02-01 16:58:42,029 - dpdl.callbacks - INFO - - Grad Mean: 9.040356636047363, Noise Mean: 19187.869140625
+2024-02-01 16:58:43,057 - dpdl.callbacks - INFO - - Grad Mean: 7.859592914581299, Noise Mean: 19211.16796875
+2024-02-01 16:58:44,080 - dpdl.callbacks - INFO - - Grad Mean: 9.566713333129883, Noise Mean: 19166.263671875
+2024-02-01 16:58:45,606 - dpdl.callbacks - INFO - - Grad Mean: 9.525696754455566, Noise Mean: 19240.06640625
+2024-02-01 16:58:46,623 - dpdl.callbacks - INFO - - Grad Mean: 7.973376274108887, Noise Mean: 19251.515625
+2024-02-01 16:58:47,646 - dpdl.callbacks - INFO - - Grad Mean: 8.12385082244873, Noise Mean: 19258.083984375
+2024-02-01 16:58:47,655 - dpdl.callbacks - INFO - Approximate epoch 15 finished. Loss: 4.6049.
+2024-02-01 16:58:47,656 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:58:47,656 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0143.
+2024-02-01 16:58:54,620 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6049.
+2024-02-01 16:58:54,621 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:58:54,621 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0145.
+2024-02-01 16:58:54,623 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:58:54,624 - dpdl.callbacks - INFO - Starting training approximate epoch 16.
+2024-02-01 16:58:56,003 - dpdl.callbacks - INFO - - Grad Mean: 8.302108764648438, Noise Mean: 19223.72265625
+2024-02-01 16:58:57,127 - dpdl.callbacks - INFO - - Grad Mean: 8.166621208190918, Noise Mean: 19195.673828125
+2024-02-01 16:58:58,167 - dpdl.callbacks - INFO - - Grad Mean: 7.704737663269043, Noise Mean: 19258.9140625
+2024-02-01 16:58:59,202 - dpdl.callbacks - INFO - - Grad Mean: 7.94124698638916, Noise Mean: 19208.029296875
+2024-02-01 16:59:00,230 - dpdl.callbacks - INFO - - Grad Mean: 8.015594482421875, Noise Mean: 19208.125
+2024-02-01 16:59:01,247 - dpdl.callbacks - INFO - - Grad Mean: 7.533356189727783, Noise Mean: 19265.921875
+2024-02-01 16:59:02,262 - dpdl.callbacks - INFO - - Grad Mean: 7.940998554229736, Noise Mean: 19254.8984375
+2024-02-01 16:59:03,282 - dpdl.callbacks - INFO - - Grad Mean: 8.548717498779297, Noise Mean: 19262.58984375
+2024-02-01 16:59:04,306 - dpdl.callbacks - INFO - - Grad Mean: 7.367644309997559, Noise Mean: 19274.7578125
+2024-02-01 16:59:04,319 - dpdl.callbacks - INFO - Approximate epoch 16 finished. Loss: 4.6049.
+2024-02-01 16:59:04,319 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:59:04,319 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0159.
+2024-02-01 16:59:10,104 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6049.
+2024-02-01 16:59:10,105 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:59:10,105 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0120.
+2024-02-01 16:59:10,107 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:59:10,107 - dpdl.callbacks - INFO - Starting training approximate epoch 17.
+2024-02-01 16:59:11,520 - dpdl.callbacks - INFO - - Grad Mean: 8.9142427444458, Noise Mean: 19199.1953125
+2024-02-01 16:59:12,597 - dpdl.callbacks - INFO - - Grad Mean: 8.562171936035156, Noise Mean: 19237.712890625
+2024-02-01 16:59:13,626 - dpdl.callbacks - INFO - - Grad Mean: 8.858346939086914, Noise Mean: 19258.8125
+2024-02-01 16:59:14,652 - dpdl.callbacks - INFO - - Grad Mean: 7.26831579208374, Noise Mean: 19254.400390625
+2024-02-01 16:59:15,668 - dpdl.callbacks - INFO - - Grad Mean: 6.71504020690918, Noise Mean: 19225.71875
+2024-02-01 16:59:16,691 - dpdl.callbacks - INFO - - Grad Mean: 9.124394416809082, Noise Mean: 19245.74609375
+2024-02-01 16:59:17,721 - dpdl.callbacks - INFO - - Grad Mean: 8.636857032775879, Noise Mean: 19253.943359375
+2024-02-01 16:59:18,740 - dpdl.callbacks - INFO - - Grad Mean: 8.9755859375, Noise Mean: 19201.16015625
+2024-02-01 16:59:19,759 - dpdl.callbacks - INFO - - Grad Mean: 7.24136209487915, Noise Mean: 19222.302734375
+2024-02-01 16:59:19,769 - dpdl.callbacks - INFO - Approximate epoch 17 finished. Loss: 4.6049.
+2024-02-01 16:59:19,769 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:59:19,769 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0158.
+2024-02-01 16:59:25,524 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6048.
+2024-02-01 16:59:25,524 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:59:25,525 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0170.
+2024-02-01 16:59:25,527 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:59:25,528 - dpdl.callbacks - INFO - Starting training approximate epoch 18.
+2024-02-01 16:59:26,930 - dpdl.callbacks - INFO - - Grad Mean: 8.913616180419922, Noise Mean: 19246.73828125
+2024-02-01 16:59:28,030 - dpdl.callbacks - INFO - - Grad Mean: 8.104158401489258, Noise Mean: 19274.91796875
+2024-02-01 16:59:29,060 - dpdl.callbacks - INFO - - Grad Mean: 8.766408920288086, Noise Mean: 19270.716796875
+2024-02-01 16:59:30,087 - dpdl.callbacks - INFO - - Grad Mean: 7.512819290161133, Noise Mean: 19247.701171875
+2024-02-01 16:59:31,100 - dpdl.callbacks - INFO - - Grad Mean: 8.673966407775879, Noise Mean: 19185.14453125
+2024-02-01 16:59:32,114 - dpdl.callbacks - INFO - - Grad Mean: 8.522875785827637, Noise Mean: 19234.4921875
+2024-02-01 16:59:33,137 - dpdl.callbacks - INFO - - Grad Mean: 8.57436466217041, Noise Mean: 19217.615234375
+2024-02-01 16:59:34,665 - dpdl.callbacks - INFO - - Grad Mean: 9.562076568603516, Noise Mean: 19255.033203125
+2024-02-01 16:59:35,682 - dpdl.callbacks - INFO - - Grad Mean: 7.881267070770264, Noise Mean: 19282.1171875
+2024-02-01 16:59:35,696 - dpdl.callbacks - INFO - Approximate epoch 18 finished. Loss: 4.6048.
+2024-02-01 16:59:35,696 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:59:35,696 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0182.
+2024-02-01 16:59:41,484 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6048.
+2024-02-01 16:59:41,484 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:59:41,484 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0195.
+2024-02-01 16:59:41,487 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:59:41,487 - dpdl.callbacks - INFO - Starting training approximate epoch 19.
+2024-02-01 16:59:42,970 - dpdl.callbacks - INFO - - Grad Mean: 8.07420825958252, Noise Mean: 19262.966796875
+2024-02-01 16:59:44,183 - dpdl.callbacks - INFO - - Grad Mean: 8.264336585998535, Noise Mean: 19214.04296875
+2024-02-01 16:59:45,206 - dpdl.callbacks - INFO - - Grad Mean: 7.786157131195068, Noise Mean: 19177.625
+2024-02-01 16:59:46,228 - dpdl.callbacks - INFO - - Grad Mean: 8.333276748657227, Noise Mean: 19235.552734375
+2024-02-01 16:59:47,254 - dpdl.callbacks - INFO - - Grad Mean: 7.525808334350586, Noise Mean: 19203.677734375
+2024-02-01 16:59:48,268 - dpdl.callbacks - INFO - - Grad Mean: 8.445406913757324, Noise Mean: 19252.798828125
+2024-02-01 16:59:49,297 - dpdl.callbacks - INFO - - Grad Mean: 7.727741718292236, Noise Mean: 19227.439453125
+2024-02-01 16:59:50,325 - dpdl.callbacks - INFO - - Grad Mean: 8.825870513916016, Noise Mean: 19259.0078125
+2024-02-01 16:59:51,347 - dpdl.callbacks - INFO - - Grad Mean: 8.125484466552734, Noise Mean: 19183.623046875
+2024-02-01 16:59:51,360 - dpdl.callbacks - INFO - Approximate epoch 19 finished. Loss: 4.6047.
+2024-02-01 16:59:51,361 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 16:59:51,361 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0175.
+2024-02-01 16:59:57,528 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6047.
+2024-02-01 16:59:57,529 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 16:59:57,529 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0190.
+2024-02-01 16:59:57,532 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 16:59:57,532 - dpdl.callbacks - INFO - Starting training approximate epoch 20.
+2024-02-01 16:59:58,879 - dpdl.callbacks - INFO - - Grad Mean: 8.159296035766602, Noise Mean: 19184.84765625
+2024-02-01 16:59:59,947 - dpdl.callbacks - INFO - - Grad Mean: 7.2772321701049805, Noise Mean: 19217.19921875
+2024-02-01 17:00:01,471 - dpdl.callbacks - INFO - - Grad Mean: 9.802898406982422, Noise Mean: 19234.91015625
+2024-02-01 17:00:02,487 - dpdl.callbacks - INFO - - Grad Mean: 8.571895599365234, Noise Mean: 19220.9765625
+2024-02-01 17:00:03,506 - dpdl.callbacks - INFO - - Grad Mean: 8.655741691589355, Noise Mean: 19203.96875
+2024-02-01 17:00:04,582 - dpdl.callbacks - INFO - - Grad Mean: 7.966707229614258, Noise Mean: 19243.60546875
+2024-02-01 17:00:05,604 - dpdl.callbacks - INFO - - Grad Mean: 7.526176929473877, Noise Mean: 19278.6796875
+2024-02-01 17:00:06,625 - dpdl.callbacks - INFO - - Grad Mean: 7.422987461090088, Noise Mean: 19191.908203125
+2024-02-01 17:00:07,642 - dpdl.callbacks - INFO - - Grad Mean: 8.49692153930664, Noise Mean: 19234.1171875
+2024-02-01 17:00:07,651 - dpdl.callbacks - INFO - Approximate epoch 20 finished. Loss: 4.6047.
+2024-02-01 17:00:07,651 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:00:07,651 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0171.
+2024-02-01 17:00:13,964 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6047.
+2024-02-01 17:00:13,965 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:00:13,965 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0190.
+2024-02-01 17:00:13,968 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:00:13,968 - dpdl.callbacks - INFO - Starting training approximate epoch 21.
+2024-02-01 17:00:15,278 - dpdl.callbacks - INFO - - Grad Mean: 8.311738014221191, Noise Mean: 19225.5703125
+2024-02-01 17:00:16,346 - dpdl.callbacks - INFO - - Grad Mean: 7.31361722946167, Noise Mean: 19205.865234375
+2024-02-01 17:00:17,375 - dpdl.callbacks - INFO - - Grad Mean: 8.191519737243652, Noise Mean: 19196.28515625
+2024-02-01 17:00:18,400 - dpdl.callbacks - INFO - - Grad Mean: 8.067633628845215, Noise Mean: 19236.103515625
+2024-02-01 17:00:19,428 - dpdl.callbacks - INFO - - Grad Mean: 8.02755355834961, Noise Mean: 19276.40625
+2024-02-01 17:00:20,733 - dpdl.callbacks - INFO - - Grad Mean: 7.521389007568359, Noise Mean: 19218.140625
+2024-02-01 17:00:21,762 - dpdl.callbacks - INFO - - Grad Mean: 7.327041149139404, Noise Mean: 19213.0703125
+2024-02-01 17:00:22,792 - dpdl.callbacks - INFO - - Grad Mean: 7.7486772537231445, Noise Mean: 19238.962890625
+2024-02-01 17:00:23,823 - dpdl.callbacks - INFO - - Grad Mean: 7.928820610046387, Noise Mean: 19212.6484375
+2024-02-01 17:00:23,832 - dpdl.callbacks - INFO - Approximate epoch 21 finished. Loss: 4.6047.
+2024-02-01 17:00:23,832 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:00:23,832 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0191.
+2024-02-01 17:00:29,696 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6047.
+2024-02-01 17:00:29,697 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:00:29,697 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0170.
+2024-02-01 17:00:29,699 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:00:29,700 - dpdl.callbacks - INFO - Starting training approximate epoch 22.
+2024-02-01 17:00:31,394 - dpdl.callbacks - INFO - - Grad Mean: 8.10702896118164, Noise Mean: 19239.06640625
+2024-02-01 17:00:32,591 - dpdl.callbacks - INFO - - Grad Mean: 7.838697910308838, Noise Mean: 19266.734375
+2024-02-01 17:00:33,615 - dpdl.callbacks - INFO - - Grad Mean: 8.482812881469727, Noise Mean: 19190.36328125
+2024-02-01 17:00:34,632 - dpdl.callbacks - INFO - - Grad Mean: 8.654463768005371, Noise Mean: 19164.568359375
+2024-02-01 17:00:35,659 - dpdl.callbacks - INFO - - Grad Mean: 8.670126914978027, Noise Mean: 19235.943359375
+2024-02-01 17:00:37,059 - dpdl.callbacks - INFO - - Grad Mean: 8.124038696289062, Noise Mean: 19245.955078125
+2024-02-01 17:00:38,095 - dpdl.callbacks - INFO - - Grad Mean: 9.310646057128906, Noise Mean: 19278.5859375
+2024-02-01 17:00:39,114 - dpdl.callbacks - INFO - - Grad Mean: 7.924829959869385, Noise Mean: 19220.458984375
+2024-02-01 17:00:40,133 - dpdl.callbacks - INFO - - Grad Mean: 7.626935005187988, Noise Mean: 19216.1953125
+2024-02-01 17:00:40,147 - dpdl.callbacks - INFO - Approximate epoch 22 finished. Loss: 4.6047.
+2024-02-01 17:00:40,147 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:00:40,147 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0206.
+2024-02-01 17:00:45,956 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6047.
+2024-02-01 17:00:45,956 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:00:45,957 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0170.
+2024-02-01 17:00:45,959 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:00:45,959 - dpdl.callbacks - INFO - Starting training approximate epoch 23.
+2024-02-01 17:00:47,295 - dpdl.callbacks - INFO - - Grad Mean: 9.338751792907715, Noise Mean: 19240.28515625
+2024-02-01 17:00:48,424 - dpdl.callbacks - INFO - - Grad Mean: 8.708230972290039, Noise Mean: 19213.345703125
+2024-02-01 17:00:49,458 - dpdl.callbacks - INFO - - Grad Mean: 9.332738876342773, Noise Mean: 19201.3359375
+2024-02-01 17:00:50,480 - dpdl.callbacks - INFO - - Grad Mean: 7.252036094665527, Noise Mean: 19173.3046875
+2024-02-01 17:00:51,508 - dpdl.callbacks - INFO - - Grad Mean: 7.8072896003723145, Noise Mean: 19221.31640625
+2024-02-01 17:00:52,535 - dpdl.callbacks - INFO - - Grad Mean: 7.367441177368164, Noise Mean: 19171.8984375
+2024-02-01 17:00:53,554 - dpdl.callbacks - INFO - - Grad Mean: 8.481459617614746, Noise Mean: 19217.005859375
+2024-02-01 17:00:54,576 - dpdl.callbacks - INFO - - Grad Mean: 7.976075649261475, Noise Mean: 19255.900390625
+2024-02-01 17:00:55,786 - dpdl.callbacks - INFO - - Grad Mean: 8.496761322021484, Noise Mean: 19159.734375
+2024-02-01 17:00:55,795 - dpdl.callbacks - INFO - Approximate epoch 23 finished. Loss: 4.6047.
+2024-02-01 17:00:55,795 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:00:55,795 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0204.
+2024-02-01 17:01:01,556 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6046.
+2024-02-01 17:01:01,556 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:01:01,557 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0170.
+2024-02-01 17:01:01,559 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:01:01,559 - dpdl.callbacks - INFO - Starting training approximate epoch 24.
+2024-02-01 17:01:02,846 - dpdl.callbacks - INFO - - Grad Mean: 8.822667121887207, Noise Mean: 19186.724609375
+2024-02-01 17:01:03,926 - dpdl.callbacks - INFO - - Grad Mean: 7.143385887145996, Noise Mean: 19216.37890625
+2024-02-01 17:01:04,953 - dpdl.callbacks - INFO - - Grad Mean: 8.639981269836426, Noise Mean: 19207.767578125
+2024-02-01 17:01:05,982 - dpdl.callbacks - INFO - - Grad Mean: 7.44432258605957, Noise Mean: 19248.943359375
+2024-02-01 17:01:07,009 - dpdl.callbacks - INFO - - Grad Mean: 7.573825359344482, Noise Mean: 19202.533203125
+2024-02-01 17:01:08,028 - dpdl.callbacks - INFO - - Grad Mean: 7.933483600616455, Noise Mean: 19251.341796875
+2024-02-01 17:01:09,056 - dpdl.callbacks - INFO - - Grad Mean: 7.271990776062012, Noise Mean: 19233.1171875
+2024-02-01 17:01:10,086 - dpdl.callbacks - INFO - - Grad Mean: 7.864363670349121, Noise Mean: 19229.005859375
+2024-02-01 17:01:11,103 - dpdl.callbacks - INFO - - Grad Mean: 8.064484596252441, Noise Mean: 19216.333984375
+2024-02-01 17:01:11,113 - dpdl.callbacks - INFO - Approximate epoch 24 finished. Loss: 4.6046.
+2024-02-01 17:01:11,113 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:01:11,114 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0213.
+2024-02-01 17:01:16,908 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6046.
+2024-02-01 17:01:16,909 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:01:16,909 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0170.
+2024-02-01 17:01:16,911 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:01:16,912 - dpdl.callbacks - INFO - Starting training approximate epoch 25.
+2024-02-01 17:01:18,312 - dpdl.callbacks - INFO - - Grad Mean: 8.068020820617676, Noise Mean: 19217.548828125
+2024-02-01 17:01:19,469 - dpdl.callbacks - INFO - - Grad Mean: 9.317301750183105, Noise Mean: 19268.857421875
+2024-02-01 17:01:20,511 - dpdl.callbacks - INFO - - Grad Mean: 7.834258556365967, Noise Mean: 19191.013671875
+2024-02-01 17:01:21,543 - dpdl.callbacks - INFO - - Grad Mean: 7.835041046142578, Noise Mean: 19242.271484375
+2024-02-01 17:01:22,568 - dpdl.callbacks - INFO - - Grad Mean: 8.9453706741333, Noise Mean: 19205.642578125
+2024-02-01 17:01:23,587 - dpdl.callbacks - INFO - - Grad Mean: 9.12116813659668, Noise Mean: 19247.46484375
+2024-02-01 17:01:24,609 - dpdl.callbacks - INFO - - Grad Mean: 7.307762145996094, Noise Mean: 19291.83203125
+2024-02-01 17:01:25,630 - dpdl.callbacks - INFO - - Grad Mean: 9.324686050415039, Noise Mean: 19253.833984375
+2024-02-01 17:01:26,654 - dpdl.callbacks - INFO - - Grad Mean: 7.178058624267578, Noise Mean: 19202.283203125
+2024-02-01 17:01:26,668 - dpdl.callbacks - INFO - Approximate epoch 25 finished. Loss: 4.6046.
+2024-02-01 17:01:26,668 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:01:26,669 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0211.
+2024-02-01 17:01:32,900 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6046.
+2024-02-01 17:01:32,901 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:01:32,901 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0170.
+2024-02-01 17:01:32,904 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:01:32,904 - dpdl.callbacks - INFO - Starting training approximate epoch 26.
+2024-02-01 17:01:33,972 - dpdl.callbacks - INFO - - Grad Mean: 8.484969139099121, Noise Mean: 19245.47265625
+2024-02-01 17:01:35,008 - dpdl.callbacks - INFO - - Grad Mean: 8.040493965148926, Noise Mean: 19225.55859375
+2024-02-01 17:01:36,040 - dpdl.callbacks - INFO - - Grad Mean: 8.721138000488281, Noise Mean: 19218.033203125
+2024-02-01 17:01:37,068 - dpdl.callbacks - INFO - - Grad Mean: 7.847225666046143, Noise Mean: 19238.6953125
+2024-02-01 17:01:38,094 - dpdl.callbacks - INFO - - Grad Mean: 7.542025566101074, Noise Mean: 19227.27734375
+2024-02-01 17:01:39,558 - dpdl.callbacks - INFO - - Grad Mean: 7.363580703735352, Noise Mean: 19298.08203125
+2024-02-01 17:01:40,583 - dpdl.callbacks - INFO - - Grad Mean: 8.882315635681152, Noise Mean: 19257.333984375
+2024-02-01 17:01:41,605 - dpdl.callbacks - INFO - - Grad Mean: 8.44895076751709, Noise Mean: 19223.59765625
+2024-02-01 17:01:42,632 - dpdl.callbacks - INFO - - Grad Mean: 8.224239349365234, Noise Mean: 19262.673828125
+2024-02-01 17:01:42,641 - dpdl.callbacks - INFO - Approximate epoch 26 finished. Loss: 4.6046.
+2024-02-01 17:01:42,641 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:01:42,641 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0193.
+2024-02-01 17:01:48,396 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6046.
+2024-02-01 17:01:48,397 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:01:48,397 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0215.
+2024-02-01 17:01:48,399 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:01:48,399 - dpdl.callbacks - INFO - Starting training approximate epoch 27.
+2024-02-01 17:01:49,966 - dpdl.callbacks - INFO - - Grad Mean: 7.615017414093018, Noise Mean: 19251.54296875
+2024-02-01 17:01:51,130 - dpdl.callbacks - INFO - - Grad Mean: 8.458985328674316, Noise Mean: 19195.708984375
+2024-02-01 17:01:52,152 - dpdl.callbacks - INFO - - Grad Mean: 8.447175025939941, Noise Mean: 19271.33984375
+2024-02-01 17:01:53,170 - dpdl.callbacks - INFO - - Grad Mean: 8.029647827148438, Noise Mean: 19187.681640625
+2024-02-01 17:01:54,197 - dpdl.callbacks - INFO - - Grad Mean: 6.881199359893799, Noise Mean: 19237.767578125
+2024-02-01 17:01:55,824 - dpdl.callbacks - INFO - - Grad Mean: 8.042511940002441, Noise Mean: 19238.33203125
+2024-02-01 17:01:56,839 - dpdl.callbacks - INFO - - Grad Mean: 8.424628257751465, Noise Mean: 19222.37890625
+2024-02-01 17:01:57,869 - dpdl.callbacks - INFO - - Grad Mean: 8.3430814743042, Noise Mean: 19229.6171875
+2024-02-01 17:01:58,882 - dpdl.callbacks - INFO - - Grad Mean: 9.671631813049316, Noise Mean: 19298.283203125
+2024-02-01 17:01:58,891 - dpdl.callbacks - INFO - Approximate epoch 27 finished. Loss: 4.6045.
+2024-02-01 17:01:58,891 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:01:58,892 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0225.
+2024-02-01 17:02:04,604 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6046.
+2024-02-01 17:02:04,605 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:02:04,605 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0215.
+2024-02-01 17:02:04,607 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:02:04,607 - dpdl.callbacks - INFO - Starting training approximate epoch 28.
+2024-02-01 17:02:05,780 - dpdl.callbacks - INFO - - Grad Mean: 8.084296226501465, Noise Mean: 19203.11328125
+2024-02-01 17:02:06,819 - dpdl.callbacks - INFO - - Grad Mean: 9.049586296081543, Noise Mean: 19226.5390625
+2024-02-01 17:02:07,846 - dpdl.callbacks - INFO - - Grad Mean: 9.253561973571777, Noise Mean: 19232.185546875
+2024-02-01 17:02:08,860 - dpdl.callbacks - INFO - - Grad Mean: 8.624490737915039, Noise Mean: 19270.783203125
+2024-02-01 17:02:09,888 - dpdl.callbacks - INFO - - Grad Mean: 7.84865665435791, Noise Mean: 19246.6796875
+2024-02-01 17:02:11,181 - dpdl.callbacks - INFO - - Grad Mean: 8.663717269897461, Noise Mean: 19198.361328125
+2024-02-01 17:02:12,215 - dpdl.callbacks - INFO - - Grad Mean: 7.256261348724365, Noise Mean: 19204.923828125
+2024-02-01 17:02:13,246 - dpdl.callbacks - INFO - - Grad Mean: 8.494626998901367, Noise Mean: 19252.21875
+2024-02-01 17:02:14,273 - dpdl.callbacks - INFO - - Grad Mean: 9.002557754516602, Noise Mean: 19241.935546875
+2024-02-01 17:02:14,282 - dpdl.callbacks - INFO - Approximate epoch 28 finished. Loss: 4.6045.
+2024-02-01 17:02:14,282 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:02:14,282 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0278.
+2024-02-01 17:02:20,052 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6045.
+2024-02-01 17:02:20,053 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:02:20,053 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0215.
+2024-02-01 17:02:20,055 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:02:20,055 - dpdl.callbacks - INFO - Starting training approximate epoch 29.
+2024-02-01 17:02:21,425 - dpdl.callbacks - INFO - - Grad Mean: 8.495471000671387, Noise Mean: 19283.830078125
+2024-02-01 17:02:22,520 - dpdl.callbacks - INFO - - Grad Mean: 8.220077514648438, Noise Mean: 19257.8828125
+2024-02-01 17:02:23,545 - dpdl.callbacks - INFO - - Grad Mean: 8.728486061096191, Noise Mean: 19190.44921875
+2024-02-01 17:02:24,573 - dpdl.callbacks - INFO - - Grad Mean: 7.757743835449219, Noise Mean: 19224.146484375
+2024-02-01 17:02:25,600 - dpdl.callbacks - INFO - - Grad Mean: 8.413247108459473, Noise Mean: 19233.95703125
+2024-02-01 17:02:27,217 - dpdl.callbacks - INFO - - Grad Mean: 8.664901733398438, Noise Mean: 19219.880859375
+2024-02-01 17:02:28,268 - dpdl.callbacks - INFO - - Grad Mean: 7.721683025360107, Noise Mean: 19234.953125
+2024-02-01 17:02:29,296 - dpdl.callbacks - INFO - - Grad Mean: 7.933838844299316, Noise Mean: 19215.857421875
+2024-02-01 17:02:30,312 - dpdl.callbacks - INFO - - Grad Mean: 8.445362091064453, Noise Mean: 19243.75390625
+2024-02-01 17:02:30,322 - dpdl.callbacks - INFO - Approximate epoch 29 finished. Loss: 4.6045.
+2024-02-01 17:02:30,322 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:02:30,322 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0266.
+2024-02-01 17:02:36,320 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6045.
+2024-02-01 17:02:36,321 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:02:36,321 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0235.
+2024-02-01 17:02:36,323 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:02:36,324 - dpdl.callbacks - INFO - Starting training approximate epoch 30.
+2024-02-01 17:02:37,776 - dpdl.callbacks - INFO - - Grad Mean: 8.499289512634277, Noise Mean: 19201.33984375
+2024-02-01 17:02:39,165 - dpdl.callbacks - INFO - - Grad Mean: 8.77743148803711, Noise Mean: 19217.54296875
+2024-02-01 17:02:40,185 - dpdl.callbacks - INFO - - Grad Mean: 8.595024108886719, Noise Mean: 19247.02734375
+2024-02-01 17:02:41,214 - dpdl.callbacks - INFO - - Grad Mean: 8.0478515625, Noise Mean: 19209.697265625
+2024-02-01 17:02:42,235 - dpdl.callbacks - INFO - - Grad Mean: 8.647679328918457, Noise Mean: 19232.515625
+2024-02-01 17:02:43,261 - dpdl.callbacks - INFO - - Grad Mean: 7.99708366394043, Noise Mean: 19253.26171875
+2024-02-01 17:02:44,293 - dpdl.callbacks - INFO - - Grad Mean: 7.328892707824707, Noise Mean: 19248.7734375
+2024-02-01 17:02:45,322 - dpdl.callbacks - INFO - - Grad Mean: 7.891967296600342, Noise Mean: 19226.77734375
+2024-02-01 17:02:46,354 - dpdl.callbacks - INFO - - Grad Mean: 7.923058032989502, Noise Mean: 19245.76953125
+2024-02-01 17:02:46,364 - dpdl.callbacks - INFO - Approximate epoch 30 finished. Loss: 4.6045.
+2024-02-01 17:02:46,364 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:02:46,364 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0243.
+2024-02-01 17:02:52,208 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6045.
+2024-02-01 17:02:52,208 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:02:52,209 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0280.
+2024-02-01 17:02:52,211 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:02:52,211 - dpdl.callbacks - INFO - Starting training approximate epoch 31.
+2024-02-01 17:02:53,514 - dpdl.callbacks - INFO - - Grad Mean: 8.095194816589355, Noise Mean: 19251.44140625
+2024-02-01 17:02:54,572 - dpdl.callbacks - INFO - - Grad Mean: 8.011792182922363, Noise Mean: 19202.208984375
+2024-02-01 17:02:55,596 - dpdl.callbacks - INFO - - Grad Mean: 8.225857734680176, Noise Mean: 19246.87109375
+2024-02-01 17:02:56,625 - dpdl.callbacks - INFO - - Grad Mean: 8.4317045211792, Noise Mean: 19190.005859375
+2024-02-01 17:02:58,156 - dpdl.callbacks - INFO - - Grad Mean: 8.970102310180664, Noise Mean: 19225.244140625
+2024-02-01 17:02:59,978 - dpdl.callbacks - INFO - - Grad Mean: 9.157002449035645, Noise Mean: 19226.396484375
+2024-02-01 17:03:01,009 - dpdl.callbacks - INFO - - Grad Mean: 7.851553440093994, Noise Mean: 19223.4375
+2024-02-01 17:03:02,030 - dpdl.callbacks - INFO - - Grad Mean: 7.047426700592041, Noise Mean: 19230.72265625
+2024-02-01 17:03:03,060 - dpdl.callbacks - INFO - - Grad Mean: 8.42757797241211, Noise Mean: 19228.453125
+2024-02-01 17:03:03,069 - dpdl.callbacks - INFO - Approximate epoch 31 finished. Loss: 4.6045.
+2024-02-01 17:03:03,069 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:03:03,069 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0301.
+2024-02-01 17:03:08,920 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6045.
+2024-02-01 17:03:08,921 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:03:08,921 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0240.
+2024-02-01 17:03:08,923 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:03:08,924 - dpdl.callbacks - INFO - Starting training approximate epoch 32.
+2024-02-01 17:03:10,614 - dpdl.callbacks - INFO - - Grad Mean: 7.863317489624023, Noise Mean: 19278.19921875
+2024-02-01 17:03:11,966 - dpdl.callbacks - INFO - - Grad Mean: 8.179938316345215, Noise Mean: 19250.66015625
+2024-02-01 17:03:12,996 - dpdl.callbacks - INFO - - Grad Mean: 8.529427528381348, Noise Mean: 19228.890625
+2024-02-01 17:03:14,026 - dpdl.callbacks - INFO - - Grad Mean: 8.138081550598145, Noise Mean: 19285.9609375
+2024-02-01 17:03:15,057 - dpdl.callbacks - INFO - - Grad Mean: 7.3970489501953125, Noise Mean: 19225.978515625
+2024-02-01 17:03:16,086 - dpdl.callbacks - INFO - - Grad Mean: 7.673320293426514, Noise Mean: 19216.349609375
+2024-02-01 17:03:17,109 - dpdl.callbacks - INFO - - Grad Mean: 8.711844444274902, Noise Mean: 19201.373046875
+2024-02-01 17:03:18,141 - dpdl.callbacks - INFO - - Grad Mean: 8.55838680267334, Noise Mean: 19225.513671875
+2024-02-01 17:03:19,173 - dpdl.callbacks - INFO - - Grad Mean: 9.200273513793945, Noise Mean: 19222.654296875
+2024-02-01 17:03:19,183 - dpdl.callbacks - INFO - Approximate epoch 32 finished. Loss: 4.6045.
+2024-02-01 17:03:19,183 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:03:19,183 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0274.
+2024-02-01 17:03:24,992 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6044.
+2024-02-01 17:03:24,992 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:03:24,992 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0240.
+2024-02-01 17:03:24,995 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:03:24,995 - dpdl.callbacks - INFO - Starting training approximate epoch 33.
+2024-02-01 17:03:26,293 - dpdl.callbacks - INFO - - Grad Mean: 8.016888618469238, Noise Mean: 19243.048828125
+2024-02-01 17:03:27,373 - dpdl.callbacks - INFO - - Grad Mean: 8.175262451171875, Noise Mean: 19246.78125
+2024-02-01 17:03:28,391 - dpdl.callbacks - INFO - - Grad Mean: 9.201231002807617, Noise Mean: 19245.27734375
+2024-02-01 17:03:29,409 - dpdl.callbacks - INFO - - Grad Mean: 8.010786056518555, Noise Mean: 19245.037109375
+2024-02-01 17:03:30,420 - dpdl.callbacks - INFO - - Grad Mean: 8.563579559326172, Noise Mean: 19189.111328125
+2024-02-01 17:03:31,938 - dpdl.callbacks - INFO - - Grad Mean: 10.293545722961426, Noise Mean: 19251.146484375
+2024-02-01 17:03:33,450 - dpdl.callbacks - INFO - - Grad Mean: 8.19434928894043, Noise Mean: 19257.134765625
+2024-02-01 17:03:34,466 - dpdl.callbacks - INFO - - Grad Mean: 8.717942237854004, Noise Mean: 19234.55859375
+2024-02-01 17:03:35,478 - dpdl.callbacks - INFO - - Grad Mean: 8.414898872375488, Noise Mean: 19242.564453125
+2024-02-01 17:03:35,491 - dpdl.callbacks - INFO - Approximate epoch 33 finished. Loss: 4.6044.
+2024-02-01 17:03:35,491 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:03:35,491 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0282.
+2024-02-01 17:03:41,572 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6044.
+2024-02-01 17:03:41,573 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:03:41,573 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0255.
+2024-02-01 17:03:41,577 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:03:41,578 - dpdl.callbacks - INFO - Starting training approximate epoch 34.
+2024-02-01 17:03:43,178 - dpdl.callbacks - INFO - - Grad Mean: 8.521227836608887, Noise Mean: 19242.908203125
+2024-02-01 17:03:44,323 - dpdl.callbacks - INFO - - Grad Mean: 7.025738716125488, Noise Mean: 19186.298828125
+2024-02-01 17:03:45,353 - dpdl.callbacks - INFO - - Grad Mean: 8.789828300476074, Noise Mean: 19238.64453125
+2024-02-01 17:03:46,376 - dpdl.callbacks - INFO - - Grad Mean: 6.965084552764893, Noise Mean: 19280.486328125
+2024-02-01 17:03:47,392 - dpdl.callbacks - INFO - - Grad Mean: 8.413594245910645, Noise Mean: 19217.314453125
+2024-02-01 17:03:48,417 - dpdl.callbacks - INFO - - Grad Mean: 8.592507362365723, Noise Mean: 19210.8828125
+2024-02-01 17:03:49,439 - dpdl.callbacks - INFO - - Grad Mean: 8.27563190460205, Noise Mean: 19195.1171875
+2024-02-01 17:03:50,458 - dpdl.callbacks - INFO - - Grad Mean: 8.301287651062012, Noise Mean: 19195.66796875
+2024-02-01 17:03:51,478 - dpdl.callbacks - INFO - - Grad Mean: 9.024491310119629, Noise Mean: 19223.208984375
+2024-02-01 17:03:51,491 - dpdl.callbacks - INFO - Approximate epoch 34 finished. Loss: 4.6044.
+2024-02-01 17:03:51,491 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:03:51,491 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0286.
+2024-02-01 17:03:57,264 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6044.
+2024-02-01 17:03:57,264 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:03:57,264 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0250.
+2024-02-01 17:03:57,267 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:03:57,267 - dpdl.callbacks - INFO - Starting training approximate epoch 35.
+2024-02-01 17:03:58,632 - dpdl.callbacks - INFO - - Grad Mean: 7.401196002960205, Noise Mean: 19202.205078125
+2024-02-01 17:03:59,794 - dpdl.callbacks - INFO - - Grad Mean: 7.901314735412598, Noise Mean: 19199.779296875
+2024-02-01 17:04:00,822 - dpdl.callbacks - INFO - - Grad Mean: 8.053168296813965, Noise Mean: 19210.146484375
+2024-02-01 17:04:01,848 - dpdl.callbacks - INFO - - Grad Mean: 6.65228271484375, Noise Mean: 19258.4921875
+2024-02-01 17:04:02,877 - dpdl.callbacks - INFO - - Grad Mean: 7.792761325836182, Noise Mean: 19231.783203125
+2024-02-01 17:04:03,902 - dpdl.callbacks - INFO - - Grad Mean: 7.577688217163086, Noise Mean: 19247.150390625
+2024-02-01 17:04:04,923 - dpdl.callbacks - INFO - - Grad Mean: 8.397550582885742, Noise Mean: 19214.685546875
+2024-02-01 17:04:05,951 - dpdl.callbacks - INFO - - Grad Mean: 7.8450927734375, Noise Mean: 19213.6640625
+2024-02-01 17:04:06,974 - dpdl.callbacks - INFO - - Grad Mean: 8.567103385925293, Noise Mean: 19212.47265625
+2024-02-01 17:04:06,984 - dpdl.callbacks - INFO - Approximate epoch 35 finished. Loss: 4.6043.
+2024-02-01 17:04:06,984 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:04:06,984 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0292.
+2024-02-01 17:04:12,784 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6044.
+2024-02-01 17:04:12,785 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:04:12,785 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0230.
+2024-02-01 17:04:12,787 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:04:12,787 - dpdl.callbacks - INFO - Starting training approximate epoch 36.
+2024-02-01 17:04:14,053 - dpdl.callbacks - INFO - - Grad Mean: 8.692594528198242, Noise Mean: 19185.6328125
+2024-02-01 17:04:15,128 - dpdl.callbacks - INFO - - Grad Mean: 8.50146770477295, Noise Mean: 19270.09375
+2024-02-01 17:04:16,150 - dpdl.callbacks - INFO - - Grad Mean: 8.387165069580078, Noise Mean: 19215.638671875
+2024-02-01 17:04:17,171 - dpdl.callbacks - INFO - - Grad Mean: 7.332545757293701, Noise Mean: 19236.728515625
+2024-02-01 17:04:18,193 - dpdl.callbacks - INFO - - Grad Mean: 8.338751792907715, Noise Mean: 19224.509765625
+2024-02-01 17:04:19,214 - dpdl.callbacks - INFO - - Grad Mean: 9.05998706817627, Noise Mean: 19219.82421875
+2024-02-01 17:04:20,237 - dpdl.callbacks - INFO - - Grad Mean: 8.311559677124023, Noise Mean: 19236.86328125
+2024-02-01 17:04:21,262 - dpdl.callbacks - INFO - - Grad Mean: 7.692382335662842, Noise Mean: 19197.810546875
+2024-02-01 17:04:22,283 - dpdl.callbacks - INFO - - Grad Mean: 7.772829055786133, Noise Mean: 19208.4765625
+2024-02-01 17:04:22,293 - dpdl.callbacks - INFO - Approximate epoch 36 finished. Loss: 4.6043.
+2024-02-01 17:04:22,293 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:04:22,293 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0273.
+2024-02-01 17:04:28,540 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6043.
+2024-02-01 17:04:28,541 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:04:28,541 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0295.
+2024-02-01 17:04:28,543 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:04:28,544 - dpdl.callbacks - INFO - Starting training approximate epoch 37.
+2024-02-01 17:04:30,016 - dpdl.callbacks - INFO - - Grad Mean: 8.587303161621094, Noise Mean: 19159.84765625
+2024-02-01 17:04:31,174 - dpdl.callbacks - INFO - - Grad Mean: 7.179037094116211, Noise Mean: 19217.806640625
+2024-02-01 17:04:32,201 - dpdl.callbacks - INFO - - Grad Mean: 7.748988151550293, Noise Mean: 19206.24609375
+2024-02-01 17:04:33,224 - dpdl.callbacks - INFO - - Grad Mean: 8.105073928833008, Noise Mean: 19182.91796875
+2024-02-01 17:04:34,251 - dpdl.callbacks - INFO - - Grad Mean: 7.921060562133789, Noise Mean: 19163.498046875
+2024-02-01 17:04:35,269 - dpdl.callbacks - INFO - - Grad Mean: 8.344144821166992, Noise Mean: 19245.337890625
+2024-02-01 17:04:36,289 - dpdl.callbacks - INFO - - Grad Mean: 7.34682559967041, Noise Mean: 19212.337890625
+2024-02-01 17:04:37,296 - dpdl.callbacks - INFO - - Grad Mean: 8.329963684082031, Noise Mean: 19244.185546875
+2024-02-01 17:04:38,320 - dpdl.callbacks - INFO - - Grad Mean: 8.114819526672363, Noise Mean: 19254.69140625
+2024-02-01 17:04:38,331 - dpdl.callbacks - INFO - Approximate epoch 37 finished. Loss: 4.6042.
+2024-02-01 17:04:38,332 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:04:38,332 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0263.
+2024-02-01 17:04:44,292 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6043.
+2024-02-01 17:04:44,293 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:04:44,293 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0300.
+2024-02-01 17:04:44,295 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:04:44,296 - dpdl.callbacks - INFO - Starting training approximate epoch 38.
+2024-02-01 17:04:45,707 - dpdl.callbacks - INFO - - Grad Mean: 7.871049404144287, Noise Mean: 19221.447265625
+2024-02-01 17:04:46,821 - dpdl.callbacks - INFO - - Grad Mean: 7.987371444702148, Noise Mean: 19228.806640625
+2024-02-01 17:04:47,853 - dpdl.callbacks - INFO - - Grad Mean: 8.748934745788574, Noise Mean: 19246.17578125
+2024-02-01 17:04:48,874 - dpdl.callbacks - INFO - - Grad Mean: 7.197601318359375, Noise Mean: 19181.763671875
+2024-02-01 17:04:49,898 - dpdl.callbacks - INFO - - Grad Mean: 8.108095169067383, Noise Mean: 19253.1171875
+2024-02-01 17:04:50,911 - dpdl.callbacks - INFO - - Grad Mean: 8.849117279052734, Noise Mean: 19192.498046875
+2024-02-01 17:04:51,938 - dpdl.callbacks - INFO - - Grad Mean: 8.838813781738281, Noise Mean: 19263.5625
+2024-02-01 17:04:52,963 - dpdl.callbacks - INFO - - Grad Mean: 7.308038711547852, Noise Mean: 19258.388671875
+2024-02-01 17:04:53,984 - dpdl.callbacks - INFO - - Grad Mean: 7.844905853271484, Noise Mean: 19182.3671875
+2024-02-01 17:04:53,996 - dpdl.callbacks - INFO - Approximate epoch 38 finished. Loss: 4.6043.
+2024-02-01 17:04:53,996 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:04:53,996 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0292.
+2024-02-01 17:04:59,840 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6043.
+2024-02-01 17:04:59,841 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:04:59,841 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0325.
+2024-02-01 17:04:59,843 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:04:59,844 - dpdl.callbacks - INFO - Starting training approximate epoch 39.
+2024-02-01 17:05:00,940 - dpdl.callbacks - INFO - - Grad Mean: 7.820533275604248, Noise Mean: 19234.859375
+2024-02-01 17:05:01,968 - dpdl.callbacks - INFO - - Grad Mean: 8.705768585205078, Noise Mean: 19202.705078125
+2024-02-01 17:05:02,989 - dpdl.callbacks - INFO - - Grad Mean: 7.552375793457031, Noise Mean: 19209.451171875
+2024-02-01 17:05:04,012 - dpdl.callbacks - INFO - - Grad Mean: 7.375701904296875, Noise Mean: 19236.71484375
+2024-02-01 17:05:05,040 - dpdl.callbacks - INFO - - Grad Mean: 8.453536033630371, Noise Mean: 19221.603515625
+2024-02-01 17:05:06,057 - dpdl.callbacks - INFO - - Grad Mean: 8.003257751464844, Noise Mean: 19239.4140625
+2024-02-01 17:05:07,082 - dpdl.callbacks - INFO - - Grad Mean: 7.841601848602295, Noise Mean: 19204.376953125
+2024-02-01 17:05:08,106 - dpdl.callbacks - INFO - - Grad Mean: 7.414536476135254, Noise Mean: 19225.529296875
+2024-02-01 17:05:09,132 - dpdl.callbacks - INFO - - Grad Mean: 9.2635498046875, Noise Mean: 19191.052734375
+2024-02-01 17:05:09,142 - dpdl.callbacks - INFO - Approximate epoch 39 finished. Loss: 4.6042.
+2024-02-01 17:05:09,143 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:05:09,143 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0288.
+2024-02-01 17:05:14,832 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6042.
+2024-02-01 17:05:14,833 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:05:14,833 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0325.
+2024-02-01 17:05:14,836 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:05:14,836 - dpdl.callbacks - INFO - Starting training approximate epoch 40.
+2024-02-01 17:05:16,205 - dpdl.callbacks - INFO - - Grad Mean: 8.324729919433594, Noise Mean: 19188.595703125
+2024-02-01 17:05:17,296 - dpdl.callbacks - INFO - - Grad Mean: 9.214836120605469, Noise Mean: 19256.849609375
+2024-02-01 17:05:18,325 - dpdl.callbacks - INFO - - Grad Mean: 7.723697185516357, Noise Mean: 19252.60546875
+2024-02-01 17:05:19,356 - dpdl.callbacks - INFO - - Grad Mean: 7.507542133331299, Noise Mean: 19247.32421875
+2024-02-01 17:05:20,374 - dpdl.callbacks - INFO - - Grad Mean: 8.173974990844727, Noise Mean: 19239.798828125
+2024-02-01 17:05:21,394 - dpdl.callbacks - INFO - - Grad Mean: 7.899632930755615, Noise Mean: 19213.123046875
+2024-02-01 17:05:22,417 - dpdl.callbacks - INFO - - Grad Mean: 7.998722076416016, Noise Mean: 19218.900390625
+2024-02-01 17:05:23,942 - dpdl.callbacks - INFO - - Grad Mean: 9.223127365112305, Noise Mean: 19235.724609375
+2024-02-01 17:05:25,465 - dpdl.callbacks - INFO - - Grad Mean: 8.647821426391602, Noise Mean: 19229.806640625
+2024-02-01 17:05:25,481 - dpdl.callbacks - INFO - Approximate epoch 40 finished. Loss: 4.6042.
+2024-02-01 17:05:25,481 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:05:25,481 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0290.
+2024-02-01 17:05:31,412 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6042.
+2024-02-01 17:05:31,413 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:05:31,413 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0325.
+2024-02-01 17:05:31,418 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:05:31,418 - dpdl.callbacks - INFO - Starting training approximate epoch 41.
+2024-02-01 17:05:32,773 - dpdl.callbacks - INFO - - Grad Mean: 8.629055976867676, Noise Mean: 19248.591796875
+2024-02-01 17:05:33,867 - dpdl.callbacks - INFO - - Grad Mean: 8.25128173828125, Noise Mean: 19235.359375
+2024-02-01 17:05:34,895 - dpdl.callbacks - INFO - - Grad Mean: 7.650099277496338, Noise Mean: 19249.63671875
+2024-02-01 17:05:35,922 - dpdl.callbacks - INFO - - Grad Mean: 9.158977508544922, Noise Mean: 19251.2421875
+2024-02-01 17:05:36,944 - dpdl.callbacks - INFO - - Grad Mean: 8.272335052490234, Noise Mean: 19245.119140625
+2024-02-01 17:05:37,960 - dpdl.callbacks - INFO - - Grad Mean: 8.713167190551758, Noise Mean: 19229.2578125
+2024-02-01 17:05:38,986 - dpdl.callbacks - INFO - - Grad Mean: 8.454556465148926, Noise Mean: 19188.5546875
+2024-02-01 17:05:40,011 - dpdl.callbacks - INFO - - Grad Mean: 7.981539249420166, Noise Mean: 19250.95703125
+2024-02-01 17:05:41,040 - dpdl.callbacks - INFO - - Grad Mean: 8.339432716369629, Noise Mean: 19269.580078125
+2024-02-01 17:05:41,050 - dpdl.callbacks - INFO - Approximate epoch 41 finished. Loss: 4.6042.
+2024-02-01 17:05:41,051 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:05:41,051 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0272.
+2024-02-01 17:05:46,800 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6042.
+2024-02-01 17:05:46,800 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:05:46,800 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0325.
+2024-02-01 17:05:46,803 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:05:46,803 - dpdl.callbacks - INFO - Starting training approximate epoch 42.
+2024-02-01 17:05:48,028 - dpdl.callbacks - INFO - - Grad Mean: 8.430264472961426, Noise Mean: 19231.197265625
+2024-02-01 17:05:49,099 - dpdl.callbacks - INFO - - Grad Mean: 8.772089004516602, Noise Mean: 19208.66796875
+2024-02-01 17:05:50,124 - dpdl.callbacks - INFO - - Grad Mean: 8.151266098022461, Noise Mean: 19165.07421875
+2024-02-01 17:05:51,145 - dpdl.callbacks - INFO - - Grad Mean: 8.100308418273926, Noise Mean: 19213.923828125
+2024-02-01 17:05:52,169 - dpdl.callbacks - INFO - - Grad Mean: 7.953463554382324, Noise Mean: 19228.619140625
+2024-02-01 17:05:53,197 - dpdl.callbacks - INFO - - Grad Mean: 8.903229713439941, Noise Mean: 19228.513671875
+2024-02-01 17:05:54,221 - dpdl.callbacks - INFO - - Grad Mean: 8.777356147766113, Noise Mean: 19211.0546875
+2024-02-01 17:05:55,245 - dpdl.callbacks - INFO - - Grad Mean: 8.001300811767578, Noise Mean: 19219.404296875
+2024-02-01 17:05:56,250 - dpdl.callbacks - INFO - - Grad Mean: 8.275063514709473, Noise Mean: 19220.083984375
+2024-02-01 17:05:56,264 - dpdl.callbacks - INFO - Approximate epoch 42 finished. Loss: 4.6041.
+2024-02-01 17:05:56,264 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:05:56,264 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0279.
+2024-02-01 17:06:02,908 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6042.
+2024-02-01 17:06:02,908 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:06:02,908 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0300.
+2024-02-01 17:06:02,911 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:06:02,911 - dpdl.callbacks - INFO - Starting training approximate epoch 43.
+2024-02-01 17:06:04,030 - dpdl.callbacks - INFO - - Grad Mean: 8.70224666595459, Noise Mean: 19250.4140625
+2024-02-01 17:06:05,057 - dpdl.callbacks - INFO - - Grad Mean: 8.116755485534668, Noise Mean: 19228.31640625
+2024-02-01 17:06:06,084 - dpdl.callbacks - INFO - - Grad Mean: 7.6594696044921875, Noise Mean: 19225.86328125
+2024-02-01 17:06:07,098 - dpdl.callbacks - INFO - - Grad Mean: 7.954887866973877, Noise Mean: 19181.119140625
+2024-02-01 17:06:08,127 - dpdl.callbacks - INFO - - Grad Mean: 8.309630393981934, Noise Mean: 19230.6875
+2024-02-01 17:06:09,156 - dpdl.callbacks - INFO - - Grad Mean: 7.777839660644531, Noise Mean: 19233.529296875
+2024-02-01 17:06:10,177 - dpdl.callbacks - INFO - - Grad Mean: 8.195611953735352, Noise Mean: 19231.412109375
+2024-02-01 17:06:11,191 - dpdl.callbacks - INFO - - Grad Mean: 8.165680885314941, Noise Mean: 19230.212890625
+2024-02-01 17:06:12,210 - dpdl.callbacks - INFO - - Grad Mean: 8.161897659301758, Noise Mean: 19234.03125
+2024-02-01 17:06:12,224 - dpdl.callbacks - INFO - Approximate epoch 43 finished. Loss: 4.6041.
+2024-02-01 17:06:12,224 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:06:12,224 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0228.
+2024-02-01 17:06:17,976 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6042.
+2024-02-01 17:06:17,977 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:06:17,977 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0320.
+2024-02-01 17:06:17,979 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:06:17,979 - dpdl.callbacks - INFO - Starting training approximate epoch 44.
+2024-02-01 17:06:19,525 - dpdl.callbacks - INFO - - Grad Mean: 8.062483787536621, Noise Mean: 19212.294921875
+2024-02-01 17:06:20,667 - dpdl.callbacks - INFO - - Grad Mean: 8.370855331420898, Noise Mean: 19243.068359375
+2024-02-01 17:06:21,698 - dpdl.callbacks - INFO - - Grad Mean: 8.388501167297363, Noise Mean: 19256.1953125
+2024-02-01 17:06:22,720 - dpdl.callbacks - INFO - - Grad Mean: 8.034768104553223, Noise Mean: 19198.494140625
+2024-02-01 17:06:23,746 - dpdl.callbacks - INFO - - Grad Mean: 8.826651573181152, Noise Mean: 19244.662109375
+2024-02-01 17:06:24,771 - dpdl.callbacks - INFO - - Grad Mean: 8.159839630126953, Noise Mean: 19233.826171875
+2024-02-01 17:06:25,802 - dpdl.callbacks - INFO - - Grad Mean: 9.220709800720215, Noise Mean: 19165.935546875
+2024-02-01 17:06:26,830 - dpdl.callbacks - INFO - - Grad Mean: 9.31772232055664, Noise Mean: 19248.447265625
+2024-02-01 17:06:27,856 - dpdl.callbacks - INFO - - Grad Mean: 7.522011756896973, Noise Mean: 19212.958984375
+2024-02-01 17:06:27,869 - dpdl.callbacks - INFO - Approximate epoch 44 finished. Loss: 4.6041.
+2024-02-01 17:06:27,869 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:06:27,869 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0303.
+2024-02-01 17:06:33,724 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6042.
+2024-02-01 17:06:33,725 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:06:33,725 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0360.
+2024-02-01 17:06:33,727 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:06:33,727 - dpdl.callbacks - INFO - Starting training approximate epoch 45.
+2024-02-01 17:06:34,757 - dpdl.callbacks - INFO - - Grad Mean: 8.288365364074707, Noise Mean: 19252.8046875
+2024-02-01 17:06:35,782 - dpdl.callbacks - INFO - - Grad Mean: 7.286431312561035, Noise Mean: 19244.125
+2024-02-01 17:06:36,800 - dpdl.callbacks - INFO - - Grad Mean: 8.54445743560791, Noise Mean: 19199.029296875
+2024-02-01 17:06:37,817 - dpdl.callbacks - INFO - - Grad Mean: 9.049875259399414, Noise Mean: 19213.5546875
+2024-02-01 17:06:38,838 - dpdl.callbacks - INFO - - Grad Mean: 8.329102516174316, Noise Mean: 19261.376953125
+2024-02-01 17:06:39,850 - dpdl.callbacks - INFO - - Grad Mean: 8.417278289794922, Noise Mean: 19281.89453125
+2024-02-01 17:06:40,871 - dpdl.callbacks - INFO - - Grad Mean: 8.172308921813965, Noise Mean: 19203.85546875
+2024-02-01 17:06:41,890 - dpdl.callbacks - INFO - - Grad Mean: 8.348488807678223, Noise Mean: 19229.572265625
+2024-02-01 17:06:42,909 - dpdl.callbacks - INFO - - Grad Mean: 8.821688652038574, Noise Mean: 19211.30078125
+2024-02-01 17:06:42,923 - dpdl.callbacks - INFO - Approximate epoch 45 finished. Loss: 4.6041.
+2024-02-01 17:06:42,923 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:06:42,923 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0288.
+2024-02-01 17:06:48,960 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6041.
+2024-02-01 17:06:48,961 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:06:48,961 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0355.
+2024-02-01 17:06:48,964 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:06:48,964 - dpdl.callbacks - INFO - Starting training approximate epoch 46.
+2024-02-01 17:06:50,274 - dpdl.callbacks - INFO - - Grad Mean: 8.766469955444336, Noise Mean: 19256.34375
+2024-02-01 17:06:51,335 - dpdl.callbacks - INFO - - Grad Mean: 8.413634300231934, Noise Mean: 19191.728515625
+2024-02-01 17:06:52,359 - dpdl.callbacks - INFO - - Grad Mean: 7.9245476722717285, Noise Mean: 19192.6015625
+2024-02-01 17:06:53,380 - dpdl.callbacks - INFO - - Grad Mean: 7.879891395568848, Noise Mean: 19205.71484375
+2024-02-01 17:06:54,398 - dpdl.callbacks - INFO - - Grad Mean: 8.170568466186523, Noise Mean: 19201.544921875
+2024-02-01 17:06:55,415 - dpdl.callbacks - INFO - - Grad Mean: 8.098313331604004, Noise Mean: 19259.220703125
+2024-02-01 17:06:56,440 - dpdl.callbacks - INFO - - Grad Mean: 7.8948211669921875, Noise Mean: 19237.185546875
+2024-02-01 17:06:57,463 - dpdl.callbacks - INFO - - Grad Mean: 7.9914703369140625, Noise Mean: 19227.38671875
+2024-02-01 17:06:58,489 - dpdl.callbacks - INFO - - Grad Mean: 9.381725311279297, Noise Mean: 19251.77734375
+2024-02-01 17:06:58,500 - dpdl.callbacks - INFO - Approximate epoch 46 finished. Loss: 4.6041.
+2024-02-01 17:06:58,501 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:06:58,501 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0292.
+2024-02-01 17:07:04,272 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6041.
+2024-02-01 17:07:04,273 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:07:04,273 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0400.
+2024-02-01 17:07:04,275 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:07:04,275 - dpdl.callbacks - INFO - Starting training approximate epoch 47.
+2024-02-01 17:07:05,593 - dpdl.callbacks - INFO - - Grad Mean: 9.200857162475586, Noise Mean: 19176.1328125
+2024-02-01 17:07:06,662 - dpdl.callbacks - INFO - - Grad Mean: 7.92268180847168, Noise Mean: 19193.546875
+2024-02-01 17:07:07,684 - dpdl.callbacks - INFO - - Grad Mean: 8.89888858795166, Noise Mean: 19273.28515625
+2024-02-01 17:07:08,708 - dpdl.callbacks - INFO - - Grad Mean: 8.748822212219238, Noise Mean: 19211.255859375
+2024-02-01 17:07:09,735 - dpdl.callbacks - INFO - - Grad Mean: 8.256720542907715, Noise Mean: 19258.0
+2024-02-01 17:07:10,766 - dpdl.callbacks - INFO - - Grad Mean: 7.952469825744629, Noise Mean: 19234.8828125
+2024-02-01 17:07:11,801 - dpdl.callbacks - INFO - - Grad Mean: 8.623875617980957, Noise Mean: 19245.232421875
+2024-02-01 17:07:12,826 - dpdl.callbacks - INFO - - Grad Mean: 8.382308006286621, Noise Mean: 19233.17578125
+2024-02-01 17:07:13,846 - dpdl.callbacks - INFO - - Grad Mean: 8.979893684387207, Noise Mean: 19245.16796875
+2024-02-01 17:07:13,865 - dpdl.callbacks - INFO - Approximate epoch 47 finished. Loss: 4.6040.
+2024-02-01 17:07:13,865 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:07:13,866 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0309.
+2024-02-01 17:07:19,756 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6040.
+2024-02-01 17:07:19,757 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:07:19,757 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0445.
+2024-02-01 17:07:19,759 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:07:19,760 - dpdl.callbacks - INFO - Starting training approximate epoch 48.
+2024-02-01 17:07:20,868 - dpdl.callbacks - INFO - - Grad Mean: 8.21092700958252, Noise Mean: 19228.376953125
+2024-02-01 17:07:22,006 - dpdl.callbacks - INFO - - Grad Mean: 8.420297622680664, Noise Mean: 19234.017578125
+2024-02-01 17:07:23,037 - dpdl.callbacks - INFO - - Grad Mean: 7.342392444610596, Noise Mean: 19237.5546875
+2024-02-01 17:07:24,062 - dpdl.callbacks - INFO - - Grad Mean: 9.627981185913086, Noise Mean: 19210.845703125
+2024-02-01 17:07:25,082 - dpdl.callbacks - INFO - - Grad Mean: 8.568323135375977, Noise Mean: 19227.166015625
+2024-02-01 17:07:26,104 - dpdl.callbacks - INFO - - Grad Mean: 8.5457124710083, Noise Mean: 19242.30078125
+2024-02-01 17:07:27,119 - dpdl.callbacks - INFO - - Grad Mean: 9.165708541870117, Noise Mean: 19229.65234375
+2024-02-01 17:07:28,144 - dpdl.callbacks - INFO - - Grad Mean: 8.404706001281738, Noise Mean: 19229.283203125
+2024-02-01 17:07:29,168 - dpdl.callbacks - INFO - - Grad Mean: 7.704944133758545, Noise Mean: 19196.37890625
+2024-02-01 17:07:29,179 - dpdl.callbacks - INFO - Approximate epoch 48 finished. Loss: 4.6040.
+2024-02-01 17:07:29,179 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:07:29,179 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0286.
+2024-02-01 17:07:34,976 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6040.
+2024-02-01 17:07:34,977 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:07:34,977 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0355.
+2024-02-01 17:07:34,979 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:07:34,980 - dpdl.callbacks - INFO - Starting training approximate epoch 49.
+2024-02-01 17:07:36,068 - dpdl.callbacks - INFO - - Grad Mean: 9.061105728149414, Noise Mean: 19206.07421875
+2024-02-01 17:07:37,130 - dpdl.callbacks - INFO - - Grad Mean: 8.621441841125488, Noise Mean: 19209.705078125
+2024-02-01 17:07:38,161 - dpdl.callbacks - INFO - - Grad Mean: 8.439324378967285, Noise Mean: 19210.765625
+2024-02-01 17:07:39,187 - dpdl.callbacks - INFO - - Grad Mean: 8.588897705078125, Noise Mean: 19224.369140625
+2024-02-01 17:07:40,203 - dpdl.callbacks - INFO - - Grad Mean: 8.54013729095459, Noise Mean: 19213.818359375
+2024-02-01 17:07:41,227 - dpdl.callbacks - INFO - - Grad Mean: 8.468152046203613, Noise Mean: 19275.779296875
+2024-02-01 17:07:42,253 - dpdl.callbacks - INFO - - Grad Mean: 7.780180931091309, Noise Mean: 19197.306640625
+2024-02-01 17:07:43,265 - dpdl.callbacks - INFO - - Grad Mean: 8.586479187011719, Noise Mean: 19245.087890625
+2024-02-01 17:07:44,280 - dpdl.callbacks - INFO - - Grad Mean: 8.350000381469727, Noise Mean: 19218.337890625
+2024-02-01 17:07:44,295 - dpdl.callbacks - INFO - Approximate epoch 49 finished. Loss: 4.6039.
+2024-02-01 17:07:44,295 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:07:44,295 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0314.
+2024-02-01 17:07:50,580 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6040.
+2024-02-01 17:07:50,580 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:07:50,580 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0335.
+2024-02-01 17:07:50,583 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:07:50,584 - dpdl.callbacks - INFO - Starting training approximate epoch 50.
+2024-02-01 17:07:51,741 - dpdl.callbacks - INFO - - Grad Mean: 7.854548454284668, Noise Mean: 19218.373046875
+2024-02-01 17:07:53,403 - dpdl.callbacks - INFO - - Grad Mean: 10.023425102233887, Noise Mean: 19232.43359375
+2024-02-01 17:07:54,938 - dpdl.callbacks - INFO - - Grad Mean: 8.450106620788574, Noise Mean: 19247.474609375
+2024-02-01 17:07:55,950 - dpdl.callbacks - INFO - - Grad Mean: 7.406120777130127, Noise Mean: 19242.09765625
+2024-02-01 17:07:56,980 - dpdl.callbacks - INFO - - Grad Mean: 8.993205070495605, Noise Mean: 19208.373046875
+2024-02-01 17:07:57,996 - dpdl.callbacks - INFO - - Grad Mean: 9.1300687789917, Noise Mean: 19170.390625
+2024-02-01 17:07:59,015 - dpdl.callbacks - INFO - - Grad Mean: 7.701699256896973, Noise Mean: 19220.6875
+2024-02-01 17:08:00,038 - dpdl.callbacks - INFO - - Grad Mean: 8.62293529510498, Noise Mean: 19245.568359375
+2024-02-01 17:08:01,058 - dpdl.callbacks - INFO - - Grad Mean: 8.670394897460938, Noise Mean: 19229.123046875
+2024-02-01 17:08:01,071 - dpdl.callbacks - INFO - Approximate epoch 50 finished. Loss: 4.6039.
+2024-02-01 17:08:01,071 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:08:01,071 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0332.
+2024-02-01 17:08:06,880 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6039.
+2024-02-01 17:08:06,880 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:08:06,880 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0340.
+2024-02-01 17:08:06,883 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:08:06,883 - dpdl.callbacks - INFO - Starting training approximate epoch 51.
+2024-02-01 17:08:08,802 - dpdl.callbacks - INFO - - Grad Mean: 8.537549018859863, Noise Mean: 19232.607421875
+2024-02-01 17:08:09,862 - dpdl.callbacks - INFO - - Grad Mean: 7.786558628082275, Noise Mean: 19233.85546875
+2024-02-01 17:08:10,878 - dpdl.callbacks - INFO - - Grad Mean: 8.425532341003418, Noise Mean: 19255.892578125
+2024-02-01 17:08:11,911 - dpdl.callbacks - INFO - - Grad Mean: 8.157772064208984, Noise Mean: 19146.990234375
+2024-02-01 17:08:12,943 - dpdl.callbacks - INFO - - Grad Mean: 8.546631813049316, Noise Mean: 19188.392578125
+2024-02-01 17:08:13,968 - dpdl.callbacks - INFO - - Grad Mean: 8.962495803833008, Noise Mean: 19235.6328125
+2024-02-01 17:08:14,990 - dpdl.callbacks - INFO - - Grad Mean: 8.306200981140137, Noise Mean: 19245.998046875
+2024-02-01 17:08:16,018 - dpdl.callbacks - INFO - - Grad Mean: 8.438947677612305, Noise Mean: 19193.625
+2024-02-01 17:08:17,043 - dpdl.callbacks - INFO - - Grad Mean: 7.53533935546875, Noise Mean: 19262.015625
+2024-02-01 17:08:17,057 - dpdl.callbacks - INFO - Approximate epoch 51 finished. Loss: 4.6039.
+2024-02-01 17:08:17,057 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:08:17,057 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0348.
+2024-02-01 17:08:22,840 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6039.
+2024-02-01 17:08:22,841 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:08:22,841 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0410.
+2024-02-01 17:08:22,843 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:08:22,843 - dpdl.callbacks - INFO - Starting training approximate epoch 52.
+2024-02-01 17:08:23,992 - dpdl.callbacks - INFO - - Grad Mean: 7.706254482269287, Noise Mean: 19272.43359375
+2024-02-01 17:08:25,056 - dpdl.callbacks - INFO - - Grad Mean: 8.581661224365234, Noise Mean: 19249.728515625
+2024-02-01 17:08:26,084 - dpdl.callbacks - INFO - - Grad Mean: 7.890941619873047, Noise Mean: 19279.37109375
+2024-02-01 17:08:27,107 - dpdl.callbacks - INFO - - Grad Mean: 8.013833999633789, Noise Mean: 19229.171875
+2024-02-01 17:08:28,131 - dpdl.callbacks - INFO - - Grad Mean: 8.131693840026855, Noise Mean: 19250.125
+2024-02-01 17:08:29,152 - dpdl.callbacks - INFO - - Grad Mean: 9.048404693603516, Noise Mean: 19260.130859375
+2024-02-01 17:08:30,175 - dpdl.callbacks - INFO - - Grad Mean: 8.638395309448242, Noise Mean: 19230.05859375
+2024-02-01 17:08:31,197 - dpdl.callbacks - INFO - - Grad Mean: 8.438802719116211, Noise Mean: 19162.326171875
+2024-02-01 17:08:32,225 - dpdl.callbacks - INFO - - Grad Mean: 8.166548728942871, Noise Mean: 19211.7265625
+2024-02-01 17:08:32,236 - dpdl.callbacks - INFO - Approximate epoch 52 finished. Loss: 4.6039.
+2024-02-01 17:08:32,236 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:08:32,236 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0355.
+2024-02-01 17:08:37,984 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6039.
+2024-02-01 17:08:37,985 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:08:37,985 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0385.
+2024-02-01 17:08:37,987 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:08:37,987 - dpdl.callbacks - INFO - Starting training approximate epoch 53.
+2024-02-01 17:08:39,304 - dpdl.callbacks - INFO - - Grad Mean: 9.290802001953125, Noise Mean: 19237.572265625
+2024-02-01 17:08:40,357 - dpdl.callbacks - INFO - - Grad Mean: 8.304326057434082, Noise Mean: 19204.39453125
+2024-02-01 17:08:41,379 - dpdl.callbacks - INFO - - Grad Mean: 8.391162872314453, Noise Mean: 19205.41796875
+2024-02-01 17:08:42,397 - dpdl.callbacks - INFO - - Grad Mean: 9.002551078796387, Noise Mean: 19214.060546875
+2024-02-01 17:08:43,421 - dpdl.callbacks - INFO - - Grad Mean: 7.341392993927002, Noise Mean: 19214.767578125
+2024-02-01 17:08:44,450 - dpdl.callbacks - INFO - - Grad Mean: 8.387321472167969, Noise Mean: 19203.185546875
+2024-02-01 17:08:45,470 - dpdl.callbacks - INFO - - Grad Mean: 8.086862564086914, Noise Mean: 19239.12890625
+2024-02-01 17:08:46,495 - dpdl.callbacks - INFO - - Grad Mean: 8.699472427368164, Noise Mean: 19235.697265625
+2024-02-01 17:08:47,519 - dpdl.callbacks - INFO - - Grad Mean: 7.48579216003418, Noise Mean: 19248.720703125
+2024-02-01 17:08:47,532 - dpdl.callbacks - INFO - Approximate epoch 53 finished. Loss: 4.6038.
+2024-02-01 17:08:47,532 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:08:47,532 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0366.
+2024-02-01 17:08:53,900 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6038.
+2024-02-01 17:08:53,901 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:08:53,901 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0405.
+2024-02-01 17:08:53,904 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:08:53,904 - dpdl.callbacks - INFO - Starting training approximate epoch 54.
+2024-02-01 17:08:55,245 - dpdl.callbacks - INFO - - Grad Mean: 7.89730978012085, Noise Mean: 19221.888671875
+2024-02-01 17:08:56,318 - dpdl.callbacks - INFO - - Grad Mean: 8.467862129211426, Noise Mean: 19182.3203125
+2024-02-01 17:08:57,346 - dpdl.callbacks - INFO - - Grad Mean: 7.626858234405518, Noise Mean: 19224.015625
+2024-02-01 17:08:58,378 - dpdl.callbacks - INFO - - Grad Mean: 9.2221040725708, Noise Mean: 19231.7109375
+2024-02-01 17:08:59,411 - dpdl.callbacks - INFO - - Grad Mean: 9.417559623718262, Noise Mean: 19232.544921875
+2024-02-01 17:09:00,430 - dpdl.callbacks - INFO - - Grad Mean: 7.510401248931885, Noise Mean: 19246.6484375
+2024-02-01 17:09:01,440 - dpdl.callbacks - INFO - - Grad Mean: 8.951367378234863, Noise Mean: 19176.31640625
+2024-02-01 17:09:02,461 - dpdl.callbacks - INFO - - Grad Mean: 7.774569988250732, Noise Mean: 19234.033203125
+2024-02-01 17:09:03,483 - dpdl.callbacks - INFO - - Grad Mean: 7.879027843475342, Noise Mean: 19247.83203125
+2024-02-01 17:09:03,500 - dpdl.callbacks - INFO - Approximate epoch 54 finished. Loss: 4.6039.
+2024-02-01 17:09:03,500 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:09:03,500 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0330.
+2024-02-01 17:09:09,348 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6038.
+2024-02-01 17:09:09,349 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:09:09,349 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0425.
+2024-02-01 17:09:09,351 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:09:09,352 - dpdl.callbacks - INFO - Starting training approximate epoch 55.
+2024-02-01 17:09:11,069 - dpdl.callbacks - INFO - - Grad Mean: 7.931466579437256, Noise Mean: 19231.638671875
+2024-02-01 17:09:12,280 - dpdl.callbacks - INFO - - Grad Mean: 7.85996675491333, Noise Mean: 19207.107421875
+2024-02-01 17:09:13,316 - dpdl.callbacks - INFO - - Grad Mean: 7.947547912597656, Noise Mean: 19187.712890625
+2024-02-01 17:09:14,335 - dpdl.callbacks - INFO - - Grad Mean: 7.15928316116333, Noise Mean: 19234.734375
+2024-02-01 17:09:15,356 - dpdl.callbacks - INFO - - Grad Mean: 8.263381958007812, Noise Mean: 19200.58203125
+2024-02-01 17:09:16,367 - dpdl.callbacks - INFO - - Grad Mean: 8.692781448364258, Noise Mean: 19223.560546875
+2024-02-01 17:09:17,381 - dpdl.callbacks - INFO - - Grad Mean: 8.110237121582031, Noise Mean: 19236.09765625
+2024-02-01 17:09:18,395 - dpdl.callbacks - INFO - - Grad Mean: 8.2305908203125, Noise Mean: 19284.20703125
+2024-02-01 17:09:19,407 - dpdl.callbacks - INFO - - Grad Mean: 8.30943775177002, Noise Mean: 19194.849609375
+2024-02-01 17:09:19,430 - dpdl.callbacks - INFO - Approximate epoch 55 finished. Loss: 4.6038.
+2024-02-01 17:09:19,430 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:09:19,430 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0286.
+2024-02-01 17:09:25,204 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6038.
+2024-02-01 17:09:25,204 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:09:25,204 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0380.
+2024-02-01 17:09:25,207 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:09:25,207 - dpdl.callbacks - INFO - Starting training approximate epoch 56.
+2024-02-01 17:09:26,286 - dpdl.callbacks - INFO - - Grad Mean: 8.327081680297852, Noise Mean: 19209.51953125
+2024-02-01 17:09:27,380 - dpdl.callbacks - INFO - - Grad Mean: 8.614709854125977, Noise Mean: 19202.697265625
+2024-02-01 17:09:28,416 - dpdl.callbacks - INFO - - Grad Mean: 8.433672904968262, Noise Mean: 19227.470703125
+2024-02-01 17:09:29,440 - dpdl.callbacks - INFO - - Grad Mean: 7.811891555786133, Noise Mean: 19253.689453125
+2024-02-01 17:09:30,466 - dpdl.callbacks - INFO - - Grad Mean: 8.8328275680542, Noise Mean: 19188.94921875
+2024-02-01 17:09:31,973 - dpdl.callbacks - INFO - - Grad Mean: 8.4374418258667, Noise Mean: 19170.728515625
+2024-02-01 17:09:33,000 - dpdl.callbacks - INFO - - Grad Mean: 8.075543403625488, Noise Mean: 19243.5859375
+2024-02-01 17:09:34,015 - dpdl.callbacks - INFO - - Grad Mean: 8.270636558532715, Noise Mean: 19225.64453125
+2024-02-01 17:09:35,042 - dpdl.callbacks - INFO - - Grad Mean: 8.387900352478027, Noise Mean: 19176.216796875
+2024-02-01 17:09:35,054 - dpdl.callbacks - INFO - Approximate epoch 56 finished. Loss: 4.6038.
+2024-02-01 17:09:35,054 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:09:35,054 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0306.
+2024-02-01 17:09:40,820 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6038.
+2024-02-01 17:09:40,821 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:09:40,821 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0375.
+2024-02-01 17:09:40,823 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:09:40,824 - dpdl.callbacks - INFO - Starting training approximate epoch 57.
+2024-02-01 17:09:42,246 - dpdl.callbacks - INFO - - Grad Mean: 8.636263847351074, Noise Mean: 19215.943359375
+2024-02-01 17:09:43,331 - dpdl.callbacks - INFO - - Grad Mean: 8.386724472045898, Noise Mean: 19253.375
+2024-02-01 17:09:44,362 - dpdl.callbacks - INFO - - Grad Mean: 6.762461185455322, Noise Mean: 19211.5078125
+2024-02-01 17:09:45,380 - dpdl.callbacks - INFO - - Grad Mean: 8.897941589355469, Noise Mean: 19257.779296875
+2024-02-01 17:09:46,400 - dpdl.callbacks - INFO - - Grad Mean: 8.626114845275879, Noise Mean: 19209.689453125
+2024-02-01 17:09:47,416 - dpdl.callbacks - INFO - - Grad Mean: 8.607192993164062, Noise Mean: 19261.5546875
+2024-02-01 17:09:48,438 - dpdl.callbacks - INFO - - Grad Mean: 8.247257232666016, Noise Mean: 19215.404296875
+2024-02-01 17:09:49,458 - dpdl.callbacks - INFO - - Grad Mean: 7.9749627113342285, Noise Mean: 19200.619140625
+2024-02-01 17:09:50,485 - dpdl.callbacks - INFO - - Grad Mean: 7.993710517883301, Noise Mean: 19216.140625
+2024-02-01 17:09:50,496 - dpdl.callbacks - INFO - Approximate epoch 57 finished. Loss: 4.6038.
+2024-02-01 17:09:50,496 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:09:50,496 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0321.
+2024-02-01 17:09:56,260 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6037.
+2024-02-01 17:09:56,261 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:09:56,261 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0415.
+2024-02-01 17:09:56,263 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:09:56,264 - dpdl.callbacks - INFO - Starting training approximate epoch 58.
+2024-02-01 17:09:57,997 - dpdl.callbacks - INFO - - Grad Mean: 8.573567390441895, Noise Mean: 19225.06640625
+2024-02-01 17:09:59,126 - dpdl.callbacks - INFO - - Grad Mean: 7.554645538330078, Noise Mean: 19260.171875
+2024-02-01 17:10:00,152 - dpdl.callbacks - INFO - - Grad Mean: 8.295132637023926, Noise Mean: 19257.12890625
+2024-02-01 17:10:01,181 - dpdl.callbacks - INFO - - Grad Mean: 8.752717971801758, Noise Mean: 19233.30078125
+2024-02-01 17:10:02,205 - dpdl.callbacks - INFO - - Grad Mean: 8.215486526489258, Noise Mean: 19291.953125
+2024-02-01 17:10:03,226 - dpdl.callbacks - INFO - - Grad Mean: 8.549570083618164, Noise Mean: 19262.697265625
+2024-02-01 17:10:04,252 - dpdl.callbacks - INFO - - Grad Mean: 7.460427284240723, Noise Mean: 19258.751953125
+2024-02-01 17:10:05,268 - dpdl.callbacks - INFO - - Grad Mean: 8.632908821105957, Noise Mean: 19259.197265625
+2024-02-01 17:10:06,297 - dpdl.callbacks - INFO - - Grad Mean: 8.051290512084961, Noise Mean: 19241.296875
+2024-02-01 17:10:06,309 - dpdl.callbacks - INFO - Approximate epoch 58 finished. Loss: 4.6038.
+2024-02-01 17:10:06,309 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:10:06,309 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0346.
+2024-02-01 17:10:12,740 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6037.
+2024-02-01 17:10:12,740 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:10:12,740 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0505.
+2024-02-01 17:10:12,743 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:10:12,743 - dpdl.callbacks - INFO - Starting training approximate epoch 59.
+2024-02-01 17:10:13,861 - dpdl.callbacks - INFO - - Grad Mean: 8.2404203414917, Noise Mean: 19241.978515625
+2024-02-01 17:10:14,889 - dpdl.callbacks - INFO - - Grad Mean: 8.530129432678223, Noise Mean: 19245.88671875
+2024-02-01 17:10:15,910 - dpdl.callbacks - INFO - - Grad Mean: 7.718074798583984, Noise Mean: 19248.33203125
+2024-02-01 17:10:16,933 - dpdl.callbacks - INFO - - Grad Mean: 8.853734970092773, Noise Mean: 19233.951171875
+2024-02-01 17:10:17,958 - dpdl.callbacks - INFO - - Grad Mean: 7.798523902893066, Noise Mean: 19156.6484375
+2024-02-01 17:10:18,986 - dpdl.callbacks - INFO - - Grad Mean: 7.837253570556641, Noise Mean: 19302.36328125
+2024-02-01 17:10:20,015 - dpdl.callbacks - INFO - - Grad Mean: 8.860430717468262, Noise Mean: 19236.478515625
+2024-02-01 17:10:21,039 - dpdl.callbacks - INFO - - Grad Mean: 8.480262756347656, Noise Mean: 19220.70703125
+2024-02-01 17:10:22,060 - dpdl.callbacks - INFO - - Grad Mean: 7.037269592285156, Noise Mean: 19199.576171875
+2024-02-01 17:10:22,073 - dpdl.callbacks - INFO - Approximate epoch 59 finished. Loss: 4.6036.
+2024-02-01 17:10:22,074 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:10:22,074 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0383.
+2024-02-01 17:10:27,840 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6037.
+2024-02-01 17:10:27,841 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:10:27,841 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0455.
+2024-02-01 17:10:27,843 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:10:27,843 - dpdl.callbacks - INFO - Starting training approximate epoch 60.
+2024-02-01 17:10:29,276 - dpdl.callbacks - INFO - - Grad Mean: 7.877301216125488, Noise Mean: 19255.22265625
+2024-02-01 17:10:30,467 - dpdl.callbacks - INFO - - Grad Mean: 7.955411434173584, Noise Mean: 19241.4140625
+2024-02-01 17:10:31,484 - dpdl.callbacks - INFO - - Grad Mean: 8.048160552978516, Noise Mean: 19225.34765625
+2024-02-01 17:10:32,516 - dpdl.callbacks - INFO - - Grad Mean: 8.641036033630371, Noise Mean: 19230.2265625
+2024-02-01 17:10:34,026 - dpdl.callbacks - INFO - - Grad Mean: 8.516865730285645, Noise Mean: 19228.76171875
+2024-02-01 17:10:35,050 - dpdl.callbacks - INFO - - Grad Mean: 8.47620964050293, Noise Mean: 19255.40625
+2024-02-01 17:10:36,066 - dpdl.callbacks - INFO - - Grad Mean: 8.32026481628418, Noise Mean: 19235.72265625
+2024-02-01 17:10:37,096 - dpdl.callbacks - INFO - - Grad Mean: 7.408077716827393, Noise Mean: 19231.44921875
+2024-02-01 17:10:38,110 - dpdl.callbacks - INFO - - Grad Mean: 8.836600303649902, Noise Mean: 19212.79296875
+2024-02-01 17:10:38,121 - dpdl.callbacks - INFO - Approximate epoch 60 finished. Loss: 4.6037.
+2024-02-01 17:10:38,121 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:10:38,121 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0382.
+2024-02-01 17:10:47,768 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6037.
+2024-02-01 17:10:47,769 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:10:47,769 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0505.
+2024-02-01 17:10:47,772 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:10:47,772 - dpdl.callbacks - INFO - Starting training approximate epoch 61.
+2024-02-01 17:10:48,829 - dpdl.callbacks - INFO - - Grad Mean: 8.509492874145508, Noise Mean: 19216.70703125
+2024-02-01 17:10:49,852 - dpdl.callbacks - INFO - - Grad Mean: 8.20026683807373, Noise Mean: 19186.630859375
+2024-02-01 17:10:50,878 - dpdl.callbacks - INFO - - Grad Mean: 8.845355987548828, Noise Mean: 19243.236328125
+2024-02-01 17:10:51,901 - dpdl.callbacks - INFO - - Grad Mean: 8.219075202941895, Noise Mean: 19230.57421875
+2024-02-01 17:10:52,920 - dpdl.callbacks - INFO - - Grad Mean: 9.726285934448242, Noise Mean: 19193.7734375
+2024-02-01 17:10:53,934 - dpdl.callbacks - INFO - - Grad Mean: 8.704343795776367, Noise Mean: 19246.408203125
+2024-02-01 17:10:54,955 - dpdl.callbacks - INFO - - Grad Mean: 8.716854095458984, Noise Mean: 19245.056640625
+2024-02-01 17:10:55,974 - dpdl.callbacks - INFO - - Grad Mean: 9.164826393127441, Noise Mean: 19209.19921875
+2024-02-01 17:10:56,992 - dpdl.callbacks - INFO - - Grad Mean: 8.039536476135254, Noise Mean: 19271.734375
+2024-02-01 17:10:57,007 - dpdl.callbacks - INFO - Approximate epoch 61 finished. Loss: 4.6037.
+2024-02-01 17:10:57,007 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:10:57,007 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0384.
+2024-02-01 17:11:02,728 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6037.
+2024-02-01 17:11:02,729 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:11:02,729 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0475.
+2024-02-01 17:11:02,732 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:11:02,732 - dpdl.callbacks - INFO - Starting training approximate epoch 62.
+2024-02-01 17:11:04,000 - dpdl.callbacks - INFO - - Grad Mean: 8.963659286499023, Noise Mean: 19221.0546875
+2024-02-01 17:11:05,102 - dpdl.callbacks - INFO - - Grad Mean: 7.474897384643555, Noise Mean: 19189.759765625
+2024-02-01 17:11:06,121 - dpdl.callbacks - INFO - - Grad Mean: 8.479982376098633, Noise Mean: 19245.884765625
+2024-02-01 17:11:07,149 - dpdl.callbacks - INFO - - Grad Mean: 7.929574489593506, Noise Mean: 19243.400390625
+2024-02-01 17:11:08,171 - dpdl.callbacks - INFO - - Grad Mean: 7.833714485168457, Noise Mean: 19219.376953125
+2024-02-01 17:11:09,189 - dpdl.callbacks - INFO - - Grad Mean: 7.579965114593506, Noise Mean: 19209.21875
+2024-02-01 17:11:10,203 - dpdl.callbacks - INFO - - Grad Mean: 9.850913047790527, Noise Mean: 19245.77734375
+2024-02-01 17:11:11,232 - dpdl.callbacks - INFO - - Grad Mean: 8.660375595092773, Noise Mean: 19197.552734375
+2024-02-01 17:11:12,240 - dpdl.callbacks - INFO - - Grad Mean: 7.5196003913879395, Noise Mean: 19180.81640625
+2024-02-01 17:11:12,261 - dpdl.callbacks - INFO - Approximate epoch 62 finished. Loss: 4.6037.
+2024-02-01 17:11:12,261 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:11:12,262 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0396.
+2024-02-01 17:11:18,036 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6037.
+2024-02-01 17:11:18,036 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:11:18,036 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0455.
+2024-02-01 17:11:18,039 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:11:18,039 - dpdl.callbacks - INFO - Starting training approximate epoch 63.
+2024-02-01 17:11:19,462 - dpdl.callbacks - INFO - - Grad Mean: 8.507617950439453, Noise Mean: 19192.875
+2024-02-01 17:11:20,611 - dpdl.callbacks - INFO - - Grad Mean: 9.055655479431152, Noise Mean: 19249.359375
+2024-02-01 17:11:21,629 - dpdl.callbacks - INFO - - Grad Mean: 8.324065208435059, Noise Mean: 19172.134765625
+2024-02-01 17:11:22,644 - dpdl.callbacks - INFO - - Grad Mean: 8.724117279052734, Noise Mean: 19229.9765625
+2024-02-01 17:11:23,663 - dpdl.callbacks - INFO - - Grad Mean: 8.39970874786377, Noise Mean: 19234.923828125
+2024-02-01 17:11:24,681 - dpdl.callbacks - INFO - - Grad Mean: 7.6892547607421875, Noise Mean: 19206.759765625
+2024-02-01 17:11:25,694 - dpdl.callbacks - INFO - - Grad Mean: 7.280721187591553, Noise Mean: 19211.787109375
+2024-02-01 17:11:26,683 - dpdl.callbacks - INFO - - Grad Mean: 8.57276725769043, Noise Mean: 19266.21875
+2024-02-01 17:11:27,672 - dpdl.callbacks - INFO - - Grad Mean: 7.766890525817871, Noise Mean: 19274.77734375
+2024-02-01 17:11:27,697 - dpdl.callbacks - INFO - Approximate epoch 63 finished. Loss: 4.6037.
+2024-02-01 17:11:27,697 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:11:27,697 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0355.
+2024-02-01 17:11:33,528 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6037.
+2024-02-01 17:11:33,529 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:11:33,529 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0415.
+2024-02-01 17:11:33,532 - dpdl.callbacks - INFO - --------------------------------------------------
+2024-02-01 17:11:33,532 - dpdl.callbacks - INFO - Starting training approximate epoch 64.
+2024-02-01 17:11:35,047 - dpdl.callbacks - INFO - - Grad Mean: 7.693774700164795, Noise Mean: 19217.306640625
+2024-02-01 17:11:36,267 - dpdl.callbacks - INFO - - Grad Mean: 7.5414886474609375, Noise Mean: 19225.17578125
+2024-02-01 17:11:37,328 - dpdl.callbacks - INFO - - Grad Mean: 7.4157795906066895, Noise Mean: 19216.40234375
+2024-02-01 17:11:38,326 - dpdl.callbacks - INFO - - Grad Mean: 7.805708408355713, Noise Mean: 19228.0859375
+2024-02-01 17:11:39,328 - dpdl.callbacks - INFO - - Grad Mean: 8.656075477600098, Noise Mean: 19199.91796875
+2024-02-01 17:11:39,353 - dpdl.callbacks - INFO - Approximate epoch 64 finished. Loss: 4.6036.
+2024-02-01 17:11:39,353 - dpdl.callbacks - INFO - Train metrics:
+2024-02-01 17:11:39,354 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0358.
+2024-02-01 17:11:45,112 - dpdl.callbacks - INFO - Validation finished. Loss: 4.6037.
+2024-02-01 17:11:45,112 - dpdl.callbacks - INFO - Validation metrics:
+2024-02-01 17:11:45,112 - dpdl.callbacks - INFO -  - MulticlassAccuracy: 0.0415.
+2024-02-01 17:11:45,349 - dpdl.callbacks - INFO - !!! Training finished.
+2024-02-01 17:11:45,355 - dpdl.callbacks - INFO - Signal-to-Noise ratio data saved at /projappl/project_462000288/dpdl/experiments/05-signal-to-noise-ratio-for-batch-size-variation/data/resnetv2_50x1_bit.goog_in21k_cifar100_Subset0.1_Epsilon0.25_BatchSize512/signal-to-noise-ratio.csv
