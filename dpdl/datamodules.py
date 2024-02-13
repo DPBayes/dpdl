@@ -104,6 +104,7 @@ class DataModule:
     def _load_datasets(self):
         self.train_dataset = datasets.load_dataset(self.dataset_name, split='train')
         self.val_dataset = datasets.load_dataset(self.dataset_name, split='test')
+        self.test_dataset = None
 
         if self.evaluation_mode:
             return
