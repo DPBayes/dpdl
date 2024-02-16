@@ -8,6 +8,7 @@
 - [ ] [Learning rate variation](03-learning-rate-variation.md)
 - [ ] [Epoch variation](04-epoch-variation.md)
 - [ ] [Signal to Noise ratio for batch size variation](05-signal-to-noise-ratio-for-batch-size-variation.md)
+- [ ] [Few-shot from scratch non-DP training](06-few-shot-from-scratch-non-dp.md)
 
 ## Questions/ideas
 
