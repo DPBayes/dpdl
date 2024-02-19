@@ -63,7 +63,6 @@ class Configuration(BaseModel):
     overwrite_experiment: bool = False
     clipping_mode: str = 'flat'
     secure_mode: bool = False
-    modulevalidator_fix: bool = False
     accountant: str = 'prv'
     poisson_sampling: bool = True
     normalize_clipping: bool = False
@@ -130,7 +129,6 @@ class Configuration(BaseModel):
             privacy_attributes = [
                 ('Clipping mode', self.clipping_mode),
                 ('Secure mode', self.secure_mode),
-                ('Modulevalidator fix', self.modulevalidator_fix),
                 ('Accountant', self.accountant),
                 ('Poisson sampling', self.poisson_sampling),
                 ('Normalize clipping', self.normalize_clipping),
