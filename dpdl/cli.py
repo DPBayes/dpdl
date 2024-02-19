@@ -227,13 +227,6 @@ def cli(
                 rich_help_panel='Opacus options',
             )
         ] = False,
-        modulevalidator_fix: Annotated[
-            Optional[bool],
-            typer.Option(
-                help="Use ModuleValidator.fix() from Opacus to fix incompatible layers in the model (use with caution)",
-                rich_help_panel='Opacus options',
-            )
-        ] = False,
         accountant: Annotated[
             Optional[str],
             typer.Option(
