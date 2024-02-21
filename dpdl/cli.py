@@ -10,7 +10,7 @@ from typing_extensions import Annotated
 from .configurationmanager import ConfigurationManager
 from .hyperparameteroptimizer import HyperparameterOptimizer
 from .trainer import TrainerFactory
-from .models import ModelFactory
+from .models.model_factory import ModelFactory
 from .utils import seed_everything
 from .experimentmanager import start_experiment_logging, log_runtime, log_test_metrics
 
