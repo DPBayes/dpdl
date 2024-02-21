@@ -125,10 +125,6 @@ class HyperparameterOptimizer:
         # now we can train/evaluate for the final time with best params
         metrics = HyperparameterOptimizer._final_evaluation_round(best_params, config_manager)
 
-        if torch.distributed.get_rank() == 0:
-            # save this study to experiment directory
-            save_study(config_manager, study, metrics, trainer)
-
     @staticmethod
     def _final_evaluation_round(best_params, config_manager):
         # lastly, we'll train with the training data and the validation data
@@ -183,6 +179,10 @@ class HyperparameterOptimizer:
             log.info('Final metrics:')
             for key, value in metrics.items():
                 log.info(f' - {key}: {value:.4f}.')
+
+        if torch.distributed.get_rank() == 0:
+            # save this study to experiment directory
+            save_study(config_manager, study, metrics, trainer)
 
         return metrics
 
