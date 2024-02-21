@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 
 """
 
@@ -74,7 +75,7 @@ class WSConv2d(torch.nn.Module):
         var = weight.var(dim=(1, 2, 3), keepdim=True)
 
         # Compute the scale factor using fan-in and gain
-        fan_in = np.prod(weight.shape[1:])
+        fan_in = torch.prod(torch.tensor(weight.shape[1:]).float())
         scale = torch.rsqrt(var * fan_in + eps) * self.gain
 
         # Standardize the weights
