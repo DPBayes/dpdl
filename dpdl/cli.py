@@ -347,7 +347,7 @@ def cli(
 
             log_test_metrics(config_manager, test_metrics)
             log_runtime(config_manager, start_time, end_time)
-            log_final_epsilon(config_manager, start_time, end_time)
+            log_final_epsilon(config_manager, trainer)
 
     if config_manager.get_command() == 'optimize':
         if torch.distributed.get_rank() == 0:
