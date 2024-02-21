@@ -10,7 +10,7 @@ import optuna
 import torch
 
 from .configurationmanager import ConfigurationManager
-from .dpdl import Trainer
+from .trainer import Trainer
 
 log = logging.getLogger(__name__)
 
