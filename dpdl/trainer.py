@@ -340,6 +340,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 noise_generator=noise_generator,
                 poisson_sampling=self.poisson_sampling,
                 normalize_clipping=self.normalize_clipping,
+                total_steps=self.total_steps,
             )
 
         # now we can start using the DP'ifyed stuff
@@ -390,6 +391,8 @@ class DifferentiallyPrivateTrainer(Trainer):
                 # let's fit this physical batch
                 self.fit_one_batch(batch_idx, batch)
 
+                # XXX: Fix this to call 'on_train_batch_end', add call to
+                #      'on_train_batch_start' and remove the 'on_train_step' callback
                 if logical_batch_completed:
                     self.callback_handler.call('on_train_step', self)
 
@@ -566,13 +569,18 @@ class TrainerFactory:
         datamodule: DataModule,
     ):
         # use steps instead of epochs?
-        if configuration.use_steps:
+        if configuration.use_steps and hyperparams.epochs:
             dataloader = datamodule.get_dataloader('train')
 
             B = dataloader.batch_size
             N = len(dataloader.dataset)
             total_steps = math.ceil((N*hyperparams.epochs) / B)
             epochs = None
+        # is the number of steps limited?
+        elif configuration.use_steps and hyperparams.total_steps:
+            total_steps = hyperparams.total_steps
+            epochs = None
+        # normal training using epochs
         else:
             total_steps = None
             epochs = hyperparams.epochs
