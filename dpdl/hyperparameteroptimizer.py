@@ -127,7 +127,7 @@ class HyperparameterOptimizer:
 
         if torch.distributed.get_rank() == 0:
             # save this study to experiment directory
-            save_study(config_manager, study, metrics)
+            save_study(config_manager, study, metrics, trainer)
 
     @staticmethod
     def _final_evaluation_round(best_params, config_manager):

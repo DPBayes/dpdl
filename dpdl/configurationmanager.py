@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 
 class Hyperparameters(BaseModel):
     epochs: int = None
+    total_steps: int = None
     batch_size: int = None
     sample_rate: float = None
     learning_rate: float = 1e-3
@@ -30,6 +31,7 @@ class Hyperparameters(BaseModel):
     def __str__(self):
         hypers = [
             ('Epochs', self.epochs),
+            ('Total steps', self.total_steps),
             ('Learning rate', self.learning_rate),
             ('Batch size', self.batch_size),
             ('Sample rate', self.sample_rate),
@@ -102,6 +104,20 @@ class Configuration(BaseModel):
 
         return values
 
+    @root_validator(pre=True)
+    def check_total_steps(cls, values):
+        total_steps = values.get('total_steps')
+        use_steps = values.get('use_steps')
+        epochs = values.get('epochs')
+
+        if total_steps and epochs:
+            raise ValueError('Parameters "epochs" and "total_steps" are exclusive.')
+
+        if total_steps and not use_steps:
+            raise ValueError('Parameter "total_steps" requires also "use_steps".')
+
+        return values
+
     def __str__(self):
         attributes = [
             ('Command', self.command),
@@ -121,7 +137,7 @@ class Configuration(BaseModel):
             ('Zero head weights', self.zero_head),
             ('PEFT method', self.peft),
             ('Use pretrained model', self.pretrained),
-            ('Convert epochs to steps', self.use_steps),
+            ('Use steps instead of epochs', self.use_steps),
             ('Evaluation mode', self.evaluation_mode),
         ]
 

@@ -12,7 +12,7 @@ from .hyperparameteroptimizer import HyperparameterOptimizer
 from .trainer import TrainerFactory
 from .models.model_factory import ModelFactory
 from .utils import seed_everything
-from .experimentmanager import start_experiment_logging, log_runtime, log_test_metrics
+from .experimentmanager import start_experiment_logging, log_runtime, log_test_metrics, log_final_epsilon
 
 log = logging.getLogger(__name__)
 
@@ -24,6 +24,13 @@ def cli(
                 help='Command to run ("train", "optimize", or "show-layers")',
             )
         ],
+        use_steps: Annotated[
+            bool,
+            typer.Option(
+                help='Use steps instead of epochs',
+                rich_help_panel='Training options',
+            )
+        ] = False,
         epochs: Annotated[
             int,
             typer.Option(
@@ -31,13 +38,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = None,
-        use_steps: Annotated[
-            bool,
+        total_steps: Annotated[
+            int,
             typer.Option(
-                help='Convert epochs to total steps',
+                help='Total number of gradient updates',
                 rich_help_panel='Training options',
             )
-        ] = False,
+        ] = None,
         learning_rate: Annotated[
             float,
             typer.Option(
@@ -149,7 +156,7 @@ def cli(
                 help='Only load subset of the dataset (0.1 indicate 10%)',
                 rich_help_panel='Dataset options',
             )
-        ] = 0,
+        ] = None,
         num_classes: Annotated[
             Optional[int],
             typer.Option(
@@ -340,6 +347,7 @@ def cli(
 
             log_test_metrics(config_manager, test_metrics)
             log_runtime(config_manager, start_time, end_time)
+            log_final_epsilon(config_manager, start_time, end_time)
 
     if config_manager.get_command() == 'optimize':
         if torch.distributed.get_rank() == 0:

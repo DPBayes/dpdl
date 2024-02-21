@@ -10,6 +10,7 @@ import optuna
 import torch
 
 from .configurationmanager import ConfigurationManager
+from .dpdl import Trainer
 
 log = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ def save_study(
         config_manager: ConfigurationManager,
         study: optuna.study.Study,
         final_metrics: dict,
+        trainer: Trainer,
     ):
 
     # unwrap metric  values from torch tensors
@@ -54,6 +56,8 @@ def save_study(
     _copy_optuna_study_to_experiment_dir(config_manager)
 
     _copy_optuna_config_to_experiment_dir(config_manager)
+
+    log_final_epsilon(config_manager, trainer)
 
 def _copy_optuna_config_to_experiment_dir(config_manager: ConfigurationManager):
     src_path = config_manager.configuration.optuna_config
@@ -146,6 +150,18 @@ def log_test_metrics(config_manager, metrics):
 
     with open(f'{full_log_dir}/test_metrics', 'w') as fh:
         json.dump(metrics, fh)
+
+def log_final_epsilon(config_manager, trainer):
+    if not configuration.privacy:
+        return
+
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+
+    final_epsilon = trainer.get_epsilon()
+    with open(f'{full_log_dir}/final_epsilon', 'w') as fh:
+        fh.write(f'{final_epsilon}\n')
 
 def _log_gpus(config_manager):
     log_dir = config_manager.configuration.log_dir
