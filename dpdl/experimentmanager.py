@@ -152,7 +152,7 @@ def log_test_metrics(config_manager, metrics):
         json.dump(metrics, fh)
 
 def log_final_epsilon(config_manager, trainer):
-    if not configuration.privacy:
+    if not config_manager.configuration.privacy:
         return
 
     log_dir = config_manager.configuration.log_dir
