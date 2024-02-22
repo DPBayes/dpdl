@@ -18,7 +18,6 @@ def save_study(
         config_manager: ConfigurationManager,
         study: optuna.study.Study,
         final_metrics: dict,
-        trainer: Trainer,
     ):
 
     # unwrap metric  values from torch tensors
@@ -56,8 +55,6 @@ def save_study(
     _copy_optuna_study_to_experiment_dir(config_manager)
 
     _copy_optuna_config_to_experiment_dir(config_manager)
-
-    log_final_epsilon(config_manager, trainer)
 
 def _copy_optuna_config_to_experiment_dir(config_manager: ConfigurationManager):
     src_path = config_manager.configuration.optuna_config
