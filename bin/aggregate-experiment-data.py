@@ -43,11 +43,11 @@ def process_experiment_directory(directory, pattern=None):
 
                 best_value_file_path = os.path.join(experiment_path, 'best-value')
                 if os.path.exists(best_value_file_path):
-                    experiment_data['best_value'] = read_text_file(best_value_file_path),
+                    experiment_data['best_value'] = read_text_file(best_value_file_path)
 
                 best_params_file_path = os.path.join(experiment_path, 'best-params.json')
                 if os.path.exists(best_params_file_path):
-                    experiment_data['best_params'] = read_json_file(best_params_file_path),
+                    experiment_data['best_params'] = read_json_file(best_params_file_path)
 
                 snr_file_path = os.path.join(experiment_path, 'signal-to-noise-ratio.csv')
                 if os.path.exists(snr_file_path):
