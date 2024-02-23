@@ -348,8 +348,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.datamodule.set_dataloader('train', dp_dataloader)
         self.optimizer = dp_optimizer
 
-    def get_epsilon(self, delta):
-        return self.privacy_engine.get_epsilon(delta)
+    def get_epsilon(self):
+        return self.privacy_engine.get_epsilon(self.target_delta)
 
     def _unwrap_model(self):
         # the model is wrapped inside Opacus, and Opacus distributed.
