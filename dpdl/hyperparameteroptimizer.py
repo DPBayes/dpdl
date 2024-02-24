@@ -9,7 +9,7 @@ from functools import partial
 
 from .trainer import TrainerFactory
 from .configurationmanager import ConfigurationManager
-from .experimentmanager import save_study
+from .experimentmanager import save_study, log_final_epsilon
 
 log = logging.getLogger(__name__)
 
