@@ -22,7 +22,7 @@ NUM_CLASSES=10
 
 # Other settings
 SEED=42
-N_TRIALS=20
+N_TRIALS=40
 PRIVACY="--no-privacy"
 USE_STEPS="--use-steps"
 PRETRAINED="--no-pretrained"
