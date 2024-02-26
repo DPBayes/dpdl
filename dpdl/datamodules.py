@@ -68,6 +68,7 @@ class DataModule:
 
             if torch.distributed.get_rank() == 0:
                 log.info(f'Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.')
+
             self.batch_size = batch_size
 
         self._initialize_dataloaders()
@@ -209,29 +210,15 @@ class DataModule:
         return split_dataset['test']
 
     def _get_few_shot_subset(self, dataset):
-        class_indices = defaultdict(list)
-        label_field = self._get_dataset_label_field()
+        test_size = self.shots * self.num_classes
 
-        # iterate over the dataset and group indices by class
-        for idx, example in enumerate(dataset):
-            class_indices[example[label_field]].append(idx)
+        split_dataset = dataset.train_test_split(
+            test_size=test_size,
+            seed=self.seed,
+            stratify_by_column=self._get_dataset_label_field(),
+        )
 
-        selected_indices = []
-        for class_label, indices in class_indices.items():
-            if len(indices) < self.shots:
-                raise ValueError(f'Class "{class_label}" has fewer examples ({len(indices)}) than `self.shots` ({self.shots}).')
-            selected_indices.extend(torch.randperm(len(indices))[:self.shots].tolist())
-
-        few_shot_subset = dataset.select(selected_indices)
-
-        # calculate the expected number of examples in the subset
-        num_classes = len(class_indices)
-        expected_num_examples = self.shots * num_classes
-
-        # check that the few-shot subset has the correct number of examples
-        assert len(few_shot_subset) == expected_num_examples, f'Few-shot subset contains {len(few_shot_subset)} examples, expected {expected_num_examples}'
-
-        return few_shot_subset
+        return split_dataset['test']
 
 class ImageDataModule(DataModule):
     def __init__(
