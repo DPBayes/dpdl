@@ -4,8 +4,10 @@ import math
 import torch
 import torchvision
 
+from collections import defaultdict
 from functools import partial
 from typing import Tuple
+
 from dpdl.utils import seed_everything
 from .configurationmanager import Configuration, Hyperparameters
 
@@ -19,7 +21,8 @@ class DataModule:
         sample_rate: float = 0,
         physical_batch_size: int = 64,
         num_workers: int = 4,
-        subset_size: float = None,
+        subset_size: int = None,
+        shots: int = None,
         seed: int = 0,
         privacy: bool = True,
         test_size: float = 0.1,
@@ -33,6 +36,7 @@ class DataModule:
         self.num_workers = num_workers
         self.seed = seed
         self.subset_size = subset_size
+        self.shots = shots
         self.privacy = privacy
         self.test_size = test_size
         self.evaluation_mode = evaluation_mode
@@ -100,6 +104,9 @@ class DataModule:
         if self.subset_size is not None and self.subset_size < 1.0:
             self.train_dataset = self._get_stratified_subset(self.train_dataset)
             self.val_dataset = self._get_stratified_subset(self.val_dataset)
+        elif self.shots is not None:
+            self.train_dataset = self._get_few_shot_subset(self.train_dataset)
+            self.val_dataset = self._get_few_shot_subset(self.val_dataset)
 
     def _load_datasets(self):
         self.train_dataset = datasets.load_dataset(self.dataset_name, split='train')
@@ -191,13 +198,40 @@ class DataModule:
         # we will validate and test only on rank 0
         self.val_sampler, self.test_sampler = None, None
 
+
     def _get_stratified_subset(self, dataset):
-        split_dataset = self.train_dataset.train_test_split(
+        split_dataset = dataset.train_test_split(
             test_size=self.subset_size,
             seed=self.seed,
             stratify_by_column=self._get_dataset_label_field(),
         )
+
         return split_dataset['test']
+
+    def _get_few_shot_subset(self, dataset):
+        class_indices = defaultdict(list)
+        label_field = self._get_dataset_label_field()
+
+        # iterate over the dataset and group indices by class
+        for idx, example in enumerate(dataset):
+            class_indices[example[label_field]].append(idx)
+
+        selected_indices = []
+        for class_label, indices in class_indices.items():
+            if len(indices) < self.shots:
+                raise ValueError(f'Class "{class_label}" has fewer examples ({len(indices)}) than `self.shots` ({self.shots}).')
+            selected_indices.extend(torch.randperm(len(indices))[:self.shots].tolist())
+
+        few_shot_subset = dataset.select(selected_indices)
+
+        # calculate the expected number of examples in the subset
+        num_classes = len(class_indices)
+        expected_num_examples = self.shots * num_classes
+
+        # check that the few-shot subset has the correct number of examples
+        assert len(few_shot_subset) == expected_num_examples, f'Few-shot subset contains {len(few_shot_subset)} examples, expected {expected_num_examples}'
+
+        return few_shot_subset
 
 class ImageDataModule(DataModule):
     def __init__(
@@ -255,6 +289,7 @@ class DataModuleFactory:
             num_workers=configuration.num_workers,
             physical_batch_size=configuration.physical_batch_size,
             subset_size=configuration.subset_size,
+            shots=configuration.shots,
             seed=configuration.seed,
             batch_size=hyperparams.batch_size,
             sample_rate=hyperparams.sample_rate,

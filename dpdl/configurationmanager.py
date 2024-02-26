@@ -78,6 +78,7 @@ class Configuration(BaseModel):
     optuna_resume: bool = False
     optuna_sampler: str = 'BoTorchSampler'
     subset_size: Optional[float]
+    shots: Optional[int]
     num_classes: Optional[int]
     zero_head: bool = False
     peft: Optional[Literal['lora', 'film', 'head-only']]
@@ -118,6 +119,16 @@ class Configuration(BaseModel):
 
         return values
 
+    @root_validator(pre=True)
+    def check_shots_and_subset_size(cls, values):
+        shots = values.get('shots')
+        subset_size = values.get('subset_size')
+
+        if shots and subset_size:
+            raise ValueError('Parameters "shots" and "subset_size" are exclusive.')
+
+        return values
+
     def __str__(self):
         attributes = [
             ('Command', self.command),
@@ -132,6 +143,7 @@ class Configuration(BaseModel):
             ('Log dir', self.log_dir),
             ('Experiment dame', self.experiment_name),
             ('Overwrite experiment', self.overwrite_experiment),
+            ('Shots', self.shots),
             ('Subset size', self.subset_size),
             ('Num classes', self.num_classes),
             ('Zero head weights', self.zero_head),
