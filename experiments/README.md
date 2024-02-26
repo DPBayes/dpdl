@@ -21,6 +21,7 @@
 - How does dataset imbalance affect the hypers?
 - How does the number of trainable parameters affect the optimized hypers?
 - Sensitivity analysis of hypers: Which hypers need to be tuned exactly and which are more robust.
+- Scheduling the number of parameters to train. E.g. train head only and then increase the parameters layers by layer.
 
 ## Goal of the experiments
 
