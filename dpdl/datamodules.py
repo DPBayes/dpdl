@@ -106,8 +106,8 @@ class DataModule:
             self.train_dataset = self._get_stratified_subset(self.train_dataset)
             self.val_dataset = self._get_stratified_subset(self.val_dataset)
         elif self.shots is not None:
+            # NB: for few-shot, we'll keep the validation dataset intact
             self.train_dataset = self._get_few_shot_subset(self.train_dataset)
-            self.val_dataset = self._get_few_shot_subset(self.val_dataset)
 
     def _load_datasets(self):
         self.train_dataset = datasets.load_dataset(self.dataset_name, split='train')
@@ -211,6 +211,11 @@ class DataModule:
 
     def _get_few_shot_subset(self, dataset):
         test_size = self.shots * self.num_classes
+
+        # special case. train_test_split is unable to "split" if
+        # the requested split size equals the dataset size.
+        if test_size == len(dataset):
+            return dataset
 
         split_dataset = dataset.train_test_split(
             test_size=test_size,
