@@ -157,6 +157,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        shots: Annotated[
+            int,
+            typer.Option(
+                help='Number of shots (training example per class) to use',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
         num_classes: Annotated[
             Optional[int],
             typer.Option(
