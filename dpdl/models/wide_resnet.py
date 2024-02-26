@@ -51,45 +51,39 @@ The JAX code produces 2753818 parameters.
 """
 
 class WSConv2d(torch.nn.Module):
-    """2D Convolutional layer with Weight Standardization and Gain parameter."""
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True):
+    """
+        2D Convolutional layer with Weight Standardization and Gain parameter.
+
+        This is almost directly from: https://nfnets-pytorch.readthedocs.io/en/latest/nfnets.html
+
+    """
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros'):
         super().__init__()
 
-        # Standard convolutional layer without bias as bias is manually added later
-        self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias=bias)
-
-        # Gain parameter for affine transformation, initialized to ones
-        self.gain = torch.nn.Parameter(torch.ones(out_channels, 1, 1, 1))
+        # Initialize the convolutional layer with the given parameters
+        self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode)
 
         # Initialize weights using He initialization, suitable for ReLU activations
-        torch.nn.init.kaiming_normal_(self.conv.weight, mode='fan_in', nonlinearity='relu')
+        torch.nn.init.kaiming_normal_(self.conv.weight, mode='fan_out', nonlinearity='relu')
 
-        if bias:
-            torch.nn.init.zeros_(self.conv.bias)
+        # Gain parameter for affine transformation, initialized to ones
+        self.gain = torch.nn.Parameter(torch.ones(self.conv.out_channels, 1, 1, 1), requires_grad=True)
 
-    def standardize_weight(self, weight, eps=1e-5):
+    def standardize_weight(self, eps=1e-5):
         """Applies Weight Standardization to the convolutional weights."""
+        weight = self.conv.weight
+        mean = weight.mean(dim=[1, 2, 3], keepdim=True)
+        var = weight.var(dim=[1, 2, 3], keepdim=True, unbiased=False)
+        fan_in = torch.prod(torch.tensor(weight.shape[1:]))
+        scale = torch.rsqrt(torch.max(var * fan_in, torch.tensor(eps).to(weight.device))) * self.gain
+        shift = mean * scale
 
-        # Calculate mean and variance
-        mean = weight.mean(dim=(1, 2, 3), keepdim=True)
-        var = weight.var(dim=(1, 2, 3), keepdim=True)
+        return weight * scale - shift
 
-        # Compute the scale factor using fan-in and gain
-        fan_in = torch.prod(torch.tensor(weight.shape[1:]).float())
-        scale = torch.rsqrt(var * fan_in + eps) * self.gain
+    def forward(self, x, eps=1e-4):
+        weight = self.standardize_weight(eps)
 
-        # Standardize the weights
-        return (weight - mean) * scale
-
-    def forward(self, x):
-        """Forward pass through the layer."""
-
-        # Apply weight standardization to the weights
-        weight = self.standardize_weight(self.conv.weight)
-
-        # Perform the convolution operation without bias
-        x = F.conv2d(x, weight, None, self.conv.stride, self.conv.padding, self.conv.dilation, self.conv.groups)
-        return x
+        return F.conv2d(x, weight, self.conv.bias, self.conv.stride, self.conv.padding, self.conv.dilation, self.conv.groups)
 
 class ResidualBlock(torch.nn.Module):
     def __init__(self, in_channels, out_channels, stride):
@@ -122,6 +116,7 @@ class ResidualBlock(torch.nn.Module):
 
         out += skip
         out = self.relu(out)
+
         return out
 
 class Stage(torch.nn.Module):
@@ -166,4 +161,5 @@ class WideResNet(torch.nn.Module):
         x = self.avg_pool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
+
         return x
