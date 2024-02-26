@@ -25,6 +25,7 @@ SEED=42
 N_TRIALS=20
 PRIVACY="--no-privacy"
 USE_STEPS="--use-steps"
+PRETRAINED="--no-pretrained"
 OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
 
 # these two are for easy requeuing: if the jobs get stuck at the
@@ -69,6 +70,7 @@ do
                 --log-dir $LOG_DIR \
                 $PRIVACY \
                 $USE_STEPS \
+                $PRETRAINED \
                 $OVERWRITE_EXPERIMENT \
                 $OPTUNA_RESUME \
                 $OPTUNA_JOURNAL
