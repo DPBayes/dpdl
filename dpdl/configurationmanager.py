@@ -34,11 +34,11 @@ class Hyperparameters(BaseModel):
             ('Total steps', self.total_steps),
             ('Learning rate', self.learning_rate),
             ('Batch size', self.batch_size),
-            ('Sample rate', self.sample_rate),
         ]
 
         if self.privacy:
             privacy_hypers = [
+                ('Sample rate', self.sample_rate),
                 ('Noise multiplier', self.noise_multiplier),
                 ('Max grad norn', self.max_grad_norm),
                 ('Target epsilon', self.target_epsilon),
