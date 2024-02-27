@@ -16,7 +16,7 @@ touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 
 # Experiment parameters
 MODELS=("wrn-16-4" "wrn-40-4")
-ALL_SHOTS=(1 5 10 25 50 100 250 500)
+ALL_SHOTS=(1 5 10 25 50 100 250 500 1000 1500 2000)
 DATASET="cifar10"
 NUM_CLASSES=10
 
@@ -51,7 +51,7 @@ do
             echo "!!! Already submitted: $EXPERIMENT_NAME"
         else
             # Submit the job and capture its success or failure
-            echo sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+            sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                 --num-workers 7 \
                 --model-name $model \
                 --dataset-name $DATASET \
