@@ -42,7 +42,7 @@ for model in "${MODELS[@]}"
 do
     for shots in "${ALL_SHOTS[@]}"
     do
-        EXPERIMENT_NAME="${model}_${DATASET}_Shots${shots}"
+        EXPERIMENT_NAME="${model}_${DATASET}_32x32_Shots${shots}"
 
         OPTUNA_CONFIG="conf/optuna_hypers-shots${shots}.conf"
 
