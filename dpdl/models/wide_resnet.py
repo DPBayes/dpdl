@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 
+from torchvision import transforms
+
 """
 
 This is an implementation of the Wide ResNet used in the "Unlocking
@@ -65,7 +67,6 @@ class WSConv2d(torch.nn.Module):
 
         # Initialize weights using He initialization, suitable for ReLU activations
         torch.nn.init.kaiming_normal_(self.conv.weight, mode='fan_out', nonlinearity='relu')
-
         # Gain parameter for affine transformation, initialized to ones
         self.gain = torch.nn.Parameter(torch.ones(self.conv.out_channels, 1, 1, 1), requires_grad=True)
 
@@ -163,3 +164,9 @@ class WideResNet(torch.nn.Module):
         x = self.fc(x)
 
         return x
+
+    def get_transforms(self):
+        return transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
