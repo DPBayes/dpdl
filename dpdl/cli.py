@@ -198,7 +198,7 @@ def cli(
                 help='Noise multiplier',
                 rich_help_panel='Opacus options',
             )
-        ] = 1.0,
+        ] = None,
         max_grad_norm: Annotated[
             Optional[float],
             typer.Option(
