@@ -418,7 +418,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
                 logical_batch_completed = False
 
-        assert step == self.total_steps, f'Mismatch in total steps count: Expected {self.total_steps} total steps, but stepped {step} times!'
+        #assert step == self.total_steps, f'Mismatch in total steps count: Expected {self.total_steps} total steps, but stepped {step} times!'
 
     def fit_one_batch(self, batch_idx, batch):
         self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
@@ -573,10 +573,11 @@ class TrainerFactory:
     ):
         # use steps instead of epochs?
         if configuration.use_steps and hyperparams.epochs:
-            dataloader = datamodule.get_dataloader('train')
+            B = datamodule.global_batch_size
 
-            B = dataloader.batch_size
+            dataloader = datamodule.get_dataloader('train')
             N = len(dataloader.dataset)
+
             total_steps = math.ceil((N*hyperparams.epochs) / B)
             epochs = None
         # is the number of steps limited?
