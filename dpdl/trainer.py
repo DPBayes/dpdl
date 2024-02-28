@@ -235,7 +235,10 @@ class Trainer:
 
     def _calculate_steps_per_epoch(self):
         data_size = len(self.datamodule.get_dataloader('train').dataset)
-        batch_size = self.datamodule.batch_size
+
+        # NB: In distributed training without DP the local and global
+        #     batch sizes can be different.
+        batch_size = self.datamodule.global_batch_size
         return math.ceil(data_size / batch_size)
 
 class DifferentiallyPrivateTrainer(Trainer):

@@ -31,6 +31,7 @@ class DataModule:
     ):
         self.dataset_name = dataset_name
         self.batch_size = batch_size
+        self.global_batch_size = batch_size
         self.sample_rate = sample_rate
         self.physical_batch_size = physical_batch_size
         self.num_workers = num_workers
