@@ -46,7 +46,7 @@ class ModelFactory:
             )
 
             # Resolve data config and create transforms
-            model_config = timm.data.resolve_data_config({}, model=model.model)
+            model_config = timm.data.resolve_data_config({}, model=model_instance.model)
             transforms = timm.data.transforms_factory.create_transform(**model_config)
 
         # Wrap the instantiated model with ModelBase
