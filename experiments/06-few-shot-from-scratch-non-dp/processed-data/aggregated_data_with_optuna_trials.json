@@ -1,4 +1,61 @@
 {
+    "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots2500": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "wrn-16-4",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots2500",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots2500.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 2500,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.8408000469207764
+    },
     "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots50": {
         "hyperparameters": {
             "epochs": null,
@@ -51,16 +108,73 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "1:03:09.490137",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.42080000042915344",
         "best_params": {
             "epochs": 182,
             "learning_rate": 0.0016354906783182174,
             "batch_size": 311
-        }
+        },
+        "best_trial_value": 0.42080000042915344
+    },
+    "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots4500": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "wrn-16-4",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots4500",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots4500.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 4500,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.8616000413894653
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots1500": {
         "hyperparameters": {
@@ -114,16 +228,73 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "16:44:32.710158",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.6774000525474548",
         "best_params": {
             "epochs": 200,
             "learning_rate": 0.00014437679397256883,
             "batch_size": 10
-        }
+        },
+        "best_trial_value": 0.6774000525474548
+    },
+    "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots1000": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "wrn-16-4",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots1000",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots1000.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 1000,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.7396000623703003
     },
     "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots500": {
         "hyperparameters": {
@@ -177,16 +348,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "13:09:42.421814",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.6714000105857849",
         "best_params": {
             "epochs": 161,
             "learning_rate": 0.0012098034155353528,
             "batch_size": 10
-        }
+        },
+        "best_trial_value": 0.6714000105857849
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots1": {
         "hyperparameters": {
@@ -240,16 +411,187 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "0:13:10.849763",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.19140000641345978",
         "best_params": {
             "epochs": 153,
             "learning_rate": 0.002604932932420821,
             "batch_size": 10
-        }
+        },
+        "best_trial_value": 0.19140000641345978
+    },
+    "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots2000": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "wrn-16-4",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots2000",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots2000.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 2000,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.8203999996185303
+    },
+    "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots3000": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "wrn-16-4",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots3000",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots3000.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 3000,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.8425999879837036
+    },
+    "koskela-net_cifar10_32x32_EPOCHFIX_Shots4000": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "koskela-net",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "koskela-net_cifar10_32x32_EPOCHFIX_Shots4000",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots4000.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 4000,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.7333999872207642
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots2500": {
         "hyperparameters": {
@@ -303,16 +645,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "20:27:03.807059",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.6924000382423401",
         "best_params": {
             "epochs": 200,
             "learning_rate": 0.00012961416558827696,
             "batch_size": 10
-        }
+        },
+        "best_trial_value": 0.6924000382423401
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots50": {
         "hyperparameters": {
@@ -366,16 +708,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "0:29:37.946747",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.3985999822616577",
         "best_params": {
             "epochs": 78,
             "learning_rate": 7.732494835843636e-05,
             "batch_size": 10
-        }
+        },
+        "best_trial_value": 0.3985999822616577
     },
     "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots25": {
         "hyperparameters": {
@@ -429,16 +771,73 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "0:41:09.027493",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.37379997968673706",
         "best_params": {
             "epochs": 113,
             "learning_rate": 0.00166251555511679,
             "batch_size": 212
-        }
+        },
+        "best_trial_value": 0.37379997968673706
+    },
+    "koskela-net_cifar10_32x32_EPOCHFIX_Shots3500": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "koskela-net",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "koskela-net_cifar10_32x32_EPOCHFIX_Shots3500",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots3500.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 3500,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.7197999954223633
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots2000": {
         "hyperparameters": {
@@ -492,16 +891,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "17:30:16.333434",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.7006000280380249",
         "best_params": {
             "epochs": 200,
             "learning_rate": 0.00011184540746825396,
             "batch_size": 16
-        }
+        },
+        "best_trial_value": 0.7006000280380249
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots100": {
         "hyperparameters": {
@@ -555,16 +954,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "0:53:49.095111",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.44040003418922424",
         "best_params": {
             "epochs": 60,
             "learning_rate": 6.437746963261285e-05,
             "batch_size": 10
-        }
+        },
+        "best_trial_value": 0.44040003418922424
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots500": {
         "hyperparameters": {
@@ -618,16 +1017,73 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "4:04:31.380528",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.5906000137329102",
         "best_params": {
             "epochs": 162,
             "learning_rate": 0.00020287219271468069,
             "batch_size": 10
-        }
+        },
+        "best_trial_value": 0.5906000137329102
+    },
+    "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots1500": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "wrn-16-4",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots1500",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots1500.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 1500,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.7871999740600586
     },
     "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots250": {
         "hyperparameters": {
@@ -681,16 +1137,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "3:16:51.649617",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.5952000021934509",
         "best_params": {
             "epochs": 138,
             "learning_rate": 0.00319827652253034,
             "batch_size": 111
-        }
+        },
+        "best_trial_value": 0.5952000021934509
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots5": {
         "hyperparameters": {
@@ -744,16 +1200,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "0:23:18.197857",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.24780000746250153",
         "best_params": {
             "epochs": 147,
             "learning_rate": 0.0005087033634269162,
             "batch_size": 10
-        }
+        },
+        "best_trial_value": 0.24780000746250153
     },
     "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots100": {
         "hyperparameters": {
@@ -807,16 +1263,73 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "1:54:54.898870",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.49000000953674316",
         "best_params": {
             "epochs": 200,
             "learning_rate": 0.0017361330553065798,
             "batch_size": 259
-        }
+        },
+        "best_trial_value": 0.49000000953674316
+    },
+    "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots3500": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "wrn-16-4",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots3500",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots3500.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 3500,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.8529999852180481
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots25": {
         "hyperparameters": {
@@ -870,16 +1383,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "0:21:24.908688",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.3384000062942505",
         "best_params": {
             "epochs": 40,
             "learning_rate": 0.00034799235883786875,
             "batch_size": 75
-        }
+        },
+        "best_trial_value": 0.3384000062942505
     },
     "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots10": {
         "hyperparameters": {
@@ -933,16 +1446,130 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "0:30:37.806501",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.30159997940063477",
         "best_params": {
             "epochs": 53,
             "learning_rate": 0.000476090146660349,
             "batch_size": 56
-        }
+        },
+        "best_trial_value": 0.30159997940063477
+    },
+    "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots4000": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "wrn-16-4",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots4000",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots4000.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 4000,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.8515999913215637
+    },
+    "koskela-net_cifar10_32x32_EPOCHFIX_Shots3000": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "koskela-net",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "koskela-net_cifar10_32x32_EPOCHFIX_Shots3000",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots3000.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 3000,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.7218000292778015
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots250": {
         "hyperparameters": {
@@ -996,16 +1623,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "1:41:10.542253",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.5313999652862549",
         "best_params": {
             "epochs": 131,
             "learning_rate": 0.0002485866225926941,
             "batch_size": 270
-        }
+        },
+        "best_trial_value": 0.5313999652862549
     },
     "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots5": {
         "hyperparameters": {
@@ -1059,16 +1686,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "0:31:18.876456",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.26499998569488525",
         "best_params": {
             "epochs": 133,
             "learning_rate": 0.001385363407177278,
             "batch_size": 34
-        }
+        },
+        "best_trial_value": 0.26499998569488525
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots1000": {
         "hyperparameters": {
@@ -1122,16 +1749,73 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "7:14:21.505489",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.6471999883651733",
         "best_params": {
             "epochs": 167,
             "learning_rate": 0.00014049088253854821,
             "batch_size": 10
-        }
+        },
+        "best_trial_value": 0.6471999883651733
+    },
+    "koskela-net_cifar10_32x32_EPOCHFIX_Shots4500": {
+        "hyperparameters": {
+            "epochs": null,
+            "total_steps": null,
+            "batch_size": null,
+            "sample_rate": null,
+            "learning_rate": null,
+            "noise_multiplier": null,
+            "max_grad_norm": 1.0,
+            "target_epsilon": null,
+            "privacy": false
+        },
+        "configuration": {
+            "command": "optimize",
+            "privacy": false,
+            "model_name": "koskela-net",
+            "optimizer": "Adam",
+            "dataset_name": "cifar10",
+            "physical_batch_size": 40,
+            "num_workers": 7,
+            "validation_frequency": 1.0,
+            "seed": 42,
+            "log_dir": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data",
+            "experiment_name": "koskela-net_cifar10_32x32_EPOCHFIX_Shots4500",
+            "overwrite_experiment": true,
+            "clipping_mode": "flat",
+            "secure_mode": false,
+            "accountant": "prv",
+            "poisson_sampling": true,
+            "normalize_clipping": false,
+            "record_snr": false,
+            "n_trials": 40,
+            "target_hypers": [
+                "epochs",
+                "learning_rate",
+                "batch_size"
+            ],
+            "optuna_target_metric": "MulticlassAccuracy",
+            "optuna_direction": "maximize",
+            "optuna_config": "conf/optuna_hypers-shots4500.conf",
+            "optuna_journal": "/projappl/project_462000288/dpdl/experiments/06-few-shot-from-scratch-non-dp/data/optuna.journal",
+            "optuna_resume": false,
+            "optuna_sampler": "BoTorchSampler",
+            "subset_size": null,
+            "shots": 4500,
+            "num_classes": 10,
+            "zero_head": false,
+            "peft": null,
+            "pretrained": false,
+            "use_steps": true,
+            "evaluation_mode": false
+        },
+        "gpu_type": "AMD Instinct MI250X",
+        "gpu_count": "8",
+        "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
+        "best_trial_value": 0.7365999817848206
     },
     "wrn-16-4_cifar10_32x32_EPOCHFIX_Shots1": {
         "hyperparameters": {
@@ -1185,16 +1869,16 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "0:23:33.211580",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.20820000767707825",
         "best_params": {
             "epochs": 200,
             "learning_rate": 0.0009818013508234734,
             "batch_size": 10
-        }
+        },
+        "best_trial_value": 0.20820000767707825
     },
     "koskela-net_cifar10_32x32_EPOCHFIX_Shots10": {
         "hyperparameters": {
@@ -1248,15 +1932,15 @@
             "use_steps": true,
             "evaluation_mode": false
         },
-        "gpu_count": "8",
         "gpu_type": "AMD Instinct MI250X",
-        "runtime": "0:21:41.868529",
+        "gpu_count": "8",
         "git_hash": "b'4a149e7aae65df7575cfb4262864e885a2a22e1b'",
         "best_value": "0.2752000093460083",
         "best_params": {
             "epochs": 56,
             "learning_rate": 0.0007346829803445752,
             "batch_size": 38
-        }
+        },
+        "best_trial_value": 0.2752000093460083
     }
 }
