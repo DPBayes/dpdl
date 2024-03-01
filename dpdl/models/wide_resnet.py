@@ -165,6 +165,9 @@ class WideResNet(torch.nn.Module):
 
         return x
 
+    def get_classifier(self):
+        return self.fc
+
     def get_transforms(self):
         return transforms.Compose([
             transforms.ToTensor(),
