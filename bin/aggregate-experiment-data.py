@@ -28,11 +28,11 @@ def process_experiment_directory(directory, pattern=None):
 
         experiment_path = os.path.join(directory, entry)
 
-        if not os.path.exists(os.path.join(experiment_path, 'runtime')):
-            print(f'Warning: Experiment {entry} not finished. Skipping.')
-            continue
-
         if os.path.isdir(experiment_path):
+            if not os.path.exists(os.path.join(experiment_path, 'runtime')):
+                print(f'Warning: Experiment {entry} not finished. Skipping.')
+                continue
+
             try:
                 experiment_data = {
                     'hyperparameters': read_json_file(os.path.join(experiment_path, 'hyperparameters.json')),
