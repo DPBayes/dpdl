@@ -19,7 +19,7 @@ class Hyperparameters(BaseModel):
     target_epsilon: Optional[float]
     privacy: bool = True # Only used in __str__
 
-    @root_validator
+    @root_validator(pre=True)
     def check_batch_size_or_sample_rate(cls, values):
         batch_size, sample_rate = values.get('batch_size'), values.get('sample_rate')
 
