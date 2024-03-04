@@ -31,7 +31,6 @@ class DataModule:
     ):
         self.dataset_name = dataset_name
         self.batch_size = batch_size
-        self.global_batch_size = batch_size
         self.sample_rate = sample_rate
         self.physical_batch_size = physical_batch_size
         self.num_workers = num_workers
@@ -161,7 +160,7 @@ class DataModule:
         self._dataloaders['train'] = torch.utils.data.DataLoader(
             self.train_dataset.with_format('torch'),
             sampler=self.train_sampler,
-            batch_size=self.batch_size,
+            batch_size=self.local_batch_size,
             collate_fn=self.collate_fn,
             num_workers=self.num_workers,
             pin_memory=True,
@@ -193,13 +192,17 @@ class DataModule:
             self.train_sampler = torch.utils.data.distributed.DistributedSampler(
                 self.train_dataset.with_format('torch')
             )
-            self.batch_size //= torch.distributed.get_world_size()
+
+            # For distributed without Opacus, we need to divide the batch size
+            # by the world size.
+            self.local_batch_size = self.batch_size // torch.distributed.get_world_size()
         else:
+            # For the DP case, Opacus handles these for us
             self.train_sampler = None
+            self.local_batch_size = self.batch_size
 
         # we will validate and test only on rank 0
         self.val_sampler, self.test_sampler = None, None
-
 
     def _get_stratified_subset(self, dataset):
         split_dataset = dataset.train_test_split(
