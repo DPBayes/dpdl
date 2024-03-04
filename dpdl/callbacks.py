@@ -73,7 +73,7 @@ class RecordEpochStatsCallback(Callback):
     def on_train_start(self, trainer):
         if self._is_global_zero(trainer):
             if self.use_steps:
-                batch_size = trainer.datamodule.global_batch_size
+                batch_size = trainer.datamodule.batch_size
                 data_size = len(trainer.get_dataloader('train').dataset)
                 steps_per_epoch = data_size / batch_size
                 epochs = math.ceil(trainer.total_steps / steps_per_epoch)
