@@ -10,10 +10,10 @@ log = logging.getLogger(__name__)
 
 class Hyperparameters(BaseModel):
     epochs: int = None
-    total_steps: int = None
-    batch_size: int = None
-    sample_rate: float = None
     learning_rate: float = 1e-3
+    total_steps: Optional[int] = None
+    batch_size: Optional[int] = None
+    sample_rate: Optional[float] = None
     noise_multiplier: Optional[float]
     max_grad_norm: Optional[float]
     target_epsilon: Optional[float]
@@ -85,6 +85,11 @@ class Configuration(BaseModel):
     pretrained: bool = True
     use_steps: Optional[bool] = False
     evaluation_mode: Optional[bool] = False
+
+    class Config:
+        # Fix Pydantic warning:
+        # UserWarning: Field "model_name" has conflict with protected namespace "model_".
+        protected_namespaces = ()
 
     @root_validator(pre=True)
     def check_command(cls, values):
