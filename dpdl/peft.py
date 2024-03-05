@@ -82,9 +82,15 @@ class FiLM:
 
         # we enable the gradient for all parameters in matching modules
         for module_name, module in model.named_modules():
-            if pattern.match(module_name) or module_name in film_config.modules_to_save:
+            if pattern.match(module_name):
                 for name, param in module.named_parameters():
                     param.requires_grad = True
+
+            # also check if this module is explicitly set to be enabled
+            for module_to_save in film_config.modules_to_save:
+                if module_name.endswith(module_to_save):
+                    for name, param in module.named_parameters():
+                        param.requires_grad = True
 
         trainable_params, all_params = get_nb_trainable_parameters(model)
 
