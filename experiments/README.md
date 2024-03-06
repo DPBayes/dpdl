@@ -2,13 +2,13 @@
 
 ## Individual experiments
 
-- [x] [FiLM vs LoRA evaluation](01-film-vs-lora-evaluation.md)
-- [ ] [Batch size variation](00-experiment-batch-size-variation.md)
-- [ ] [Maximum gradient norm variation](02-maximum-gradient-norm-variation.md)
-- [ ] [Learning rate variation](03-learning-rate-variation.md)
-- [ ] [Epoch variation](04-epoch-variation.md)
-- [ ] [Signal to Noise ratio for batch size variation](05-signal-to-noise-ratio-for-batch-size-variation.md)
-- [ ] [Few-shot from scratch non-DP training](06-few-shot-from-scratch-non-dp.md)
+- [x] [01 - FiLM vs LoRA evaluation](01-film-vs-lora-evaluation.md)
+- [x] [00 - Batch size variation](00-experiment-batch-size-variation.md)
+- [ ] [02 - Maximum gradient norm variation](02-maximum-gradient-norm-variation.md)
+- [ ] [03 - Learning rate variation](03-learning-rate-variation.md)
+- [ ] [04 - Epoch variation](04-epoch-variation.md)
+- [ ] [05 - Signal to Noise ratio for batch size variation](05-signal-to-noise-ratio-for-batch-size-variation.md)
+- [ ] [06 - Few-shot from scratch non-DP training](06-few-shot-from-scratch-non-dp.md)
 
 ## Questions/ideas
 
@@ -16,6 +16,8 @@
 
 ## Future experiments
 
+- "Sweet spot" for learning rate. In experiment 03 it looked like there could be a sweet spot for the learning rate where accuracy is good, but number of epochs is remarkably low.
+- Hyperparameter optimization for small vs large batch sizes. Based on experiment 00 results, it looks like optimizing hypers for smaller batch sizes might be more difficult than for large batch sizes. This might explain by previous results show that large batches are better.
 - From the DP-RAFT paper Antti had some ideas of experimenting with noise thresholding.
 - How hypers transfer from PEFT method Head only to LoRA, FiLM, None?
 - How does dataset imbalance affect the hypers?
