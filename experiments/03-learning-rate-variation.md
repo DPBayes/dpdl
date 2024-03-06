@@ -43,91 +43,97 @@ Record the following for each combination of model, dataset, learning rate, and 
 - Optimized max gradient norm
 - Accuracy
 
-## Results
+## Analysis
 
-### Vision Transformer (vit_base_patch16_224.augreg_in21k)
+### Sweet spot?
 
-#### CIFAR-10 (10% Subset)
+It looks like there might be a "sweet spot" for learning rates where the number of epochs is low, but yet the accuracy is good.
 
-| Learning Rate | Optimized batch size | Optimized epochs | Optimized max gradient norm | Accuracy |
-|---------------|----------------------|------------------|-----------------------------|----------|
-| 0.000001      |                      |                  |                             |          |
-| 0.000003      |                      |                  |                             |          |
-| 0.000010      |                      |                  |                             |          |
-| 0.000032      |                      |                  |                             |          |
-| 0.000100      |                      |                  |                             |          |
-| 0.000316      |                      |                  |                             |          |
-| 0.001000      |                      |                  |                             |          |
-| 0.003162      |                      |                  |                             |          |
-| 0.010000      |                      |                  |                             |          |
-| 0.031623      |                      |                  |                             |          |
-| 0.100000      |                      |                  |                             |          |
+#### Let's first take look at Vision transformer on 10% of CIFAR-10
 
-#### CIFAR-100 (10% Subset)
+Focus on the learning rate = 0.001 point. First the accuracy
 
-| Learning Rate | Optimized batch size | Optimized epochs | Optimized max gradient norm | Accuracy |
-|---------------|----------------------|------------------|-----------------------------|----------|
-| 0.000001      |                      |                  |                             |          |
-| 0.000003      |                      |                  |                             |          |
-| 0.000010      |                      |                  |                             |          |
-| 0.000032      |                      |                  |                             |          |
-| 0.000100      |                      |                  |                             |          |
-| 0.000316      |                      |                  |                             |          |
-| 0.001000      |                      |                  |                             |          |
-| 0.003162      |                      |                  |                             |          |
-| 0.010000      |                      |                  |                             |          |
-| 0.031623      |                      |                  |                             |          |
-| 0.100000      |                      |                  |                             |          |
+![ViT, CIFAR-10, Subset0.1, Accuracy](03-learning-rate-variation/images/learning_rate_variation_accuracy_trends_ViT_cifar10_subset10.png)
 
-#### CIFAR-100 (100% Subset)
+And now the number of epochs
 
-Repeat experiment only for epsilon=1.
+![ViT, CIFAR-10, Subset0.1, Epochs](03-learning-rate-variation/images/learning_rate_variation_epochs_trends_ViT_cifar10_subset10.png)
 
-| Learning Rate | Optimized batch size | Optimized epochs | Optimized max gradient norm | Accuracy |
-|---------------|----------------------|------------------|-----------------------------|----------|
-| 0.000001      |                      |                  |                             |          |
-| 0.000003      |                      |                  |                             |          |
-| 0.000010      |                      |                  |                             |          |
-| 0.000032      |                      |                  |                             |          |
-| 0.000100      |                      |                  |                             |          |
-| 0.000316      |                      |                  |                             |          |
-| 0.001000      |                      |                  |                             |          |
-| 0.003162      |                      |                  |                             |          |
-| 0.010000      |                      |                  |                             |          |
-| 0.031623      |                      |                  |                             |          |
-| 0.100000      |                      |                  |                             |          |
+Lastly, we seem to have some trends preferring large batch sizes here
 
-### ResNet-50 (resnetv2_50x1_bit.goog_in21k)
+![ViT, CIFAR-10, Subset0.1, Batch size](03-learning-rate-variation/images/learning_rate_variation_batch_size_trends_ViT_cifar10_subset10.png)
 
-#### CIFAR-10 (10% Subset)
+#### Next, let's see what happens with ResNet on 10% of CIFAR-10
 
-| Learning Rate | Optimized batch size | Optimized epochs | Optimized max gradient norm | Accuracy |
-|---------------|----------------------|------------------|-----------------------------|----------|
-| 0.000001      |                      |                  |                             |          |
-| 0.000003      |                      |                  |                             |          |
-| 0.000010      |                      |                  |                             |          |
-| 0.000032      |                      |                  |                             |          |
-| 0.000100      |                      |                  |                             |          |
-| 0.000316      |                      |                  |                             |          |
-| 0.001000      |                      |                  |                             |          |
-| 0.003162      |                      |                  |                             |          |
-| 0.010000      |                      |                  |                             |          |
-| 0.031623      |                      |                  |                             |          |
-| 0.100000      |                      |                  |                             |          |
+Same thing, look at the learning rate = 0.001
 
-#### CIFAR-100 (10% Subset)
+![ResNet, CIFAR-10, Subset0.1, Accuracy](03-learning-rate-variation/images/learning_rate_variation_accuracy_trends_ResNetV2_cifar10_subset10.png)
 
-| Learning Rate | Optimized batch size | Optimized epochs | Optimized max gradient norm | Accuracy |
-|---------------|----------------------|------------------|-----------------------------|----------|
-| 0.000001      |                      |                  |                             |          |
-| 0.000003      |                      |                  |                             |          |
-| 0.000010      |                      |                  |                             |          |
-| 0.000032      |                      |                  |                             |          |
-| 0.000100      |                      |                  |                             |          |
-| 0.000316      |                      |                  |                             |          |
-| 0.001000      |                      |                  |                             |          |
-| 0.003162      |                      |                  |                             |          |
-| 0.010000      |                      |                  |                             |          |
-| 0.031623      |                      |                  |                             |          |
-| 0.100000      |                      |                  |                             |          |
+The same thing with epochs happens with this model
 
+![ResNet, CIFAR-10, Subset0.1, Epochs](03-learning-rate-variation/images/learning_rate_variation_epochs_trends_ResNetV2_cifar10_subset10.png)
+
+Also, at this specific learning rate, this model seems to prefer large batches
+
+![ResNet, CIFAR-10, Subset0.1, Batch size](03-learning-rate-variation/images/learning_rate_variation_batch_size_trends_ResNetV2_cifar10_subset10.png)
+
+#### Now, let's focus on 10% of CIFAR-100. First Vision transformer
+
+It's the same spot learning rate = 0.001 where the accuracy is pretty good
+
+![ViT, CIFAR-100, Subset0.1, Accuracy](03-learning-rate-variation/images/learning_rate_variation_accuracy_trends_ViT_cifar100_subset10.png)
+
+And yet again, the number of epochs seems remarkably low
+
+![ViT, CIFAR-100, Subset0.1, Epochs](03-learning-rate-variation/images/learning_rate_variation_epochs_trends_ViT_cifar100_subset10.png)
+
+No difference with CIFAR-100. It seems to prefer larger batches with this learning rate
+
+![ViT, CIFAR-100, Subset0.1, Batch size](03-learning-rate-variation/images/learning_rate_variation_batch_size_trends_ViT_cifar100_subset10.png)
+
+#### And now 10% of CIFAR-100, but with ResNet
+
+Probably, not a surprise that the accuracy seems relatively nice here. Otherwise I wouldn't be doing this.
+
+![ResNet, CIFAR-100, Subset0.1, Accuracy](03-learning-rate-variation/images/learning_rate_variation_accuracy_trends_ResNetV2_cifar100_subset10.png)
+
+On CIFAR-100, the model seems to also need quite low number of epochs
+
+![ResNet, CIFAR-100, Subset0.1, Epochs](03-learning-rate-variation/images/learning_rate_variation_epochs_trends_ResNetV2_cifar100_subset10.png)
+
+And for no big surprise: yet again big batches are preferred
+
+![ResNet, CIFAR-100, Subset0.1, Batch size](03-learning-rate-variation/images/learning_rate_variation_batch_size_trends_ResNetV2_cifar100_subset10.png)
+
+#### Lastly, let's check out how this looks on the full datasets. First CIFAR-10
+
+> Unfortunately, we have only done full dataset only with one repeat, so there's not much data. Also, for some unknown reason, I seem to have ran this only for the Vision transformers model.
+
+Here's the accuracy plot for CIFAR-10
+
+![ViT, CIFAR-10, Subset1.0, Accuracy](03-learning-rate-variation/images/learning_rate_variation_accuracy_trends_ViT_cifar10_subset100.png)
+
+Here are the epoch trends. Thats a LOT of epochs. Maybe this is not going anywhere
+
+![ViT, CIFAR-10, Subset1.0, Epochs](03-learning-rate-variation/images/learning_rate_variation_epochs_trends_ViT_cifar10_subset100.png)
+
+Let's anyway take a look at the batch size trends also. Based on these, looks like the possible sweet spot could be around 0.000316
+
+![ViT, CIFAR-10, Subset1.0, Batch sizes](03-learning-rate-variation/images/learning_rate_variation_batch_size_trends_ViT_cifar10_subset100.png)
+
+#### And finally, the same plots for CIFAR-100
+
+First let's check the accuracy
+
+![ViT, CIFAR-100, Subset1.0, Accuracy](03-learning-rate-variation/images/learning_rate_variation_accuracy_trends_ViT_cifar100_subset100.png)
+
+
+And as usually, the epochs trends. Hey, the effect might be back at the same spot with learning rate = 0.001?
+
+![ViT, CIFAR-100, Subset1.0, Epochs](03-learning-rate-variation/images/learning_rate_variation_epochs_trends_ViT_cifar100_subset100.png)
+
+Yea. The model prefers large batches here, but so it does elsewhere.
+
+![ViT, CIFAR-100, Subset1.0, Batch sizes](03-learning-rate-variation/images/learning_rate_variation_batch_size_trends_ViT_cifar100_subset100.png)
+
+That's all folks! Unfortunately, we didn't have that much data, but I found these results interesting.
