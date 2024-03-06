@@ -45,9 +45,15 @@ Record the following for each combination of model, dataset, learning rate, and 
 
 ## Analysis
 
-### Sweet spot?
+### Sweet spot
 
 It looks like there might be a "sweet spot" for learning rates where the number of epochs is low, but yet the accuracy is good.
+
+#### TL;DR
+
+Looks like the "sweet spot" hypothesis applies to almost all dataset model combinations. The exception is 100% of CIFAR-10. But maybe that's a quirk?
+
+> Caveat: We only have one repeat of 100% dataset and even that is only done for Vision transformer.
 
 #### Let's first take look at Vision transformer on 10% of CIFAR-10
 
