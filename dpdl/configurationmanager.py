@@ -9,8 +9,8 @@ from typing import Optional, List, Literal
 log = logging.getLogger(__name__)
 
 class Hyperparameters(BaseModel):
-    epochs: int = None
     learning_rate: float = 1e-3
+    epochs: Optional[int] = None
     total_steps: Optional[int] = None
     batch_size: Optional[int] = None
     sample_rate: Optional[float] = None
