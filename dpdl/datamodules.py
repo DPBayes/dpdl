@@ -48,9 +48,6 @@ class DataModule:
             'test': None,
         }
 
-        # let's not collate batches by default
-        self.collate_fn = None
-
     def initialize(self):
         self._initialize_datasets()
 
@@ -74,6 +71,10 @@ class DataModule:
 
     def set_dataloader(self, name, dataloader):
         self._dataloaders[name] = dataloader
+
+    def _default_collate_fn(batch):
+        # default collate is a no-op
+        return batch
 
     def _initialize_datasets(self):
         # first load the data only rank 0
@@ -111,7 +112,7 @@ class DataModule:
         self.test_dataset = None
 
         # extract the keys that contain the labels and images
-        self._image_field , self._label_field = self.train_dataset.features.keys()
+        self._image_field, self._label_field = self.train_dataset.features.keys()
 
         if self.evaluation_mode:
             return
@@ -149,16 +150,18 @@ class DataModule:
         self.seed_worker = seed_worker if self.seed else None
 
     def _create_dataloaders(self):
-        # NB: The collate_fn needs to know the label and image fields,
-        #     so let's overwrite it with a function that has those.
-        if self.collate_fn:
-            self.collate_fn = partial(self._collate_fn, self._label_field, self._image_field)
+        if self._collate_fn:
+            # NB: The collate_fn needs to know the label and image fields,
+            #     so let's overwrite it with a function that has those.
+            collate_fn = partial(self._collate_fn, self._label_field, self._image_field)
+        else:
+            collate_fn = self._default_collate_fn
 
         self._dataloaders['train'] = torch.utils.data.DataLoader(
             self.train_dataset.with_format('torch'),
             sampler=self.train_sampler,
             batch_size=self.local_batch_size,
-            collate_fn=self.collate_fn,
+            collate_fn=collate_fn,
             num_workers=self.num_workers,
             pin_memory=True,
             generator=self.generator,
@@ -169,7 +172,7 @@ class DataModule:
             self.val_dataset.with_format('torch'),
             sampler=self.val_sampler,
             batch_size=self.physical_batch_size,
-            collate_fn=self.collate_fn,
+            collate_fn=collate_fn,
             num_workers=self.num_workers
         )
 
@@ -178,7 +181,7 @@ class DataModule:
                 self.test_dataset.with_format('torch'),
                 sampler=self.test_sampler,
                 batch_size=self.physical_batch_size,
-                collate_fn=self.collate_fn,
+                collate_fn=collate_fn,
                 num_workers=self.num_workers
             )
 
