@@ -48,10 +48,6 @@ class DataModule:
             'test': None,
         }
 
-        # for storing mapping from dataset to the dictionary
-        # key where the labels are stored.
-        self.dataset_label_fields = {}
-
         # let's not collate batches by default
         self.collate_fn = None
 
@@ -114,6 +110,9 @@ class DataModule:
         self.val_dataset = datasets.load_dataset(self.dataset_name, split='test')
         self.test_dataset = None
 
+        # extract the keys that contain the labels and images
+        self._image_field , self._label_field = self.train_dataset.features.keys()
+
         if self.evaluation_mode:
             return
 
@@ -122,7 +121,7 @@ class DataModule:
             test_size=self.test_size,
             shuffle=True,
             seed=self.seed,
-            stratify_by_column=self._get_dataset_label_field(),
+            stratify_by_column=self._label_field,
         )
 
         self.test_dataset = self.val_dataset
@@ -137,13 +136,6 @@ class DataModule:
         self._set_samplers_and_batch_size()
         self._create_dataloaders()
 
-    def _get_dataset_label_field(self):
-        if self.dataset_label_fields is None:
-            # this is name of the dictionary key that contains the dataset labels
-            return 'label'
-
-        return self.dataset_label_fields.get(self.dataset_name, 'label')
-
     def _set_generators_and_seed_worker(self):
         self.generator = torch.Generator()
         if self.seed:
@@ -157,6 +149,11 @@ class DataModule:
         self.seed_worker = seed_worker if self.seed else None
 
     def _create_dataloaders(self):
+        # NB: The collate_fn needs to know the label and image fields,
+        #     so let's overwrite it with a function that has those.
+        if self.collate_fn:
+            self.collate_fn = partial(self._collate_fn, self._label_field, self._image_field)
+
         self._dataloaders['train'] = torch.utils.data.DataLoader(
             self.train_dataset.with_format('torch'),
             sampler=self.train_sampler,
@@ -208,7 +205,7 @@ class DataModule:
         split_dataset = dataset.train_test_split(
             test_size=self.subset_size,
             seed=self.seed,
-            stratify_by_column=self._get_dataset_label_field(),
+            stratify_by_column=self._label_field,
         )
 
         return split_dataset['test']
@@ -224,7 +221,7 @@ class DataModule:
         split_dataset = dataset.train_test_split(
             test_size=test_size,
             seed=self.seed,
-            stratify_by_column=self._get_dataset_label_field(),
+            stratify_by_column=self._label_field,
         )
 
         return split_dataset['test']
@@ -238,17 +235,18 @@ class ImageDataModule(DataModule):
         super().__init__(**kwargs)
 
         self.num_classes = num_classes
-        self.dataset_label_fields = {
-            'cifar100': 'fine_label',
-        }
-        self.collate_fn = partial(self._collate_fn, self._get_dataset_label_field())
 
     def _apply_transforms_to_datasets(self):
         def _apply_transforms(transforms, examples):
-            examples['img'] = [transforms(image) for image in examples['img']]
+            log.info('.')
+            examples[self._image_field] = [transforms(image) for image in examples[self._image_field]]
             return examples
 
         if self.transforms:
+            if self.dataset_name == 'imagenet-1k':
+                # ImageNet contains also grayscale images
+                self._add_rgb_transform()
+
             transforms_func = partial(_apply_transforms, self.transforms)
 
             # XXX: For some reason num_proc > 1 started causing hangs.
@@ -259,16 +257,21 @@ class ImageDataModule(DataModule):
             if self.test_dataset:
                 self.test_dataset = self.test_dataset.map(transforms_func, num_proc=1, batched=True, batch_size=256)
 
+    def _add_rgb_transform(self):
+        toRGB = torchvision.transforms.Lambda(lambda x: x.convert('RGB') if x.mode != 'RGB' else x)
+        new_transforms = [toRGB] + self.transforms.transforms
+        self.transforms = torchvision.transforms.Compose(new_transforms)
+
     @staticmethod
-    def _collate_fn(label_field, batch):
+    def _collate_fn(label_field, image_field, batch):
         B = len(batch)
-        C, H, W = batch[0]['img'].shape
+        C, H, W = batch[0][image_field].shape
 
         images = torch.empty((B, C, H, W))
         labels = torch.empty(B, dtype=torch.long)
 
         for i in range(B):
-            images[i] = batch[i]['img']
+            images[i] = batch[i][image_field]
             labels[i] = batch[i][label_field]
 
         return images, labels
