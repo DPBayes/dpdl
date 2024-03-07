@@ -106,13 +106,33 @@ class DataModule:
             # NB: for few-shot, we'll keep the validation dataset intact
             self.train_dataset = self._get_few_shot_subset(self.train_dataset)
 
+    def _set_dataset_label_fields(self, dataset):
+        # extract the keys that contain the labels and images
+        features = list(dataset.features.keys())
+
+        if len(features) == 2:
+            # easy case, it just contains the image and label field
+            self._image_field, self._label_field = features
+        elif len(features) == 3:
+            self._image_field, label_fields = features[0], features[1:]
+
+            # NB: For CIFAR-100 the `fine_label` is the first element in the list.
+            #     This might need some adjusting for other datasets with multiple labels.
+            self._label_field = label_fields[0]
+
+            if torch.distributed.get_rank() == 0:
+                log.warn(f'Warning: Multiple dataset labels defined. Using `{self._label_field}`.')
+
+        else:
+            raise ValueError(f'Failed to get dataset fields. Unknown number of features: {len(features)}')
+
     def _load_datasets(self):
         self.train_dataset = datasets.load_dataset(self.dataset_name, split='train')
+
+        self._set_dataset_label_fields(self.train_dataset)
+
         self.val_dataset = datasets.load_dataset(self.dataset_name, split='test')
         self.test_dataset = None
-
-        # extract the keys that contain the labels and images
-        self._image_field, self._label_field = self.train_dataset.features.keys()
 
         if self.evaluation_mode:
             return
