@@ -240,9 +240,9 @@ class ImageDataModule(DataModule):
         self.num_classes = num_classes
 
     def _apply_transforms_to_datasets(self):
-        def _apply_transforms(transforms, examples):
+        def _apply_transforms(transforms, label_field, image_field, examples):
             log.info('.')
-            examples[self._image_field] = [transforms(image) for image in examples[self._image_field]]
+            examples[image_field] = [transforms(image) for image in examples[image_field]]
             return examples
 
         if self.transforms:
@@ -250,7 +250,7 @@ class ImageDataModule(DataModule):
                 # ImageNet contains also grayscale images
                 self._add_rgb_transform()
 
-            transforms_func = partial(_apply_transforms, self.transforms)
+            transforms_func = partial(_apply_transforms, self.transforms, self._label_field, self._image_field)
 
             # XXX: For some reason num_proc > 1 started causing hangs.
             #      Also default batch size (1000) seems to hang, even
