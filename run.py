@@ -46,5 +46,9 @@ def main():
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         sys.argv.append('--help')
+        typer.run(cli)
+
+    if '--help' in sys.argv or '-h' in sys.argv:
+        typer.run(cli)
 
     main()
