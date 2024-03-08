@@ -26,7 +26,11 @@ Entry point is [run.py](blob/vanilla-pytorch-refactor/run.py).
 
 #### Command line help
 
-Start an interactive session and run `python run.py`, `python run.py --help`, or `python run.py -h`.
+Start an interactive session.
+
+Load your Python environment, or use pre-installed environment on LUMI (see below).
+
+Run `python run.py`, `python run.py --help`, or `python run.py -h`.
 
 ### Creating a Slurm script
 
@@ -86,6 +90,21 @@ The ranges/options for the different hyperparameters is in `conf/optuna_hypers.c
 The system provides a flexible [callback system](dpdl/callbacks.py).
 
 ## How to?
+
+### Load pre-installed environment on LUMI
+
+First load CSC PyTorch
+
+```
+module use /appl/local/csc/modulefiles/
+module load pytorch
+```
+
+Then activate the pre-installed environment
+
+```
+source /scratch/$PROJECT/venvs/dpdl/bin/activate
+```
 
 ### Add a new dataset?
 
