@@ -28,6 +28,29 @@ Entry point is [run.py](blob/vanilla-pytorch-refactor/run.py).
 
 Start an interactive session and run `python run.py`, `python run.py --help`, or `python run.py -h`.
 
+### Creating a Slurm script
+
+There is a tool for creating Slurm run scripts for LUMI
+
+```
+$ bin/create-run-script.sh
+Usage: bin/create-run-script.sh script_name [options...]
+
+script_name               Name of the script to be created.
+
+Options:
+  --help                  Show this help message.
+  project                 Slurm project (default: project_462000213).
+  partition               Slurm partition (default: standard-g).
+  gpus                    Number of GPUs (default: 8).
+  time                    Time allocation (default: 1:00:00, 00:15:00 for dev-g).
+  mem_per_gpu             Memory per GPU (default: 60G).
+  cpus_per_task           Number of CPUs per task (default: 7).
+
+Example:
+  bin/create-run-script.sh run.sh project_462000213 small-g 1
+``
+
 ### Training under DP
 
 Check out [an example](experiments/00-experiment-batch-size-variation/scripts/run.sh)
