@@ -18,8 +18,8 @@ def get_number_of_trials(storage, study_name):
         study_id = storage.get_study_id_from_name(study_name)
         return storage.get_n_trials(study_id)
     except KeyError:
-        print(f'Error: Study "{study_name}" does not exist.')
-        sys.exit(1)
+        print(f'Warning: Study "{study_name}" does not exist.', file=sys.stderr)
+        return -1
     except Exception as e:
         print(f'An unexpected error occurred: {e}')
         sys.exit(1)
