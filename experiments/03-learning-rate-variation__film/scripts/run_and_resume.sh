@@ -27,7 +27,7 @@ PRIVACY="--privacy"
 USE_STEPS="--use-steps"
 NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
-OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
+OPTUNA_JOURNAL="$LOG_DIR/optuna.journal"
 PEFT="--peft film"
 
 # Function to check if a job has been submitted
@@ -140,7 +140,7 @@ do
                         $NORMALIZE_CLIPPING \
                         $OVERWRITE_EXPERIMENT \
                         $OPTUNA_RESUME \
-                        $OPTUNA_JOURNAL
+                        --optuna-journal $OPTUNA_JOURNAL
 
                     SBATCH_EXIT_CODE=$?
 
