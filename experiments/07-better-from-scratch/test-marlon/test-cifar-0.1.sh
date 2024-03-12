@@ -4,6 +4,7 @@
 ##################################################
 
 # Base configurations
+PROJECT="project_462000213"
 EXPERIMENT_BASE="07-better-from-scratch"
 LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
 mkdir -p $LOG_DIR
@@ -28,7 +29,7 @@ OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
 OPTUNA_RESUME="--no-optuna-resume"
 OVERWRITE_EXPERIMENT="--overwrite-experiment"
 
-cd /scratch/project_462000213/tobaben_temp/dpdl
+cd /scratch/$PROJECT/tobaben_temp/dpdl
 
 # Loop over configurations
 for model in "${MODELS[@]}"
