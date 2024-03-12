@@ -28,6 +28,8 @@ OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
 OPTUNA_RESUME="--no-optuna-resume"
 OVERWRITE_EXPERIMENT="--overwrite-experiment"
 
+cd /scratch/project_462000213/tobaben_temp/dpdl
+
 # Loop over configurations
 for model in "${MODELS[@]}"
 do
@@ -62,7 +64,7 @@ do
                         EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_BatchSize${batch_size}"
                     fi
 
-                    sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                    sbatch -J $EXPERIMENT_NAME test_cifar10_devg run.py optimize \
                         --num-workers 7 \
                         --model-name $model \
                         --dataset-name $dataset \
