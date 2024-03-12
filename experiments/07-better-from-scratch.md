@@ -18,5 +18,6 @@ Probably want to use FiLM to enable near full adaption possibility for fine-tuni
 - Medical datasets
     - Borja Balle used [CheXpert](https://arxiv.org/pdf/1901.07031.pdf) which is [not on huggingface datasets](https://github.com/huggingface/datasets/issues/6382)
     - Borja Balle also used [MIMIC-CXR](https://physionet.org/content/mimic-cxr/2.0.0/) which is not on huggingface datasets
-    - Huggingface: alkzar90/NIH-Chest-X-ray-dataset (https://arxiv.org/pdf/1705.02315.pdf)
-    - Huggingface: marmal88/skin_cancer (https://www.nature.com/articles/sdata2018161.pdf)
+    - Huggingface: alkzar90/NIH-Chest-X-ray-dataset [paper](https://arxiv.org/pdf/1705.02315.pdf)
+    - Huggingface: marmal88/skin_cancer [paper](https://www.nature.com/articles/sdata2018161.pdf)
+    - Huggingface: HuggingFaceM4/Stanford-Cars [paper](https://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Yang_A_Large-Scale_Car_2015_CVPR_paper.pdf)
