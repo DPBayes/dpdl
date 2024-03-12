@@ -16,7 +16,7 @@ Many of the ideas that we are using come from [fastai](https://github.com/fastai
 
 We also need to install our own fork of Opacus, as we have some modifications there
 
-`pip install -e git+https://github.com/DPBayes/opacus@total_steps#egg=opacus
+`pip install -e git+https://github.com/DPBayes/opacus@total_steps#egg=opacus`
 
 ### Command line usage
 
