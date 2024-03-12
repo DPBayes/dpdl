@@ -53,7 +53,7 @@ Options:
 
 Example:
   bin/create-run-script.sh run.sh project_462000213 small-g 1
-``
+```
 
 ### Training under DP
 
