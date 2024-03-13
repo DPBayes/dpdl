@@ -142,4 +142,103 @@ Yea. The model prefers large batches here, but so it does elsewhere.
 
 ![ViT, CIFAR-100, Subset1.0, Batch sizes](03-learning-rate-variation/images/learning_rate_variation_batch_size_trends_ViT_cifar100_subset100.png)
 
-That's all folks! Unfortunately, we didn't have that much data, but I found these results interesting.
+### FiLM
+
+The same analysis, but training only FiLM parameters.
+
+#### Vision Transformer on 10% of CIFAR-10 with FiLM Parameters
+
+We first revisit the 10% CIFAR-10 subset with a focus on FiLM parameters of the Vision Transformer.
+
+![ViT with FiLM, CIFAR-10, Subset0.1, Accuracy](03-learning-rate-variation__film/images/learning_rate_variation_accuracy_trends_ViT_cifar10_subset10.png)
+
+Yep. Looks like there might a "sweet spot" around learning rate = 0.01.
+
+![ViT with FiLM, CIFAR-10, Subset0.1, Epochs](03-learning-rate-variation__film/images/learning_rate_variation_epochs_trends_ViT_cifar10_subset10.png)
+
+Unlike with training all parameters, the batch sizes don't seem large here. Although, this is just one repeat.
+
+![ViT with FiLM, CIFAR-10, Subset0.1, Batch sizes](03-learning-rate-variation__film/images/learning_rate_variation_batch_size_trends_ViT_cifar10_subset10.png)
+
+#### ResNet on 10% of CIFAR-10 with FiLM Parameters
+
+Next, we look at the ResNet model on the same subset, training only FiLM parameters.
+
+![ResNet with FiLM, CIFAR-10, Subset0.1, Accuracy](03-learning-rate-variation__film/images/learning_rate_variation_accuracy_trends_ResNetV2_cifar10_subset10.png)
+
+Here the effect is not so clear. Looks like the accuracy is starting to deteriorate with learning rates larger than 0.001.
+
+![ResNet with FiLM, CIFAR-10, Subset0.1, Epochs](03-learning-rate-variation__film/images/learning_rate_variation_epochs_trends_ResNetV2_cifar10_subset10.png)
+
+Looks like like the model prefers large batches here.
+
+![ResNet with FiLM, CIFAR-10, Subset0.1, Batch sizes](03-learning-rate-variation__film/images/learning_rate_variation_batch_size_trends_ResNetV2_cifar10_subset10.png)
+
+#### Vision Transformer on 10% of CIFAR-100 with FiLM Parameters
+
+Next, we'll take a look at the same models trained with FiLM parameters on the CIFAR-100 dataset.
+
+Let's look at the Vision Transformer first. Looks like the sweet spot might be between 0.003162 and 0.01.
+
+![ViT with FiLM, CIFAR-100, Subset0.1, Accuracy](03-learning-rate-variation__film/images/learning_rate_variation_accuracy_trends_ViT_cifar100_subset10.png)
+
+The number of epochs is yet again fairly low at around 0.01 with a couple exceptions
+
+![ViT with FiLM, CIFAR-100, Subset0.1, Epochs](03-learning-rate-variation__film/images/learning_rate_variation_epochs_trends_ViT_cifar100_subset10.png)
+
+Again, hard to say about the batch sizes, given just the one repeat.
+
+![ViT with FiLM, CIFAR-100, Subset0.1, Batch sizes](03-learning-rate-variation__film/images/learning_rate_variation_batch_size_trends_ViT_cifar100_subset10.png)
+
+#### ResNet on 10% of CIFAR-100 with FiLM Parameters
+
+Next, ResNet. Looks like we could have another sweet spot.
+
+![ResNet with FiLM, CIFAR-100, Subset0.1, Accuracy](03-learning-rate-variation__film/images/learning_rate_variation_accuracy_trends_ResNetV2_cifar100_subset10.png)
+
+![ResNet with FiLM, CIFAR-100, Subset0.1, Epochs](03-learning-rate-variation__film/images/learning_rate_variation_epochs_trends_ResNetV2_cifar100_subset10.png)
+
+![ResNet with FiLM, CIFAR-100, Subset0.1, Batch sizes](03-learning-rate-variation__film/images/learning_rate_variation_batch_size_trends_ResNetV2_cifar100_subset10.png)
+
+#### Vision Transformer on 100% of CIFAR-10 with FiLM Parameters
+
+Next, let's look at the full CIFAR-10. Remember, when training all parameters, we did not find a sweet spot here.
+
+For the Vision transformer looks like it does not exist.
+
+![ViT with FiLM, CIFAR-10, Subset1.0, Accuracy](03-learning-rate-variation__film/images/learning_rate_variation_accuracy_trends_ViT_cifar10_subset100.png)
+
+![ViT with FiLM, CIFAR-10, Subset1.0, Epochs](03-learning-rate-variation__film/images/learning_rate_variation_epochs_trends_ViT_cifar10_subset100.png)
+
+![ViT with FiLM, CIFAR-10, Subset1.0, Batch sizes](03-learning-rate-variation__film/images/learning_rate_variation_batch_size_trends_ViT_cifar10_subset100.png)
+
+#### ResNet on 100% of CIFAR-10 with FiLM Parameters
+
+However, when lookin at ResNet on full CIFAR-10, we definitely can see a sweet spot.
+
+![ResNet with FiLM, CIFAR-10, Subset1.0, Accuracy](03-learning-rate-variation__film/images/learning_rate_variation_accuracy_trends_ResNetV2_cifar10_subset100.png)
+
+![ResNet with FiLM, CIFAR-10, Subset1.0, Epochs](03-learning-rate-variation__film/images/learning_rate_variation_epochs_trends_ResNetV2_cifar10_subset100.png)
+
+Maybe interesting: The batch size is still low, but on the next learning rate the model seems to prefer full batch.
+
+![ResNet with FiLM, CIFAR-10, Subset1.0, Batch sizes](03-learning-rate-variation__film/images/learning_rate_variation_batch_size_trends_ResNetV2_cifar10_subset100.png)
+
+#### Vision Transformer on 100% of CIFAR-100 with FiLM Parameters
+
+For the rest of these, it looks like there might be a sweet spot, but it's really hard to say because of just one repeat.
+
+![ViT with FiLM, CIFAR-100, Subset1.0, Accuracy](03-learning-rate-variation__film/images/learning_rate_variation_accuracy_trends_ViT_cifar100_subset100.png)
+
+![ViT with FiLM, CIFAR-100, Subset1.0, Epochs](03-learning-rate-variation__film/images/learning_rate_variation_epochs_trends_ViT_cifar100_subset100.png)
+
+![ViT with FiLM, CIFAR-100, Subset1.0, Batch sizes](03-learning-rate-variation__film/images/learning_rate_variation_batch_size_trends_ViT_cifar100_subset100.png)
+
+#### ResNet on 100% of CIFAR-100 with FiLM Parameters
+
+![ResNet with FiLM, CIFAR-100, Subset1.0, Accuracy](03-learning-rate-variation__film/images/learning_rate_variation_accuracy_trends_ResNetV2_cifar100_subset100.png)
+
+![ResNet with FiLM, CIFAR-100, Subset1.0, Epochs](03-learning-rate-variation__film/images/learning_rate_variation_epochs_trends_ResNetV2_cifar100_subset100.png)
+
+![ResNet with FiLM, CIFAR-100, Subset1.0, Batch sizes](03-learning-rate-variation__film/images/learning_rate_variation_batch_size_trends_ResNetV2_cifar100_subset100.png)
+
