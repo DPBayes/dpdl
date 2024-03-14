@@ -56,6 +56,7 @@ class Configuration(BaseModel):
     model_name: str = 'resnet50'
     optimizer: str = 'Adam'
     dataset_name: str = 'cifar10'
+    dataset_source: str = 'huggingface'
     physical_batch_size: int = 40
     num_workers: int = 8
     validation_frequency: float = 1.0
@@ -134,12 +135,22 @@ class Configuration(BaseModel):
 
         return values
 
+    @root_validator(pre=True)
+    def check_dataset_source(cls, values):
+        dataset_source = values.get('dataset_source')
+
+        if not dataset_source in ['huggingface', 'tensorflow']:
+            raise ValueError(f'Unknown dataset source: "{dataset_source}".')
+
+        return values
+
     def __str__(self):
         attributes = [
             ('Command', self.command),
             ('Privacy', self.privacy),
             ('Model name', self.model_name),
             ('Optimizer', self.optimizer),
+            ('Dataset source', self.dataset_source),
             ('Dataset name', self.dataset_name),
             ('Physical batch size', self.physical_batch_size),
             ('Num workers', self.num_workers),

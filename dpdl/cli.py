@@ -143,10 +143,17 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = False,
+        dataset_source: Annotated[
+            str,
+            typer.Option(
+                help='Dataset source (e.g. huggingface or tensorflow)',
+                rich_help_panel='Dataset options',
+            )
+        ] = 'huggingface',
         dataset_name: Annotated[
             str,
             typer.Option(
-                help='Huggingface dataset name',
+                help='Dataset name',
                 rich_help_panel='Dataset options',
             )
         ] = 'cifar10',
