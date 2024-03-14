@@ -3,6 +3,8 @@ import logging
 import math
 import torch
 import torchvision
+import numpy as np
+import tensorflow_datasets as tfds
 
 from collections import defaultdict
 from functools import partial
@@ -14,9 +16,43 @@ from .configurationmanager import Configuration, Hyperparameters
 log = logging.getLogger(__name__)
 
 
+def load_tfds_dataset(dataset_name):
+    builder = tfds.builder(dataset_name, file_format='array_record')
+    tfds_info = builder.info
+    tfds_dataset = tfds.data_source(dataset_name)
+    return tfds_dataset, tfds_info
+
+def convert_tfds_to_huggingface(dataset_name):
+    tfds_dataset, tfds_info = load_tfds_dataset(dataset_name)
+    hf_datasets = {}
+
+    # Define the Hugging Face dataset features based on the TFDS features
+    hf_features = datasets.Features({
+        'image': datasets.Image(),
+        'label': datasets.ClassLabel(
+            num_classes=tfds_info.features['label'].num_classes,
+            names=tfds_info.features['label'].names,
+        ),
+    })
+
+    for split_name, split_dataset in tfds_dataset.items():
+        data = {feature: [] for feature in hf_features.keys()}
+        for item in split_dataset:
+            for feature, value in item.items():
+                if not feature in hf_features:
+                    continue
+
+                data[feature].append(value)
+
+        # Create Hugging Face dataset for the current split, specifying the features
+        hf_datasets[split_name] = datasets.Dataset.from_dict(data, features=hf_features)
+
+    return datasets.DatasetDict(hf_datasets)
+
 class DataModule:
     def __init__(self,
         dataset_name: str = 'default-dataset',
+        dataset_source: str = 'huggingface',
         batch_size: int = 64,
         sample_rate: float = 0,
         physical_batch_size: int = 64,
@@ -30,6 +66,7 @@ class DataModule:
         transforms: torchvision.transforms.transforms.Compose = None,
     ):
         self.dataset_name = dataset_name
+        self.dataset_source = dataset_source
         self.batch_size = batch_size
         self.sample_rate = sample_rate
         self.physical_batch_size = physical_batch_size
@@ -106,6 +143,52 @@ class DataModule:
             # NB: for few-shot, we'll keep the validation dataset intact
             self.train_dataset = self._get_few_shot_subset(self.train_dataset)
 
+    def _load_datasets(self):
+        if self.dataset_source == 'huggingface':
+            log.info('Loading dataset "{self.dataset_name}" using Huggingface datasets.')
+            dataset_splits = datasets.load_dataset(self.dataset_name)
+        elif self.dataset_source == 'tensorflow':
+            dataset_splits = convert_tfds_to_huggingface(self.dataset_name)
+        else:
+            raise ValueError(f'Unsupported dataset source: {self.dataset_source}')
+
+        # Check if there's a validation split available
+        has_validation_split = 'validation' in dataset_splits
+
+        # Set dataset label fields based on the training split
+        self._set_dataset_label_fields(dataset_splits['train'])
+
+        # Process datasets (split/train/validate as necessary)
+        self._load_huggingface_dataset(dataset_splits, has_validation_split)
+
+    def _load_huggingface_dataset(self, dataset_splits, has_validation_split):
+        # Always use the test set as-is
+        self.test_dataset = dataset_splits.get('test', None)
+
+        if self.evaluation_mode:
+            if has_validation_split:
+                # Combine training and validation sets if we have a separate validation set
+                self.train_dataset = datasets.concatenate_datasets([dataset_splits['train'], dataset_splits['validation']])
+            else:
+                # Use the full training set
+                self.train_dataset = dataset_splits['train']
+
+            # Validation during evaluation mode could be on the test set or another set if specified
+            self.val_dataset = self.test_dataset
+        else:
+            # If not in evaluation mode, we train on the train set, and validate on the validation set
+            if has_validation_split:
+                # Use separate validation set if it exists
+                self.train_dataset = dataset_splits['train']
+                self.val_dataset = dataset_splits['validation']
+            else:
+                # Split the training dataset into training and validation
+                self.train_dataset, self.val_dataset = dataset_splits['train'].train_test_split(
+                    test_size=self.test_size,
+                    seed=self.seed,
+                    shuffle=True,
+                ).values()
+
     def _set_dataset_label_fields(self, dataset):
         # extract the keys that contain the labels and images
         features = list(dataset.features.keys())
@@ -125,29 +208,6 @@ class DataModule:
 
         else:
             raise ValueError(f'Failed to get dataset fields. Unknown number of features: {len(features)}')
-
-    def _load_datasets(self):
-        self.train_dataset = datasets.load_dataset(self.dataset_name, split='train')
-
-        self._set_dataset_label_fields(self.train_dataset)
-
-        self.val_dataset = datasets.load_dataset(self.dataset_name, split='test')
-        self.test_dataset = None
-
-        if self.evaluation_mode:
-            return
-
-        # otherwise, we load and split the train dataset into train and valid
-        split_dataset = self.train_dataset.train_test_split(
-            test_size=self.test_size,
-            shuffle=True,
-            seed=self.seed,
-            stratify_by_column=self._label_field,
-        )
-
-        self.test_dataset = self.val_dataset
-        self.train_dataset = split_dataset['train']
-        self.val_dataset = split_dataset['test']
 
     def _apply_transforms_to_datasets(self):
         return # no default transforms
@@ -275,10 +335,28 @@ class ImageDataModule(DataModule):
             # XXX: For some reason num_proc > 1 started causing hangs.
             #      Also default batch size (1000) seems to hang, even
             #      with one process.
-            self.train_dataset = self.train_dataset.map(transforms_func, num_proc=1, batched=True, batch_size=256)
-            self.val_dataset = self.val_dataset.map(transforms_func, num_proc=1, batched=True, batch_size=256)
+            self.train_dataset = self.train_dataset.map(
+                transforms_func,
+                num_proc=1,
+                batched=True,
+                batch_size=256,
+                load_from_cache_file=True,
+            )
+            self.val_dataset = self.val_dataset.map(
+                transforms_func,
+                num_proc=1,
+                batched=True,
+                batch_size=256,
+                load_from_cache_file=True,
+            )
             if self.test_dataset:
-                self.test_dataset = self.test_dataset.map(transforms_func, num_proc=1, batched=True, batch_size=256)
+                self.test_dataset = self.test_dataset.map(
+                    transforms_func,
+                    num_proc=1,
+                    batched=True,
+                    batch_size=256,
+                    load_from_cache_file=True,
+                )
 
     def _add_rgb_transform(self):
         toRGB = torchvision.transforms.Lambda(lambda x: x.convert('RGB') if x.mode != 'RGB' else x)
@@ -308,6 +386,7 @@ class DataModuleFactory:
     ) -> DataModule:
         datamodule = ImageDataModule(
             dataset_name=configuration.dataset_name,
+            dataset_source=configuration.dataset_source,
             num_workers=configuration.num_workers,
             physical_batch_size=configuration.physical_batch_size,
             subset_size=configuration.subset_size,
