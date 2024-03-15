@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 if ! python -c "import optuna" &> /dev/null; then
     echo "Error: 'optuna' module not found. Please make sure you have correct environment activated."
     exit 1
@@ -27,6 +29,12 @@ if squeue --me -o "%.150j" | grep -q "$EXPERIMENT_NAME"; then
 else
     # Get the number of completed trials using the Python script
     N_TRIALS=$(python bin/get_n_trials.py --optuna-journal "$EXPERIMENT_BASE"/data/optuna.journal --study-name "$EXPERIMENT_NAME")
+
+    # Check if the experiment was never started
+    if [ "$N_TRIALS" -eq -1 ]; then
+        echo "Experiment $EXPERIMENT_NAME was not found, likely never started."
+        exit 0
+    fi
 
     # Calculate remaining trials
     REMAINING_TRIALS=$((MAX_TRIALS - N_TRIALS))
