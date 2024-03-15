@@ -63,7 +63,7 @@ function submit_experiment() {
 
     local EXPERIMENT_NAME
     if [ "$hyper_name" == "batch_size" ] && [ "$hyper_value" == "-1" ]; then
-        EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_FullBatch"
+        EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_Epoch${epoch}_FullBatch"
     else
         local hyper_name_experiment=$(echo $hyper_name | sed 's/_\([a-z]\)/\U\1/g;s/^./\U&/')
         EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_Epoch${epoch}_${hyper_name_experiment}${hyper_value}"
