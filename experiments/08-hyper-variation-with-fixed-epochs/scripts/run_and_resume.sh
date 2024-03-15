@@ -71,7 +71,7 @@ function submit_experiment() {
 
     if is_job_in_queue $EXPERIMENT_NAME; then
         echo "Experiment $EXPERIMENT_NAME is already in the queue."
-        continue  # Skip to the next iteration
+        return  # Skip to the next iteration
     fi
 
     # Determine target hyperparameters based on the fixed hyperparameter
@@ -88,7 +88,7 @@ function submit_experiment() {
             ;;
     esac
 
-    local CMD_PREFIX="echo sbatch -J ${EXPERIMENT_NAME} run8.sh run.py optimize --num-workers 7 --model-name ${model} --dataset-name ${dataset} --subset-size ${subset_size} --num-classes ${NUM_CLASSES} --epochs ${epoch} $TARGET_HYPERS --target-epsilon $epsilon --n-trials ${DEFAULT_N_TRIALS} --seed ${SEED} --physical-batch-size 40 --optuna-config conf/optuna_hypers-subset${subset_size}.conf --optuna-target-metric MulticlassAccuracy --optuna-direction maximize --experiment-name ${EXPERIMENT_NAME} --log-dir ${LOG_DIR} ${OTHER_SETTINGS} --${hyper_name} ${hyper_value}"
+    local CMD_PREFIX="sbatch -J ${EXPERIMENT_NAME} run8.sh run.py optimize --num-workers 7 --model-name ${model} --dataset-name ${dataset} --subset-size ${subset_size} --num-classes ${NUM_CLASSES} --epochs ${epoch} $TARGET_HYPERS --target-epsilon $epsilon --n-trials ${DEFAULT_N_TRIALS} --seed ${SEED} --physical-batch-size 40 --optuna-config conf/optuna_hypers-subset${subset_size}.conf --optuna-target-metric MulticlassAccuracy --optuna-direction maximize --experiment-name ${EXPERIMENT_NAME} --log-dir ${LOG_DIR} ${OTHER_SETTINGS} --${hyper_name} ${hyper_value}"
 
     # Check for and handle resuming of experiments
     local EXPERIMENT_DIR="${LOG_DIR}/${EXPERIMENT_NAME}"
