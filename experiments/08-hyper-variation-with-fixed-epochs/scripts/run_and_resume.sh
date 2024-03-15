@@ -61,13 +61,18 @@ function submit_experiment() {
     local JOB_STATUS_LOG="$LOG_DIR/submitted_jobs.log"
     touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 
-    local EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_Epoch${epoch}_${hyper_name_experiment}${hyper_value}"
+    local EXPERIMENT_NAME
+    if [ "$hyper_name" == "batch_size" ] && [ "$hyper_value" == "-1" ]; then
+        EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_FullBatch"
+    else
+        local hyper_name_experiment=$(echo $hyper_name | sed 's/_\([a-z]\)/\U\1/g;s/^./\U&/')
+        EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_Epoch${epoch}_${hyper_name_experiment}${hyper_value}"
+    fi
 
     if is_job_in_queue $EXPERIMENT_NAME; then
         echo "Experiment $EXPERIMENT_NAME is already in the queue."
         continue  # Skip to the next iteration
     fi
-
 
     # Determine target hyperparameters based on the fixed hyperparameter
     local TARGET_HYPERS=""
