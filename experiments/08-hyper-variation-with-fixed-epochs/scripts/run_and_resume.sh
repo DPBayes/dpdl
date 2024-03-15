@@ -54,6 +54,7 @@ function submit_experiment() {
     local hyper_value=$7
     local hyper_name=$8
     local hyper_name_experiment=$(echo $hyper_name | sed 's/_\([a-z]\)/\U\1/g;s/^./\U&/')
+    local hyper_name_switch=$(echo $hyper_name | sed 's/_/-/g')
 
     local LOG_DIR="/projappl/$PROJECT/dpdl/experiments/${experiment_base}/data"
     mkdir -p "${LOG_DIR}"
@@ -88,7 +89,7 @@ function submit_experiment() {
             ;;
     esac
 
-    local CMD_PREFIX="sbatch -J ${EXPERIMENT_NAME} run8.sh run.py optimize --num-workers 7 --model-name ${model} --dataset-name ${dataset} --subset-size ${subset_size} --num-classes ${NUM_CLASSES} --epochs ${epoch} $TARGET_HYPERS --target-epsilon $epsilon --n-trials ${DEFAULT_N_TRIALS} --seed ${SEED} --physical-batch-size 40 --optuna-config conf/optuna_hypers-subset${subset_size}.conf --optuna-target-metric MulticlassAccuracy --optuna-direction maximize --experiment-name ${EXPERIMENT_NAME} --log-dir ${LOG_DIR} ${OTHER_SETTINGS} --${hyper_name} ${hyper_value}"
+    local CMD_PREFIX="echo sbatch -J ${EXPERIMENT_NAME} run8.sh run.py optimize --num-workers 7 --model-name ${model} --dataset-name ${dataset} --subset-size ${subset_size} --num-classes ${NUM_CLASSES} --epochs ${epoch} $TARGET_HYPERS --target-epsilon $epsilon --n-trials ${DEFAULT_N_TRIALS} --seed ${SEED} --physical-batch-size 40 --optuna-config conf/optuna_hypers-subset${subset_size}.conf --optuna-target-metric MulticlassAccuracy --optuna-direction maximize --experiment-name ${EXPERIMENT_NAME} --log-dir ${LOG_DIR} ${OTHER_SETTINGS} --${hyper_name_switch} ${hyper_value}"
 
     # Check for and handle resuming of experiments
     local EXPERIMENT_DIR="${LOG_DIR}/${EXPERIMENT_NAME}"
