@@ -10,7 +10,7 @@ EXPERIMENT_BASES=("08-hyper-variation-with-fixed-epochs__batch_size_variation"
                   "08-hyper-variation-with-fixed-epochs__learning_rate_variation")
 
 # Base configurations
-PROJECT="your_project_name"
+PROJECT="08-hyper-variation-with-fixed-epochs"
 EPOCH_VALUES=("10" "40")
 MODELS=("vit_base_patch16_224.augreg_in21k" "resnetv2_50x1_bit.goog_in21k")
 DATASETS=("cifar10" "cifar100")
@@ -38,7 +38,7 @@ function submit_experiment() {
     mkdir -p "${LOG_DIR}"
 
     local EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epoch${epoch}_${hyper_name^}${hyper_value}"
-    local CMD_PREFIX="sbatch -J ${EXPERIMENT_NAME} run8.sh run.py optimize --num-workers 7 --model-name ${model} --dataset-name ${dataset} --subset-size ${subset_size} --num-classes ${NUM_CLASSES} --epochs ${epoch} --target-epsilon 1 --n-trials ${DEFAULT_N_TRIALS} --seed ${SEED} --physical-batch-size 40 --optuna-config conf/optuna_hypers-subset${subset_size}.conf --optuna-target-metric MulticlassAccuracy --optuna-direction maximize --experiment-name ${EXPERIMENT_NAME} --log-dir ${LOG_DIR} ${OTHER_SETTINGS} --${hyper_name} ${hyper_value}"
+    local CMD_PREFIX="echo sbatch -J ${EXPERIMENT_NAME} run8.sh run.py optimize --num-workers 7 --model-name ${model} --dataset-name ${dataset} --subset-size ${subset_size} --num-classes ${NUM_CLASSES} --epochs ${epoch} --target-epsilon 1 --n-trials ${DEFAULT_N_TRIALS} --seed ${SEED} --physical-batch-size 40 --optuna-config conf/optuna_hypers-subset${subset_size}.conf --optuna-target-metric MulticlassAccuracy --optuna-direction maximize --experiment-name ${EXPERIMENT_NAME} --log-dir ${LOG_DIR} ${OTHER_SETTINGS} --${hyper_name} ${hyper_value}"
 
     # Check for and handle resuming of experiments
     local EXPERIMENT_DIR="${LOG_DIR}/${EXPERIMENT_NAME}"
@@ -79,11 +79,11 @@ function submit_experiment() {
 for experiment_base in "${EXPERIMENT_BASES[@]}"; do
     for model in "${MODELS[@]}"; do
         for dataset in "${DATASETS[@]}"; do
-            local NUM_CLASSES=10
+            NUM_CLASSES=10
             [ "$dataset" == "cifar100" ] && NUM_CLASSES=100
 
             for subset_size in "${SUBSET_SIZES[@]}"; do
-                local BATCH_SIZES=("${BATCH_SIZES_SUBSET_01[@]}")
+                BATCH_SIZES=("${BATCH_SIZES_SUBSET_01[@]}")
                 [ "$subset_size" == "1.0" ] && BATCH_SIZES=("${BATCH_SIZES_SUBSET_1[@]}")
 
                 for epoch in "${EPOCH_VALUES[@]}"; do
