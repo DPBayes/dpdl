@@ -14,7 +14,13 @@ Probably want to use FiLM to enable near full adaption possibility for fine-tuni
 
 ### Datasets (fine-tuning)
 
-- VTAB? (easy to setup and standard benchmark)
+- [VTAB](https://arxiv.org/pdf/1910.04867.pdf) (easy to setup and standard benchmark, 19 datasets)
+    - from huggingface (2): cifar100 svhn
+    - from Tensorflow datasets (easy to download, 8): dmlab dtd eurosat oxford_flowers102 oxford_iiit_pet patch_camelyon resisc45 sun397
+    - from Tensorflow datasets (needs additional work):
+        - different labels based on task (6 = 3x2): dsprites, clevr, smallnorb
+        - manual download (1): diabetic_retinopathy_detection/btgraham-300
+        - error (FileFormat.TFRECORD. Got FileFormat.ARRAY_RECORD, 2): caltech101 kitti
 - Medical datasets
     - Borja Balle used [CheXpert](https://arxiv.org/pdf/1901.07031.pdf) which is [not on huggingface datasets](https://github.com/huggingface/datasets/issues/6382)
     - Borja Balle also used [MIMIC-CXR](https://physionet.org/content/mimic-cxr/2.0.0/) which is not on huggingface datasets
