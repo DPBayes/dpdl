@@ -1,6 +1,8 @@
 import datasets
 import logging
 import math
+import os
+import pathlib
 import torch
 import torchvision
 import numpy as np
@@ -145,21 +147,48 @@ class DataModule:
 
     def _load_datasets(self):
         if self.dataset_source == 'huggingface':
-            log.info('Loading dataset "{self.dataset_name}" using Huggingface datasets.')
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Loading dataset "{self.dataset_name}" from Huggingface datasets.')
+
             dataset_splits = datasets.load_dataset(self.dataset_name)
+
         elif self.dataset_source == 'tensorflow':
-            dataset_splits = convert_tfds_to_huggingface(self.dataset_name)
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Loading dataset "{self.dataset_name}" from Tensorflow datasets.')
+
+            tfds_cache_fpath = self._get_tfds_cache_fpath()
+            if tfds_cache_fpath.exists():
+                dataset_splits = datasets.DatasetDict.load_from_disk(tfds_cache_fpath)
+            else:
+                dataset_splits = convert_tfds_to_huggingface(self.dataset_name)
+                dataset_splits.save_to_disk(tfds_cache_fpath)
         else:
             raise ValueError(f'Unsupported dataset source: {self.dataset_source}')
-
-        # Check if there's a validation split available
-        has_validation_split = 'validation' in dataset_splits
 
         # Set dataset label fields based on the training split
         self._set_dataset_label_fields(dataset_splits['train'])
 
+        # Check if there's a validation split available
+        has_validation_split = 'validation' in dataset_splits
+
         # Process datasets (split/train/validate as necessary)
         self._load_huggingface_dataset(dataset_splits, has_validation_split)
+
+    def _get_tfds_cache_fpath(self):
+        # Get the base cache directory
+        hf_cache_base = os.environ.get('HF_DATASETS_CACHE', '~/.cache/huggingface/datasets')
+        converted_tfds_cache = pathlib.Path(f'{hf_cache_base}/converted_tfds_datasets')
+
+        # Ensure the cache directory exists
+        converted_tfds_cache.mkdir(exist_ok=True)
+
+        # Construct the cache file name based on dataset_source and dataset_name
+        tfds_cache_fname = f'dpdl_{self.dataset_source}_{self.dataset_name}_cache'
+
+        # Construct the full path to the cache file
+        cache_file_path = converted_tfds_cache / tfds_cache_fname
+
+        return cache_file_path
 
     def _load_huggingface_dataset(self, dataset_splits, has_validation_split):
         # Always use the test set as-is
@@ -204,7 +233,7 @@ class DataModule:
             self._label_field = label_fields[0]
 
             if torch.distributed.get_rank() == 0:
-                log.warn(f'Warning: Multiple dataset labels defined. Using `{self._label_field}`.')
+                log.info(f'Warning: Multiple dataset labels defined. Using `{self._label_field}`.')
 
         else:
             raise ValueError(f'Failed to get dataset fields. Unknown number of features: {len(features)}')
