@@ -489,6 +489,7 @@ class TrainerFactory:
             optimizer=optimizer,
             datamodule=datamodule,
             callback_handler=callback_handler,
+            physical_batch_size=configuration.physical_batch_size,
             epochs=epochs,
             total_steps=total_steps,
             seed=configuration.seed,
