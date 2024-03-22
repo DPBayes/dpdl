@@ -62,6 +62,8 @@ function submit_experiment() {
     local JOB_STATUS_LOG="$LOG_DIR/submitted_jobs.log"
     touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 
+    local OPTUNA_JOURNAL="$LOG_DIR/optuna.journal"
+
     local EXPERIMENT_NAME
     if [ "$hyper_name" == "batch_size" ] && [ "$hyper_value" == "-1" ]; then
         EXPERIMENT_NAME="${model}_${dataset}_Subset${subset_size}_Epsilon${epsilon}_Epoch${epoch}_FullBatch"
@@ -89,7 +91,7 @@ function submit_experiment() {
             ;;
     esac
 
-    local CMD_PREFIX="echo sbatch -J ${EXPERIMENT_NAME} run8.sh run.py optimize --num-workers 7 --model-name ${model} --dataset-name ${dataset} --subset-size ${subset_size} --num-classes ${NUM_CLASSES} --epochs ${epoch} $TARGET_HYPERS --target-epsilon $epsilon --n-trials ${DEFAULT_N_TRIALS} --seed ${SEED} --physical-batch-size 40 --optuna-config conf/optuna_hypers-subset${subset_size}.conf --optuna-target-metric MulticlassAccuracy --optuna-direction maximize --experiment-name ${EXPERIMENT_NAME} --log-dir ${LOG_DIR} ${OTHER_SETTINGS} --${hyper_name_switch} ${hyper_value}"
+    local CMD_PREFIX="sbatch -J ${EXPERIMENT_NAME} run8.sh run.py optimize --num-workers 7 --model-name ${model} --dataset-name ${dataset} --subset-size ${subset_size} --num-classes ${NUM_CLASSES} --epochs ${epoch} $TARGET_HYPERS --target-epsilon $epsilon --n-trials ${DEFAULT_N_TRIALS} --seed ${SEED} --physical-batch-size 40 --optuna-config conf/optuna_hypers-subset${subset_size}.conf --optuna-target-metric MulticlassAccuracy --optuna-direction maximize --experiment-name ${EXPERIMENT_NAME} --log-dir ${LOG_DIR} --optuna-journal $OPTUNA_JOURNAL ${OTHER_SETTINGS} --${hyper_name_switch} ${hyper_value}"
 
     # Check for and handle resuming of experiments
     local EXPERIMENT_DIR="${LOG_DIR}/${EXPERIMENT_NAME}"
@@ -100,13 +102,8 @@ function submit_experiment() {
         return
     fi
 
-    if [ ! -f "${LOG_DIR}/optuna.journal" ]; then
-        touch "${LOG_DIR}/optuna.journal"
-    fi
-
-
     if is_job_submitted $EXPERIMENT_NAME; then
-        local N_TRIALS=$(python bin/get_n_trials.py --optuna-journal "${LOG_DIR}/optuna.journal" --study-name "${EXPERIMENT_NAME}")
+        local N_TRIALS=$(python bin/get_n_trials.py --optuna-journal $OPTUNA_JOURNAL --study-name "${EXPERIMENT_NAME}")
 
         if [ "$N_TRIALS" -eq -1 ]; then
             local REMAINING_TRIALS=$DEFAULT_N_TRIALS
