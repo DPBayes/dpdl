@@ -19,7 +19,7 @@ def read_csv_file(file_path):
         return list(reader)
 
 def process_experiment_directory(directory, pattern=None):
-    data = {}
+    data = []
 
     print(f'Processing experiments in directory: {directory}')
     for entry in os.listdir(directory):
@@ -58,7 +58,7 @@ def process_experiment_directory(directory, pattern=None):
                 if os.path.exists(snr_file_path):
                     experiment_data['signal_to_noise_ratio'] = read_csv_file(snr_file_path)
 
-                data[entry] = experiment_data
+                data.append(experiment_data)
 
             except Exception as e:
                 raise Exception(f'Error processing {experiment_path}: {e}')
@@ -72,9 +72,9 @@ def main():
 
     args = parser.parse_args()
 
-    all_data = {}
+    all_data = []
     for directory in args.directories:
-        all_data.update(process_experiment_directory(directory, args.filter))
+        all_data.extend(process_experiment_directory(directory, args.filter))
 
     with open(args.output, 'w') as outfile:
         json.dump(all_data, outfile, indent=4)
