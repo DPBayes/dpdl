@@ -10,9 +10,11 @@ if ! python -c "import optuna" &> /dev/null; then
     exit 1
 fi
 
-EXPERIMENT_BASES=("08-hyper-variation-with-fixed-epochs__batch_size_variation"
-                  "08-hyper-variation-with-fixed-epochs__max_grad_norm_variation"
-                  "08-hyper-variation-with-fixed-epochs__learning_rate_variation")
+SEED=43
+
+EXPERIMENT_BASES=("08-hyper-variation-with-fixed-epochs__batch_size_variation__Extension_Seed${SEED}"
+                  "08-hyper-variation-with-fixed-epochs__max_grad_norm_variation__Extension_Seed${SEED}"
+                  "08-hyper-variation-with-fixed-epochs__learning_rate_variation__Extension_Seed${SEED}")
 
 # Base configurations
 EPOCH_VALUES=("10" "40")
@@ -25,7 +27,6 @@ MAX_GRAD_NORMS=("0.1" "0.18" "0.32" "0.56" "1.0" "1.78" "3.16" "5.62" "10")
 LEARNING_RATES=("0.000001" "0.000003" "0.00001" "0.000032" "0.0001" "0.000316" "0.001" "0.003162" "0.01" "0.031623" "0.1")
 
 # Other settings
-SEED=42
 DEFAULT_N_TRIALS=20
 OTHER_SETTINGS="--privacy --use-steps --normalize-clipping --zero-head --peft film"
 
@@ -116,8 +117,8 @@ function submit_experiment() {
         fi
 
         if [ "$REMAINING_TRIALS" -le 0 ]; then
-            echo "Experiment ${EXPERIMENT_NAME} has already completed the designated number of trials."
-            return
+            echo "Experiment ${EXPERIMENT_NAME} has already completed the designated number of trials. Running last training round."
+            local REMAINING_TRIALS=0
         fi
     else
         local REMAINING_TRIALS=$DEFAULT_N_TRIALS
