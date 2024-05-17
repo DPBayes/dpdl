@@ -12,6 +12,9 @@ torch.set_float32_matmul_precision('high')
 torch.use_deterministic_algorithms(True)
 torch.backends.cudnn.benchmark = False
 
+# Fix Huggingface datasets map to work with multiple proceses.
+torch.set_num_threads(1)
+
 def main():
     log = configure_logger()
 
