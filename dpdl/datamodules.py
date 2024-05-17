@@ -348,6 +348,7 @@ class ImageDataModule(DataModule):
 
         self.num_classes = num_classes
 
+
     def _apply_transforms_to_datasets(self):
         def _apply_transforms(transforms, label_field, image_field, examples):
             log.info('.')
@@ -361,29 +362,23 @@ class ImageDataModule(DataModule):
 
             transforms_func = partial(_apply_transforms, self.transforms, self._label_field, self._image_field)
 
-            # XXX: For some reason num_proc > 1 started causing hangs.
-            #      Also default batch size (1000) seems to hang, even
-            #      with one process.
             self.train_dataset = self.train_dataset.map(
                 transforms_func,
-                num_proc=1,
+                num_proc=self.num_workers,
                 batched=True,
-                batch_size=256,
                 load_from_cache_file=True,
             )
             self.val_dataset = self.val_dataset.map(
                 transforms_func,
-                num_proc=1,
+                num_proc=self.num_workers,
                 batched=True,
-                batch_size=256,
                 load_from_cache_file=True,
             )
             if self.test_dataset:
                 self.test_dataset = self.test_dataset.map(
                     transforms_func,
-                    num_proc=1,
+                    num_proc=self.num_workers,
                     batched=True,
-                    batch_size=256,
                     load_from_cache_file=True,
                 )
 
