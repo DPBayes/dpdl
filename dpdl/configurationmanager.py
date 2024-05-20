@@ -84,6 +84,7 @@ class Configuration(BaseModel):
     zero_head: bool = False
     peft: Optional[Literal['lora', 'film', 'head-only']]
     pretrained: bool = True
+    cache_features: Optional[bool] = False
     use_steps: Optional[bool] = False
     evaluation_mode: Optional[bool] = False
 
@@ -144,6 +145,16 @@ class Configuration(BaseModel):
 
         return values
 
+    @root_validator(pre=True)
+    def check_feature_cache(cls, values):
+        cache_features = values.get('cache_features')
+        peft_method = values.get('peft')
+
+        if cache_features and peft_method != 'head-only':
+            raise ValueError(f'Head only training required if feature cache is enabled.')
+
+        return values
+
     def __str__(self):
         attributes = [
             ('Command', self.command),
@@ -165,6 +176,7 @@ class Configuration(BaseModel):
             ('Zero head weights', self.zero_head),
             ('PEFT method', self.peft),
             ('Use pretrained model', self.pretrained),
+            ('Use precomputed features', self.cache_features),
             ('Use steps instead of epochs', self.use_steps),
             ('Evaluation mode', self.evaluation_mode),
         ]

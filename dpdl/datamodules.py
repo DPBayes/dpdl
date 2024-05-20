@@ -348,6 +348,67 @@ class ImageDataModule(DataModule):
 
         self.num_classes = num_classes
 
+    def cache_features(self, model):
+        """Cache features for the train, validation, and test datasets using the provided model."""
+
+        if torch.distributed.get_rank() == 0:
+            log.info('Feature caching enabled, caching features.')
+
+        def _extract_features(model, image_field, examples):
+            inputs = examples[image_field]
+
+            with torch.no_grad():
+                features = model.forward_features(inputs)
+
+            examples['features'] = features.cpu()
+
+            return examples
+
+        model = model.cuda()
+        _extract_features_fn = partial(_extract_features, model, self._image_field)
+
+        if torch.distributed.get_rank() == 0:
+            log.info(' - Processing train set.')
+
+        datasets_map_bs = 512
+
+        self.train_dataset = self.train_dataset.with_format('torch', device='cuda').map(
+            _extract_features_fn,
+            batched=True,
+            batch_size=datasets_map_bs,
+            remove_columns=self._image_field,
+            num_proc=self.num_workers,
+        )
+
+        if torch.distributed.get_rank() == 0:
+            log.info(' - Processing validation set.')
+
+        self.val_dataset = self.val_dataset.with_format('torch', device='cuda').map(
+            _extract_features_fn,
+            batched=True,
+            batch_size=datasets_map_bs,
+            remove_columns=self._image_field,
+            num_proc=self.num_workers,
+        )
+
+        if self.test_dataset:
+            if torch.distributed.get_rank() == 0:
+                log.info(' - Processing test set.')
+
+            self.test_dataset = self.test_dataset.with_format('torch', device='cuda').map(
+                _extract_features_fn,
+                batched=True,
+                batch_size=datasets_map_bs,
+                remove_columns=self._image_field,
+            )
+
+        # Update the collation function to the one that uses cached features
+        self._collate_fn = self._collate_fn_with_cached_features
+
+        self._create_dataloaders()
+
+        if torch.distributed.get_rank() == 0:
+            log.info('Feature caching finished.')
 
     def _apply_transforms_to_datasets(self):
         def _apply_transforms(transforms, label_field, image_field, examples):
@@ -360,7 +421,12 @@ class ImageDataModule(DataModule):
                 # ImageNet contains also grayscale images
                 self._add_rgb_transform()
 
-            transforms_func = partial(_apply_transforms, self.transforms, self._label_field, self._image_field)
+            transforms_func = partial(
+                _apply_transforms,
+                self.transforms,
+                self._label_field,
+                self._image_field,
+            )
 
             self.train_dataset = self.train_dataset.map(
                 transforms_func,
@@ -368,12 +434,14 @@ class ImageDataModule(DataModule):
                 batched=True,
                 load_from_cache_file=True,
             )
+
             self.val_dataset = self.val_dataset.map(
                 transforms_func,
                 num_proc=self.num_workers,
                 batched=True,
                 load_from_cache_file=True,
             )
+
             if self.test_dataset:
                 self.test_dataset = self.test_dataset.map(
                     transforms_func,
@@ -400,6 +468,18 @@ class ImageDataModule(DataModule):
             labels[i] = batch[i][label_field]
 
         return images, labels
+
+    @staticmethod
+    def _collate_fn_with_cached_features(label_field, image_field, batch):
+        features = torch.stack(
+            [item['features'] for item in batch]
+        )
+
+        labels = torch.tensor(
+            [item[label_field] for item in batch]
+        )
+
+        return features, labels
 
 class DataModuleFactory:
     @staticmethod

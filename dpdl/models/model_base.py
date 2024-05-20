@@ -5,13 +5,16 @@ class ModelBase(torch.nn.Module):
     def __init__(
         self,
         model_instance: torch.nn.Module = None,
-        num_classes: int = 10
+        num_classes: int = 10,
+        use_feature_cache: bool = False,
     ):
 
         super().__init__()
 
         self.model = model_instance
         self.num_classes = num_classes
+        self.use_feature_cache = use_feature_cache
+
         self._criterion = torch.nn.CrossEntropyLoss().cuda()
 
         # let's track the training accuracy
@@ -32,7 +35,16 @@ class ModelBase(torch.nn.Module):
         ])
 
     def forward(self, x):
-        return self.model(x)
+        if self.use_feature_cache:
+            return self.model.forward_head(x)
+        else:
+            return self.model(x)
+
+    def forward_head(self, x):
+        return self.model.forward_head(x)
+
+    def forward_features(self, x):
+        return self.model.forward_features(x)
 
     def criterion(self, logits, targets):
         return self._criterion(logits, targets)
@@ -51,5 +63,4 @@ class ModelBase(torch.nn.Module):
 
     def get_classifier(self):
         return self.model.get_classifier()
-
 

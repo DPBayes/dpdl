@@ -11,5 +11,11 @@ class TimmModel(torch.nn.Module):
     def forward(self, x):
         return self.model(x)
 
+    def forward_head(self, x):
+        return self.model.forward_head(x)
+
+    def forward_features(self, x):
+        return self.model.forward_features(x)
+
     def get_classifier(self):
         return self.model.get_classifier()
