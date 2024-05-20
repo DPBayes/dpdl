@@ -50,7 +50,11 @@ class ModelFactory:
             transforms = timm.data.transforms_factory.create_transform(**model_config)
 
         # Wrap the instantiated model with ModelBase
-        model = ModelBase(model_instance=model_instance, num_classes=configuration.num_classes)
+        model = ModelBase(
+            model_instance=model_instance,
+            num_classes=configuration.num_classes,
+            use_feature_cache=configuration.cache_features,
+        )
 
         # zero the head weights?
         if configuration.zero_head:

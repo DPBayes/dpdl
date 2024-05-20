@@ -2,18 +2,11 @@ import os
 import sys
 import torch
 import typer
+import multiprocess
 
 from dpdl.cli import cli
 from dpdl.logger_config import configure_logger
 
-torch.set_float32_matmul_precision('high')
-
-# reproducible results
-torch.use_deterministic_algorithms(True)
-torch.backends.cudnn.benchmark = False
-
-# Fix Huggingface datasets map to work with multiple proceses.
-torch.set_num_threads(1)
 
 def main():
     log = configure_logger()
@@ -49,7 +42,20 @@ def main():
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         sys.argv.append('--help')
+
         typer.run(cli)
+
+    torch.set_float32_matmul_precision('high')
+
+    # Reproducible results
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
+
+    # Fix Huggingface datasets map to work with multiple proceses.
+    torch.set_num_threads(1)
+
+    # Set to spawn so HF datasets map work with distributed
+    multiprocess.set_start_method('spawn')
 
     if '--help' in sys.argv or '-h' in sys.argv:
         typer.run(cli)

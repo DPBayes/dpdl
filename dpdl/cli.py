@@ -136,6 +136,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = True,
+        cache_features: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Cache features from feature extractor (requires head-only training)',
+                rich_help_panel='Training options',
+            )
+        ] = False,
         evaluation_mode: Annotated[
             bool,
             typer.Option(

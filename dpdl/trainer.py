@@ -477,6 +477,17 @@ class TrainerFactory:
         # datamodule needs also the associate transformations
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, transforms)
 
+        # should we cache outputs from the feature extractor?
+        if configuration.cache_features:
+
+            # compute cache on rank 0 only
+            if torch.distributed.get_rank() == 0:
+                datamodule.cache_features(model)
+                torch.distributed.barrier()
+            else:
+                torch.distributed.barrier()
+                datamodule.cache_features(model)
+
         callback_handler = CallbackHandler(
             CallbackFactory.get_callbacks(configuration, hyperparams)
         )
@@ -529,6 +540,9 @@ class TrainerFactory:
 
         # now we can create the datamodule that uses the transformations
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, transforms)
+
+        if configuration.cache_features:
+            datamodule.cache_features(model)
 
         callback_handler = CallbackHandler(
             CallbackFactory.get_callbacks(configuration, hyperparams)
