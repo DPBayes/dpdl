@@ -64,6 +64,8 @@ class DataModule:
         seed: int = 0,
         privacy: bool = True,
         test_size: float = 0.1,
+        validation_size: float = 0.1,
+        split_seed: int = 42,
         evaluation_mode: bool = False,
         transforms: torchvision.transforms.transforms.Compose = None,
     ):
@@ -78,6 +80,8 @@ class DataModule:
         self.shots = shots
         self.privacy = privacy
         self.test_size = test_size
+        self.val_size = validation_size
+        self.split_seed = split_seed
         self.evaluation_mode = evaluation_mode
         self.transforms = transforms
 
@@ -168,11 +172,8 @@ class DataModule:
         # Set dataset label fields based on the training split
         self._set_dataset_label_fields(dataset_splits['train'])
 
-        # Check if there's a validation split available
-        has_validation_split = 'validation' in dataset_splits
-
         # Process datasets (split/train/validate as necessary)
-        self._load_huggingface_dataset(dataset_splits, has_validation_split)
+        self._load_huggingface_dataset(dataset_splits)
 
     def _get_tfds_cache_fpath(self):
         # Get the base cache directory
@@ -190,9 +191,49 @@ class DataModule:
 
         return cache_file_path
 
-    def _load_huggingface_dataset(self, dataset_splits, has_validation_split):
-        # Always use the test set as-is
-        self.test_dataset = dataset_splits.get('test', None)
+    def _load_huggingface_dataset(self, dataset_splits):
+        # Check if there's a validation split available
+        has_validation_split = 'validation' in dataset_splits
+        has_test_split = 'test' in dataset_splits
+
+        # We have all the splits, just use them as they are
+        if has_validation_split and has_test_split:
+            # Use separate validation set if it exists
+            self.train_dataset = dataset_splits['train']
+            self.val_dataset = dataset_splits['validation']
+            self.test_dataset = dataset_splits['test']
+
+        # No validation or test splist, create both
+        if not has_validation_split and not has_test_split:
+            # Split the training dataset into training and validation
+            self.train_dataset, val_and_test_split = dataset_splits['train'].train_test_split(
+                test_size=(self.test_size + self.val_size),
+                seed=self.split_seed,
+                shuffle=True,
+                stratify_by_column=self._label_field,
+            ).values()
+
+            self.val_dataset, self.test_dataset = vald_and_test_split.train_test_split(
+                test_size=0.5,
+                seed=self.split_seed,
+                shuffle=False,
+                stratify_by_column=self._label_field,
+            ).values()
+
+        # We have only test split, create validation split from train
+        if not has_validation_split and has_test_split:
+            # Split the training dataset into training and validation
+            self.train_dataset, self.val_dataset = dataset_splits['train'].train_test_split(
+                test_size=self.test_size,
+                seed=self.split_seed,
+                shuffle=True,
+                stratify_by_column=self._label_field,
+            ).values()
+
+            self.test_dataset = dataset_splits['test']
+
+        if has_validation_split and not has_test_split:
+            raise ValueError('Splitting not implemented: Dataset has validation split but no test split.')
 
         if self.evaluation_mode:
             if has_validation_split:
@@ -202,21 +243,8 @@ class DataModule:
                 # Use the full training set
                 self.train_dataset = dataset_splits['train']
 
-            # Validation during evaluation mode could be on the test set or another set if specified
+            # In evaluation mode, we validate on the test dataset
             self.val_dataset = self.test_dataset
-        else:
-            # If not in evaluation mode, we train on the train set, and validate on the validation set
-            if has_validation_split:
-                # Use separate validation set if it exists
-                self.train_dataset = dataset_splits['train']
-                self.val_dataset = dataset_splits['validation']
-            else:
-                # Split the training dataset into training and validation
-                self.train_dataset, self.val_dataset = dataset_splits['train'].train_test_split(
-                    test_size=self.test_size,
-                    seed=self.seed,
-                    shuffle=True,
-                ).values()
 
     def _set_dataset_label_fields(self, dataset):
         # extract the keys that contain the labels and images
@@ -427,7 +455,7 @@ class ImageDataModule(DataModule):
                 self._label_field,
                 self._image_field,
             )
-
+            log.info('APPLY TRAIN')
             self.train_dataset = self.train_dataset.map(
                 transforms_func,
                 num_proc=self.num_workers,

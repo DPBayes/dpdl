@@ -55,7 +55,7 @@ if __name__ == '__main__':
     torch.set_num_threads(1)
 
     # Set to spawn so HF datasets map work with distributed
-    multiprocess.set_start_method('spawn')
+    multiprocess.set_start_method('spawn', force=True)
 
     if '--help' in sys.argv or '-h' in sys.argv:
         typer.run(cli)
