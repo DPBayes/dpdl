@@ -80,6 +80,7 @@ class Configuration(BaseModel):
     optuna_sampler: str = 'BoTorchSampler'
     subset_size: Optional[float]
     shots: Optional[int]
+    stratify_shots: Optional[bool] = True
     num_classes: Optional[int]
     zero_head: bool = False
     peft: Optional[Literal['lora', 'film', 'head-only']]
@@ -87,6 +88,7 @@ class Configuration(BaseModel):
     cache_features: Optional[bool] = False
     use_steps: Optional[bool] = False
     evaluation_mode: Optional[bool] = False
+    dataset_label_field: Optional[str] = None
 
     class Config:
         # Fix Pydantic warning:
@@ -163,6 +165,7 @@ class Configuration(BaseModel):
             ('Optimizer', self.optimizer),
             ('Dataset source', self.dataset_source),
             ('Dataset name', self.dataset_name),
+            ('Dataset label field', self.dataset_label_field),
             ('Physical batch size', self.physical_batch_size),
             ('Num workers', self.num_workers),
             ('Validation frequency', self.validation_frequency),
@@ -171,6 +174,7 @@ class Configuration(BaseModel):
             ('Experiment dame', self.experiment_name),
             ('Overwrite experiment', self.overwrite_experiment),
             ('Shots', self.shots),
+            ('Use stratified sampling for few-shot dataset', self.stratify_shots),
             ('Subset size', self.subset_size),
             ('Num classes', self.num_classes),
             ('Zero head weights', self.zero_head),

@@ -8,7 +8,7 @@ import torchvision
 import numpy as np
 import tensorflow_datasets as tfds
 
-from collections import defaultdict
+from collections import Counter
 from functools import partial
 from typing import Tuple
 
@@ -61,6 +61,7 @@ class DataModule:
         num_workers: int = 4,
         subset_size: int = None,
         shots: int = None,
+        stratify_shots: bool = True,
         seed: int = 0,
         privacy: bool = True,
         test_size: float = 0.1,
@@ -68,6 +69,8 @@ class DataModule:
         split_seed: int = 42,
         evaluation_mode: bool = False,
         transforms: torchvision.transforms.transforms.Compose = None,
+        label_field: str = None,
+        image_field: str = None,
     ):
         self.dataset_name = dataset_name
         self.dataset_source = dataset_source
@@ -84,6 +87,9 @@ class DataModule:
         self.split_seed = split_seed
         self.evaluation_mode = evaluation_mode
         self.transforms = transforms
+        self._image_field = image_field
+        self._label_field = label_field
+        self._stratify_shots = stratify_shots
 
         self._dataloaders = {
             'train': None,
@@ -133,14 +139,6 @@ class DataModule:
             # everything on disk.
             self._load_datasets()
 
-        if torch.distributed.get_rank() == 0:
-            # apply possible tranformations
-            self._apply_transforms_to_datasets()
-            torch.distributed.barrier()
-        else:
-            torch.distributed.barrier()
-            self._apply_transforms_to_datasets()
-
         # if subset of dataset is requested, we'll do stratified sampling
         if self.subset_size is not None and self.subset_size < 1.0:
             self.train_dataset = self._get_stratified_subset(self.train_dataset)
@@ -148,6 +146,14 @@ class DataModule:
         elif self.shots is not None:
             # NB: for few-shot, we'll keep the validation dataset intact
             self.train_dataset = self._get_few_shot_subset(self.train_dataset)
+
+        if torch.distributed.get_rank() == 0:
+            # apply possible tranformations
+            self._apply_transforms_to_datasets()
+            torch.distributed.barrier()
+        else:
+            torch.distributed.barrier()
+            self._apply_transforms_to_datasets()
 
     def _load_datasets(self):
         if self.dataset_source == 'huggingface':
@@ -170,7 +176,10 @@ class DataModule:
             raise ValueError(f'Unsupported dataset source: {self.dataset_source}')
 
         # Set dataset label fields based on the training split
-        self._set_dataset_label_fields(dataset_splits['train'])
+        self._set_dataset_label_fields(dataset_splits)
+
+        # Make sure the dataset label field is of type ClassLabel
+        dataset_splits = self._enforce_label_field_type(dataset_splits)
 
         # Process datasets (split/train/validate as necessary)
         self._load_huggingface_dataset(dataset_splits)
@@ -246,25 +255,53 @@ class DataModule:
             # In evaluation mode, we validate on the test dataset
             self.val_dataset = self.test_dataset
 
-    def _set_dataset_label_fields(self, dataset):
+    def _enforce_label_field_type(self, dataset_splits):
+        # Iterate through all dataset splits, and make the label field ClassLabel
+        for key in dataset_splits.keys():
+            dataset = dataset_splits[key]
+
+            # If it already is a ClassLabel, HF dataset will throw an error, so check first
+            if not isinstance(dataset[self._label_field], datasets.ClassLabel):
+                dataset = dataset.class_encode_column(self._label_field)
+
+            dataset_splits[key] = dataset
+
+        # Automatically determine the number of classes
+        self.num_classes = dataset_splits['train'].features[self._label_field].num_classes
+
+        return dataset_splits
+
+    def _set_dataset_label_fields(self, dataset_splits):
         # extract the keys that contain the labels and images
-        features = list(dataset.features.keys())
+        log.info('Setting dataset fields.')
+        self._set_image_field(dataset_splits['train'])
+        self._set_label_field(dataset_splits['train'])
 
-        if len(features) == 2:
-            # easy case, it just contains the image and label field
-            self._image_field, self._label_field = features
-        elif len(features) == 3:
-            self._image_field, label_fields = features[0], features[1:]
+    def _set_image_field(self, dataset):
+        if self._image_field is None:
+            for feature_name, feature in dataset.features.items():
+                if isinstance(feature, datasets.Image):
+                    self._image_field = feature_name
+                    break
 
-            # NB: For CIFAR-100 the `fine_label` is the first element in the list.
-            #     This might need some adjusting for other datasets with multiple labels.
-            self._label_field = label_fields[0]
+            if self._image_field:
+                log.info(f' - Determined image field: {self._image_field}')
+            else:
+                features = dataset.features.keys()
+                raise ValueError('Could not determine image field for dataset.')
 
-            if torch.distributed.get_rank() == 0:
-                log.info(f'Warning: Multiple dataset labels defined. Using `{self._label_field}`.')
+    def _set_label_field(self, dataset):
+        if self._label_field is None:
+            for feature_name, feature in dataset.features.items():
+                if isinstance(feature, datasets.ClassLabel) or feature_name == 'label':
+                    self._label_field = feature_name
+                    break
 
-        else:
-            raise ValueError(f'Failed to get dataset fields. Unknown number of features: {len(features)}')
+            if self._label_field:
+                log.info(f' - Determined label field: {self._label_field}')
+            else:
+                features = dataset.features.keys()
+                raise ValueError('Could not determine label field for dataset. Available features: {features}')
 
     def _apply_transforms_to_datasets(self):
         return # no default transforms
@@ -344,37 +381,44 @@ class DataModule:
     def _get_stratified_subset(self, dataset):
         split_dataset = dataset.train_test_split(
             test_size=self.subset_size,
-            seed=self.seed,
+            seed=self.split_seed,
             stratify_by_column=self._label_field,
         )
 
         return split_dataset['test']
 
     def _get_few_shot_subset(self, dataset):
+        if not self.num_classes:
+            raise ValueError('Number of classes unknown, can not create few shot dataset.')
+
         test_size = self.shots * self.num_classes
 
-        # special case. train_test_split is unable to "split" if
+        # Special case: `train_test_split` is unable to "split" if
         # the requested split size equals the dataset size.
         if test_size == len(dataset):
             return dataset
 
         split_dataset = dataset.train_test_split(
             test_size=test_size,
-            seed=self.seed,
-            stratify_by_column=self._label_field,
+            seed=self.split_seed,
+            stratify_by_column=self._label_field if self._stratify_shots else None,
         )
 
-        return split_dataset['test']
+        subset = split_dataset['test']
+
+        if torch.distributed.get_rank() == 0:
+            c = Counter(subset[self._label_field])
+            n_examples = sum(c.values())
+            log.info(f'Collected few shot dataset with {n_examples} examples: {c}')
+
+        return subset
 
 class ImageDataModule(DataModule):
     def __init__(
         self,
-        num_classes: int = 10,
         **kwargs
     ):
         super().__init__(**kwargs)
-
-        self.num_classes = num_classes
 
     def cache_features(self, model):
         """Cache features for the train, validation, and test datasets using the provided model."""
@@ -455,7 +499,7 @@ class ImageDataModule(DataModule):
                 self._label_field,
                 self._image_field,
             )
-            log.info('APPLY TRAIN')
+
             self.train_dataset = self.train_dataset.map(
                 transforms_func,
                 num_proc=self.num_workers,
@@ -529,6 +573,7 @@ class DataModuleFactory:
             privacy=configuration.privacy,
             transforms=transforms,
             evaluation_mode=configuration.evaluation_mode,
+            label_field=configuration.dataset_label_field,
         )
 
         datamodule.initialize()
