@@ -172,12 +172,19 @@ def cli(
             )
         ] = None,
         shots: Annotated[
-            int,
+            Optional[int],
             typer.Option(
                 help='Number of shots (training example per class) to use',
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        stratify_shots: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Use stratified sampling when constructing few-shot dataset',
+                rich_help_panel='Dataset options',
+            )
+        ] = True,
         num_classes: Annotated[
             Optional[int],
             typer.Option(
@@ -185,6 +192,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = 10,
+        dataset_label_field: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Name of the field that determines label for the dataset',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
         log_dir: Annotated[
             str,
             typer.Option(
