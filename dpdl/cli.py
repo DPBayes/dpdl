@@ -185,13 +185,6 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = True,
-        num_classes: Annotated[
-            Optional[int],
-            typer.Option(
-                help='Number of classes for a classification problem',
-                rich_help_panel='Dataset options',
-            )
-        ] = 10,
         dataset_label_field: Annotated[
             Optional[str],
             typer.Option(

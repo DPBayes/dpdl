@@ -470,16 +470,19 @@ class TrainerFactory:
 
     @staticmethod
     def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
+        # First create DataModule, it can figure out the number of classes
+        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
+        num_classes = datamodule.get_num_classes()
+
         # setup data, model, and optimizer
-        model, transforms = ModelFactory.get_model(configuration, hyperparams)
+        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
-        # datamodule needs also the associate transformations
-        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, transforms)
+        # Initialize the datamodule with the transformations
+        datamodule.initialize(transforms)
 
         # should we cache outputs from the feature extractor?
         if configuration.cache_features:
-
             # compute cache on rank 0 only
             if torch.distributed.get_rank() == 0:
                 datamodule.cache_features(model)
@@ -534,15 +537,26 @@ class TrainerFactory:
 
             return target_delta, target_epsilon
 
-        # setup data, model, and optimizer
-        model, transforms = ModelFactory.get_model(configuration, hyperparams)
+        # First initialize the DataModule, it will know about the number of classes
+        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
+        num_classes = datamodule.get_num_classes()
+
+        # Now, setup data, model, and optimizer
+        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
-        # now we can create the datamodule that uses the transformations
-        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, transforms)
+        # The datamodule needs to be aware of the transformations, now we can initialize it
+        datamodule.initialize(transforms)
 
+        # Are we caching the outputs of the feature extractor
         if configuration.cache_features:
-            datamodule.cache_features(model)
+            # compute cache on rank 0 only
+            if torch.distributed.get_rank() == 0:
+                datamodule.cache_features(model)
+                torch.distributed.barrier()
+            else:
+                torch.distributed.barrier()
+                datamodule.cache_features(model)
 
         callback_handler = CallbackHandler(
             CallbackFactory.get_callbacks(configuration, hyperparams)

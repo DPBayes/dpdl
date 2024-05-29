@@ -68,7 +68,6 @@ class DataModule:
         validation_size: float = 0.1,
         split_seed: int = 42,
         evaluation_mode: bool = False,
-        transforms: torchvision.transforms.transforms.Compose = None,
         label_field: str = None,
         image_field: str = None,
     ):
@@ -86,7 +85,6 @@ class DataModule:
         self.val_size = validation_size
         self.split_seed = split_seed
         self.evaluation_mode = evaluation_mode
-        self.transforms = transforms
         self._image_field = image_field
         self._label_field = label_field
         self._stratify_shots = stratify_shots
@@ -97,8 +95,35 @@ class DataModule:
             'test': None,
         }
 
-    def initialize(self):
-        self._initialize_datasets()
+        # The _load_datasets method will fill this
+        self.num_classes = None
+
+        # Load datasets to memory
+        if torch.distributed.get_rank() == 0:
+            # First load the data only rank 0. This is because, the datasets
+            # might need to be loaded over the network, and rank 0 can cache
+            # them to disk.
+            self._load_datasets()
+            torch.distributed.barrier()
+        else:
+            # Other ranks wait here for rank 0 to do its job.
+            torch.distributed.barrier()
+
+            # Now other ranks can load them to memory directly from disk
+            self._load_datasets()
+
+    def initialize(self, transforms: torchvision.transforms.transforms.Compose):
+        self.transforms = transforms
+
+        # Again, first do the initialization on rank 0, so it can cache everything
+        # on disk without race conditions.
+        # NB: There _might_ be some methods to speed this up using multiple GPUs.
+        if torch.distributed.get_rank() == 0:
+            self._initialize_datasets()
+            torch.distributed.barrier()
+        else:
+            torch.distributed.barrier()
+            self._initialize_datasets()
 
         # we use batch size of -1 to signal full batch
         if self.batch_size == -1:
@@ -115,6 +140,9 @@ class DataModule:
 
         self._initialize_dataloaders()
 
+    def get_num_classes(self):
+        return self.num_classes
+
     def get_dataloader(self, name):
         return self._dataloaders.get(name)
 
@@ -126,18 +154,8 @@ class DataModule:
         return batch
 
     def _initialize_datasets(self):
-        # first load the data only rank 0
-        if torch.distributed.get_rank() == 0:
-            self._load_datasets()
-            torch.distributed.barrier()
-        else:
-            # other ranks will wait ehre
-            torch.distributed.barrier()
-
-            # then after all preprocessing is done, load the data
-            # on other ranks also. Huggingface datasets has cached
-            # everything on disk.
-            self._load_datasets()
+        # Create datasets train/validation/test splits if they do not yet exists
+        self._create_dataset_splits()
 
         # if subset of dataset is requested, we'll do stratified sampling
         if self.subset_size is not None and self.subset_size < 1.0:
@@ -147,15 +165,10 @@ class DataModule:
             # NB: for few-shot, we'll keep the validation dataset intact
             self.train_dataset = self._get_few_shot_subset(self.train_dataset)
 
-        if torch.distributed.get_rank() == 0:
-            # apply possible tranformations
-            self._apply_transforms_to_datasets()
-            torch.distributed.barrier()
-        else:
-            torch.distributed.barrier()
-            self._apply_transforms_to_datasets()
+        self._apply_transforms_to_datasets()
 
     def _load_datasets(self):
+        """Load the datasets to memory."""
         if self.dataset_source == 'huggingface':
             if torch.distributed.get_rank() == 0:
                 log.info(f'Loading dataset "{self.dataset_name}" from Huggingface datasets.')
@@ -179,10 +192,12 @@ class DataModule:
         self._set_dataset_label_fields(dataset_splits)
 
         # Make sure the dataset label field is of type ClassLabel
-        dataset_splits = self._enforce_label_field_type(dataset_splits)
+        self._dataset_splits = self._enforce_label_field_type(dataset_splits)
 
-        # Process datasets (split/train/validate as necessary)
-        self._load_huggingface_dataset(dataset_splits)
+        # Automatically determine the number of classes
+        # NB: This can be done if the label is of type ClassLabel
+        self.num_classes = dataset_splits['train'].features[self._label_field].num_classes
+        log.info(f'Determined the number of classes to be {self.num_classes}.')
 
     def _get_tfds_cache_fpath(self):
         # Get the base cache directory
@@ -200,22 +215,22 @@ class DataModule:
 
         return cache_file_path
 
-    def _load_huggingface_dataset(self, dataset_splits):
+    def _create_dataset_splits(self):
         # Check if there's a validation split available
-        has_validation_split = 'validation' in dataset_splits
-        has_test_split = 'test' in dataset_splits
+        has_validation_split = 'validation' in self._dataset_splits
+        has_test_split = 'test' in self._dataset_splits
 
         # We have all the splits, just use them as they are
         if has_validation_split and has_test_split:
             # Use separate validation set if it exists
-            self.train_dataset = dataset_splits['train']
-            self.val_dataset = dataset_splits['validation']
-            self.test_dataset = dataset_splits['test']
+            self.train_dataset = self._dataset_splits['train']
+            self.val_dataset = self._dataset_splits['validation']
+            self.test_dataset = self._dataset_splits['test']
 
         # No validation or test splist, create both
         if not has_validation_split and not has_test_split:
             # Split the training dataset into training and validation
-            self.train_dataset, val_and_test_split = dataset_splits['train'].train_test_split(
+            self.train_dataset, val_and_test_split = self._dataset_splits['train'].train_test_split(
                 test_size=(self.test_size + self.val_size),
                 seed=self.split_seed,
                 shuffle=True,
@@ -232,14 +247,14 @@ class DataModule:
         # We have only test split, create validation split from train
         if not has_validation_split and has_test_split:
             # Split the training dataset into training and validation
-            self.train_dataset, self.val_dataset = dataset_splits['train'].train_test_split(
+            self.train_dataset, self.val_dataset = self._dataset_splits['train'].train_test_split(
                 test_size=self.test_size,
                 seed=self.split_seed,
                 shuffle=True,
                 stratify_by_column=self._label_field,
             ).values()
 
-            self.test_dataset = dataset_splits['test']
+            self.test_dataset = self._dataset_splits['test']
 
         if has_validation_split and not has_test_split:
             raise ValueError('Splitting not implemented: Dataset has validation split but no test split.')
@@ -247,10 +262,13 @@ class DataModule:
         if self.evaluation_mode:
             if has_validation_split:
                 # Combine training and validation sets if we have a separate validation set
-                self.train_dataset = datasets.concatenate_datasets([dataset_splits['train'], dataset_splits['validation']])
+                self.train_dataset = datasets.concatenate_datasets([
+                    self._dataset_splits['train'],
+                    self._dataset_splits['validation']
+                ])
             else:
                 # Use the full training set
-                self.train_dataset = dataset_splits['train']
+                self.train_dataset = self._dataset_splits['train']
 
             # In evaluation mode, we validate on the test dataset
             self.val_dataset = self.test_dataset
@@ -265,9 +283,6 @@ class DataModule:
                 dataset = dataset.class_encode_column(self._label_field)
 
             dataset_splits[key] = dataset
-
-        # Automatically determine the number of classes
-        self.num_classes = dataset_splits['train'].features[self._label_field].num_classes
 
         return dataset_splits
 
@@ -558,7 +573,6 @@ class DataModuleFactory:
     def get_datamodule(
         configuration: Configuration,
         hyperparams: Hyperparameters,
-        transforms: torchvision.transforms.transforms.Compose,
     ) -> DataModule:
         datamodule = ImageDataModule(
             dataset_name=configuration.dataset_name,
@@ -571,12 +585,9 @@ class DataModuleFactory:
             batch_size=hyperparams.batch_size,
             sample_rate=hyperparams.sample_rate,
             privacy=configuration.privacy,
-            transforms=transforms,
             evaluation_mode=configuration.evaluation_mode,
             label_field=configuration.dataset_label_field,
         )
-
-        datamodule.initialize()
 
         return datamodule
 
