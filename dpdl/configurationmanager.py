@@ -81,7 +81,6 @@ class Configuration(BaseModel):
     subset_size: Optional[float]
     shots: Optional[int]
     stratify_shots: Optional[bool] = True
-    num_classes: Optional[int]
     zero_head: bool = False
     peft: Optional[Literal['lora', 'film', 'head-only']]
     pretrained: bool = True
@@ -176,7 +175,6 @@ class Configuration(BaseModel):
             ('Shots', self.shots),
             ('Use stratified sampling for few-shot dataset', self.stratify_shots),
             ('Subset size', self.subset_size),
-            ('Num classes', self.num_classes),
             ('Zero head weights', self.zero_head),
             ('PEFT method', self.peft),
             ('Use pretrained model', self.pretrained),

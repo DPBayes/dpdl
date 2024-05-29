@@ -13,13 +13,19 @@ log = logging.getLogger(__name__)
 
 class ModelFactory:
     @staticmethod
-    def get_model(configuration, hyperparams=None):
+    def get_model(
+        configuration: Configuration,
+        hyperparams: Hyperparameters,
+        num_classes: int,
+
+    ):
         """
         Create a model instance based on the configuration, with support for PEFT and zeroing head weights.
 
         Parameters:
         - configuration: Configuration object containing model specs.
         - hyperparams: Optional hyperparameters, not directly used here.
+        - num_classes: The number of classes for a classification problem
 
         Returns:
         - A tuple of (ModelBase instance, Data Transforms).
@@ -32,7 +38,7 @@ class ModelFactory:
             # Parse depth and width from model_name, e.g., 'wrn-16-4'
             parts = configuration.model_name.split('-')
             depth, width = int(parts[1]), int(parts[2])
-            model_instance = WideResNet(depth=depth, width=width, num_classes=configuration.num_classes)
+            model_instance = WideResNet(depth=depth, width=width, num_classes=num_classes)
             transforms = model_instance.get_transforms()
         elif configuration.model_name == 'koskela-net':
             model_instance = KoskelaNet()
@@ -41,7 +47,7 @@ class ModelFactory:
             # Default to using TimmModel
             model_instance = TimmModel(
                 model_name=configuration.model_name,
-                num_classes=configuration.num_classes,
+                num_classes=num_classes,
                 pretrained=configuration.pretrained,
             )
 
@@ -52,7 +58,7 @@ class ModelFactory:
         # Wrap the instantiated model with ModelBase
         model = ModelBase(
             model_instance=model_instance,
-            num_classes=configuration.num_classes,
+            num_classes=num_classes,
             use_feature_cache=configuration.cache_features,
         )
 
