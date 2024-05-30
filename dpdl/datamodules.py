@@ -507,15 +507,17 @@ class ImageDataModule(DataModule):
             log.info('Feature caching finished.')
 
     def _apply_transforms_to_datasets(self):
+        if torch.distributed.get_rank() == 0:
+            log.info('Applying transformations to dataset.')
+
         def _apply_transforms(transforms, label_field, image_field, examples):
             log.info('.')
             examples[image_field] = [transforms(image) for image in examples[image_field]]
             return examples
 
         if self.transforms:
-            if self.dataset_name == 'imagenet-1k':
-                # ImageNet contains also grayscale images
-                self._add_rgb_transform()
+            # Make sure all images are RGB
+            self._add_rgb_transform()
 
             transforms_func = partial(
                 _apply_transforms,
