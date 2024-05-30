@@ -146,6 +146,10 @@ class DataModule:
     def get_dataloader(self, name):
         return self._dataloaders.get(name)
 
+    def get_dataset_size(self, which='train_dataset'):
+        dataset = getattr(self, which)
+        return len(dataset)
+
     def set_dataloader(self, name, dataloader):
         self._dataloaders[name] = dataloader
 
@@ -197,7 +201,9 @@ class DataModule:
         # Automatically determine the number of classes
         # NB: This can be done if the label is of type ClassLabel
         self.num_classes = dataset_splits['train'].features[self._label_field].num_classes
-        log.info(f'Determined the number of classes to be {self.num_classes}.')
+
+        if torch.distributed.get_rank() == 0:
+            log.info(f'Determined the number of classes to be {self.num_classes}.')
 
     def _get_tfds_cache_fpath(self):
         # Get the base cache directory
@@ -288,7 +294,9 @@ class DataModule:
 
     def _set_dataset_label_fields(self, dataset_splits):
         # extract the keys that contain the labels and images
-        log.info('Setting dataset fields.')
+        if torch.distributed.get_rank() == 0:
+            log.info('Setting dataset fields.')
+
         self._set_image_field(dataset_splits['train'])
         self._set_label_field(dataset_splits['train'])
 
@@ -300,7 +308,8 @@ class DataModule:
                     break
 
             if self._image_field:
-                log.info(f' - Determined image field: {self._image_field}')
+                if torch.distributed.get_rank() == 0:
+                    log.info(f' - Determined image field: {self._image_field}')
             else:
                 features = dataset.features.keys()
                 raise ValueError('Could not determine image field for dataset.')
