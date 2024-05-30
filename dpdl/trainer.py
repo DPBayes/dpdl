@@ -183,6 +183,9 @@ class Trainer:
     def get_dataloader(self, name):
         return self.datamodule.get_dataloader(name)
 
+    def get_datamodule(self):
+        return self.datamodule
+
     def _evaluate(self, mode, epoch=None):
         self.callback_handler.call(f'on_{mode}_epoch_start', self, epoch)
         self.model.eval()

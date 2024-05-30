@@ -8,6 +8,8 @@ import yaml
 from functools import partial
 
 from .trainer import TrainerFactory
+from .datamodules import DataModuleFactory
+from .models.model_factory import ModelFactory
 from .configurationmanager import ConfigurationManager
 from .experimentmanager import save_study, log_final_epsilon
 
@@ -51,12 +53,21 @@ class HyperparameterOptimizer:
             backend='gloo',
         )
 
+        if torch.distributed.get_rank() == 0:
+            log.info('Determining maximum batch size for optimization.')
+
+        max_batch_size = HyperparameterOptimizer.get_max_batch_size(config_manager)
+
+        if torch.distributed.get_rank() == 0:
+            log.info(f'- Maximum batch size for optimization: {max_batch_size}.')
+
         # the optimization objective
         objective = partial(
             HyperparameterOptimizer.objective,
             config_manager,
             optuna_config,
             target_hypers,
+            max_batch_size,
             optuna_process_group,
         )
 
@@ -193,6 +204,7 @@ class HyperparameterOptimizer:
         config_manager: ConfigurationManager,
         optuna_config: dict,
         target_hypers: list,
+        max_batch_size: int,
         process_group: torch.distributed.ProcessGroupGloo,
         trial: optuna.trial.Trial,
     ):
@@ -210,10 +222,16 @@ class HyperparameterOptimizer:
                 )
 
             if optuna_config[target_hyper]['type'] == 'int':
+                max_value = optuna_config[target_hyper]['max']
+
+                # Using -1 as max in batch size configuration signals full batch
+                if target_hyper == 'batch_size' and optuna_config[target_hyper]['max'] == -1:
+                    max_value = max_batch_size
+
                 hyper_value = trial.suggest_int(
                     target_hyper,
                     optuna_config[target_hyper]['min'],
-                    optuna_config[target_hyper]['max'],
+                    max_value,
                 )
 
             if optuna_config[target_hyper]['type'] == 'categorical':
@@ -225,11 +243,11 @@ class HyperparameterOptimizer:
             # update the hyperparameter value in configuration
             setattr(config_manager.hyperparams, target_hyper, hyper_value)
 
+        # train the modeol
+        trainer = TrainerFactory.get_trainer(config_manager)
+
         # while tuning hypers, do not validate
         config_manager.configuration.validation_frequency = 0
-
-        # train the model
-        trainer = TrainerFactory.get_trainer(config_manager)
 
         if torch.distributed.get_rank() == 0:
             log.info(f'Starting trial {trial.number}.')
@@ -269,3 +287,22 @@ class HyperparameterOptimizer:
         gc.collect()
 
         return objective
+
+    @staticmethod
+    def get_max_batch_size(config_manager: ConfigurationManager):
+        datamodule = DataModuleFactory.get_datamodule(
+            config_manager.configuration,
+            config_manager.hyperparams,
+        )
+        num_classes = datamodule.get_num_classes()
+
+        _, transforms = ModelFactory.get_model(
+            config_manager.configuration,
+            config_manager.hyperparams,
+            num_classes,
+        )
+
+        datamodule.initialize(transforms)
+        max_batch_size = datamodule.get_dataset_size()
+
+        return max_batch_size
