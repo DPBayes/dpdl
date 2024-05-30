@@ -322,7 +322,8 @@ class DataModule:
                     break
 
             if self._label_field:
-                log.info(f' - Determined label field: {self._label_field}')
+                if torch.distributed.get_rank() == 0:
+                    log.info(f' - Determined label field: {self._label_field}')
             else:
                 features = dataset.features.keys()
                 raise ValueError('Could not determine label field for dataset. Available features: {features}')
