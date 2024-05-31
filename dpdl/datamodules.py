@@ -285,7 +285,7 @@ class DataModule:
             dataset = dataset_splits[key]
 
             # If it already is a ClassLabel, HF dataset will throw an error, so check first
-            if not isinstance(dataset[self._label_field], datasets.ClassLabel):
+            if not isinstance(dataset.features[self._label_field], datasets.ClassLabel):
                 dataset = dataset.class_encode_column(self._label_field)
 
             dataset_splits[key] = dataset
