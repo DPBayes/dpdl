@@ -73,7 +73,6 @@ PRIVACY='--no-privacy'
 USE_STEPS="--use-steps"
 
 DEFAULT_N_TRIALS=20
-
 for SHOTS in 100 500; do
     for dataset in "${!DATASETS_LABELS[@]}"; do
         for label in ${DATASETS_LABELS[$dataset]}; do
@@ -116,7 +115,7 @@ for SHOTS in 100 500; do
                 N_TRIALS=-1  # Signal logging that this is a new experiment.
             fi
 
-            echo sbatch -J "$EXPERIMENT_NAME" run8.sh run.py optimize \
+            sbatch -J "$EXPERIMENT_NAME" run8.sh run.py optimize \
                 --num-workers 7 \
                 --dataset-name "$dataset" \
                 --dataset-label-field "$label" \
@@ -134,6 +133,7 @@ for SHOTS in 100 500; do
                 --experiment-name "$EXPERIMENT_NAME" \
                 --log-dir "$LOG_DIR" \
                 $ZERO_HEAD \
+                $CACHE_FEATURES \
                 $PEFT \
                 $PRIVACY \
                 $USE_STEPS \
