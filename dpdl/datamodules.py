@@ -246,7 +246,7 @@ class DataModule:
             self.val_dataset, self.test_dataset = val_and_test_split.train_test_split(
                 test_size=0.5,
                 seed=self.split_seed,
-                shuffle=False,
+                shuffle=True,
                 stratify_by_column=self._label_field,
             ).values()
 
