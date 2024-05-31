@@ -333,7 +333,6 @@ class DataModule:
 
     def _initialize_dataloaders(self):
         self._set_generators_and_seed_worker()
-        self._set_samplers_and_batch_size()
         self._create_dataloaders()
 
     def _set_generators_and_seed_worker(self):
@@ -349,6 +348,15 @@ class DataModule:
         self.seed_worker = seed_worker if self.seed else None
 
     def _create_dataloaders(self):
+        # We might need initialize a DataModule without a batch size,
+        # at least in the case of figuring out the maximum batch size
+        # from the dataset length.
+        if not self.batch_size:
+            log.info('Batch size not yet initialized, skipping dataloader creation.')
+            return
+
+        self._set_samplers_and_batch_size()
+
         if self._collate_fn:
             # NB: The collate_fn needs to know the label and image fields,
             #     so let's overwrite it with a function that has those.
@@ -394,7 +402,8 @@ class DataModule:
 
             # For distributed without Opacus, we need to divide the batch size
             # by the world size.
-            self.local_batch_size = self.batch_size // torch.distributed.get_world_size()
+            if self.batch_size:
+                self.local_batch_size = self.batch_size // torch.distributed.get_world_size()
         else:
             # For the DP case, Opacus handles these for us
             self.train_sampler = None
