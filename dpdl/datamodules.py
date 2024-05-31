@@ -419,8 +419,9 @@ class DataModule:
         test_size = self.shots * self.num_classes
 
         # Special case: `train_test_split` is unable to "split" if
-        # the requested split size equals the dataset size.
-        if test_size == len(dataset):
+        # the requested split size equals the dataset size. Also,
+        # for small datasets we request more samples than exist.
+        if test_size >= len(dataset):
             return dataset
 
         split_dataset = dataset.train_test_split(
