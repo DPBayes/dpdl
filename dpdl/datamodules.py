@@ -243,7 +243,7 @@ class DataModule:
                 stratify_by_column=self._label_field,
             ).values()
 
-            self.val_dataset, self.test_dataset = vald_and_test_split.train_test_split(
+            self.val_dataset, self.test_dataset = val_and_test_split.train_test_split(
                 test_size=0.5,
                 seed=self.split_seed,
                 shuffle=False,
