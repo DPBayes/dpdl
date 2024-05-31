@@ -352,7 +352,8 @@ class DataModule:
         # at least in the case of figuring out the maximum batch size
         # from the dataset length.
         if not self.batch_size:
-            log.info('Batch size not yet initialized, skipping dataloader creation.')
+            if torch.distributed.get_rank() == 0:
+                log.info('Batch size not yet initialized, skipping dataloader creation.')
             return
 
         self._set_samplers_and_batch_size()
