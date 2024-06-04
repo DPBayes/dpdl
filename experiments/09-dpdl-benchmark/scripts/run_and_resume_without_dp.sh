@@ -11,7 +11,7 @@ if ! python -c 'import optuna' &> /dev/null; then
 fi
 
 # Base configurations
-EXPERIMENT_BASE='09-dpdl-benchmark-without-dp'
+EXPERIMENT_BASE='09-dpdl-benchmark'
 LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
 mkdir -p "$LOG_DIR"
 
@@ -67,7 +67,7 @@ ZERO_HEAD='--zero-head'
 CACHE_FEATURES='--cache-features'
 PEFT='--peft head-only'
 MODEL='vit_base_patch16_224.augreg_in21k'
-OPTUNA_JOURNAL="--optuna-journal $LOG_DIR/optuna.journal"
+OPTUNA_JOURNAL="$LOG_DIR/optuna.journal"
 OPTUNA_CONFIG='conf/optuna_hypers-dpdl-benchmark.conf'
 PRIVACY='--no-privacy'
 USE_STEPS="--use-steps"
@@ -107,6 +107,8 @@ for SHOTS in 100 500; do
                 if [ "$REMAINING_TRIALS" -le 0 ]; then
                     echo "Experiment ${EXPERIMENT_NAME} has already completed the designated number of trials. Running last training round."
                     REMAINING_TRIALS=0
+                else
+                    echo "Resuming ${EXPERIMENT_NAME} for ${REMAINING_TRIALS} trials."
                 fi
             else
                 REMAINING_TRIALS=$DEFAULT_N_TRIALS
@@ -139,7 +141,7 @@ for SHOTS in 100 500; do
                 $USE_STEPS \
                 $OVERWRITE_EXPERIMENT \
                 $OPTUNA_RESUME \
-                $OPTUNA_JOURNAL
+                --optuna-journal $OPTUNA_JOURNAL
 
             SBATCH_EXIT_CODE=$?
 
