@@ -192,6 +192,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        max_test_examples: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Limit for the maximum number of examples in test/validation set (truncate)',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
         log_dir: Annotated[
             str,
             typer.Option(

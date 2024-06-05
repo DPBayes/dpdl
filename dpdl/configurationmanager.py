@@ -88,6 +88,7 @@ class Configuration(BaseModel):
     use_steps: Optional[bool] = False
     evaluation_mode: Optional[bool] = False
     dataset_label_field: Optional[str] = None
+    max_test_examples: Optional[int] = None
 
     class Config:
         # Fix Pydantic warning:

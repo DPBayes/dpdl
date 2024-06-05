@@ -56,6 +56,7 @@ class DataModule:
         dataset_name: str = 'default-dataset',
         dataset_source: str = 'huggingface',
         batch_size: int = 64,
+        max_test_examples: int = 0,
         sample_rate: float = 0,
         physical_batch_size: int = 64,
         num_workers: int = 4,
@@ -74,6 +75,7 @@ class DataModule:
         self.dataset_name = dataset_name
         self.dataset_source = dataset_source
         self.batch_size = batch_size
+        self.max_test_examples = max_test_examples
         self.sample_rate = sample_rate
         self.physical_batch_size = physical_batch_size
         self.num_workers = num_workers
@@ -161,13 +163,36 @@ class DataModule:
         # Create datasets train/validation/test splits if they do not yet exists
         self._create_dataset_splits()
 
+        if self.subset_size and self.shots:
+            raise ValueError('Subset size and shots are exlusive.')
+
         # if subset of dataset is requested, we'll do stratified sampling
         if self.subset_size is not None and self.subset_size < 1.0:
             self.train_dataset = self._get_stratified_subset(self.train_dataset)
             self.val_dataset = self._get_stratified_subset(self.val_dataset)
-        elif self.shots is not None:
-            # NB: for few-shot, we'll keep the validation dataset intact
+
+        if self.shots is not None:
             self.train_dataset = self._get_few_shot_subset(self.train_dataset)
+
+        if self.max_test_examples:
+            if len(self.val_dataset) > self.max_test_examples:
+                log.info(f'Validation dataset has {len(self.val_dataset)} example which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size.')
+                _, self.val_dataset = self.val_dataset.train_test_split(
+                    test_size=self.max_test_examples,
+                    seed=self.split_seed,
+                    shuffle=True,
+                    stratify_by_column=self._label_field,
+                ).values()
+
+            if len(self.test_dataset) > self.max_test_examples:
+                log.info(f'Test dataset has {len(self.test_dataset)} example which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size.')
+
+                _, self.test_dataset = self.test_dataset.train_test_split(
+                    test_size=self.max_test_examples,
+                    seed=self.split_seed,
+                    shuffle=True,
+                    stratify_by_column=self._label_field,
+                ).values()
 
         self._apply_transforms_to_datasets()
 
@@ -476,7 +501,7 @@ class ImageDataModule(DataModule):
         _extract_features_fn = partial(_extract_features, model, self._image_field)
 
         if torch.distributed.get_rank() == 0:
-            log.info(' - Processing train set.')
+            log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
 
         datasets_map_bs = 512
 
@@ -489,7 +514,7 @@ class ImageDataModule(DataModule):
         )
 
         if torch.distributed.get_rank() == 0:
-            log.info(' - Processing validation set.')
+            log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
 
         self.val_dataset = self.val_dataset.with_format('torch', device='cuda').map(
             _extract_features_fn,
@@ -501,7 +526,7 @@ class ImageDataModule(DataModule):
 
         if self.test_dataset:
             if torch.distributed.get_rank() == 0:
-                log.info(' - Processing test set.')
+                log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
 
             self.test_dataset = self.test_dataset.with_format('torch', device='cuda').map(
                 _extract_features_fn,
@@ -517,6 +542,9 @@ class ImageDataModule(DataModule):
 
         if torch.distributed.get_rank() == 0:
             log.info('Feature caching finished.')
+
+        import sys
+        sys.exit(-1)
 
     def _apply_transforms_to_datasets(self):
         if torch.distributed.get_rank() == 0:
@@ -538,6 +566,7 @@ class ImageDataModule(DataModule):
                 self._image_field,
             )
 
+            log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
             self.train_dataset = self.train_dataset.map(
                 transforms_func,
                 num_proc=self.num_workers,
@@ -545,6 +574,7 @@ class ImageDataModule(DataModule):
                 load_from_cache_file=True,
             )
 
+            log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
             self.val_dataset = self.val_dataset.map(
                 transforms_func,
                 num_proc=self.num_workers,
@@ -553,6 +583,7 @@ class ImageDataModule(DataModule):
             )
 
             if self.test_dataset:
+                log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
                 self.test_dataset = self.test_dataset.map(
                     transforms_func,
                     num_proc=self.num_workers,
@@ -610,6 +641,7 @@ class DataModuleFactory:
             privacy=configuration.privacy,
             evaluation_mode=configuration.evaluation_mode,
             label_field=configuration.dataset_label_field,
+            max_test_examples=configuration.max_test_examples,
         )
 
         return datamodule
