@@ -176,7 +176,9 @@ class DataModule:
 
         if self.max_test_examples:
             if len(self.val_dataset) > self.max_test_examples:
-                log.info(f'Validation dataset has {len(self.val_dataset)} example which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size.')
+                if torch.distributed.get_rank() == 0:
+                    log.info(f'Validation dataset has {len(self.val_dataset)} examples which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size.')
+
                 _, self.val_dataset = self.val_dataset.train_test_split(
                     test_size=self.max_test_examples,
                     seed=self.split_seed,
@@ -185,7 +187,9 @@ class DataModule:
                 ).values()
 
             if len(self.test_dataset) > self.max_test_examples:
-                log.info(f'Test dataset has {len(self.test_dataset)} example which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size.')
+                if torch.distributed.get_rank() == 0:
+                    log.info(f'Test dataset has {len(self.test_dataset)} examples which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size.')
+
 
                 _, self.test_dataset = self.test_dataset.train_test_split(
                     test_size=self.max_test_examples,
