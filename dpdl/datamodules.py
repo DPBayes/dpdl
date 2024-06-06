@@ -563,7 +563,9 @@ class ImageDataModule(DataModule):
                 self._image_field,
             )
 
-            log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
+            if torch.distributed.get_rank() == 0:
+                log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
+
             self.train_dataset = self.train_dataset.map(
                 transforms_func,
                 num_proc=self.num_workers,
@@ -571,7 +573,9 @@ class ImageDataModule(DataModule):
                 load_from_cache_file=True,
             )
 
-            log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
+            if torch.distributed.get_rank() == 0:
+                log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
+
             self.val_dataset = self.val_dataset.map(
                 transforms_func,
                 num_proc=self.num_workers,
@@ -580,7 +584,9 @@ class ImageDataModule(DataModule):
             )
 
             if self.test_dataset:
-                log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
+                if torch.distributed.get_rank() == 0:
+                    log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
+
                 self.test_dataset = self.test_dataset.map(
                     transforms_func,
                     num_proc=self.num_workers,
