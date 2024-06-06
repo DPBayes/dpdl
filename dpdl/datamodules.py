@@ -543,9 +543,6 @@ class ImageDataModule(DataModule):
         if torch.distributed.get_rank() == 0:
             log.info('Feature caching finished.')
 
-        import sys
-        sys.exit(-1)
-
     def _apply_transforms_to_datasets(self):
         if torch.distributed.get_rank() == 0:
             log.info('Applying transformations to dataset.')
