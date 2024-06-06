@@ -71,6 +71,7 @@ OPTUNA_JOURNAL="$LOG_DIR/optuna.journal"
 OPTUNA_CONFIG='conf/optuna_hypers-dpdl-benchmark.conf'
 PRIVACY='--no-privacy'
 USE_STEPS="--use-steps"
+MAX_TEST_EXAMPLES="--max-test-examples 10000"
 
 DEFAULT_N_TRIALS=20
 for SHOTS in 100 500; do
@@ -141,7 +142,8 @@ for SHOTS in 100 500; do
                 $USE_STEPS \
                 $OVERWRITE_EXPERIMENT \
                 $OPTUNA_RESUME \
-                --optuna-journal $OPTUNA_JOURNAL
+                --optuna-journal $OPTUNA_JOURNAL \
+                $MAX_TEST_EXAMPLES
 
             SBATCH_EXIT_CODE=$?
 
