@@ -1,3 +1,4 @@
+import datetime
 import os
 import sys
 import torch
@@ -16,17 +17,28 @@ def main():
     local_rank = os.getenv('LOCAL_RANK')
 
     if world_size is None or local_rank is None or rank is None:
-        log.error("Script not correctly started: Environment variables 'WORLD_SIZE', 'RANK', and 'LOCAL_RANK' missing.")
+        log.error(
+            "Script not correctly started: Environment variables 'WORLD_SIZE', 'RANK', and 'LOCAL_RANK' missing."
+        )
         sys.exit(1)
 
     world_size = int(world_size)
     local_rank = int(local_rank)
     rank = int(rank)
 
-    log.info(f'Rank {rank} initializing - our world size is {world_size} and local rank is {local_rank}.')
+    log.info(
+        f'Rank {rank} initializing - our world size is {world_size} and local rank is {local_rank}.'
+    )
 
     # Initialize the process group
-    torch.distributed.init_process_group(backend='nccl', world_size=world_size, rank=rank)
+    torch.distributed.init_process_group(
+        backend='nccl',
+        world_size=world_size,
+        rank=rank,
+        timeout=datetime.timedelta(
+            minutes=60
+        ),  # Transformations can be slow, increase timeout
+    )
 
     log.info(f'Rank {rank} initialized.')
 
@@ -39,6 +51,7 @@ def main():
 
     log.info('And we are done!')
 
+
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         sys.argv.append('--help')
@@ -46,6 +59,10 @@ if __name__ == '__main__':
         typer.run(cli)
 
     torch.set_float32_matmul_precision('high')
+
+    # XXX: Should we allow TensorFloat-32?
+    # torch.backends.cuda.matmul.allow_tf32 = True
+    # torch.backends.cudnn.allow_tf32 = True
 
     # Reproducible results
     torch.use_deterministic_algorithms(True)
