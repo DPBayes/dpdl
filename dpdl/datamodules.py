@@ -71,6 +71,7 @@ class DataModule:
         evaluation_mode: bool = False,
         label_field: str = None,
         image_field: str = None,
+        imbalance_factor: float = None,
     ):
         self.dataset_name = dataset_name
         self.dataset_source = dataset_source
@@ -90,6 +91,7 @@ class DataModule:
         self._image_field = image_field
         self._label_field = label_field
         self._stratify_shots = stratify_shots
+        self._imbalance_factor = imbalance_factor
 
         self._dataloaders = {
             'train': None,
@@ -198,6 +200,9 @@ class DataModule:
                     stratify_by_column=self._label_field,
                 ).values()
 
+        if self._imbalance_factor:
+            self.train_dataset = self._get_imbalanced_subset(self.train_dataset)
+
         self._apply_transforms_to_datasets()
 
     def _load_datasets(self):
@@ -283,7 +288,7 @@ class DataModule:
         if not has_validation_split and has_test_split:
             # Split the training dataset into training and validation
             self.train_dataset, self.val_dataset = self._dataset_splits['train'].train_test_split(
-                test_size=self.val_size,
+                test_size=self.test_size,
                 seed=self.split_seed,
                 shuffle=True,
                 stratify_by_column=self._label_field,
@@ -478,6 +483,45 @@ class DataModule:
 
         return subset
 
+    def _get_imbalanced_subset(self, dataset):
+        """
+        Creates an imbalanced subset using an exponential distribution.
+
+        https://github.com/richardaecn/class-balanced-loss/blob/1d7857208a2abc03d84e35a9d5383af8225d4b4d/src/data_utils.py#L93-L115
+        """
+        if not self._imbalance_factor:
+            raise ValueError('Imbalance factor must be provided for creating an imbalanced dataset.')
+
+        # Get the label counts
+        label_counts = Counter(dataset[self._label_field])
+        num_classes = len(label_counts)
+        max_count = max(label_counts.values())
+
+        # Calculate the number of samples per class based on the exponential distribution
+        img_num_per_cls = [
+            int(max_count * (self._imbalance_factor ** (cls_idx / (num_classes - 1.0))))
+            for cls_idx in range(num_classes)
+        ]
+
+        # Collect indices for each class
+        class_indices = {cls: [] for cls in range(num_classes)}
+        for idx, sample in enumerate(dataset):
+            class_indices[sample[self._label_field]].append(idx)
+
+        # Sample indices based on the calculated number of samples per class
+        sampled_indices = []
+        for cls in range(num_classes):
+            sampled_indices.extend(np.random.choice(class_indices[cls], img_num_per_cls[cls], replace=False))
+
+        # Create a new dataset with the sampled indices using Huggingface datasets API
+        sampled_dataset = dataset.select(sampled_indices)
+
+        if torch.distributed.get_rank() == 0:
+            log.info(f'Created imbalanced (factor: {self._imbalance_factor}) dataset with class distribution: {Counter(sampled_dataset[self._label_field])}')
+
+        return sampled_dataset
+
+
 class ImageDataModule(DataModule):
     def __init__(
         self,
@@ -649,6 +693,7 @@ class DataModuleFactory:
             evaluation_mode=configuration.evaluation_mode,
             label_field=configuration.dataset_label_field,
             max_test_examples=configuration.max_test_examples,
+            imbalance_factor=configuration.imbalance_factor,
         )
 
         return datamodule

@@ -89,6 +89,7 @@ class Configuration(BaseModel):
     evaluation_mode: Optional[bool] = False
     dataset_label_field: Optional[str] = None
     max_test_examples: Optional[int] = None
+    imbalance_factor: Optional[float] = None
 
     class Config:
         # Fix Pydantic warning:
@@ -166,6 +167,7 @@ class Configuration(BaseModel):
             ('Dataset source', self.dataset_source),
             ('Dataset name', self.dataset_name),
             ('Dataset label field', self.dataset_label_field),
+            ('Dataset imbalance factor', self.imbalance_factor),
             ('Physical batch size', self.physical_batch_size),
             ('Num workers', self.num_workers),
             ('Validation frequency', self.validation_frequency),
