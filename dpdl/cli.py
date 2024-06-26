@@ -192,6 +192,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        imbalance_factor: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Parameter of the exponential distribution for imbalancing an dataset',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
         max_test_examples: Annotated[
             Optional[int],
             typer.Option(
