@@ -283,7 +283,7 @@ class DataModule:
         if not has_validation_split and has_test_split:
             # Split the training dataset into training and validation
             self.train_dataset, self.val_dataset = self._dataset_splits['train'].train_test_split(
-                test_size=self.test_size,
+                test_size=self.val_size,
                 seed=self.split_seed,
                 shuffle=True,
                 stratify_by_column=self._label_field,
