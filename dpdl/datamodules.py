@@ -7,6 +7,7 @@ import torch
 import torchvision
 import numpy as np
 import tensorflow_datasets as tfds
+import random
 
 from collections import Counter
 from functools import partial
@@ -483,7 +484,7 @@ class DataModule:
 
         return subset
 
-    def _get_imbalanced_subset(self, dataset):
+    def _get_imbalanced_subset(self, dataset, shuffle=False):
         """
         Creates an imbalanced subset using an exponential distribution.
 
@@ -503,21 +504,30 @@ class DataModule:
             for cls_idx in range(num_classes)
         ]
 
+        # Shuffle class indices
+        shuffled_class_indices = list(range(num_classes))
+
+        if shuffle:
+            random.shuffle(shuffled_class_indices)
+
         # Collect indices for each class
         class_indices = {cls: [] for cls in range(num_classes)}
         for idx, sample in enumerate(dataset):
             class_indices[sample[self._label_field]].append(idx)
 
-        # Sample indices based on the calculated number of samples per class
+        # Sample indices based on the shuffled class indices and calculated number of samples per class
         sampled_indices = []
-        for cls in range(num_classes):
-            sampled_indices.extend(np.random.choice(class_indices[cls], img_num_per_cls[cls], replace=False))
+        for shuffled_cls_idx, original_cls_idx in enumerate(shuffled_class_indices):
+            indices = class_indices[original_cls_idx]
+            sampled_indices.extend(
+                np.random.choice(indices, img_num_per_cls[shuffled_cls_idx], replace=False)
+            )
 
-        # Create a new dataset with the sampled indices using Huggingface datasets API
+        # Create a new dataset with the sampled indices
         sampled_dataset = dataset.select(sampled_indices)
 
         if torch.distributed.get_rank() == 0:
-            log.info(f'Created imbalanced (factor: {self._imbalance_factor}) dataset with class distribution: {Counter(sampled_dataset[self._label_field])}')
+            log.info(f'Created imbalanced dataset with class distribution: {Counter(sampled_dataset[self._label_field])}')
 
         return sampled_dataset
 
