@@ -202,7 +202,20 @@ class DataModule:
                 ).values()
 
         if self._imbalance_factor:
+            if torch.distributed.get_rank() == 0:
+                log.info('Creating imbalanced train set..')
+
             self.train_dataset = self._get_imbalanced_subset(self.train_dataset)
+
+            if torch.distributed.get_rank() == 0:
+                log.info('Creating imbalanced validation set..')
+
+            self.val_dataset = self._get_imbalanced_subset(self.val_dataset)
+
+            if torch.distributed.get_rank() == 0:
+                log.info('Creating imbalanced test set..')
+
+            self.test_dataset = self._get_imbalanced_subset(self.test_dataset)
 
         self._apply_transforms_to_datasets()
 
