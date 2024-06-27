@@ -45,7 +45,7 @@ exclusive="--exclusive"
 cpu_bind_mask="0xfe000000000000,0xfe00000000000000,0xfe0000,0xfe000000,0xfe,0xfe00,0xfe00000000,0xfe0000000000"
 nodes=1
 
-srun_args="--account=$project --partition=$partition --nodes=$nodes --ntasks-per-node=$ntasks_per_node --cpus-per-task=$cpus_per_task --gpus=$gpus --time=$time --mem-per-gpu=$mem_per_gpu --threads-per-core=1"
+srun_args=""
 
 # if we are using all the GPUs, then set GPU binding and reserve the whole node
 if [ "$gpus" == "8" ]; then
