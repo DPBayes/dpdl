@@ -155,13 +155,14 @@ class Trainer:
         batch_loss = 0
         # process the sub batches one at a time
         N = len(X_split)
+
         for i in range(N):
             X_splitted = X_split[i]
             y_splitted = y_split[i]
 
             logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
-            loss.backward(loss)
+            loss.backward()
 
             # keep track of the batch loss
             batch_loss = batch_loss + loss.item()
@@ -432,7 +433,9 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         logits = self.model(X)
         loss = self._unwrap_model().criterion(logits, y)
-        loss.backward(loss)
+       
+        loss.backward()
+
         self.optimizer.step()
 
         loss = loss.item()
