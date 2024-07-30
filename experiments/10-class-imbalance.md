@@ -19,7 +19,7 @@ The objective is to investigate the impact of class imbalance on the optimal con
 - **Class Imbalance Creation**: Artificially create class imbalances from balanced datasets using exponential distribution with parameters 0.1 and 0.01.
 - **Balanced Datasets**: Conduct parallel experiments using balanced datasets for comparison.
 - **Maximum Gradient Norm Variation**: Test the following set values for maximum gradient norms:
-  - Max gradient norms: 0.005, 0.012, 0.028, 0.067, 0.158, 0.375, 0.889, 2.108, 5.0 (`np.round(np.geomspace(5e-3, 5, 9), 3)`)
+  - Max gradient norms: 0.004641588833612779, 0.01, 0.021544346900318832, 0.046415888336127774, 0.1, 0.21544346900318845, 0.46415888336127775, 1.0, 2.1544346900318843, 4.641588833612782, 10.0 (`np.geomspace(0.01 / (10**(1/3)), 10, 11)`)
 - **Bayesian Optimization**: Optimize learning rate and batch size while fixing the number of epochs at 40. We will perform 20 trials of Bayesian optimization.
 
 ## Models
