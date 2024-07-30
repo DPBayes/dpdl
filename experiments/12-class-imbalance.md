@@ -25,6 +25,21 @@ The objective is to investigate the impact of class imbalance on the optimal con
 ## Models
 
 - **Vision Transformer (vit_base_patch16_224.augreg_in21k)**
+- **Parameterization**: We will train using the FiLM parameterization.
+
+## Ranges for hyperparameter optimization
+
+```
+batch_size:
+  min: 192
+  max: -1
+  type: int
+learning_rate:
+  max: 1.0e-1
+  min: 1.0e-07
+  type: float
+  log_space: True
+```
 
 ## Datasets
 
