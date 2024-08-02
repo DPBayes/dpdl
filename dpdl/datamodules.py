@@ -74,6 +74,7 @@ class DataModule:
         image_field: str = None,
         imbalance_factor: float = None,
     ):
+
         self.dataset_name = dataset_name
         self.dataset_source = dataset_source
         self.batch_size = batch_size
@@ -190,13 +191,16 @@ class DataModule:
         # if subset of dataset is requested, we'll do stratified sampling
         if self.subset_size is not None and self.subset_size < 1.0:
             self.train_dataset = self._get_stratified_subset(self.train_dataset)
+
             if torch.distributed.get_rank() == 0:
-                log.info(f'Training set class distribution after taking subset of size {self.subset_size}: {Counter(self.train_dataset[self._label_field])}')
+                train_distribution = Counter(self.train_dataset[self._label_field])
+                log.info(f'Training set (size: {len(self.train_dataset)}) class distribution after taking subset of size {self.subset_size}: {sorted(train_distribution.items())}')
 
             self.val_dataset = self._get_stratified_subset(self.val_dataset)
 
             if torch.distributed.get_rank() == 0:
-                log.info(f'Validation set class distribution after taking subset of size {self.subset_size}: {Counter(self.val_dataset[self._label_field])}')
+                val_distribution = Counter(self.val_dataset[self._label_field])
+                log.info(f'Validation set (size: {len(self.val_dataset)}) class distribution after taking subset of size {self.subset_size}: {sorted(val_distribution.items())}')
 
         if self.shots is not None:
             self.train_dataset = self._get_few_shot_subset(self.train_dataset)
@@ -216,7 +220,6 @@ class DataModule:
             if len(self.test_dataset) > self.max_test_examples:
                 if torch.distributed.get_rank() == 0:
                     log.info(f'Test dataset has {len(self.test_dataset)} examples which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size.')
-
 
                 _, self.test_dataset = self.test_dataset.train_test_split(
                     test_size=self.max_test_examples,
@@ -324,19 +327,29 @@ class DataModule:
         if has_validation_split and not has_test_split:
             raise ValueError('Splitting not implemented: Dataset has validation split but no test split.')
 
+        if torch.distributed.get_rank() == 0:
+            log.info(f'!!!! HERE WE GO IN DATAMODULE, WE GOT EVALUATION MODE: {self.evaluation_mode}')
+
         if self.evaluation_mode:
-            if has_validation_split:
-                # Combine training and validation sets if we have a separate validation set
-                self.train_dataset = datasets.concatenate_datasets([
-                    self._dataset_splits['train'],
-                    self._dataset_splits['validation']
-                ])
-            else:
-                # Use the full training set
-                self.train_dataset = self._dataset_splits['train']
+            if torch.distributed.get_rank() == 0:
+                log.info(f'EVAL MODE TRAINING SET BEFORE: {self.train_dataset}')
+                log.info(f'EVAL MODE VALID SET BEFORE: {self.val_dataset}')
+
+            # Combine training and validation sets if we have a separate validation set
+            self.train_dataset = datasets.concatenate_datasets([
+                self.train_dataset,
+                self.val_dataset,
+            ])
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'EVAL MODE TRAINING SET -AFTER-: {self.train_dataset}')
 
             # In evaluation mode, we validate on the test dataset
             self.val_dataset = self.test_dataset
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'EVAL MODE VALIDATION SET -AFTER-: {self.val_dataset}')
+                log.info(f'EVAL MODE TEST SET -AFTER-: {self.test_dataset}')
 
     def _enforce_label_field_type(self, dataset_splits):
         # Iterate through all dataset splits, and make the label field ClassLabel
