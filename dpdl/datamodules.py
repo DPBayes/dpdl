@@ -187,7 +187,6 @@ class DataModule:
 
             self.test_dataset = self._get_imbalanced_subset(self.test_dataset)
 
-
         # if subset of dataset is requested, we'll do stratified sampling
         if self.subset_size is not None and self.subset_size < 1.0:
             self.train_dataset = self._get_stratified_subset(self.train_dataset)
@@ -468,13 +467,36 @@ class DataModule:
         self.val_sampler, self.test_sampler = None, None
 
     def _get_stratified_subset(self, dataset):
-        split_dataset = dataset.train_test_split(
-            test_size=self.subset_size,
-            seed=self.split_seed,
-            stratify_by_column=self._label_field,
-        )
+        # Convert labels to a tensor
+        labels = torch.tensor(dataset[self._label_field])
 
-        return split_dataset['test']
+        # Get unique labels in the dataset
+        unique_labels = labels.unique()
+
+        sampled_indices = []
+
+        # Iterate over each unique label
+        for label in unique_labels:
+            # Find the indices where the current label is present
+            label_indices = torch.where(labels == label)[0]
+
+            # Determine how many samples are needed for the given label based on the subset size
+            num_samples_per_class = int(len(label_indices) * self.subset_size)
+
+            # Make sure at least one sample is selected per class
+            num_samples_per_class = max(1, num_samples_per_class)
+
+            # Randomly choose the required number of indices for the current label
+            chosen_indices = torch.randperm(len(label_indices))[:num_samples_per_class]
+
+            # Add the chosen indices to the sampled_indices list
+            sampled_indices.extend(label_indices[chosen_indices].tolist())
+
+        # Shuffle the sampled indices for randomization
+        sampled_indices = torch.tensor(sampled_indices)[torch.randperm(len(sampled_indices))].tolist()
+
+        # Return the selected subset of the dataset
+        return dataset.select(sampled_indices)
 
     def _get_few_shot_subset(self, dataset):
         if not self.num_classes:
