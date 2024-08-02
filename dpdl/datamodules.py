@@ -190,7 +190,13 @@ class DataModule:
         # if subset of dataset is requested, we'll do stratified sampling
         if self.subset_size is not None and self.subset_size < 1.0:
             self.train_dataset = self._get_stratified_subset(self.train_dataset)
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Training set class distribution after taking subset of size {self.subset_size}: {Counter(self.train_dataset[self._label_field])}')
+
             self.val_dataset = self._get_stratified_subset(self.val_dataset)
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Validation set class distribution after taking subset of size {self.subset_size}: {Counter(self.val_dataset[self._label_field])}')
 
         if self.shots is not None:
             self.train_dataset = self._get_few_shot_subset(self.train_dataset)
