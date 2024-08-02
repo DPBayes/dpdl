@@ -544,7 +544,7 @@ class DataModule:
 
         return subset
 
-    def _get_imbalanced_subset(self, dataset, shuffle=False):
+    def _get_imbalanced_subset(self, dataset):
         """
         Creates an imbalanced subset using an exponential distribution.
 
@@ -560,27 +560,24 @@ class DataModule:
 
         # Calculate the number of samples per class based on the exponential distribution
         img_num_per_cls = [
-            int(max_count * (self._imbalance_factor ** (cls_idx / (num_classes - 1.0))))
+            max(1, int(max_count * (self._imbalance_factor ** (cls_idx / (num_classes - 1.0)))))
             for cls_idx in range(num_classes)
         ]
 
-        # Shuffle class indices
-        shuffled_class_indices = list(range(num_classes))
-
-        if shuffle:
-            random.shuffle(shuffled_class_indices)
+        # Get list of all class indices
+        class_indices = list(range(num_classes))
 
         # Collect indices for each class
         class_indices = {cls: [] for cls in range(num_classes)}
         for idx, sample in enumerate(dataset):
             class_indices[sample[self._label_field]].append(idx)
 
-        # Sample indices based on the shuffled class indices and calculated number of samples per class
+        # Sample indices based on the class indices and calculated number of samples per class
         sampled_indices = []
-        for shuffled_cls_idx, original_cls_idx in enumerate(shuffled_class_indices):
+        for cls_idx, original_cls_idx in enumerate(class_indices):
             indices = class_indices[original_cls_idx]
             sampled_indices.extend(
-                np.random.choice(indices, img_num_per_cls[shuffled_cls_idx], replace=False)
+                np.random.choice(indices, img_num_per_cls[cls_idx], replace=False)
             )
 
         # Create a new dataset with the sampled indices
