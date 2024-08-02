@@ -736,6 +736,8 @@ class DataModuleFactory:
             num_workers=configuration.num_workers,
             physical_batch_size=configuration.physical_batch_size,
             subset_size=configuration.subset_size,
+            validation_size=configuration.validation_size,
+            test_size=configuration.test_size,
             shots=configuration.shots,
             seed=configuration.seed,
             batch_size=hyperparams.batch_size,

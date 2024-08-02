@@ -171,6 +171,20 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        validation_size: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Validation set size, if we need to split it from train (0.1 indicates 10%)',
+                rich_help_panel='Dataset options',
+            )
+        ] = 0.1,
+        test_size: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Test set size, if we need to split it from train (0.1 indicates 10%)',
+                rich_help_panel='Dataset options',
+            )
+        ] = 0.1,
         shots: Annotated[
             Optional[int],
             typer.Option(
