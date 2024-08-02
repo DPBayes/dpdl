@@ -169,6 +169,25 @@ class DataModule:
         if self.subset_size and self.shots:
             raise ValueError('Subset size and shots are exlusive.')
 
+        # Imbalance before subsetting. If done in other order, we can get into
+        # trouble with e.g. classes with zero examples
+        if self._imbalance_factor:
+            if torch.distributed.get_rank() == 0:
+                log.info('Creating imbalanced train set..')
+
+            self.train_dataset = self._get_imbalanced_subset(self.train_dataset)
+
+            if torch.distributed.get_rank() == 0:
+                log.info('Creating imbalanced validation set..')
+
+            self.val_dataset = self._get_imbalanced_subset(self.val_dataset)
+
+            if torch.distributed.get_rank() == 0:
+                log.info('Creating imbalanced test set..')
+
+            self.test_dataset = self._get_imbalanced_subset(self.test_dataset)
+
+
         # if subset of dataset is requested, we'll do stratified sampling
         if self.subset_size is not None and self.subset_size < 1.0:
             self.train_dataset = self._get_stratified_subset(self.train_dataset)
@@ -201,22 +220,9 @@ class DataModule:
                     stratify_by_column=self._label_field,
                 ).values()
 
-        if self._imbalance_factor:
-            if torch.distributed.get_rank() == 0:
-                log.info('Creating imbalanced train set..')
-
-            self.train_dataset = self._get_imbalanced_subset(self.train_dataset)
-
-            if torch.distributed.get_rank() == 0:
-                log.info('Creating imbalanced validation set..')
-
-            self.val_dataset = self._get_imbalanced_subset(self.val_dataset)
-
-            if torch.distributed.get_rank() == 0:
-                log.info('Creating imbalanced test set..')
-
-            self.test_dataset = self._get_imbalanced_subset(self.test_dataset)
-
+        # We need to apply transforms last. If we do it first, all examples in
+        # a very large dataset will be transformed first and we probably won't
+        # even use them all.
         self._apply_transforms_to_datasets()
 
     def _load_datasets(self):
