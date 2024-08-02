@@ -174,7 +174,7 @@ class HyperparameterOptimizer:
             log.info('Evaluating final model on the test set.')
 
         if torch.distributed.get_rank() == 0:
-            loss, metrics = trainer.validate()
+            loss, metrics = trainer.test()
             log.info(f'Final loss: {loss:.4f}')
 
             # let's share the loss and metrics with other ranks
