@@ -587,7 +587,8 @@ class DataModule:
         sampled_dataset = dataset.select(sampled_indices)
 
         if torch.distributed.get_rank() == 0:
-            log.info(f'Created imbalanced dataset with class distribution: {Counter(sampled_dataset[self._label_field])}')
+            distribution = Counter(sampled_dataset[self._label_field])
+            log.info(f'Created imbalanced dataset (size: {len(sampled_dataset)}) with class distribution: {sorted(distribution.items())}')
 
         return sampled_dataset
 
