@@ -327,29 +327,15 @@ class DataModule:
         if has_validation_split and not has_test_split:
             raise ValueError('Splitting not implemented: Dataset has validation split but no test split.')
 
-        if torch.distributed.get_rank() == 0:
-            log.info(f'!!!! HERE WE GO IN DATAMODULE, WE GOT EVALUATION MODE: {self.evaluation_mode}')
-
         if self.evaluation_mode:
-            if torch.distributed.get_rank() == 0:
-                log.info(f'EVAL MODE TRAINING SET BEFORE: {self.train_dataset}')
-                log.info(f'EVAL MODE VALID SET BEFORE: {self.val_dataset}')
-
             # Combine training and validation sets if we have a separate validation set
             self.train_dataset = datasets.concatenate_datasets([
                 self.train_dataset,
                 self.val_dataset,
             ])
 
-            if torch.distributed.get_rank() == 0:
-                log.info(f'EVAL MODE TRAINING SET -AFTER-: {self.train_dataset}')
-
             # In evaluation mode, we validate on the test dataset
             self.val_dataset = self.test_dataset
-
-            if torch.distributed.get_rank() == 0:
-                log.info(f'EVAL MODE VALIDATION SET -AFTER-: {self.val_dataset}')
-                log.info(f'EVAL MODE TEST SET -AFTER-: {self.test_dataset}')
 
     def _enforce_label_field_type(self, dataset_splits):
         # Iterate through all dataset splits, and make the label field ClassLabel
