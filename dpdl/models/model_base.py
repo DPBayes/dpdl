@@ -1,3 +1,4 @@
+import os
 import torch
 import torchmetrics
 
@@ -74,4 +75,14 @@ class ModelBase(torch.nn.Module):
 
     def get_classifier(self):
         return self.model.get_classifier()
+
+    def save_model(self, fpath):
+        # Extract the directory from the path
+        directory = os.path.dirname(fpath)
+
+        # Create the directory if it doesn't exist
+        if not os.path.exists(directory):
+            os.makedirs(directory, exists_ok=True)
+
+        torch.save(self.model.state_dict(), fpath)
 

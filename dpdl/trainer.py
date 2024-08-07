@@ -244,6 +244,9 @@ class Trainer:
 
         return math.ceil(data_size / batch_size)
 
+    def save_model(self, fpath):
+        self.model.save_model(fpath)
+
 class DifferentiallyPrivateTrainer(Trainer):
     def __init__(
         self,
