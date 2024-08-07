@@ -150,6 +150,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = False,
+        model_save_fpath: Annotated[
+            Optional[str],
+            typer.Option(
+                help='File path for saving of the trained model',
+                rich_help_panel='Training options',
+            )
+        ] = False,
         dataset_source: Annotated[
             str,
             typer.Option(
@@ -396,7 +403,7 @@ def cli(
         trainer.fit()
         end_time = time.time()
 
-        # log test accuracy and run time
+        # log test accuracy and run time, and save model if asked
         if torch.distributed.get_rank() == 0:
             log.info('Evaluating on test set..')
             _, test_metrics = trainer.test()
@@ -404,6 +411,10 @@ def cli(
             log_test_metrics(config_manager, test_metrics)
             log_runtime(config_manager, start_time, end_time)
             log_final_epsilon(config_manager, trainer)
+
+            if save_fpath := config_manager.configuration.model_save_fpath:
+                log.info('Saving model to: "{save_fpath}"')
+                trainer.save_model(save_fpath)
 
     if config_manager.get_command() == 'optimize':
         if torch.distributed.get_rank() == 0:
