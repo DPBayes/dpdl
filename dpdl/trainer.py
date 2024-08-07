@@ -469,6 +469,9 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
+    def save_model(self, fpath):
+        self.model.module.save_model(fpath)
+
 class TrainerFactory:
     @staticmethod
     def get_trainer(config_manager: ConfigurationManager) -> Trainer:

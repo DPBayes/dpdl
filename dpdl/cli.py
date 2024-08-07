@@ -413,7 +413,7 @@ def cli(
             log_final_epsilon(config_manager, trainer)
 
             if save_fpath := config_manager.configuration.model_save_fpath:
-                log.info('Saving model to: "{save_fpath}"')
+                log.info(f'Saving model to: "{save_fpath}"')
                 trainer.save_model(save_fpath)
 
     if config_manager.get_command() == 'optimize':
