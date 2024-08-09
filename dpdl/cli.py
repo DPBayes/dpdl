@@ -156,7 +156,7 @@ def cli(
                 help='File path for saving of the trained model',
                 rich_help_panel='Training options',
             )
-        ] = False,
+        ] = None,
         dataset_source: Annotated[
             str,
             typer.Option(
