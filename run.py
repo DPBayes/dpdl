@@ -60,9 +60,9 @@ if __name__ == '__main__':
 
     torch.set_float32_matmul_precision('high')
 
-    # XXX: Should we allow TensorFloat-32?
-    # torch.backends.cuda.matmul.allow_tf32 = True
-    # torch.backends.cudnn.allow_tf32 = True
+    # Enable TensorFloat-32 for performance
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
 
     # Reproducible results
     torch.use_deterministic_algorithms(True)
