@@ -1,6 +1,7 @@
 import csv
 import logging
 import math
+import json
 import os
 import pathlib
 import torch
@@ -163,21 +164,25 @@ class RecordSNR(Callback):
             log.info(f'Signal-to-Noise ratio data saved at {file_path}')
 
 class RecordGradientNormsCallback(Callback):
+    # for record the number of repeats within a single experiment
     trial_index = 0
 
     def __init__(self, log_dir: str = None, experiment_name: str = None):
         self.log_dir = log_dir
         self.experiment_name = experiment_name
 
+        # cache data at each epoch for mini-batch and/or multi-gpu
         self.per_layer_per_sample_norms_current_epoch = {}
         self.per_layer_norms_history = []
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, *args, **kwargs):
         if torch.distributed.get_rank() == 0:
 
+            # compute per sample norms from optimizer, which is a list contains NN's weights and bias
             per_layer_per_sample_norms = [g.view(len(g), -1).norm(2, dim=-1) for g in trainer.optimizer.grad_samples]
             _, class_labels = batch
 
+            # concatenate the per-sample norm for each class
             for class_label in class_labels.unique():
                 class_mask = (class_labels == class_label)
                 if class_label.item() not in self.per_layer_per_sample_norms_current_epoch.keys():
@@ -187,6 +192,7 @@ class RecordGradientNormsCallback(Callback):
                         self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index] = torch.cat((self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index], per_layer_per_sample_norms[layer_index][class_mask]), dim=0)
 
     def on_train_epoch_end(self, trainer, epoch, epoch_loss):
+        # computing the mean norm over weights and bias
         layer_mean_norms_per_class = {}
         for class_label, layer_norms_per_class in self.per_layer_per_sample_norms_current_epoch.items():
             mean_layer_norms_per_class = []
@@ -194,20 +200,16 @@ class RecordGradientNormsCallback(Callback):
                 mean_layer_norms_per_class.append(torch.mean(layer_norms, dim=0).item())
             layer_mean_norms_per_class[class_label] = mean_layer_norms_per_class
 
-        self.per_layer_norms_history.append(layer_mean_norms_per_class)
-        self.per_layer_per_sample_norms_current_epoch = {}
+        self.per_layer_norms_history.append({'step': epoch,
+                                             'data': layer_mean_norms_per_class})
+        self.per_layer_per_sample_norms_current_epoch = {} # clear cache
 
     def on_train_end(self, *args, **kwargs):
         if torch.distributed.get_rank() == 0:
-            file_path = os.path.join(self.log_dir, f'gradient_norms_{self.experiment_name}.csv')
-            with open(file_path, 'a+', newline='') as fh:
-                writer = csv.writer(fh)
-                if fh.tell() == 0:
-                    writer.writerow(['Trial', 'Step', 'Layer_per_class'])
+            file_path = os.path.join(self.log_dir, f'gradient_norms_{self.experiment_name}_{RecordGradientNormsCallback.trial_index}.json')
+            with open(file_path, 'w') as fh:
+                json.dump(self.per_layer_norms_history, fh)   
 
-                for step in range(len(self.per_layer_norms_history)):
-                    writer.writerow([RecordGradientNormsCallback.trial_index, step,
-                                     self.per_layer_norms_history[step]])
             RecordGradientNormsCallback.trial_index += 1
 
             log.info(f'Gradient norm data saved at {file_path}')
