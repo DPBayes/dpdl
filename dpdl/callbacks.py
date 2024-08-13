@@ -184,10 +184,17 @@ class RecordGradientNormsCallback(Callback):
             for class_label in class_labels.unique():
                 class_mask = (class_labels == class_label)
                 if class_label.item() not in self.per_layer_per_sample_norms_current_epoch.keys():
-                    self.per_layer_per_sample_norms_current_epoch[class_label.item()] = list(norms[class_mask] for norms in per_layer_per_sample_norms)
+                    self.per_layer_per_sample_norms_current_epoch[class_label.item()] = list(
+                        norms[class_mask] for norms in per_layer_per_sample_norms)
                 else:
                     for layer_index in range(len(per_layer_per_sample_norms)):
-                        self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index] = torch.cat((self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index], per_layer_per_sample_norms[layer_index][class_mask]), dim=0)
+                        self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index] = torch.cat(
+                            (
+                                self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index], 
+                                per_layer_per_sample_norms[layer_index][class_mask]
+                                ), 
+                                dim=0
+                            )
 
     def on_train_epoch_end(self, trainer, epoch, epoch_loss):
         # computing the mean norm over weights and bias
@@ -198,8 +205,12 @@ class RecordGradientNormsCallback(Callback):
                 mean_layer_norms_per_class.append(torch.mean(layer_norms, dim=0).item())
             layer_mean_norms_per_class[class_label] = mean_layer_norms_per_class
 
-        self.per_layer_norms_history.append({'step': epoch,
-                                             'data': layer_mean_norms_per_class})
+        self.per_layer_norms_history.append(
+            {
+                'step': epoch, 
+                'data': layer_mean_norms_per_class
+            }
+        )
         self.per_layer_per_sample_norms_current_epoch = {} # clear cache
 
     def on_train_end(self, *args, **kwargs):
