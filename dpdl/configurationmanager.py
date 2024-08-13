@@ -93,6 +93,7 @@ class Configuration(BaseModel):
     validation_size: Optional[float] = 0.1
     test_size: Optional[float] = 0.1
     model_save_fpath: Optional[str] = None
+    record_gradient_norms: Optional[bool] = False
 
     class Config:
         # Fix Pydantic warning:
@@ -190,6 +191,7 @@ class Configuration(BaseModel):
             ('Use steps instead of epochs', self.use_steps),
             ('Evaluation mode', self.evaluation_mode),
             ('Model save file path', self.model_save_fpath),
+            ('Record gradient norms', self.record_gradient_norms),
         ]
 
         if self.privacy:

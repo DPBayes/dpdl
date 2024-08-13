@@ -162,11 +162,62 @@ class RecordSNR(Callback):
 
             log.info(f'Signal-to-Noise ratio data saved at {file_path}')
 
+class RecordGradientNormsCallback(Callback):
+    trial_index = 0
+
+    def __init__(self, log_dir: str = None, experiment_name: str = None):
+        self.log_dir = log_dir
+        self.experiment_name = experiment_name
+
+        self.per_layer_per_sample_norms_current_epoch = {}
+        self.per_layer_norms_history = []
+
+    def on_train_batch_end(self, trainer, batch_idx, batch, loss, *args, **kwargs):
+        if torch.distributed.get_rank() == 0:
+
+            per_layer_per_sample_norms = [g.view(len(g), -1).norm(2, dim=-1) for g in trainer.optimizer.grad_samples]
+            _, class_labels = batch
+
+            for class_label in class_labels.unique():
+                class_mask = (class_labels == class_label)
+                if class_label.item() not in self.per_layer_per_sample_norms_current_epoch.keys():
+                    self.per_layer_per_sample_norms_current_epoch[class_label.item()] = list(norms[class_mask] for norms in per_layer_per_sample_norms)
+                else:
+                    for layer_index in range(len(per_layer_per_sample_norms)):
+                        self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index] = torch.cat((self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index], per_layer_per_sample_norms[layer_index][class_mask]), dim=0)
+
+    def on_train_epoch_end(self, trainer, epoch, epoch_loss):
+        layer_mean_norms_per_class = {}
+        for class_label, layer_norms_per_class in self.per_layer_per_sample_norms_current_epoch.items():
+            mean_layer_norms_per_class = []
+            for layer_norms in layer_norms_per_class:
+                mean_layer_norms_per_class.append(torch.mean(layer_norms, dim=0).item())
+            layer_mean_norms_per_class[class_label] = mean_layer_norms_per_class
+
+        self.per_layer_norms_history.append(layer_mean_norms_per_class)
+        self.per_layer_per_sample_norms_current_epoch = {}
+
+    def on_train_end(self, *args, **kwargs):
+        if torch.distributed.get_rank() == 0:
+            file_path = os.path.join(self.log_dir, f'gradient_norms_{self.experiment_name}.csv')
+            with open(file_path, 'a+', newline='') as fh:
+                writer = csv.writer(fh)
+                if fh.tell() == 0:
+                    writer.writerow(['Trial', 'Step', 'Layer_per_class'])
+
+                for step in range(len(self.per_layer_norms_history)):
+                    writer.writerow([RecordGradientNormsCallback.trial_index, step,
+                                     self.per_layer_norms_history[step]])
+            RecordGradientNormsCallback.trial_index += 1
+
+            log.info(f'Gradient norm data saved at {file_path}')
+
 class CallbackFactory:
     @staticmethod
     def get_callbacks(configuration: Configuration, hyperparams: Hyperparameters) -> List[Callback]:
         callbacks = [
             RecordEpochStatsCallback(use_steps=configuration.use_steps),
+            RecordGradientNormsCallback(log_dir=configuration.log_dir, experiment_name=configuration.experiment_name) if configuration.record_gradient_norms else None
         ]
 
         if configuration.record_snr:
