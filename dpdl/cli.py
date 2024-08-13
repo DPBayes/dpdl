@@ -367,6 +367,13 @@ def cli(
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
         ] = 'BoTorchSampler',
+        record_gradient_norms: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record layer-wise gradients before clipping',
+                rich_help_panel='',
+            )
+        ] = False,
     ):
 
     config_manager = ConfigurationManager(ctx.params)
