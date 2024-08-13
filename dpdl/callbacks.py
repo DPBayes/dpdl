@@ -29,8 +29,6 @@ class Callback:
         pass
     def on_train_end(self, trainer):
         pass
-    def on_train_step(self, trainer):
-        pass
     def on_train_epoch_start(self, trainer, epoch):
         pass
     def on_train_epoch_end(self, trainer, epoch, epoch_loss):
@@ -140,7 +138,7 @@ class RecordSNR(Callback):
         self.noise_norms = []
         self.snr_values = []
 
-    def on_train_step(self, trainer):
+    def on_train_batch_end(self, trainer):
         if torch.distributed.get_rank() == 0:
             grad_norm = trainer.optimizer._previous_grad.norm().item()
             noise_norm = trainer.optimizer._previous_noise.norm().item()
@@ -214,12 +212,58 @@ class RecordGradientNormsCallback(Callback):
 
             log.info(f'Gradient norm data saved at {file_path}')
 
+class DebugProbeCallback(Callback):
+    def _is_global_zero(self, trainer):
+        log.info(f'[DEBUG] Calling _is_global_zero')
+        return torch.distributed.get_rank() == 0
+
+    def on_train_start(self, trainer):
+        log.info(f'[DEBUG] on_train_start')
+
+    def on_train_end(self, trainer):
+        log.info(f'[DEBUG] on_train_end')
+
+    def on_train_epoch_start(self, trainer, epoch):
+        log.info(f'[DEBUG] on_train_epoch_start')
+
+    def on_train_epoch_end(self, trainer, epoch, epoch_loss):
+        log.info(f'[DEBUG] on_train_epoch_end')
+
+    def on_train_batch_start(self, trainer, batch_idx, batch):
+        log.info(f'[DEBUG] on_train_batch_start')
+
+    def on_train_batch_end(self, trainer, batch_idx, batch, loss):
+        log.info(f'[DEBUG] on_train_batch_end')
+
+    def on_validation_epoch_start(self, trainer, epoch):
+        log.info(f'[DEBUG] on_validation_epoch_start')
+
+    def on_validation_epoch_end(self, trainer, epoch, metrics):
+        log.info(f'[DEBUG] on_validation_epoch_end')
+
+    def on_validation_batch_start(self, trainer, batch_idx, batch):
+        log.info(f'[DEBUG] on_validation_batch_start')
+
+    def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
+        log.info(f'[DEBUG] on_validation_batch_end')
+
+    def on_test_epoch_start(self, trainer, epoch):
+        log.info(f'[DEBUG] on_test_epoch_start')
+
+    def on_test_epoch_end(self, trainer, epoch, metrics):
+        log.info(f'[DEBUG] on_test_epoch_end')
+
+    def on_test_batch_start(self, trainer, batch_idx, batch):
+        log.info(f'[DEBUG] on_test_batch_start')
+
+    def on_test_batch_end(self, trainer, batch_idx, batch, loss):
+        log.info(f'[DEBUG] on_test_batch_end')
+
 class CallbackFactory:
     @staticmethod
     def get_callbacks(configuration: Configuration, hyperparams: Hyperparameters) -> List[Callback]:
         callbacks = [
             RecordEpochStatsCallback(use_steps=configuration.use_steps),
-            RecordGradientNormsCallback(log_dir=configuration.log_dir, experiment_name=configuration.experiment_name) if configuration.record_gradient_norms else None
         ]
 
         if configuration.record_snr:
@@ -228,6 +272,17 @@ class CallbackFactory:
             full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
             callbacks.append(RecordSNR(log_dir=full_log_dir))
+
+        if configuration.record_gradient_norms:
+            log_dir = configuration.log_dir
+            experiment_name = configuration.experiment_name
+            full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+
+            callbacks.append(RecordGradientNormsCallback(log_dir=full_log_dir))
+
+        if configuration.verbose_callback:
+            callbacks.append(DebugProbeCallback())
+
 
         return callbacks
 
