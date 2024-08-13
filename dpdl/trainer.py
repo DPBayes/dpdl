@@ -400,11 +400,6 @@ class DifferentiallyPrivateTrainer(Trainer):
                 # let's fit this physical batch
                 self.fit_one_batch(batch_idx, batch)
 
-                # XXX: Fix this to call 'on_train_batch_end', add call to
-                #      'on_train_batch_start' and remove the 'on_train_step' callback
-                if logical_batch_completed:
-                    self.callback_handler.call('on_train_step', self)
-
                 # and next we check for epoch end
                 if (logical_batch_completed and step % steps_per_epoch == 0) or step == self.total_steps:
                     self._handle_virtual_epoch_end(virtual_epoch)

@@ -374,6 +374,13 @@ def cli(
                 rich_help_panel='',
             )
         ] = False,
+        verbose_callback: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Enable debug callback for detailed output',
+                rich_help_panel='',
+            )
+        ] = False,
     ):
 
     config_manager = ConfigurationManager(ctx.params)
