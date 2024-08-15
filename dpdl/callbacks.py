@@ -161,12 +161,12 @@ class RecordSNR(Callback):
             log.info(f'Signal-to-Noise ratio data saved at {file_path}')
 
 class RecordGradientNormsCallback(Callback):
+    trial_index = 0
     # for record the number of repeats within a single experiment
 
     def __init__(self, log_dir: str = None, experiment_name: str = None):
         self.log_dir = log_dir
         self.experiment_name = experiment_name
-        self.trial_index = 0
 
         # cache data at each epoch for mini-batch and/or multi-gpu
         self.per_layer_per_sample_norms_current_epoch = {}
@@ -212,13 +212,13 @@ class RecordGradientNormsCallback(Callback):
 
     def on_train_end(self, *args, **kwargs):
         if torch.distributed.get_rank() == 0:
-            file_path = os.path.join(self.log_dir, f'gradient_norms_{self.experiment_name}_{self.trial_index}.json')
+            file_path = os.path.join(self.log_dir, f'gradient_norms_{self.experiment_name}_{RecordGradientNormsCallback.trial_index}.json')
             with open(file_path, 'w') as fh:
                 json.dump(self.per_layer_norms_history, fh)
 
-            self.trial_index += 1
+            RecordGradientNormsCallback.trial_index += 1
 
-            log.info(f'Gradient norm data saved at {file_path}')
+            log.info(f'Gradient norm data at step {RecordGradientNormsCallback.trial_index} saved to {file_path}')
 
 class DebugProbeCallback(Callback):
     def _is_global_zero(self, trainer):
