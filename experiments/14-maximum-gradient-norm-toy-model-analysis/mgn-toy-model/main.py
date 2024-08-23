@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 from experiment import (
     optimize_hyperparameters,
@@ -96,8 +97,8 @@ def main(data_dir='toy-model-data', image_dir='temp'):
     MAX_GRAD_NORMS = np.geomspace(1e-4, 30, 15)
 
     # Generate dataset
-    data, target = generate_mixture_data(N, D)
-    dataset = TensorDataset(data, target)
+    data = generate_mixture_data(N, D)
+    dataset = TensorDataset(data)
 
     # Split the dataset once and reuse the splits across experiments
     train_size = int(0.8 * N)

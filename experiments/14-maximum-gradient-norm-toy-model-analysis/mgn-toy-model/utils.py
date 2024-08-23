@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import random
 import os
+from scipy.stats import skewnorm
 
 
 def seed_everything(seed):
@@ -10,6 +11,15 @@ def seed_everything(seed):
     random.seed(seed)
     np.random.seed(seed)
 
+def generate_skew_normal_data(n, d, skewness=4):
+    # Generate skew-normal distributed data
+    alpha = skewness * np.ones(d)  # Same skewness for each dimension
+    data = skewnorm.rvs(a=alpha, loc=0, scale=1, size=(n, d))
+
+    # Make it centered by subtracting the mean
+    data -= np.mean(data, axis=0)
+
+    return torch.tensor(data, dtype=torch.float32)
 
 def generate_mixture_data(
     n,
@@ -24,8 +34,6 @@ def generate_mixture_data(
     """
     Generate a dataset where one dimension follows a mixture of two Gaussians,
     and the remaining dimensions follow standard Gaussian distributions.
-
-    Also generate targets that correspond to the true means of the mixture components.
     """
     # Generate standard Gaussian data for all dimensions
     data = torch.normal(mean=0, std=1, size=(n, d))
@@ -45,13 +53,7 @@ def generate_mixture_data(
     # Replace the specified dimension with the mixture data
     data[:, mixture_dim] = mixture_data
 
-    # Generate targets based on which component the data point came from
-    target = torch.zeros_like(data)
-    target[:, mixture_dim] = torch.where(
-        mixture_data >= (mean1 + mean2) / 2, mean2, mean1
-    )
-
-    return data, target
+    return data
 
 
 def setup_directories(data_dir, image_dir):
