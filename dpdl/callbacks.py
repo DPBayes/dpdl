@@ -161,64 +161,95 @@ class RecordSNR(Callback):
             log.info(f'Signal-to-Noise ratio data saved at {file_path}')
 
 class RecordGradientNormsCallback(Callback):
-    trial_index = 0
-    # for record the number of repeats within a single experiment
+    def __init__(self, log_dir: str = None, max_grad_norm: float = 0.0):
+        from collections import defaultdict
 
-    def __init__(self, log_dir: str = None, experiment_name: str = None):
         self.log_dir = log_dir
-        self.experiment_name = experiment_name
 
         # cache data at each epoch for mini-batch and/or multi-gpu
         self.per_layer_per_sample_norms_current_epoch = {}
         self.per_layer_norms_history = []
 
-    def on_train_batch_end(self, trainer, batch_idx, batch, loss, *args, **kwargs):
-            # compute per sample norms from optimizer, which is a list contains NN's weights and bias
-            per_layer_per_sample_norms = [g.view(len(g), -1).norm(2, dim=-1) for g in trainer.optimizer.grad_samples]
-            _, class_labels = batch
+        self.clipped_current_epoch = defaultdict(int)
+        self.total_current_epoch = defaultdict(int)
+        self.clipped_proportion_history = []
 
+    def on_train_batch_end(self, trainer, batch_idx, batch, loss, *args, **kwargs):
+        # compute per sample norms from optimizer, which is a list contains NN's weights and bias
+        per_layer_per_sample_norms = [
+            g.view(len(g), -1).norm(2, dim=-1) for g in trainer.optimizer.grad_samples
+        ]
+        _, class_labels = batch
+
+        for class_label in class_labels.unique():
+            class_mask = class_labels == class_label
             # concatenate the per-sample norm for each class
-            for class_label in class_labels.unique():
-                class_mask = (class_labels == class_label)
-                if class_label.item() not in self.per_layer_per_sample_norms_current_epoch.keys():
-                    self.per_layer_per_sample_norms_current_epoch[class_label.item()] = list(
-                        norms[class_mask] for norms in per_layer_per_sample_norms)
-                else:
-                    for layer_index in range(len(per_layer_per_sample_norms)):
-                        self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index] = torch.cat(
+            if (
+                class_label.item()
+                not in self.per_layer_per_sample_norms_current_epoch.keys()
+            ):
+                self.per_layer_per_sample_norms_current_epoch[class_label.item()] = (
+                    list(norms[class_mask] for norms in per_layer_per_sample_norms)
+                )
+            else:
+                for layer_index in range(len(per_layer_per_sample_norms)):
+                    self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index] = torch.cat(
                             (
                                 self.per_layer_per_sample_norms_current_epoch[class_label.item()][layer_index],
                                 per_layer_per_sample_norms[layer_index][class_mask]
                                 ),
                                 dim=0
                             )
+            # compute the proportion of clipped gradients for each class
+            per_sample_norms = torch.norm(
+                torch.stack(per_layer_per_sample_norms[class_mask]), p=2, dim=0
+            )
+            clipped_num_this_class = sum([g.gt(self.max_grad_norm) for g in per_sample_norms])
+            total_num_this_class = sum(class_mask)
+            self.clipped_current_epoch[class_label] += clipped_num_this_class
+            self.total_current_epoch[class_label] += total_num_this_class
 
     def on_train_epoch_end(self, trainer, epoch, epoch_loss):
+        from collections import defaultdict
+
         # computing the mean norm over weights and bias
-        layer_mean_norms_per_class = {}
-        for class_label, layer_norms_per_class in self.per_layer_per_sample_norms_current_epoch.items():
-            mean_layer_norms_per_class = []
-            for layer_norms in layer_norms_per_class:
-                mean_layer_norms_per_class.append(torch.mean(layer_norms, dim=0).item())
-            layer_mean_norms_per_class[class_label] = mean_layer_norms_per_class
+        if self._is_global_zero(trainer):
+            layer_mean_norms_per_class = {}
+            for class_label, layer_norms_per_class in self.per_layer_per_sample_norms_current_epoch.items():
+                mean_layer_norms_per_class = []
+                for layer_norms in layer_norms_per_class:
+                    mean_layer_norms_per_class.append(torch.mean(layer_norms, dim=0).item())
+                layer_mean_norms_per_class[class_label] = mean_layer_norms_per_class
 
-        self.per_layer_norms_history.append(
-            {
-                'step': epoch,
-                'data': layer_mean_norms_per_class
-            }
-        )
-        self.per_layer_per_sample_norms_current_epoch = {} # clear cache
+            # compute the proportion of clipped gradients for each class
+            clipped_proportion = {}
+            for class_label in self.clipped_current_epoch.keys():
+                clipped_proportion[class_label] = self.clipped_current_epoch[class_label] / self.total_current_epoch[class_label]
 
-    def on_train_end(self, *args, **kwargs):
-        if torch.distributed.get_rank() == 0:
-            file_path = os.path.join(self.log_dir, f'gradient_norms_{self.experiment_name}_{RecordGradientNormsCallback.trial_index}.json')
+            # save
+            self.per_layer_norms_history.append(
+                {
+                    'step': epoch,
+                    'data': layer_mean_norms_per_class,
+                    'accuracy': epoch_loss,
+                    'clipped_proportion': self.clipped_proportion_history,
+                }
+            )
+
+            # clear cache
+            self.per_layer_per_sample_norms_current_epoch = {}
+            self.clipped_current_epoch = defaultdict(int)
+            self.total_current_epoch = defaultdict(int)
+
+
+    def on_train_end(self, trainer, *args, **kwargs):
+        if self._is_global_zero(trainer):
+            file_path = os.path.join(self.log_dir, f'gradient_norms_last.json')
             with open(file_path, 'w') as fh:
                 json.dump(self.per_layer_norms_history, fh)
 
-            RecordGradientNormsCallback.trial_index += 1
+            log.info(f'Gradient norm data saved to {file_path}')
 
-            log.info(f'Gradient norm data at step {RecordGradientNormsCallback.trial_index} saved to {file_path}')
 
 class DebugProbeCallback(Callback):
     def _is_global_zero(self, trainer):
@@ -283,14 +314,13 @@ class CallbackFactory:
 
         if configuration.record_gradient_norms:
             log_dir = configuration.log_dir
-            experiment_name = configuration.experiment_name
             full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+            max_grad_norm = hyperparams.max_grad_norm
 
-            callbacks.append(RecordGradientNormsCallback(log_dir=full_log_dir))
+            callbacks.append(RecordGradientNormsCallback(log_dir=full_log_dir, max_grad_norm=max_grad_norm))
 
         if configuration.verbose_callback:
             callbacks.append(DebugProbeCallback())
 
 
         return callbacks
-
