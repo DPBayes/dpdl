@@ -24,13 +24,14 @@ def plot_clipped_proportions_per_iteration(max_grad_norms, clipped_proportions_d
         plt.legend(bbox_to_anchor=(1, 1))
         plt.tight_layout()
         plt.savefig(f'temp/proportion-of-clipped-gradients-epsilon{epsilon}.png')
-        plt.show()
+        ##plt.show()
 
 
 def plot_last_clipped_proportion_vs_mgn(
     max_grad_norms,
     clipped_proportions_dict,
     save_fname=None,
+    log_scale=True,
 ):
     plt.figure(figsize=(10, 6))
     colors = plt.cm.viridis(np.linspace(0, 1, len(clipped_proportions_dict.keys())))
@@ -45,7 +46,9 @@ def plot_last_clipped_proportion_vs_mgn(
             label=f'Epsilon = {epsilon}',
         )
 
-    plt.xscale('log')
+    if log_scale:
+        plt.xscale('log')
+
     plt.xlabel('Max Gradient Norm (Log Scale)')
     plt.ylabel('Proportion of clipped gradients (Last Iteration)')
     plt.title('Proportion of clipped Gradients vs. Max Gradient Norm')
@@ -55,7 +58,7 @@ def plot_last_clipped_proportion_vs_mgn(
     if save_fname:
         plt.savefig(save_fname)
 
-    plt.show()
+    #plt.show()
 
 
 def plot_predicted_means_all_epsilons(
@@ -63,6 +66,7 @@ def plot_predicted_means_all_epsilons(
     predicted_means_train_dict,
     predicted_means_val_dict,
     save_fname=None,
+    log_scale=True,
 ):
     epsilons = list(predicted_means_train_dict.keys())
     palette = sns.color_palette('tab10', len(epsilons))
@@ -95,7 +99,9 @@ def plot_predicted_means_all_epsilons(
             color=color,
         )
 
-    plt.xscale('log')
+    if log_scale:
+        plt.xscale('log')
+
     plt.xlabel('Max Gradient Norm')
     plt.ylabel('Last Iteration Predicted Mean Norm')
     plt.title(f'Last Iteration Predicted Mean Norms Across All Epsilons')
@@ -106,7 +112,7 @@ def plot_predicted_means_all_epsilons(
     if save_fname:
         plt.savefig(save_fname)
 
-    plt.show()
+    #plt.show()
 
 
 def plot_mean_with_confidence_intervals(
@@ -115,6 +121,7 @@ def plot_mean_with_confidence_intervals(
     n_repeats,
     epsilon,
     save_fname=None,
+    log_scale=True,
 ):
     means = []
     conf_intervals = []
@@ -139,7 +146,12 @@ def plot_mean_with_confidence_intervals(
         label='95% CI',
     )
 
-    plt.xscale('log')
+    if log_scale:
+        plt.xscale('log')
+
+    # Set the ticks where the observations are, rounded to 2 decimals and rotated 45 degrees
+    plt.xticks(ticks=max_grad_norms, labels=[f'{x:.2f}' for x in max_grad_norms], rotation=45)
+
     plt.xlabel('Maximum Gradient Norm')
     plt.ylabel('Mean MSE Loss')
     plt.title(
@@ -147,20 +159,23 @@ def plot_mean_with_confidence_intervals(
     )
     plt.legend()
     plt.grid(True)
+    #plt.ylim([1.9, 2.1])
 
     if save_fname:
         plt.savefig(save_fname)
 
-    plt.show()
+    # plt.show()
 
 
-def plot_all_repeats(max_grad_norms, all_results, n_repeats, epsilon, save_fname=None):
+def plot_all_repeats(max_grad_norms, all_results, n_repeats, epsilon, save_fname=None, log_scale=True):
     plt.figure(figsize=(12, 8))
 
     for i, repeat_losses in enumerate(all_results):
         plt.plot(max_grad_norms, repeat_losses, alpha=0.5, color='blue', linewidth=0.5)
 
-    plt.xscale('log')
+    if log_scale:
+        plt.xscale('log')
+
     plt.xlabel('Maximum Gradient Norm')
     plt.ylabel('MSE Loss')
     plt.title(f'All {n_repeats} Repeats for MSE Losses (ε = {epsilon})')
@@ -169,4 +184,4 @@ def plot_all_repeats(max_grad_norms, all_results, n_repeats, epsilon, save_fname
     if save_fname:
         plt.savefig(save_fname)
 
-    plt.show()
+    #plt.show()
