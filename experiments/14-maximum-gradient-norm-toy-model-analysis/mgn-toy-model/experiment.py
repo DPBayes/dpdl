@@ -8,6 +8,7 @@ from train import train_dp_model
 from plotting import plot_all_repeats, plot_mean_with_confidence_intervals
 from torch.utils.data import DataLoader
 from utils import seed_everything
+import sys
 
 
 def optimize_hyperparameters(
@@ -27,7 +28,7 @@ def optimize_hyperparameters(
     seed_everything(seed)
 
     def objective(trial):
-        learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-1, log=True)
+        learning_rate = trial.suggest_float('learning_rate', 1e-5, 1, log=True)
         batch_size = trial.suggest_int('batch_size', 8, 1000)
 
         # Re-create data loaders with the suggested batch size
@@ -46,6 +47,7 @@ def optimize_hyperparameters(
             learning_rate,
             max_grad_norm,
             epsilon,
+            seed,
         )
 
         # Return the final validation loss to be minimized
@@ -75,6 +77,7 @@ def run_repeats_with_optimized_hypers(
     epochs=10,
     epsilon=0.25,
     input_dim=10,
+    seed=42,
 ):
     """
     Run repeated experiments using optimized hyperparameters for different max_grad_norms.
@@ -83,7 +86,7 @@ def run_repeats_with_optimized_hypers(
     all_results_list = []
 
     for repeat in range(repeats):
-        print(f'Running repeat {repeat + 1} of {repeats}...')
+        print(f'Running repeat {repeat + 1} of {repeats}...', file=sys.stderr)
         seed_everything(repeat)
 
         repeat_losses = []
@@ -108,6 +111,7 @@ def run_repeats_with_optimized_hypers(
                 learning_rate,
                 max_grad_norm,
                 epsilon,
+                seed,
             )
             all_results_dict[max_grad_norm].append(result['val_losses'][-1])
             repeat_losses.append(result['val_losses'][-1])
@@ -125,6 +129,7 @@ def run_single_optimized_experiment(
     epochs=10,
     epsilon=0.25,
     input_dim=10,
+    seed=42,
 ):
     """
     Run a single repeat with optimized hyperparameters, tracking losses, clipped proportions, and predicted means.
@@ -159,6 +164,7 @@ def run_single_optimized_experiment(
             learning_rate,
             max_grad_norm,
             epsilon,
+            seed,
         )
 
         results.append(
