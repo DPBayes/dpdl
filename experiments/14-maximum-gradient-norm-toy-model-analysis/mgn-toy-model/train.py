@@ -14,11 +14,16 @@ def train_dp_model(
     learning_rate,
     max_grad_norm,
     epsilon,
+    seed,
 ):
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     # Wrap model and optimizer with Opacus for DP
     privacy_engine = PrivacyEngine()
+
+    noise_generator = torch.Generator()
+    noise_generator.manual_seed(seed)
+
     model, optimizer, train_loader = privacy_engine.make_private_with_epsilon(
         module=model,
         optimizer=optimizer,
@@ -27,6 +32,7 @@ def train_dp_model(
         target_delta=1e-5,
         max_grad_norm=max_grad_norm,
         epochs=epochs,
+        noise_generator=noise_generator,
         normalize_clipping=True,
     )
 
