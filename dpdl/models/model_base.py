@@ -2,6 +2,7 @@ import os
 import torch
 import torchmetrics
 
+
 class ModelBase(torch.nn.Module):
     def __init__(
         self,
@@ -19,32 +20,44 @@ class ModelBase(torch.nn.Module):
         self._criterion = torch.nn.CrossEntropyLoss().cuda()
 
         # let's track the training accuracy
-        self.train_metrics = torchmetrics.MetricCollection({
-            'MulticlassAccuracy': torchmetrics.classification.MulticlassAccuracy(
-                num_classes=self.num_classes,
-                average='macro',
-            ).cuda(),
-            'MulticlassAccuracyWithMicro': torchmetrics.classification.MulticlassAccuracy(
-                num_classes=self.num_classes,
-                average='micro',
-            ).cuda(),
-        })
+        self.train_metrics = torchmetrics.MetricCollection(
+            {
+                "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes=self.num_classes,
+                    average="macro",
+                ).cuda(),
+                "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes=self.num_classes,
+                    average="micro",
+                ).cuda(),
+                "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes=self.num_classes,
+                    average="none",
+                ).cuda(),
+            }
+        )
 
         # we only validate on rank 0, so there's no need to
         # synchronize when calculating the metrics. although,
         # the flag is probably redundant.
-        self.valid_metrics = torchmetrics.MetricCollection({
-            'MulticlassAccuracy': torchmetrics.classification.MulticlassAccuracy(
-                num_classes=self.num_classes,
-                average='macro',
-                sync_on_compute=False,
-            ).cuda(),
-            'MulticlassAccuracyWithMicro': torchmetrics.classification.MulticlassAccuracy(
-                num_classes=self.num_classes,
-                average='micro',
-                sync_on_compute=False,
-            ).cuda(),
-        })
+        self.valid_metrics = torchmetrics.MetricCollection(
+            {
+                "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes=self.num_classes,
+                    average="macro",
+                    sync_on_compute=False,
+                ).cuda(),
+                "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes=self.num_classes,
+                    average="micro",
+                    sync_on_compute=False,
+                ).cuda(),
+                "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes=self.num_classes,
+                    average="none",
+                ).cuda(),
+            }
+        )
 
     def forward(self, x):
         if self.use_feature_cache:
@@ -62,10 +75,10 @@ class ModelBase(torch.nn.Module):
         return self._criterion(logits, targets)
 
     def show_layers(self):
-        log.info('Layers:')
+        log.info("Layers:")
 
         for n, m in self.model.named_modules():
-            log.info(f'{n}, {type(m)}')
+            log.info(f"{n}, {type(m)}")
 
     def zero_head_weights(self):
         classifier = self.model.get_classifier()
@@ -85,4 +98,3 @@ class ModelBase(torch.nn.Module):
             os.makedirs(directory, exist_ok=True)
 
         torch.save(self.model.state_dict(), fpath)
-
