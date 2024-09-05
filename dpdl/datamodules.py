@@ -10,6 +10,7 @@ import random
 
 from collections import Counter
 from functools import partial
+from PIL import Image
 from typing import Tuple
 
 from dpdl.utils import seed_everything
@@ -38,6 +39,7 @@ class DataModule:
         label_field: str = None,
         image_field: str = None,
         imbalance_factor: float = None,
+        cache_transforms: bool = False,
     ):
 
         self.dataset_name = dataset_name
@@ -58,6 +60,7 @@ class DataModule:
         self._label_field = label_field
         self._stratify_shots = stratify_shots
         self._imbalance_factor = imbalance_factor
+        self._cache_transforms = cache_transforms
 
         self._dataloaders = {
             'train': None,
@@ -84,6 +87,19 @@ class DataModule:
 
     def initialize(self, transforms: torchvision.transforms.transforms.Compose):
         self.transforms = transforms
+
+        # Make sure all images are RGB
+        self._add_rgb_transform()
+
+        if self.transforms:
+            # We need to remove the ToTensor transformation if not caching
+            # transformations. The issue is that we are passing the dataset
+            # to the dataloader using the `with_format('torch')` transformation
+            # that already maps these to tensor and it's much faster to do it
+            # in the dataset end, because this is a zero-copy operation with
+            # Arrow datasets.
+            if not self._cache_transforms:
+                self._replace_to_tensor_with_to_float()
 
         # Again, first do the initialization on rank 0, so it can cache everything
         # on disk without race conditions.
@@ -192,10 +208,11 @@ class DataModule:
                     stratify_by_column=self._label_field,
                 ).values()
 
-        # We need to apply transforms last. If we do it first, all examples in
-        # a very large dataset will be transformed first and we probably won't
-        # even use them all.
-        self._apply_transforms_to_datasets()
+        if self._cache_transforms:
+            # We need to apply transforms last. If we do it first, all examples in
+            # a very large dataset will be transformed first and we probably won't
+            # even use them all.
+            self._apply_transforms_to_datasets()
 
     def _load_datasets(self):
         """Load the datasets to memory."""
@@ -353,7 +370,22 @@ class DataModule:
         if self._collate_fn:
             # NB: The collate_fn needs to know the label and image fields,
             #     so let's overwrite it with a function that has those.
-            collate_fn = partial(self._collate_fn, self._label_field, self._image_field)
+            #
+            #     We also need to do the transformations in the collate function
+            #     if we have not mapped the transformations to disk cache.
+            if self._cache_transforms:
+                collate_fn = partial(
+                    self._collate_fn,
+                    label_field=self._label_field,
+                    image_field=self._image_field,
+                )
+            else:
+                collate_fn = partial(
+                    self._collate_fn,
+                    label_field=self._label_field,
+                    image_field=self._image_field,
+                    transforms=self.transforms,
+                )
         else:
             collate_fn = self._default_collate_fn
 
@@ -589,9 +621,6 @@ class ImageDataModule(DataModule):
             return examples
 
         if self.transforms:
-            # Make sure all images are RGB
-            self._add_rgb_transform()
-
             transforms_func = partial(
                 _apply_transforms,
                 self.transforms,
@@ -631,26 +660,75 @@ class ImageDataModule(DataModule):
                 )
 
     def _add_rgb_transform(self):
-        toRGB = torchvision.transforms.Lambda(lambda x: x.convert('RGB') if x.mode != 'RGB' else x)
+        # Function for converting a PIL image to RGB
+        def to_rgb_pil(x):
+            if isinstance(x, Image.Image) and x.mode != 'RGB':
+                return x.convert('RGB')
+            return x
+
+        # Function for converting a torch.Tensor to RGB
+        def to_rgb_tensor(x):
+            if isinstance(x, torch.Tensor):
+                if len(x.shape) == 3 and x.shape[0] == 1:  # Grayscale tensor (C, H, W)
+                    return x.repeat(3, 1, 1)  # Convert 1-channel to 3-channel (RGB)
+                elif len(x.shape) == 3 and x.shape[0] == 3:
+                    return x  # Already RGB
+                else:
+                    raise ValueError('Input tensor is not a valid image tensor.')
+            return x
+
+        # Select the appropriate transformation based on the type of input
+        if self._cache_transforms:
+            toRGB = torchvision.transforms.Lambda(to_rgb_pil)
+        else:
+            toRGB = torchvision.transforms.Lambda(to_rgb_tensor)
+
+        # Update the transform pipeline
         new_transforms = [toRGB] + self.transforms.transforms
         self.transforms = torchvision.transforms.Compose(new_transforms)
 
-    @staticmethod
-    def _collate_fn(label_field, image_field, batch):
-        B = len(batch)
-        C, H, W = batch[0][image_field].shape
+    def _replace_to_tensor_with_to_float(self):
+        # We need to convert the tensor to float and normalize to [0, 1]
+        to_float = torchvision.transforms.Lambda(lambda x: x.float() / 255.0)
 
+        # Filter out ToTensor and replace it with the new transformation
+        new_transforms = []
+        for t in self.transforms.transforms:
+            if isinstance(t, torchvision.transforms.ToTensor):
+                new_transforms.append(to_float)
+            else:
+                new_transforms.append(t)
+
+        self.transforms.transforms = new_transforms
+
+    @staticmethod
+    def _collate_fn(batch, label_field=None, image_field=None, transforms=None):
+        B = len(batch)
+
+        # Apply transformation to the first image to determine the size after transformation
+        if transforms:
+            first_image = transforms(batch[0][image_field])
+        else:
+            first_image = batch[0][image_field]
+
+        # Now that we know the transformed image size, we can initialize the `images` tensor
+        C, H, W = first_image.shape
         images = torch.empty((B, C, H, W))
         labels = torch.empty(B, dtype=torch.long)
 
+        # Now we are ready to process the batch
         for i in range(B):
-            images[i] = batch[i][image_field]
+            if transforms:
+                images[i] = transforms(batch[i][image_field])
+            else:
+                images[i] = batch[i][image_field]
+
             labels[i] = batch[i][label_field]
 
         return images, labels
 
     @staticmethod
-    def _collate_fn_with_cached_features(label_field, image_field, batch):
+    def _collate_fn_with_cached_features(batch, label_field=None, image_field=None):
         features = torch.stack(
             [item['features'] for item in batch]
         )
@@ -683,6 +761,7 @@ class DataModuleFactory:
             label_field=configuration.dataset_label_field,
             max_test_examples=configuration.max_test_examples,
             imbalance_factor=configuration.imbalance_factor,
+            cache_transforms=configuration.cache_dataset_transforms,
         )
 
         return datamodule

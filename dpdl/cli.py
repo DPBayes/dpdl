@@ -220,6 +220,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        cache_dataset_transforms: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Cache the image transformations on disk (faster to disable for small images)',
+                rich_help_panel='Dataset options',
+            )
+        ] = False,
         log_dir: Annotated[
             str,
             typer.Option(

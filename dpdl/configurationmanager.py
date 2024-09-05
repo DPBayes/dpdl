@@ -94,6 +94,7 @@ class Configuration(BaseModel):
     model_save_fpath: Optional[str] = None
     record_gradient_norms: Optional[bool] = False
     verbose_callback: Optional[bool] = False
+    cache_dataset_transforms: Optional[bool] = False
 
     class Config:
         # Fix Pydantic warning:
@@ -162,6 +163,7 @@ class Configuration(BaseModel):
             ('Dataset name', self.dataset_name),
             ('Dataset label field', self.dataset_label_field),
             ('Dataset imbalance factor', self.imbalance_factor),
+            ('Cache dataset transforms', self.cache_dataset_transforms),
             ('Validation size', self.validation_size),
             ('Test size', self.test_size),
             ('Physical batch size', self.physical_batch_size),
