@@ -205,6 +205,7 @@ class RecordGradientNormsCallback(Callback):
         from collections import defaultdict
 
         self.log_dir = log_dir
+        self.max_grad_norm = max_grad_norm
 
         # cache data at each epoch for mini-batch and/or multi-gpu
         self.per_layer_per_sample_norms_current_epoch = {}
@@ -245,11 +246,16 @@ class RecordGradientNormsCallback(Callback):
                         dim=0,
                     )
             # compute the proportion of clipped gradients for each class
+            masked_per_layer_per_sample_norms = [
+                norms[class_mask] for norms in per_layer_per_sample_norms
+            ]
             per_sample_norms = torch.norm(
-                torch.stack(per_layer_per_sample_norms[class_mask]), p=2, dim=0
+                torch.stack(masked_per_layer_per_sample_norms), p=2, dim=0
             )
-            clipped_num_this_class = sum(
-                [g.gt(self.max_grad_norm) for g in per_sample_norms]
+
+            # compute the proportion of clipped samples
+            clipped_num_this_class = (
+                (per_sample_norms > self.max_grad_norm).sum().item()
             )
             total_num_this_class = sum(class_mask)
             self.clipped_current_epoch[class_label] += clipped_num_this_class
@@ -370,6 +376,7 @@ class CallbackFactory:
 
         if configuration.record_gradient_norms:
             log_dir = configuration.log_dir
+            experiment_name = configuration.experiment_name
             full_log_dir = pathlib.Path(f"{log_dir}/{experiment_name}")
             max_grad_norm = hyperparams.max_grad_norm
 
