@@ -203,17 +203,19 @@ class RecordSNR(Callback):
 
 
 class RecordGradientNormsCallback(Callback):
-    def __init__(self, log_dir: str, max_grad_norm: float):
+    def __init__(self, log_dir: str = None, max_grad_norm: float = 0.0):
+        from collections import defaultdict
+
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
 
         # cache data at each epoch for mini-batch and/or multi-gpu
-        self.per_layer_per_sample_norms_current_epoch = {}
-        self.per_layer_norms_history = []
+        self.norms_per_layer_sample = {}
+        self.proportion_per_class = {}
+        self.layer_mean_norms_per_class = {}
 
-        self.clipped_current_epoch = defaultdict(int)
-        self.total_current_epoch = defaultdict(int)
-        self.clipped_proportion_history = []
+        # record the history
+        self.grad_history = []
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, *args, **kwargs):
         # compute per sample norms from optimizer, which is a list contains NN's weights and bias
@@ -224,86 +226,72 @@ class RecordGradientNormsCallback(Callback):
 
         for class_label in class_labels.unique():
             class_mask = class_labels == class_label
-            # concatenate the per-sample norm for each class
-            if (
-                class_label.item()
-                not in self.per_layer_per_sample_norms_current_epoch.keys()
-            ):
-                self.per_layer_per_sample_norms_current_epoch[class_label.item()] = (
-                    list(norms[class_mask] for norms in per_layer_per_sample_norms)
+            # preperation: concatenate the per-sample norm for each class
+            if class_label.item() not in self.norms_per_layer_sample.keys():
+                self.norms_per_layer_sample[class_label.item()] = list(
+                    norms[class_mask] for norms in per_layer_per_sample_norms
                 )
             else:
                 for layer_index in range(len(per_layer_per_sample_norms)):
-                    self.per_layer_per_sample_norms_current_epoch[class_label.item()][
-                        layer_index
-                    ] = torch.cat(
-                        (
-                            self.per_layer_per_sample_norms_current_epoch[
-                                class_label.item()
-                            ][layer_index],
-                            per_layer_per_sample_norms[layer_index][class_mask],
-                        ),
-                        dim=0,
+                    self.norms_per_layer_sample[class_label.item()][layer_index] = (
+                        torch.cat(
+                            (
+                                self.norms_per_layer_sample[class_label.item()][
+                                    layer_index
+                                ],
+                                per_layer_per_sample_norms[layer_index][class_mask],
+                            ),
+                            dim=0,
+                        )
                     )
-            # compute the proportion of clipped gradients for each class
+            # preperation: concatenate the per-sample norm for each class
             masked_per_layer_per_sample_norms = [
                 norms[class_mask] for norms in per_layer_per_sample_norms
             ]
+            # clipped proportion: compute the norm by sample
             per_sample_norms = torch.norm(
                 torch.stack(masked_per_layer_per_sample_norms), p=2, dim=0
             )
-
-            # compute the proportion of clipped samples
+            # clipped proportion: compute the proportion of clipped samples
             clipped_num_this_class = (
                 (per_sample_norms > self.max_grad_norm).sum().item()
             )
             total_num_this_class = sum(class_mask)
-            self.clipped_current_epoch[class_label] += clipped_num_this_class
-            self.total_current_epoch[class_label] += total_num_this_class
+            if total_num_this_class == 0:
+                self.proportion_per_class[class_label] = 0
+            else:
+                self.proportion_per_class[class_label] = (
+                    clipped_num_this_class / total_num_this_class
+                )
 
-    def on_train_epoch_end(self, trainer, epoch, epoch_loss):
-        # computing the mean norm over weights and bias
-        if self._is_global_zero(trainer):
-            layer_mean_norms_per_class = {}
+            # layer norm: computing the mean norm over layer
             for (
                 class_label,
                 layer_norms_per_class,
-            ) in self.per_layer_per_sample_norms_current_epoch.items():
+            ) in self.norms_per_layer_sample.items():
                 mean_layer_norms_per_class = []
                 for layer_norms in layer_norms_per_class:
                     mean_layer_norms_per_class.append(
                         torch.mean(layer_norms, dim=0).item()
                     )
-                layer_mean_norms_per_class[class_label] = mean_layer_norms_per_class
-
-            # compute the proportion of clipped gradients for each class
-            clipped_proportion = {}
-            for class_label in self.clipped_current_epoch.keys():
-                clipped_proportion[class_label] = (
-                    self.clipped_current_epoch[class_label]
-                    / self.total_current_epoch[class_label]
+                self.layer_mean_norms_per_class[class_label] = (
+                    mean_layer_norms_per_class
                 )
 
-            # save
-            self.per_layer_norms_history.append(
+        # save
+        if self._is_global_zero(trainer):
+            self.grad_history.append(
                 {
-                    "step": epoch,
-                    "data": layer_mean_norms_per_class,
-                    "accuracy": epoch_loss,
-                    "clipped_proportion": self.clipped_proportion_history,
+                    "step": batch_idx,
+                    "data": self.layer_mean_norms_per_class,
+                    "clipped_proportion": self.proportion_per_class,
                 }
             )
-
-            # clear cache
-            self.per_layer_per_sample_norms_current_epoch = {}
-            self.clipped_current_epoch = defaultdict(int)
-            self.total_current_epoch = defaultdict(int)
 
     def on_train_end(self, trainer, *args, **kwargs):
         if self._is_global_zero(trainer):
             file_path = os.path.join(self.log_dir, f"gradient_norms_last.json")
-
-            converted_data = tensor_to_python_type(self.per_layer_norms_history)
+            converted_data = tensor_to_python_type(self.grad_history)
             with open(file_path, "w") as fh:
                 json.dump(converted_data, fh)
 
