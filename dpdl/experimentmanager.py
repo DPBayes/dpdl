@@ -11,6 +11,7 @@ import torch
 
 from .configurationmanager import ConfigurationManager
 from .trainer import Trainer
+from .utils import tensor_to_python_type
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ def save_study(
     ):
 
     # unwrap metric  values from torch tensors
-    final_metrics = _untensorify_dict(final_metrics)
+    final_metrics = tensor_to_python_type(final_metrics)
 
     log_dir = config_manager.configuration.log_dir
     experiment_name = config_manager.configuration.experiment_name
@@ -85,12 +86,6 @@ def _copy_optuna_study_to_experiment_dir(config_manager: ConfigurationManager):
         to_storage=dst_storage,
     )
 
-def _untensorify_dict(d):
-    res = {}
-    for key, value in d.items():
-        res[key] = value.item()
-    return res
-
 def start_experiment_logging(
         log: logging.Logger,
         config_manager: ConfigurationManager,
@@ -143,7 +138,7 @@ def log_test_metrics(config_manager, metrics):
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
-    metrics = _untensorify_dict(metrics)
+    metrics = tensor_to_python_type(metrics)
 
     with open(f'{full_log_dir}/test_metrics', 'w') as fh:
         json.dump(metrics, fh)
