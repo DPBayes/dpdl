@@ -7,9 +7,11 @@ import pathlib
 import torch
 import torchmetrics
 
+from collections import defaultdict
 from typing import List
 
 from .configurationmanager import Configuration, Hyperparameters
+from .utils import tensor_to_python_type
 
 log = logging.getLogger(__name__)
 
@@ -201,9 +203,7 @@ class RecordSNR(Callback):
 
 
 class RecordGradientNormsCallback(Callback):
-    def __init__(self, log_dir: str = None, max_grad_norm: float = 0.0):
-        from collections import defaultdict
-
+    def __init__(self, log_dir: str, max_grad_norm: float):
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
 
@@ -262,8 +262,6 @@ class RecordGradientNormsCallback(Callback):
             self.total_current_epoch[class_label] += total_num_this_class
 
     def on_train_epoch_end(self, trainer, epoch, epoch_loss):
-        from collections import defaultdict
-
         # computing the mean norm over weights and bias
         if self._is_global_zero(trainer):
             layer_mean_norms_per_class = {}
@@ -304,8 +302,10 @@ class RecordGradientNormsCallback(Callback):
     def on_train_end(self, trainer, *args, **kwargs):
         if self._is_global_zero(trainer):
             file_path = os.path.join(self.log_dir, f"gradient_norms_last.json")
+
+            converted_data = tensor_to_python_type(self.per_layer_norms_history)
             with open(file_path, "w") as fh:
-                json.dump(self.per_layer_norms_history, fh)
+                json.dump(converted_data, fh)
 
             log.info(f"Gradient norm data saved to {file_path}")
 
