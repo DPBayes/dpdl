@@ -65,7 +65,7 @@ if __name__ == '__main__':
     torch.backends.cudnn.allow_tf32 = True
 
     # Reproducible results
-    torch.use_deterministic_algorithms(True)
+    torch.use_deterministic_algorithms(True, warn_only=True)
     torch.backends.cudnn.benchmark = False
 
     # Fix Huggingface datasets map to work with multiple proceses.

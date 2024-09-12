@@ -6,6 +6,7 @@ import os
 import pathlib
 import torch
 import torchmetrics
+import torch.nn.functional as F
 
 from collections import defaultdict
 from typing import List
@@ -45,7 +46,13 @@ class Callback:
     def on_train_batch_start(self, trainer, batch_idx, batch):
         pass
 
+    def on_train_physical_batch_start(self, trainer, batch_idx, batch):
+        pass
+
     def on_train_batch_end(self, trainer, batch_idx, batch, loss):
+        pass
+
+    def on_train_physical_batch_end(self, trainer, batch_idx, batch, loss):
         pass
 
     def on_validation_epoch_start(self, trainer, epoch):
@@ -204,8 +211,6 @@ class RecordSNR(Callback):
 
 class RecordGradientNormsCallback(Callback):
     def __init__(self, log_dir: str = None, max_grad_norm: float = 0.0):
-        from collections import defaultdict
-
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
 
@@ -298,6 +303,99 @@ class RecordGradientNormsCallback(Callback):
             log.info(f"Gradient norm data saved to {file_path}")
 
 
+class RecordCosineSimilarityCallback(Callback):
+    def __init__(self, log_dir: str, max_grad_norm: float):
+        self.log_dir = log_dir
+        self.max_grad_norm = max_grad_norm
+        self.cosine_similarities_history = []
+        self.accumulated_gradients = []
+
+    def on_train_batch_start(self, *args, **kwargs):
+        # Reset accumulated gradients at the start of each logical batch
+        self.accumulated_gradients = []
+
+    def on_train_physical_batch_end(self, trainer, *args, **kwargs):
+        with torch.no_grad():
+            # Collect per-sample gradients for the current physical batch
+            per_sample_gradients = [
+                g.view(len(g), -1) for g in trainer.optimizer.grad_samples
+            ]
+
+            # Concatenate the gradients across layers for each example
+            flattened_gradients = torch.cat(per_sample_gradients, dim=-1)
+
+            # Accumulate gradients across physical batches
+            self.accumulated_gradients.append(flattened_gradients)
+
+    def on_train_batch_end(self, trainer, *args, **kwargs):
+        with torch.no_grad():
+            # Concatenate all accumulated gradients after logical batch completion
+            all_gradients = torch.cat(self.accumulated_gradients, dim=0)
+
+            # Clipping gradients based on norm threshold
+            clipped_gradients = torch.clamp(all_gradients, max=self.max_grad_norm)
+
+            # Mean and median aggregation
+            mean_grad_unclipped = torch.mean(all_gradients, dim=0)
+            mean_grad_clipped = torch.mean(clipped_gradients, dim=0)
+            median_grad_unclipped = torch.median(all_gradients, dim=0).values
+
+            # Cosine similarities
+            clipped_mean_vs_unclipped_mean = F.cosine_similarity(
+                mean_grad_clipped,
+                mean_grad_unclipped,
+                dim=0,
+                eps=1e-8,
+            )
+
+            clipped_mean_vs_unclipped_median = F.cosine_similarity(
+                mean_grad_clipped,
+                median_grad_unclipped,
+                dim=0,
+                eps=1e-8,
+            )
+
+            unclipped_mean_vs_unclipped_median = F.cosine_similarity(
+                mean_grad_unclipped,
+                median_grad_unclipped,
+                dim=0,
+                eps=1e-8,
+            )
+
+            # Save cosine similarity per logical batch
+            self.cosine_similarities_history.append({
+                'clipped_mean_vs_unclipped_mean': clipped_mean_vs_unclipped_mean.item(),
+                'clipped_mean_vs_unclipped_median': clipped_mean_vs_unclipped_median.item(),
+                'unclipped_mean_vs_unclipped_median': unclipped_mean_vs_unclipped_median.item(),
+            })
+
+            # Reset for the next logical batch
+            self.accumulated_gradients = []
+
+    def on_train_end(self, trainer, *args, **kwargs):
+        if torch.distributed.get_rank() == 0:
+            file_path = os.path.join(self.log_dir, 'cosine-similarities.csv')
+
+            with open(file_path, 'w', newline='') as fh:
+                writer = csv.writer(fh)
+                writer.writerow([
+                    'Step',
+                    'Clipped_Mean_vs_Unclipped_Mean',
+                    'Clipped_Mean_vs_Unclipped_Median',
+                    'Unclipped_Mean_vs_Unclipped_Median',
+                ])
+
+                for step, record in enumerate(self.cosine_similarities_history):
+                    writer.writerow([
+                        step,
+                        record['clipped_mean_vs_unclipped_mean'],
+                        record['clipped_mean_vs_unclipped_median'],
+                        record['unclipped_mean_vs_unclipped_median'],
+                    ])
+
+            log.info(f'Cosine similarity data saved at {file_path}')
+
+
 class DebugProbeCallback(Callback):
     def _is_global_zero(self, trainer):
         log.info(f"[DEBUG] Calling _is_global_zero")
@@ -318,8 +416,14 @@ class DebugProbeCallback(Callback):
     def on_train_batch_start(self, trainer, batch_idx, batch):
         log.info(f"[DEBUG] on_train_batch_start")
 
+    def on_train_physical_batch_start(self, trainer, batch_idx, batch):
+        log.info(f"[DEBUG] on_train_physical_batch_start")
+
     def on_train_batch_end(self, trainer, batch_idx, batch, loss):
         log.info(f"[DEBUG] on_train_batch_end")
+
+    def on_train_physical_batch_end(self, trainer, batch_idx, batch, loss):
+        log.info(f"[DEBUG] on_train_physical_batch_end")
 
     def on_validation_epoch_start(self, trainer, epoch):
         log.info(f"[DEBUG] on_validation_epoch_start")
@@ -368,8 +472,14 @@ class CallbackFactory:
             full_log_dir = pathlib.Path(f"{log_dir}/{experiment_name}")
             max_grad_norm = hyperparams.max_grad_norm
 
+            #callbacks.append(
+            #    RecordGradientNormsCallback(
+            #        log_dir=full_log_dir, max_grad_norm=max_grad_norm
+            #    )
+            #)
+
             callbacks.append(
-                RecordGradientNormsCallback(
+                RecordCosineSimilarityCallback(
                     log_dir=full_log_dir, max_grad_norm=max_grad_norm
                 )
             )
