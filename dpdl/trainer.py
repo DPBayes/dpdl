@@ -128,7 +128,9 @@ class Trainer:
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
+            self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
             self.fit_one_batch(batch_idx, batch)
+            self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
 
         # compute the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
@@ -137,8 +139,6 @@ class Trainer:
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
     def fit_one_batch(self, batch_idx, batch):
-        self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
-
         X, y = batch
         X = X.cuda(non_blocking=True)
         y = y.cuda(non_blocking=True)
@@ -152,29 +152,36 @@ class Trainer:
         # zero the grads as usually before doing anything
         self.optimizer.zero_grad()
 
-        batch_loss = 0
+        logical_batch_loss = 0
         # process the sub batches one at a time
         N = len(X_split)
 
         for i in range(N):
+            # notify the callbacks of a physical batch start
             X_splitted = X_split[i]
             y_splitted = y_split[i]
+            physical_batch = (X_splitted, y_splitted)
+
+            self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
             logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
             loss.backward()
 
             # keep track of the batch loss
-            batch_loss = batch_loss + loss.item()
+            logical_batch_loss += loss.item() * N # NB: Unnormalize to track logical batch loss
 
             # update the metrics if there are any
             preds = torch.argmax(logits, dim=1)
             self._unwrap_model().train_metrics.update(preds, y_split[i])
 
+            # notify the callbacks of a physical batch end
+            self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
+
         # after accumulating the gradients for all the sub batches we can finally update weights.
         self.optimizer.step()
 
-        self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, batch_loss)
+        return logical_batch_loss
 
     def validate(self, epoch=None):
         return self._evaluate('validation', epoch)
@@ -369,9 +376,23 @@ class DifferentiallyPrivateTrainer(Trainer):
         # here we'll keep track of our approximate epochs
         virtual_epoch = 0
 
+        # number of total steps taken
+        step = 0
+
+        # number of logical batches in an approximate epoch
+        n_logical_batches = 0
+
+        # track the logical batch loss here
+        logical_batch_loss = 0
+
+        # flag to keep track of logical batches
+        logical_batch_completed = False
+
         # to calculate the start/end of an epoch, we need the number
         # of steps in an epoch.
         steps_per_epoch = self._calculate_steps_per_epoch()
+
+        self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
 
         # if 'total_steps' is set then Opacus will do the stepping for us, or
         # more precisely: the dataloader will have exactly 'total_steps' batches.
@@ -381,8 +402,6 @@ class DifferentiallyPrivateTrainer(Trainer):
             max_physical_batch_size=self.physical_batch_size,
             optimizer=self.optimizer,
         ) as virtual_dataloader:
-            step = 0
-            logical_batch_completed = False
             for batch_idx, batch in enumerate(virtual_dataloader):
                 # first batch, we can start first epoch
                 if batch_idx == 0:
@@ -397,8 +416,21 @@ class DifferentiallyPrivateTrainer(Trainer):
                     step += 1
                     logical_batch_completed = True
 
+                # notify the callbacks of a physical batch start
+                self.callback_handler.call('on_train_physical_batch_start', self, batch_idx, batch)
+
                 # let's fit this physical batch
-                self.fit_one_batch(batch_idx, batch)
+                batch_loss = self.fit_one_batch(batch_idx, batch)
+
+                # notify the callbacks of a physical batch end
+                self.callback_handler.call('on_train_physical_batch_end', self, batch_idx, batch, batch_loss)
+
+                logical_batch_loss += batch_loss
+
+                if logical_batch_completed:
+                    self.callback_handler.call('on_train_batch_end', self, n_logical_batches, None, logical_batch_loss)
+                    n_logical_batches += 1
+                    logical_batch_loss = 0
 
                 # and next we check for epoch end
                 if (logical_batch_completed and step % steps_per_epoch == 0) or step == self.total_steps:
@@ -416,13 +448,13 @@ class DifferentiallyPrivateTrainer(Trainer):
                     if step < self.total_steps:
                         virtual_epoch += 1
                         self._handle_virtual_epoch_start(virtual_epoch)
+                        self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
 
                 logical_batch_completed = False
 
         #assert step == self.total_steps, f'Mismatch in total steps count: Expected {self.total_steps} total steps, but stepped {step} times!'
 
     def fit_one_batch(self, batch_idx, batch):
-        self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
         self.optimizer.zero_grad()
 
         X, y = batch
@@ -431,7 +463,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         logits = self.model(X)
         loss = self._unwrap_model().criterion(logits, y)
-       
+
         loss.backward()
 
         self.optimizer.step()
@@ -442,7 +474,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         preds = torch.argmax(logits, dim=1)
         self._unwrap_model().train_metrics.update(preds, y)
 
-        self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, loss)
+        return loss
 
     def fit_one_epoch(self, epoch):
         self.model.train()
@@ -456,7 +488,9 @@ class DifferentiallyPrivateTrainer(Trainer):
             # the virtual data loader created by BatchMemoryManager enables us to use larger
             # logical batch sizes that fit in a GPU.
             for batch_idx, batch in enumerate(virtual_dataloader):
-                self.fit_one_batch(batch_idx, batch)
+                self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
+                batch_loss = self.fit_one_batch(batch_idx, batch)
+                self.callback_handler.call('on_train_batch_end', self, batch_idx, batch_loss)
 
         # compute and reset the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
