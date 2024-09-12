@@ -83,18 +83,11 @@ class Callback:
         if not metrics:
             return
 
+        metrics = tensor_to_python_type(metrics)
+
         log.info(annotation + ":")
         for key, value in metrics.items():
-            if isinstance(value, torch.Tensor):
-                if value.dim() == 0:
-                    value = float(value)
-                    log.info(f" - {key}: {value:.4f}.")
-                else:
-                    value = value.tolist()
-                    log.info(f" - {key}: {value}.")
-            else:
-                log.info(f" - {key}: {value:.4f}.")
-
+            log.info(f" - {key}: {value}.")
 
 class RecordEpochStatsCallback(Callback):
     def __init__(self, use_steps=False):
@@ -396,6 +389,47 @@ class RecordCosineSimilarityCallback(Callback):
             log.info(f'Cosine similarity data saved at {file_path}')
 
 
+class RecordPerClassAccuracyCallback(Callback):
+    def __init__(self, log_dir: str):
+        self.log_dir = log_dir
+        self.per_class_accuracies_history = []
+
+    def on_train_batch_end(self, trainer, *args, **kwargs):
+        # At the end of the logical batch, we compute and save per-class accuracies
+        train_metrics = trainer._unwrap_model().train_metrics.compute()
+
+        # Extract per-class accuracies
+        per_class_accuracies = train_metrics.get('MulticlassAccuracyPerClass', None)
+
+        if per_class_accuracies is not None:
+            # Convert to a list for easier logging and saving
+            per_class_accuracies_list = per_class_accuracies.tolist()
+
+            self.per_class_accuracies_history.append(per_class_accuracies_list)
+
+    def on_train_end(self, trainer, *args, **kwargs):
+        if torch.distributed.get_rank() == 0:
+            file_path = os.path.join(self.log_dir, 'per-class-accuracies.csv')
+
+            # Save the per-class accuracies history to a CSV
+            with open(file_path, 'w', newline='') as fh:
+                writer = csv.writer(fh)
+
+                # Construct header row for the CSV
+                header = ['Step']
+
+                for i in range(len(self.per_class_accuracies_history[0])):
+                    header += [f'Class_{i}']
+
+                writer.writerow(header)
+
+                # Write each batch's per-class accuracies
+                for i, accuracies in enumerate(self.per_class_accuracies_history):
+                    writer.writerow([i] + accuracies)
+
+            log.info(f'Per-class accuracy data saved at {file_path}')
+
+
 class DebugProbeCallback(Callback):
     def _is_global_zero(self, trainer):
         log.info(f"[DEBUG] Calling _is_global_zero")
@@ -481,6 +515,12 @@ class CallbackFactory:
             callbacks.append(
                 RecordCosineSimilarityCallback(
                     log_dir=full_log_dir, max_grad_norm=max_grad_norm
+                )
+            )
+
+            callbacks.append(
+                RecordPerClassAccuracyCallback(
+                    log_dir=full_log_dir,
                 )
             )
 
