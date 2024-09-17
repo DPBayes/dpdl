@@ -757,6 +757,95 @@ class RecordClippedProportionsPerClassCallback(Callback):
         log.info(f'Clipped proportions data saved at {file_path}')
 
 
+class RecordGradientStatisticsCallback(Callback):
+    def __init__(self, log_dir: str, max_grad_norm: float):
+        self.log_dir = log_dir
+        self.max_grad_norm = max_grad_norm
+        self.grad_history = []
+
+    def on_train_start(self, trainer, *args, **kwargs):
+        self.num_classes = trainer.datamodule.get_num_classes()
+
+    def on_train_batch_start(self, *args, **kwargs):
+        # Reset accumulated gradients at the start of each logical batch
+        self.gradients_per_class = {cls: [] for cls in range(self.num_classes)}
+
+    def on_train_physical_batch_end(self, trainer, batch_idx, batch, *args, **kwargs):
+        batch_data, class_labels = batch
+
+        with torch.no_grad():
+            # Collect gradients for all layers and flatten them for each class
+            per_sample_gradients = [
+                g.view(len(g), -1) for g in trainer.optimizer.grad_samples
+            ]
+            flattened_gradients = torch.cat(per_sample_gradients, dim=-1)
+
+            # Accumulate flattened gradients per class
+            for cls in range(self.num_classes):
+                cls_mask = (class_labels == cls)
+                if cls_mask.sum() == 0:
+                    continue
+                self.gradients_per_class[cls].append(flattened_gradients[cls_mask])
+
+    def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
+        # Calculate the skewness and kurtosis for each class
+        row_data = {'step': batch_idx}
+
+        for cls in range(self.num_classes):
+            if self.gradients_per_class[cls]:
+                # Concatenate gradients for the entire logical batch
+                all_gradients = torch.cat(self.gradients_per_class[cls], dim=0)
+
+                # Compute mean, variance, and std for the class gradients
+                # https://discuss.pytorch.org/t/statistics-for-whole-dataset/74511/2
+                mean = torch.mean(all_gradients, dim=0)
+                diffs = all_gradients - mean
+                var = torch.mean(diffs ** 2.0, dim=0)  # Per-dimension variance
+                std = torch.pow(var, 0.5)  # Per-dimension std
+
+                # Z-scores for computing skewness and kurtosis
+                zscores = diffs / std
+
+                # Compute per-dimension skewness and kurtosis
+                skewness_per_dim = torch.mean(zscores ** 3.0, dim=0)
+                kurtosis_per_dim = torch.mean(zscores ** 4.0, dim=0) - 3.0
+
+                # Compute variability (std) of skewness across dimensions
+                skewness_std = torch.std(skewness_per_dim).item()
+
+                # Compute average skewness and kurtosis across dimensions
+                avg_skewness = torch.mean(skewness_per_dim).item()
+                avg_kurtosis = torch.mean(kurtosis_per_dim).item()
+
+                # Store skewness, kurtosis, and skewness variability per class
+                row_data[f'Class_{cls}_Avg_Skewness'] = avg_skewness
+                row_data[f'Class_{cls}_Skewness_Std'] = skewness_std
+                row_data[f'Class_{cls}_Avg_Kurtosis'] = avg_kurtosis
+
+        # Save the data for this batch
+        self.grad_history.append(row_data)
+
+    def on_train_end(self, trainer, *args, **kwargs):
+        # Save the gradient statistics to a CSV file
+        if self._is_global_zero(trainer):
+            file_path = os.path.join(self.log_dir, 'gradient_statistics_per_class.csv')
+            self._save_to_csv(file_path)
+
+    def _save_to_csv(self, file_path):
+        # Prepare fieldnames
+        fieldnames = ['step']
+        fieldnames += [f'Class_{cls}_Avg_Skewness' for cls in range(self.num_classes)]
+        fieldnames += [f'Class_{cls}_Skewness_Std' for cls in range(self.num_classes)]
+        fieldnames += [f'Class_{cls}_Avg_Kurtosis' for cls in range(self.num_classes)]
+
+        with open(file_path, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(self.grad_history)
+
+        log.info(f'Gradient statistics (skewness, kurtosis, and skewness variability) per class saved to {file_path}')
+
+
 class DebugProbeCallback(Callback):
     def _is_global_zero(self, trainer):
         log.info(f"[DEBUG] Calling _is_global_zero")
@@ -864,6 +953,12 @@ class CallbackFactory:
 
             callbacks.append(
                 RecordClippedProportionsPerClassCallback(
+                    log_dir=full_log_dir, max_grad_norm=max_grad_norm
+                )
+            )
+
+            callbacks.append(
+                RecordGradientStatisticsCallback(
                     log_dir=full_log_dir, max_grad_norm=max_grad_norm
                 )
             )
