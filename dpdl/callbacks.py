@@ -412,9 +412,10 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
 
 
 class RecordCosineSimilarityCallback(Callback):
-    def __init__(self, log_dir: str, max_grad_norm: float):
+    def __init__(self, log_dir: str, max_grad_norm: float, quantiles: list = [0.25, 0.5]):
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
+        self.quantiles = quantiles  # List of gradient quantiles for comparison
         self.cosine_similarities_history = []
         self.accumulated_gradients = []
 
@@ -444,11 +445,11 @@ class RecordCosineSimilarityCallback(Callback):
             per_sample_norms = all_gradients.norm(p=2, dim=1)  # Shape (B)
 
             # Compute per-sample clip factors
-            per_sample_clip_factors = (self.max_grad_norm / (per_sample_norms + 1e-6))  # Shape (B)
-            per_sample_clip_factors = per_sample_clip_factors.clamp(max=1.0)  # Shape (B)
+            per_sample_clip_factors = (self.max_grad_norm / (per_sample_norms + 1e-6)) # Shape (B)
+            per_sample_clip_factors.clamp(max=1.0)
             per_sample_clip_factors = per_sample_clip_factors.unsqueeze(-1)  # Shape (B, 1)
 
-            # Clipe the gradients
+            # Clip the gradients
             clipped_gradients = per_sample_clip_factors * all_gradients  # Shape: (B, D)
 
             # Mean and median aggregation -> Shape (D)
@@ -456,7 +457,7 @@ class RecordCosineSimilarityCallback(Callback):
             mean_grad_clipped = torch.mean(clipped_gradients, dim=0)
             median_grad_unclipped = torch.median(all_gradients, dim=0).values
 
-            # Cosine similarities
+            # Compute cosine similarities
             clipped_mean_vs_unclipped_mean = torch.nn.functional.cosine_similarity(
                 mean_grad_clipped,
                 mean_grad_unclipped,
@@ -478,12 +479,40 @@ class RecordCosineSimilarityCallback(Callback):
                 eps=1e-8,
             )
 
-            # Save cosine similarity per logical batch
-            self.cosine_similarities_history.append({
+            cosine_similarities = {
                 'clipped_mean_vs_unclipped_mean': clipped_mean_vs_unclipped_mean.item(),
                 'clipped_mean_vs_unclipped_median': clipped_mean_vs_unclipped_median.item(),
                 'unclipped_mean_vs_unclipped_median': unclipped_mean_vs_unclipped_median.item(),
-            })
+            }
+
+            # Perform clipping at quantile thresholds
+            for quantile in self.quantiles:
+                threshold = torch.quantile(per_sample_norms, quantile)
+                quantile_clip_factors = (threshold / (per_sample_norms + 1e-6)).clamp(max=1.0)
+                quantile_clip_factors = quantile_clip_factors.unsqueeze(-1)  # Shape (B, 1)
+
+                quantile_clipped_gradients = quantile_clip_factors * all_gradients  # Shape (B, D)
+                mean_grad_quantile_clipped = torch.mean(quantile_clipped_gradients, dim=0)
+
+                # Compute cosine similarities for quantile-clipped gradients
+                quantile_clipped_vs_clipped_mean = torch.nn.functional.cosine_similarity(
+                    mean_grad_quantile_clipped, mean_grad_clipped, dim=0, eps=1e-8
+                )
+
+                quantile_clipped_vs_unclipped_mean = torch.nn.functional.cosine_similarity(
+                    mean_grad_quantile_clipped, mean_grad_unclipped, dim=0, eps=1e-8
+                )
+
+                quantile_clipped_vs_unclipped_median = torch.nn.functional.cosine_similarity(
+                    mean_grad_quantile_clipped, median_grad_unclipped, dim=0, eps=1e-8
+                )
+
+                cosine_similarities[f'clipped_{quantile}_vs_clipped_mean'] = quantile_clipped_vs_clipped_mean.item()
+                cosine_similarities[f'clipped_{quantile}_vs_unclipped_mean'] = quantile_clipped_vs_unclipped_mean.item()
+                cosine_similarities[f'clipped_{quantile}_vs_unclipped_median'] = quantile_clipped_vs_unclipped_median.item()
+
+            # Save cosine similarity per logical batch
+            self.cosine_similarities_history.append(cosine_similarities)
 
             # Reset for the next logical batch
             self.accumulated_gradients = []
@@ -494,20 +523,31 @@ class RecordCosineSimilarityCallback(Callback):
 
             with open(file_path, 'w', newline='') as fh:
                 writer = csv.writer(fh)
-                writer.writerow([
+                header = [
                     'Step',
                     'Clipped_Mean_vs_Unclipped_Mean',
                     'Clipped_Mean_vs_Unclipped_Median',
                     'Unclipped_Mean_vs_Unclipped_Median',
-                ])
+                ]
+                header += [f'Clipped_{quantile}_vs_Clipped_Mean' for quantile in self.quantiles]
+                header += [f'Clipped_{quantile}_vs_Unclipped_Mean' for quantile in self.quantiles]
+                header += [f'Clipped_{quantile}_vs_Unclipped_Median' for quantile in self.quantiles]
+
+                writer.writerow(header)
 
                 for step, record in enumerate(self.cosine_similarities_history):
-                    writer.writerow([
-                        step,
+                    row = [step]
+                    row += [
                         record['clipped_mean_vs_unclipped_mean'],
                         record['clipped_mean_vs_unclipped_median'],
-                        record['unclipped_mean_vs_unclipped_median'],
-                    ])
+                        record['unclipped_mean_vs_unclipped_median']
+                    ]
+                    for quantile in self.quantiles:
+                        row.append(record[f'clipped_{quantile}_vs_clipped_mean'])
+                        row.append(record[f'clipped_{quantile}_vs_unclipped_mean'])
+                        row.append(record[f'clipped_{quantile}_vs_unclipped_median'])
+
+                    writer.writerow(row)
 
             log.info(f'Cosine similarity data saved at {file_path}')
 
