@@ -38,8 +38,11 @@ class ModelBase(torch.nn.Module):
         )
 
         # we only validate on rank 0, so there's no need to
-        # synchronize when calculating the metrics. although,
-        # the flag is probably redundant.
+        # synchronize when calculating the metrics.
+        # NB: If `sync_on_compute` is enabled, this breaks
+        # distributed training. If this needs to be enabled,
+        # then we also need to actually run the validation on
+        # all the GPUs.
         self.valid_metrics = torchmetrics.MetricCollection(
             {
                 "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
@@ -55,6 +58,7 @@ class ModelBase(torch.nn.Module):
                 "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
                     num_classes=self.num_classes,
                     average="none",
+                    sync_on_compute=False,
                 ).cuda(),
             }
         )
