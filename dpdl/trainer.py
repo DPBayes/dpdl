@@ -268,18 +268,15 @@ class DifferentiallyPrivateTrainer(Trainer):
         secure_mode: bool = False,
         target_epsilon: float = 0,
         target_delta: float = 0,
-        physical_batch_size: int = 64,
         seed: int = 0,
         record_grad_and_noise: bool = False,
         **kwargs,
     ):
-
         self.noise_multiplier = noise_multiplier
         self.max_grad_norm = max_grad_norm
         self.clipping_mode = clipping_mode
         self.target_epsilon = target_epsilon
         self.target_delta = target_delta
-        self.physical_batch_size = physical_batch_size
         self.seed = seed
         self.poisson_sampling = poisson_sampling
         self.normalize_clipping = normalize_clipping
@@ -490,7 +487,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             for batch_idx, batch in enumerate(virtual_dataloader):
                 self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
                 batch_loss = self.fit_one_batch(batch_idx, batch)
-                self.callback_handler.call('on_train_batch_end', self, batch_idx, batch_loss)
+                self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, batch_loss)
 
         # compute and reset the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
