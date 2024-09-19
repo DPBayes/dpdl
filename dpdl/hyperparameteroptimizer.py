@@ -193,7 +193,7 @@ class HyperparameterOptimizer:
         if metrics and torch.distributed.get_rank() == 0:
             log.info('Final metrics:')
             for key, value in metrics.items():
-                log.info(f' - {key}: {value:.4f}.')
+                log.info(f' - {key}: {value}.')
 
         log_final_epsilon(config_manager, trainer)
 
