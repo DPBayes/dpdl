@@ -836,26 +836,26 @@ class RecordGradientStatisticsCallback(Callback):
                 # Concatenate gradients for the entire logical batch
                 all_gradients = torch.cat(self.gradients_per_class[cls], dim=0)
 
-                # Compute mean, variance, and std for the class gradients
+                # Compute per-sample means (mean across features for each sample)
                 # https://discuss.pytorch.org/t/statistics-for-whole-dataset/74511/2
-                mean = torch.mean(all_gradients, dim=0)
-                diffs = all_gradients - mean
-                var = torch.mean(diffs ** 2.0, dim=0)  # Per-dimension variance
-                std = torch.pow(var, 0.5)  # Per-dimension std
+                mean_per_sample = torch.mean(all_gradients, dim=1)
+                diffs_per_sample = all_gradients - mean_per_sample.unsqueeze(-1)
 
-                # Z-scores for computing skewness and kurtosis
-                zscores = diffs / std
+                # Compute variance and standard deviation per sample
+                var_per_sample = torch.mean(diffs_per_sample ** 2.0, dim=1)
+                std_per_sample = torch.sqrt(var_per_sample)
 
-                # Compute per-dimension skewness and kurtosis
-                skewness_per_dim = torch.mean(zscores ** 3.0, dim=0)
-                kurtosis_per_dim = torch.mean(zscores ** 4.0, dim=0) - 3.0
+                # Compute Z-scores per sample
+                zscores_per_sample = diffs_per_sample / std_per_sample.unsqueeze(-1)
 
-                # Compute variability (std) of skewness across dimensions
-                skewness_std = torch.std(skewness_per_dim).item()
+                # Compute skewness and kurtosis per sample
+                skewness_per_sample = torch.mean(zscores_per_sample ** 3.0, dim=1)
+                kurtosis_per_sample = torch.mean(zscores_per_sample ** 4.0, dim=1) - 3.0
 
-                # Compute average skewness and kurtosis across dimensions
-                avg_skewness = torch.mean(skewness_per_dim).item()
-                avg_kurtosis = torch.mean(kurtosis_per_dim).item()
+                # Compute the average skewness and kurtosis over samples
+                avg_skewness = torch.mean(skewness_per_sample).item()
+                skewness_std = torch.std(skewness_per_sample).item()
+                avg_kurtosis = torch.mean(kurtosis_per_sample).item()
 
                 # Store skewness, kurtosis, and skewness variability per class
                 row_data[f'Class_{cls}_Avg_Skewness'] = avg_skewness
