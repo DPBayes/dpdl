@@ -447,7 +447,7 @@ class RecordCosineSimilarityCallback(Callback):
 
             # Compute per-sample clip factors
             per_sample_clip_factors = (self.max_grad_norm / (per_sample_norms + 1e-6)) # Shape (B)
-            per_sample_clip_factors.clamp(max=1.0)
+            per_sample_clip_factors = per_sample_clip_factors.clamp(max=1.0)
             per_sample_clip_factors = per_sample_clip_factors.unsqueeze(-1)  # Shape (B, 1)
 
             # Clip the gradients
