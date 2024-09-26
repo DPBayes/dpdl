@@ -1,0 +1,36 @@
+Configuration:
+  Command                                     : train
+  Privacy                                     : True
+  Model name                                  : vit_base_patch16_224.augreg_in21k
+  Optimizer                                   : Adam
+  Dataset name                                : dpdl-benchmark/cifar10_10pct_plus_cifar100_humans
+  Dataset label field                         : label
+  Dataset imbalance factor                    : 0.1
+  Cache dataset transforms                    : False
+  Validation size                             : 0.1
+  Test size                                   : 0.1
+  Physical batch size                         : 40
+  Num workers                                 : 7
+  Validation frequency                        : 1.0
+  Seed                                        : 42
+  Log dir                                     : logs
+  Experiment dame                             : TRAIN-RECORD-GRAD-NORMS-REAL-RUN-CB10-SUBSET1.0
+  Overwrite experiment                        : True
+  Shots                                       : None
+  Use stratified sampling for few-shot dataset: True
+  Subset size                                 : 1.0
+  Zero head weights                           : True
+  PEFT method                                 : film
+  Use pretrained model                        : True
+  Use precomputed features                    : False
+  Use steps instead of epochs                 : True
+  Evaluation mode                             : False
+  Model save file path                        : None
+  Record gradient norms                       : True
+  Enable the debug callback output            : False
+  Clipping mode                               : flat
+  Secure mode                                 : False
+  Accountant                                  : prv
+  Poisson sampling                            : True
+  Normalize clipping                          : False
+  Record SNR                                  : False
