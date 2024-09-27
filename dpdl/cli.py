@@ -69,7 +69,7 @@ def cli(
     optimizer: Annotated[
         str,
         typer.Option(
-            help='Optimizer',
+            help='Optimizer, ["Adam", "SGD", etc.]',
             rich_help_panel='Training options',
         )
     ] = 'Adam',
@@ -157,6 +157,13 @@ def cli(
             rich_help_panel='Training options',
         )
     ] = None,
+    clipping_mode: Annotated[
+        str,
+        typer.Option(
+            help='Clipping mode ["flat", "ghost", "per_layer", "adaptive"]',
+            rich_help_panel='Opacus options',
+        )
+    ] = 'flat',
     dataset_name: Annotated[
         str,
         typer.Option(
@@ -258,17 +265,24 @@ def cli(
     max_grad_norm: Annotated[
         Optional[float],
         typer.Option(
-            help='Maximum gradient norm (for clipping)',
+            help='Maximum gradient norm (if algorithm is normalized, it serves as the clipping bound)',
             rich_help_panel='Opacus options',
         )
     ] = 1.0,
-    clipping_mode: Annotated[
-        Optional[str],
+    target_quantile: Annotated[
+        Optional[float],
         typer.Option(
-            help='Opacus clipping mode ("flat" or "per_layer" or "adaptive")',
+            help='Target quantile for the adaptive clipping (for "adaptive" clipping mode)',
             rich_help_panel='Opacus options',
         )
-    ] = 'flat',
+    ] = 1.0,
+    count_threshold: Annotated[
+        Optional[float],
+        typer.Option(
+            help='Count threshold for the adaptive clipping (for "adaptive" clipping mode)',
+            rich_help_panel='Opacus options',
+        )
+    ] = 1.0,
     secure_mode: Annotated[
         Optional[bool],
         typer.Option(
@@ -397,14 +411,14 @@ def cli(
         return
 
     # ConfigurationManager knows our experiment directory, so let's start logging also there
-    if torch.distributed.get_rank() == 0:
+    if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
         start_experiment_logging(log.parent, config_manager)
         torch.distributed.barrier()
     else:
         torch.distributed.barrier()
 
     if config_manager.get_command() == 'train':
-        if torch.distributed.get_rank() == 0:
+        if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
             log.info('Starting training.')
             log.info(config_manager.hyperparams)
             log.info(config_manager.configuration)
@@ -418,7 +432,7 @@ def cli(
         end_time = time.time()
 
         # log test accuracy and run time, and save model if asked
-        if torch.distributed.get_rank() == 0:
+        if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
             log.info('Evaluating on test set..')
             _, test_metrics = trainer.test()
 
@@ -431,7 +445,7 @@ def cli(
                 trainer.save_model(save_fpath)
 
     if config_manager.get_command() == 'optimize':
-        if torch.distributed.get_rank() == 0:
+        if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
             log.info('Starting hyperparameter optimization.')
             log.info(config_manager.configuration)
 
@@ -442,5 +456,5 @@ def cli(
         end_time = time.time()
 
         # log the runtime
-        if torch.distributed.get_rank() == 0:
+        if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
             log_runtime(config_manager, start_time, end_time)

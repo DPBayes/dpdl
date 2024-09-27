@@ -2,6 +2,7 @@ import logging
 import pathlib
 import torch
 import typer
+import dpdl.utils as utils
 
 from pydantic import BaseModel, root_validator
 from typing import Optional, List, Literal
@@ -17,7 +18,11 @@ class Hyperparameters(BaseModel):
     noise_multiplier: Optional[float]
     max_grad_norm: Optional[float]
     target_epsilon: Optional[float]
-    privacy: bool = True # Only used in __str__
+    privacy: bool = True  # Only used in __str__
+    adaptive: Optional[bool] = False
+    # noise_multiplier_count: Optional[float]
+    target_quantile: Optional[float]
+    count_threshold: Optional[float]
 
     @root_validator(pre=True)
     def check_batch_size_or_sample_rate(cls, values):
@@ -40,10 +45,18 @@ class Hyperparameters(BaseModel):
             privacy_hypers = [
                 ('Sample rate', self.sample_rate),
                 ('Noise multiplier', self.noise_multiplier),
-                ('Max grad norn', self.max_grad_norm),
+                ('Max grad norm', self.max_grad_norm),
                 ('Target epsilon', self.target_epsilon),
             ]
             hypers.extend(privacy_hypers)
+
+        if self.adaptive:
+            adaptive_hypers = [
+                ('Noise multiplier count', self.noise_multiplier_count),
+                ('Target quantile', self.target_quantile),
+                ('Count threshold', self.count_threshold),
+            ]
+            hypers.extend(adaptive_hypers)
 
         max_key_length = max(len(hyper[0]) for hyper in hypers)
         hyper_str = [f'{hyper[0]:<{max_key_length}}: {hyper[1]}' for hyper in hypers]
@@ -184,7 +197,7 @@ class Configuration(BaseModel):
             ('Evaluation mode', self.evaluation_mode),
             ('Model save file path', self.model_save_fpath),
             ('Record gradient norms', self.record_gradient_norms),
-            ('Enable the debug callback output',self.verbose_callback)
+            ('Enable the debug callback output', self.verbose_callback)
         ]
 
         if self.privacy:
@@ -224,7 +237,7 @@ class ConfigurationManager:
 
         # Opacus calculates noise multiplier is target epsilon is given
         if self.hyperparams.target_epsilon is not None:
-            if torch.distributed.get_rank() == 0:
+            if utils.get_rank() == 0:
                 log.info('We have "target_epsilon" defined. Removing "noise_multiplier".')
 
             self.hyperparams.noise_multiplier = None
