@@ -48,5 +48,5 @@ Let's start by experimenting with a single dataset and expand later if necessary
 
 ## Epsilon Values
 
-Conduct experiments with 20 epsilon values from `np.geomspace(0.25, 16, 20)`.
+Conduct experiments with 20 epsilon values from `np.geomspace(0.25, 16, 19)`.
 
