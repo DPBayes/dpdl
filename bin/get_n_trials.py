@@ -9,7 +9,7 @@ def get_optuna_storage(optuna_journal_fname):
         sys.exit(1)
 
     storage = optuna.storages.JournalStorage(
-        optuna.storages.JournalFileStorage(optuna_journal_fname),
+        optuna.storages.journal.JournalFileBackend(optuna_journal_fname),
     )
     return storage
 
