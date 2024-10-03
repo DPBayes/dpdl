@@ -19,10 +19,10 @@ class Hyperparameters(BaseModel):
     max_grad_norm: Optional[float]
     target_epsilon: Optional[float]
     privacy: bool = True  # Only used in __str__
-    adaptive: Optional[bool] = False
-    # noise_multiplier_count: Optional[float]
     target_quantile: Optional[float]
     count_threshold: Optional[float]
+    clip_bound_lr: Optional[float]
+    clip_bound_lower_bound: Optional[float]
 
     @root_validator(pre=True)
     def check_batch_size_or_sample_rate(cls, values):
@@ -50,11 +50,12 @@ class Hyperparameters(BaseModel):
             ]
             hypers.extend(privacy_hypers)
 
-        if self.adaptive:
+        if self.target_quantile or self.count_threshold or self.clip_bound_lr:
             adaptive_hypers = [
-                ('Noise multiplier count', self.noise_multiplier_count),
                 ('Target quantile', self.target_quantile),
                 ('Count threshold', self.count_threshold),
+                ('Clipping bound leraning rate', self.clip_bound_lr),
+                ('clip_bound_lower_bound', self.clip_bound_lower_bound)
             ]
             hypers.extend(adaptive_hypers)
 
@@ -237,7 +238,7 @@ class ConfigurationManager:
 
         # Opacus calculates noise multiplier is target epsilon is given
         if self.hyperparams.target_epsilon is not None:
-            if utils.get_rank() == 0:
+            if torch.distributed.get_rank() == 0:
                 log.info('We have "target_epsilon" defined. Removing "noise_multiplier".')
 
             self.hyperparams.noise_multiplier = None

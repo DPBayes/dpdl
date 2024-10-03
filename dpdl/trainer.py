@@ -270,6 +270,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         target_delta: float = 0,
         seed: int = 0,
         record_grad_and_noise: bool = False,
+        optim_args: dict = None,
         **kwargs,
     ):
         self.noise_multiplier = noise_multiplier
@@ -280,6 +281,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.seed = seed
         self.poisson_sampling = poisson_sampling
         self.normalize_clipping = normalize_clipping
+        self.optim_args = optim_args
 
         # setup opacus privacy engine
         privacy_engine_args = {
@@ -341,6 +343,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 poisson_sampling=self.poisson_sampling,
                 normalize_clipping=self.normalize_clipping,
                 total_steps=self.total_steps,
+                optim_args=self.optim_args,
             )
         else:
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
@@ -354,6 +357,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 poisson_sampling=self.poisson_sampling,
                 normalize_clipping=self.normalize_clipping,
                 total_steps=self.total_steps,
+                optim_args=self.optim_args,
             )
 
         # now we can start using the DP'ifyed stuff
@@ -631,6 +635,13 @@ class TrainerFactory:
             callback_handler=callback_handler,
             validation_frequency=configuration.validation_frequency,
             record_grad_and_noise=configuration.record_snr,
+            optim_args={
+                "target_unclipped_quantile": hyperparams.target_quantile,
+                "clipbound_learning_rate": hyperparams.clip_bound_lr,
+                "max_clipbound": 1e10,
+                "min_clipbound": hyperparams.clip_bound_lower_bound,
+                "unclipped_num_std": len(datamodule.train_dataset)/20, # NOTE: used by Andrew, et al.
+            }
         )
 
         return trainer
