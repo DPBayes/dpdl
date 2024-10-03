@@ -283,6 +283,20 @@ def cli(
             rich_help_panel='Opacus options',
         )
     ] = 1.0,
+    clip_bound_lr: Annotated[
+        Optional[float],
+        typer.Option(
+            help='Clip bound learning rate for the adaptive clipping (for "adaptive" clipping mode)',
+            rich_help_panel="Opacus options",
+        ),
+    ] = 1.0,
+    clip_bound_lower_bound: Annotated[
+        Optional[float],
+        typer.Option(
+            help='The lower bound of adaptive clipping bound (for "adaptive" clipping mode)',
+            rich_help_panel="Opacus options",
+        ),
+    ] = 1.0,
     secure_mode: Annotated[
         Optional[bool],
         typer.Option(
