@@ -42,9 +42,15 @@ learning_rate:
 
 ## Datasets
 
-Let's start by experimenting with a single dataset and expand later if necessary.
+We will run the experiments at least with the following datasets:
 
-- **dpdl-benchmark/caltech_birds2011**: Use a bit more challenging dataset, this is 10k examples so let's use the full dataset
+- **dpdl-benchmark/caltech_birds2011 - 100% subset**
+- **dpdl-benchmark/sun397 - 10% subset**
+- **dpdl-benchmark/eurosat - 100% subset**
+- **dpdl-benchmark/oxford_iiit_ - 100% subset**
+- **dpdl-benchmark/plant_village - 10% subset**
+- **dpdl-benchmark/colorectal_histology - 100% subset**
+- **dpdl-benchmark/cassava - 100% subset**
 
 ## Epsilon Values
 
