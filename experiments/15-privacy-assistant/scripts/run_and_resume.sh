@@ -16,19 +16,39 @@ touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 
 # Experiment parameters
 MODELS=("vit_base_patch16_224.augreg_in21k")
-DATASETS=("dpdl-benchmark/caltech_birds2011")
+DATASETS=(
+    "dpdl-benchmark/caltech_birds2011"
+    "dpdl-benchmark/sun397"
+    "dpdl-benchmark/eurosat"
+    "dpdl-benchmark/oxford_iit_pet"
+    "dpdl-benchmark/plant_village"
+    "dpdl-benchmark/colorectal_histology"
+    "dpdl-benchmark/cassava"
+)
 EPOCHS=40
-EPSILONS="0.25, 0.3149802624737183, 0.39685026299204984, 0.5, 0.6299605249474366, 0.7937005259840998, 1.0, 1.2599210498948732, 1.5874010519681994, 1.9999999999999998, 2.5198420997897464, 3.1748021039363983, 4.0, 5.039684199579491, 6.3496042078727974, 7.999999999999997, 10.079368399158986, 12.699208415745593, 16.0"
+EPSILONS="0.25 0.3149802624737183 0.39685026299204984 0.5 0.6299605249474366 0.7937005259840998 1.0 1.2599210498948732 1.5874010519681994 1.9999999999999998 2.5198420997897464 3.1748021039363983 4.0 5.039684199579491 6.3496042078727974 7.999999999999997 10.079368399158986 12.699208415745593 16.0"
 OPTUNA_CONFIG="conf/optuna_hypers-privacy-assistant.conf"
 
 declare -A DATASET_LABEL_FIELDS
 DATASET_LABEL_FIELDS=(
     ["dpdl-benchmark/caltech_birds2011"]="label"
+    ["dpdl-benchmark/sun397"]="label"
+    ["dpdl-benchmark/eurosat"]="label"
+    ["dpdl-benchmark/oxford_iiit_pet"]="label"
+    ["dpdl-benchmark/plant_village"]="label"
+    ["dpdl-benchmark/colorectal_histology"]="label"
+    ["dpdl-benchmark/cassava"]="label"
 )
 
 declare -A SUBSET_SIZES
 SUBSET_SIZES=(
     ["dpdl-benchmark/caltech_birds2011"]="1.0"
+    ["dpdl-benchmark/sun397"]="0.1"
+    ["dpdl-benchmark/eurosat"]="1.0"
+    ["dpdl-benchmark/oxford_iiit_pet"]="1.0"
+    ["dpdl-benchmark/plant_village"]="0.1"
+    ["dpdl-benchmark/colorectal_histology"]="1.0"
+    ["dpdl-benchmark/cassava"]="1.0"
 )
 
 # Other settings
