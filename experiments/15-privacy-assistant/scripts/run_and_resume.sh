@@ -20,7 +20,7 @@ DATASETS=(
     "dpdl-benchmark/caltech_birds2011"
     "dpdl-benchmark/sun397"
     "dpdl-benchmark/eurosat"
-    "dpdl-benchmark/oxford_iit_pet"
+    "dpdl-benchmark/oxford_iiit_pet"
     "dpdl-benchmark/plant_village"
     "dpdl-benchmark/colorectal_histology"
     "dpdl-benchmark/cassava"
