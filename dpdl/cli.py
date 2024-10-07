@@ -265,7 +265,7 @@ def cli(
     max_grad_norm: Annotated[
         Optional[float],
         typer.Option(
-            help='Maximum gradient norm (if algorithm is normalized, it serves as the clipping bound)',
+            help='Maximum gradient norm (if algorithm is normalized, it serves as the clipping bound. For adaptive optimizer, this HP serves as the init value of clipping bound, which will be updated adaptively.)',
             rich_help_panel='Opacus options',
         )
     ] = 1.0,
