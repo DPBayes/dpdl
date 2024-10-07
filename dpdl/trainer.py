@@ -638,6 +638,7 @@ class TrainerFactory:
             record_grad_and_noise=configuration.record_snr,
             optim_args={
                 "target_unclipped_quantile": hyperparams.target_quantile,
+                "count_threshold": hyperparams.count_threshold,
                 "clipbound_learning_rate": hyperparams.clip_bound_lr,
                 "max_clipbound": 1e10,
                 "min_clipbound": hyperparams.clip_bound_lower_bound,
