@@ -4,6 +4,7 @@ import opacus
 import torch
 import torchmetrics
 
+from opacus.privacy_engine import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 from .models.model_factory import ModelFactory
@@ -294,7 +295,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             # from our `record_grad_and_noise` branch
             privacy_engine_args['record_grad_and_noise'] = True
 
-        self.privacy_engine = opacus.PrivacyEngine(**privacy_engine_args)
+        self.privacy_engine = PrivacyEngine(**privacy_engine_args)
 
         super().__init__(**kwargs)
 
