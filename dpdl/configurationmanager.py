@@ -95,6 +95,7 @@ class Configuration(BaseModel):
     record_gradient_norms: Optional[bool] = False
     verbose_callback: Optional[bool] = False
     cache_dataset_transforms: Optional[bool] = False
+    weight_perturbation_level: float = 0
 
     class Config:
         # Fix Pydantic warning:
@@ -179,6 +180,7 @@ class Configuration(BaseModel):
             ('Zero head weights', self.zero_head),
             ('PEFT method', self.peft),
             ('Use pretrained model', self.pretrained),
+            ('Pretrained model weight perturbation noise level', self.weight_perturbation_level),
             ('Use precomputed features', self.cache_features),
             ('Use steps instead of epochs', self.use_steps),
             ('Evaluation mode', self.evaluation_mode),
