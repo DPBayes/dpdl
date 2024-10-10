@@ -87,13 +87,6 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = 8,
-        model_name: Annotated[
-            str,
-            typer.Option(
-                help='PyTorch Image Models (timm) model name',
-                rich_help_panel='Training options',
-            )
-        ] = 'resnetv2_50x1_bit.goog_in21k',
         validation_frequency: Annotated[
             float,
             typer.Option(
@@ -115,27 +108,6 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = True,
-        zero_head: Annotated[
-            bool,
-            typer.Option(
-                help='Set model head weights to zero',
-                rich_help_panel='Training options',
-            )
-        ] = False,
-        peft: Annotated[
-            str,
-            typer.Option(
-                help='Use Parameter Efficient Fine-tuning ("lora", "film", "head-only")',
-                rich_help_panel='Training options',
-            )
-        ] = None,
-        pretrained: Annotated[
-            bool,
-            typer.Option(
-                help='Use pretrained model',
-                rich_help_panel='Training options',
-            )
-        ] = True,
         cache_features: Annotated[
             Optional[bool],
             typer.Option(
@@ -150,11 +122,46 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = False,
+        model_name: Annotated[
+            str,
+            typer.Option(
+                help='PyTorch Image Models (timm) model name',
+                rich_help_panel='Model options',
+            )
+        ] = 'resnetv2_50x1_bit.goog_in21k',
+        pretrained: Annotated[
+            bool,
+            typer.Option(
+                help='Use pretrained model',
+                rich_help_panel='Model options',
+            )
+        ] = True,
+        zero_head: Annotated[
+            bool,
+            typer.Option(
+                help='Set model head weights to zero',
+                rich_help_panel='Model options',
+            )
+        ] = False,
+        peft: Annotated[
+            str,
+            typer.Option(
+                help='Use Parameter Efficient Fine-tuning ("lora", "film", "head-only")',
+                rich_help_panel='Model options',
+            )
+        ] = None,
+        weight_perturbation_level: Annotated[
+            float,
+            typer.Option(
+                help='Pretrained weight perturbation noise level',
+                rich_help_panel='Model options',
+            )
+        ] = 0,
         model_save_fpath: Annotated[
             Optional[str],
             typer.Option(
                 help='File path for saving of the trained model',
-                rich_help_panel='Training options',
+                rich_help_panel='Model options',
             )
         ] = None,
         dataset_name: Annotated[
