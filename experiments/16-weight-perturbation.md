@@ -50,7 +50,7 @@ The batch sizes are categorical for smaller search space. For the dataset we cho
 
 We will run the experiment at least with the following dataset which combines CIFAR-10 and humans for CIFAR-100 (as an additional challenge to the model):
 
-- **datasets/dpdl-benchmark/cifar10_10pct_plus_cifar100_humans - 10% subset**
+- **datasets/dpdl-benchmark/cifar10_10pct_plus_cifar100_humans - 100% subset**
 
 ## Epsilon Values
 

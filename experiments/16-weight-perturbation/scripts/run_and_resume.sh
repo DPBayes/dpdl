@@ -30,7 +30,7 @@ DATASET_LABEL_FIELDS=(
 
 declare -A SUBSET_SIZES
 SUBSET_SIZES=(
-    ["dpdl-benchmark/cifar10_10pct_plus_cifar100_humans"]="0.1"
+    ["dpdl-benchmark/cifar10_10pct_plus_cifar100_humans"]="1.0"
 )
 
 # Other settings
