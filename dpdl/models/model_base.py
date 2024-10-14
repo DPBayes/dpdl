@@ -34,6 +34,10 @@ class ModelBase(torch.nn.Module):
                     num_classes=self.num_classes,
                     average="none",
                 ).cuda(),
+                "TruePositiveRate": torchmetrics.classification.MulticlassRecall(
+                    num_classes=self.num_classes,
+                    average="none",
+                ).cuda(),
             }
         )
 
@@ -59,6 +63,10 @@ class ModelBase(torch.nn.Module):
                     num_classes=self.num_classes,
                     average="none",
                     sync_on_compute=False,
+                ).cuda(),
+                "TruePositiveRate": torchmetrics.classification.MulticlassRecall(
+                    num_classes=self.num_classes,
+                    average="none",
                 ).cuda(),
             }
         )
