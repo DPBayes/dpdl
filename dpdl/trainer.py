@@ -297,6 +297,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         super().__init__(**kwargs)
 
     def _has_target_privacy_params(self):
+        if self.target_epsilon == -1:
+            return False
+
         if not any([self.target_epsilon, self.target_delta]):
             return False
 
@@ -343,6 +346,9 @@ class DifferentiallyPrivateTrainer(Trainer):
                 total_steps=self.total_steps,
             )
         else:
+            if self.target_epsilon == -1:
+                self.noise_multiplier = 0
+
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
                 module=model,
                 optimizer=optimizer,
