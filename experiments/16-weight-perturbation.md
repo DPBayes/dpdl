@@ -54,9 +54,9 @@ We will run the experiment at least with the following dataset which combines CI
 
 ## Epsilon Values
 
-We will conduct the experiment with ε=\{ 4.0, 250 \}
+We will conduct the experiment with ε=\{ 4.0, ∞ \}
 
-The epsilon=250 is an extremely large to simulate training without DP noise and performing clipping only. (According to [this opacus issue](https://github.com/pytorch/opacus/issues/308) it should be enough, whereas something like 1e3 caused a crash.)
+For epsilon=∞ we will configure the noise multiplier to be zero.
 
 ## Clipping bounds
 
