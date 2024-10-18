@@ -36,8 +36,8 @@ batch_size:
   - -1
   type: categorical
 learning_rate:
-  max: 2
-  min: 1.0e-3
+  max: 0.1
+  min: 1.0e-7
   type: float
   log_space: True
 ```
