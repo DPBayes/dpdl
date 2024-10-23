@@ -613,6 +613,15 @@ class TrainerFactory:
         target_delta, target_epsilon = _get_target_privacy_params(hyperparams)
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
+        optim_args = {
+            "target_unclipped_quantile": hyperparams.target_quantile,
+            "count_threshold": hyperparams.count_threshold,
+            "clipbound_learning_rate": hyperparams.clip_bound_lr,
+            "max_clipbound": 1e10,
+            "min_clipbound": hyperparams.clip_bound_lower_bound,
+            "unclipped_num_std": datamodule.batch_size/20, # NOTE: used by Andrew, et al.
+        }
+
         # instantiate a differentialy private trained
         trainer = DifferentiallyPrivateTrainer(
             model=model,
@@ -636,15 +645,10 @@ class TrainerFactory:
             callback_handler=callback_handler,
             validation_frequency=configuration.validation_frequency,
             record_grad_and_noise=configuration.record_snr,
-            optim_args={
-                "target_unclipped_quantile": hyperparams.target_quantile,
-                "count_threshold": hyperparams.count_threshold,
-                "clipbound_learning_rate": hyperparams.clip_bound_lr,
-                "max_clipbound": 1e10,
-                "min_clipbound": hyperparams.clip_bound_lower_bound,
-                "unclipped_num_std": len(datamodule.train_dataset)/20, # NOTE: used by Andrew, et al.
-            }
+            optim_args=optim_args,
         )
+
+        log.info(f"optim_args: {optim_args}")
 
         return trainer
 

@@ -103,6 +103,7 @@ class Configuration(BaseModel):
     dataset_label_field: Optional[str] = None
     max_test_examples: Optional[int] = None
     imbalance_factor: Optional[float] = None
+    fairness_imbalance_class: Optional[int] = None
     validation_size: Optional[float] = 0.1
     test_size: Optional[float] = 0.1
     model_save_fpath: Optional[str] = None
@@ -177,6 +178,7 @@ class Configuration(BaseModel):
             ('Dataset name', self.dataset_name),
             ('Dataset label field', self.dataset_label_field),
             ('Dataset imbalance factor', self.imbalance_factor),
+            ('fairness imbalance class', self.fairness_imbalance_class),
             ('Cache dataset transforms', self.cache_dataset_transforms),
             ('Validation size', self.validation_size),
             ('Test size', self.test_size),
