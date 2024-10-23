@@ -39,6 +39,7 @@ class DataModule:
         label_field: str = None,
         image_field: str = None,
         imbalance_factor: float = None,
+        fairness_imbalance_class: float = None,
         cache_transforms: bool = False,
     ):
 
@@ -60,6 +61,7 @@ class DataModule:
         self._label_field = label_field
         self._stratify_shots = stratify_shots
         self._imbalance_factor = imbalance_factor
+        self._fairness_imbalance_class = fairness_imbalance_class
         self._cache_transforms = cache_transforms
 
         self._dataloaders = {
@@ -167,6 +169,22 @@ class DataModule:
                 log.info('Creating imbalanced test set..')
 
             self.test_dataset = self._get_imbalanced_subset(self.test_dataset)
+
+        if self._fairness_imbalance_class:
+            if torch.distributed.get_rank() == 0:
+                log.info("Creating fairness imbalanced train set..")
+
+            self.train_dataset = self._get_fairness_imbalanced_subset(self.train_dataset)
+
+            if torch.distributed.get_rank() == 0:
+                log.info("Creating fairness imbalanced validation set..")
+
+            self.val_dataset = self._get_fairness_imbalanced_subset(self.val_dataset)
+
+            if torch.distributed.get_rank() == 0:
+                log.info("Creating fairness imbalanced test set..")
+
+            self.test_dataset = self._get_fairness_imbalanced_subset(self.test_dataset)
 
         # if subset of dataset is requested, we'll do stratified sampling
         if self.subset_size is not None and self.subset_size < 1.0:
@@ -541,6 +559,57 @@ class DataModule:
 
         return sampled_dataset
 
+    def _get_fairness_imbalanced_subset(self, dataset):
+        """
+        Creates an imbalanced subset with one class having less examples than the others.
+        """
+        if not self._fairness_imbalance_class:
+            raise ValueError(
+                "Fairness imbalance class must be provided for creating an imbalanced dataset."
+            )
+
+        label_counts = Counter(dataset[self._label_field])
+        label_counts = list(label_counts.values())
+        num_classes = len(label_counts)
+
+        img_num_per_cls = [
+            (
+                label_counts[i]
+                if i != self._fairness_imbalance_class
+                else int(label_counts[i] * 0.1)
+            )
+            for i in range(num_classes)
+        ]
+
+        class_indices = {cls: [] for cls in range(num_classes)}
+        for idx, sample in enumerate(dataset):
+            class_indices[sample[self._label_field]].append(idx)
+
+        sampled_indices = []
+        for cls_idx, original_cls_idx in enumerate(class_indices):
+            indices = class_indices[original_cls_idx]
+            num_samples = img_num_per_cls[cls_idx]
+
+            if num_samples > len(indices):
+                log.warning(
+                    f"Requested {num_samples} samples for class {original_cls_idx}, but only {len(indices)} available. Adjusting to {len(indices)}."
+                )
+                num_samples = len(indices)
+
+            sampled_indices.extend(
+                np.random.choice(indices, num_samples, replace=False)
+            )
+
+        sampled_dataset = dataset.select(sampled_indices)
+
+        if torch.distributed.get_rank() == 0:
+            distribution = Counter(sampled_dataset[self._label_field])
+            log.info(
+                f"Created fairness imbalanced dataset (size: {len(sampled_dataset)}) with class distribution: {sorted(distribution.items())}"
+            )
+
+        return sampled_dataset
+
 
 class ImageDataModule(DataModule):
     def __init__(
@@ -761,6 +830,7 @@ class DataModuleFactory:
             label_field=configuration.dataset_label_field,
             max_test_examples=configuration.max_test_examples,
             imbalance_factor=configuration.imbalance_factor,
+            fairness_imbalance_class=configuration.fairness_imbalance_class,
             cache_transforms=configuration.cache_dataset_transforms,
         )
 
