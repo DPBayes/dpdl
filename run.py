@@ -8,6 +8,24 @@ import multiprocess
 from dpdl.cli import cli
 from dpdl.logger_config import configure_logger
 
+def detect_gpus(log):
+    if torch.cuda.is_available():
+        log.info(f"CUDA is available. Number of GPUs detected: {torch.cuda.device_count()}")
+        for i in range(torch.cuda.device_count()):
+            log.info(f"GPU {i}: {torch.cuda.get_device_name(i)}")
+    elif torch.has_mps:
+        log.info("MPS (Apple Metal) is available, but this is specific to Apple Silicon GPUs.")
+    else:
+        log.info("No CUDA or MPS GPUs detected.")
+
+    # Check for AMD GPUs via ROCm
+    try:
+        rocminfo_output = subprocess.check_output("rocminfo", shell=True).decode()
+        log.info("ROCm is installed. Here is the output from 'rocminfo':")
+        log.info(rocminfo_output)
+    except Exception as e:
+        log.info("ROCm not detected or not properly installed.")
+        log.info(f"Error: {e}")
 
 def main():
     log = configure_logger()
@@ -39,6 +57,9 @@ def main():
             minutes=60
         ),  # Transformations can be slow, increase timeout
     )
+
+    # print info about GPUs
+    detect_gpus(log)
 
     log.info(f'Rank {rank} initialized.')
 

@@ -965,60 +965,83 @@ class RecordGradientStatisticsCallback(Callback):
 
         log.info(f'{file_name} saved successfully at {file_path}.')
 
-
 class DebugProbeCallback(Callback):
     def _is_global_zero(self, trainer):
         log.info(f"[DEBUG] Calling _is_global_zero")
         return torch.distributed.get_rank() == 0
 
+    def print_memory_usage(self, stage=""):
+        import GPUtil
+
+        allocated = torch.cuda.memory_allocated() / (1024**2)  # MB
+        reserved = torch.cuda.memory_reserved() / (1024**2)  # MB
+        gpus = GPUtil.getGPUs()
+        for gpu in gpus:
+            log.info(f"Allocated memory: {allocated:.2f} MB, Reserved memory: {reserved:.2f} MB. GPU {gpu.id}: Load {gpu.load*100:.1f}%, Memory Utilization {gpu.memoryUtil*100:.1f}%, Total Memory {gpu.memoryTotal}MB, Used Memory {gpu.memoryUsed}MB")
+
     def on_train_start(self, trainer):
+        self.print_memory_usage("on_train_start")
         log.info(f"[DEBUG] on_train_start")
 
     def on_train_end(self, trainer):
+        self.print_memory_usage("on_train_end")
         log.info(f"[DEBUG] on_train_end")
 
     def on_train_epoch_start(self, trainer, epoch):
+        self.print_memory_usage("on_train_epoch_start")
         log.info(f"[DEBUG] on_train_epoch_start")
 
     def on_train_epoch_end(self, trainer, epoch, epoch_loss):
+        self.print_memory_usage("on_train_epoch_end")
         log.info(f"[DEBUG] on_train_epoch_end")
 
     def on_train_batch_start(self, trainer, batch_idx, batch):
+        self.print_memory_usage("on_train_batch_start")
         log.info(f"[DEBUG] on_train_batch_start")
 
     def on_train_physical_batch_start(self, trainer, batch_idx, batch):
+        self.print_memory_usage("on_train_physical_batch_start")
         log.info(f"[DEBUG] on_train_physical_batch_start")
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss):
+        self.print_memory_usage("on_train_batch_end")
         log.info(f"[DEBUG] on_train_batch_end")
 
     def on_train_physical_batch_end(self, trainer, batch_idx, batch, loss):
+        self.print_memory_usage("on_train_physical_batch_end")
         log.info(f"[DEBUG] on_train_physical_batch_end")
 
     def on_validation_epoch_start(self, trainer, epoch):
+        self.print_memory_usage("on_validation_epoch_start")
         log.info(f"[DEBUG] on_validation_epoch_start")
 
     def on_validation_epoch_end(self, trainer, epoch, metrics):
+        self.print_memory_usage("on_validation_epoch_end")
         log.info(f"[DEBUG] on_validation_epoch_end")
 
     def on_validation_batch_start(self, trainer, batch_idx, batch):
+        self.print_memory_usage("on_validation_batch_start")
         log.info(f"[DEBUG] on_validation_batch_start")
 
     def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
+        self.print_memory_usage("on_validation_batch_end")
         log.info(f"[DEBUG] on_validation_batch_end")
 
     def on_test_epoch_start(self, trainer, epoch):
+        self.print_memory_usage("on_test_epoch_start")
         log.info(f"[DEBUG] on_test_epoch_start")
 
     def on_test_epoch_end(self, trainer, epoch, metrics):
+        self.print_memory_usage("on_test_epoch_end")
         log.info(f"[DEBUG] on_test_epoch_end")
 
     def on_test_batch_start(self, trainer, batch_idx, batch):
+        self.print_memory_usage("on_test_batch_start")
         log.info(f"[DEBUG] on_test_batch_start")
 
     def on_test_batch_end(self, trainer, batch_idx, batch, loss):
+        self.print_memory_usage("on_test_batch_end")
         log.info(f"[DEBUG] on_test_batch_end")
-
 
 class CallbackFactory:
     @staticmethod
