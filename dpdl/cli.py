@@ -388,6 +388,13 @@ def cli(
                 rich_help_panel='',
             )
         ] = False,
+        wandb_record: Annotated[
+            Optional[bool],
+            typer.Option(
+                help="Enable Weights & Biases logging",
+                rich_help_panel="",
+            ),
+        ] = False,
     ):
 
     config_manager = ConfigurationManager(ctx.params)
