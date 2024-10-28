@@ -2,7 +2,7 @@ import csv
 import os
 import torch
 from .base_callback import Callback
-from dpdl.utils import geometric_median
+from torch_geometric_median import geometric_median
 import logging
 
 log = logging.getLogger(__name__)
