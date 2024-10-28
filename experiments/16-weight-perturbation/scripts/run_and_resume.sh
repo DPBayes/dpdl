@@ -19,7 +19,7 @@ MODELS=("vit_base_patch16_224.augreg_in21k")
 DATASETS=("dpdl-benchmark/cifar10_10pct_plus_cifar100_humans")
 EPOCHS=40
 MAX_GRAD_NORMS="1e-05 0.001 1.0 3.4996355115805833 12.247448713915892 42.861606445482 150.0"
-EPSILONS="4.0 -1"
+EPSILONS="4"
 WEIGHT_NOISE_LEVELS="0 0.001 0.00325 0.0055 0.00775 0.01 1"
 OPTUNA_CONFIG="conf/optuna_hypers-weight-perturbation.conf"
 
@@ -39,7 +39,7 @@ DEFAULT_N_TRIALS=20
 N_TRIALS=-1 # Default to new experiment, this will be overridden
 PRIVACY="--privacy"
 USE_STEPS="--use-steps"
-NORMALIZE_CLIPPING="--normalize-clipping"
+NORMALIZE_CLIPPING="--no-normalize-clipping"
 ZERO_HEAD="--zero-head"
 OPTUNA_JOURNAL="$LOG_DIR/optuna.journal"
 PEFT=""
@@ -83,7 +83,7 @@ do
 
                 for weight_noise_level in $WEIGHT_NOISE_LEVELS
                 do
-                    EXPERIMENT_NAME="${model}_${clean_dataset_name}_Subset${subset_size}_Epsilon${rounded_epsilon}_MaxGradNorm${rounded_max_grad_norm}_WeightNoiseLevel${weight_noise_level}"
+                    EXPERIMENT_NAME="${model}_${clean_dataset_name}_Subset${subset_size}_Epsilon${rounded_epsilon}_MaxGradNorm${rounded_max_grad_norm}_WeightNoiseLevel${weight_noise_level}_NoNormalize"
                     EXPERIMENT_DIR="$LOG_DIR/$EXPERIMENT_NAME"
                     mkdir -p "$EXPERIMENT_DIR"
 
