@@ -18,11 +18,11 @@ touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 MODELS=("vit_base_patch16_224.augreg_in21k")
 DATASETS=("dpdl-benchmark/cifar10_10pct_plus_cifar100_humans")
 EPOCHS=40
-BATCH_SIZES=("256 512 1024 2048 4096 -1")
-EPSILONS=("4 -1")
+BATCH_SIZES=(256 512 1024 2048 4096 -1)
+EPSILONS=(4 -1)
 OPTUNA_CONFIG="conf/optuna_hypers-weight-perturbation.conf"
 TRAINING_MODES=("pretrained" "from_scratch")
-SEEDS=("43 44 45 46 47 48 49 50 51 52")
+SEEDS=(43 44 45 46 47 48 49 50 51 52)
 
 declare -A DATASET_LABEL_FIELDS
 DATASET_LABEL_FIELDS=(
@@ -82,7 +82,7 @@ do
 
                 for batch_size in $BATCH_SIZES
                 do
-    		for training_mode in "${TRAINING_MODES[@]}"
+    		    for training_mode in "${TRAINING_MODES[@]}"
                     do
 
                         if [ "$training_mode" == "pretrained" ]; then

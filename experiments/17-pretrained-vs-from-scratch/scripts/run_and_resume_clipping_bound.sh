@@ -18,10 +18,10 @@ touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 MODELS=("vit_base_patch16_224.augreg_in21k")
 DATASETS=("dpdl-benchmark/cifar10_10pct_plus_cifar100_humans")
 EPOCHS=40
-MAX_GRAD_NORMS=("1e-05 0.001 1.0 3.4996355115805833 12.247448713915892 42.861606445482 150.0")
-EPSILONS=("-1 4")
+MAX_GRAD_NORMS=(1e-05 0.001 1.0 3.4996355115805833 12.247448713915892 42.861606445482 150.0)
+EPSILONS=(-1 4)
 TRAINING_MODES=("pretrained" "from_scratch")
-SEEDS=("43 44 45 46 47 48 49 50 51 52")
+SEEDS=(43 44 45 46 47 48 49 50 51 52)
 
 OPTUNA_CONFIG="conf/optuna_hypers-weight-perturbation.conf"
 
@@ -64,11 +64,13 @@ function is_job_in_queue() {
 # Loop over configurations
 for seed in "${SEEDS[@]}"
 do
+    echo "SEED: $seed"
     # Loop over configurations
     for model in "${MODELS[@]}"
     do
         for dataset in "${DATASETS[@]}"
         do
+            echo "DATASET: $dataset"
             # Get the label field name for this dataset
             label_field=${DATASET_LABEL_FIELDS[$dataset]}
 
@@ -80,24 +82,25 @@ do
 
             for epsilon in $EPSILONS
             do
+                echo "EPSILON: $epsilon"
                 rounded_epsilon=$(printf "%.2f" $epsilon)
 
                 for max_grad_norm in $MAX_GRAD_NORMS
                 do
                     rounded_max_grad_norm=$(printf "%.5f" $max_grad_norm)
 
-    		for training_mode in "${TRAINING_MODES[@]}"
+    		    for training_mode in "${TRAINING_MODES[@]}"
                     do
 
-    		    if [ "$training_mode" == "pretrained" ]; then
-    			PRETRAIN_FLAG="--pretrained"
-    			EXPERIMENT_SUFFIX="Pretrained"
-    		    else
-    			PRETRAIN_FLAG="--no-pretrained"
-    			EXPERIMENT_SUFFIX="FromScratch"
-    		    fi
+                        if [ "$training_mode" == "pretrained" ]; then
+                            PRETRAIN_FLAG="--pretrained"
+                            EXPERIMENT_SUFFIX="Pretrained"
+                        else
+                            PRETRAIN_FLAG="--no-pretrained"
+                            EXPERIMENT_SUFFIX="FromScratch"
+                        fi
 
-    		        EXPERIMENT_NAME="${model}_${clean_dataset_name}_Subset${subset_size}_Epsilon${rounded_epsilon}_MaxGradNorm${rounded_max_grad_norm}_${EXPERIMENT_SUFFIX}_Seed${seed}"
+                        EXPERIMENT_NAME="${model}_${clean_dataset_name}_Subset${subset_size}_Epsilon${rounded_epsilon}_MaxGradNorm${rounded_max_grad_norm}_${EXPERIMENT_SUFFIX}_Seed${seed}"
 
                         EXPERIMENT_DIR="$LOG_DIR/$EXPERIMENT_NAME"
                         mkdir -p "$EXPERIMENT_DIR"
