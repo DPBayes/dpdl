@@ -27,6 +27,11 @@ class HyperparameterOptimizer:
 
     @staticmethod
     def optimize_hypers(config_manager: ConfigurationManager) -> None:
+        # we do not want to record gradient norms during the HPO trials. it makes much
+        # more sense to record the stuff only for the final eveluation. so save the state,
+        # disable gradient recording, and later restore the state before final eval round.
+        record_gradient_norms_state = config_manager.configuration.record_gradient_norms
+        config_manager.configuration.record_gradient_norms = False
 
         configuration = config_manager.configuration
 
@@ -134,6 +139,10 @@ class HyperparameterOptimizer:
 
         # and finally, let's unpack the best params from the list
         best_params = broadcast_objects[0]
+
+        # restore the state of gradient norms recording. if it was enabled, we want
+        # to keep it enabled for the final training round
+        config_manager.configuration.record_gradient_norms = record_gradient_norms_state
 
         # now we can train/evaluate for the final time with best params
         metrics = HyperparameterOptimizer._final_evaluation_round(best_params, config_manager)
