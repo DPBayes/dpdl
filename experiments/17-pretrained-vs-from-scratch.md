@@ -35,6 +35,8 @@ We will run two versions of the experiment:
 
 After optimization, the resulting models will be evaluated on the test set.
 
+For the final evaluation round on the test set, we will also collect the various gradient statistics.
+
 ## Models
 
 ## Models
