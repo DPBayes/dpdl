@@ -76,11 +76,11 @@ do
             # Remove possible prefix from the dataset name
             clean_dataset_name=${dataset#dpdl-benchmark/}
 
-            for epsilon in $EPSILONS
+            for epsilon in "${EPSILONS[@]}"
             do
                 rounded_epsilon=$(printf "%.2f" $epsilon)
 
-                for batch_size in $BATCH_SIZES
+                for batch_size in "${BATCH_SIZES[@]}"
                 do
     		    for training_mode in "${TRAINING_MODES[@]}"
                     do

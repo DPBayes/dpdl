@@ -64,13 +64,11 @@ function is_job_in_queue() {
 # Loop over configurations
 for seed in "${SEEDS[@]}"
 do
-    echo "SEED: $seed"
     # Loop over configurations
     for model in "${MODELS[@]}"
     do
         for dataset in "${DATASETS[@]}"
         do
-            echo "DATASET: $dataset"
             # Get the label field name for this dataset
             label_field=${DATASET_LABEL_FIELDS[$dataset]}
 
@@ -80,12 +78,11 @@ do
             # Remove possible prefix from the dataset name
             clean_dataset_name=${dataset#dpdl-benchmark/}
 
-            for epsilon in $EPSILONS
+            for epsilon in "${EPSILONS[@]}"
             do
-                echo "EPSILON: $epsilon"
                 rounded_epsilon=$(printf "%.2f" $epsilon)
 
-                for max_grad_norm in $MAX_GRAD_NORMS
+                for max_grad_norm in "${MAX_GRAD_NORMS[@]}"
                 do
                     rounded_max_grad_norm=$(printf "%.5f" $max_grad_norm)
 
