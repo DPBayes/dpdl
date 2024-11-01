@@ -568,6 +568,11 @@ class DataModule:
                 "Fairness imbalance class must be provided for creating an imbalanced dataset."
             )
 
+        if self._imbalance_factor == 1.0:
+            raise ValueError(
+                "Imbalance factor must be less than 1.0 for creating a imbalanced dataset."
+            )
+
         label_counts = Counter(dataset[self._label_field])
         label_counts = list(label_counts.values())
         num_classes = len(label_counts)
@@ -576,7 +581,7 @@ class DataModule:
             (
                 label_counts[i]
                 if i != self._fairness_imbalance_class
-                else int(label_counts[i] * 0.1)
+                else int(label_counts[i] * self._imbalance_factor)
             )
             for i in range(num_classes)
         ]
