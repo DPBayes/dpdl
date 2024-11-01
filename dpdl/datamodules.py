@@ -154,7 +154,7 @@ class DataModule:
 
         # Imbalance before subsetting. If done in other order, we can get into
         # trouble with e.g. classes with zero examples
-        if self._imbalance_factor:
+        if self._imbalance_factor and not self._fairness_imbalance_class:
             if torch.distributed.get_rank() == 0:
                 log.info('Creating imbalanced train set..')
 
