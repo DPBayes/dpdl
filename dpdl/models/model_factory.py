@@ -5,6 +5,7 @@ from .model_base import ModelBase
 from .timm_model import TimmModel
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet
+from .greyscale_koskela_model import KoskelaNetGrayscale
 
 from dpdl.configurationmanager import Configuration, Hyperparameters
 from dpdl.peft import PeftFactory
@@ -41,8 +42,11 @@ class ModelFactory:
             model_instance = WideResNet(depth=depth, width=width, num_classes=num_classes)
             transforms = model_instance.get_transforms()
         elif configuration.model_name == 'koskela-net':
-            model_instance = KoskelaNet()
-            transforms = model_instance.get_transforms()
+            if configuration.dataset_name not in ["ylecun/mnist"]:
+                model_instance = KoskelaNet()
+            else:
+                model_instance = KoskelaNetGrayscale()
+                transforms = model_instance.get_transforms()
         else:
             # Default to using TimmModel
             model_instance = TimmModel(
