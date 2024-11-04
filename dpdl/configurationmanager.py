@@ -70,10 +70,12 @@ class Configuration(BaseModel):
     normalize_clipping: bool = False
     record_snr: bool = False
     n_trials: int = 20
+    optuna_random_trials: int = 10
     target_hypers: List[str] = []
     optuna_target_metric: str = 'loss'
     optuna_direction: Literal['minimize', 'maximize'] = 'minimize'
     optuna_config: str = 'conf/optuna_hypers.conf'
+    optuna_manual_trials: str = None
     optuna_journal: str = 'optuna.journal'
     optuna_resume: bool = False
     optuna_sampler: str = 'BoTorchSampler'
@@ -207,8 +209,10 @@ class Configuration(BaseModel):
                 ('Optuna target metric', self.optuna_target_metric),
                 ('Optuna direction', self.optuna_direction),
                 ('Optuna config', self.optuna_config),
+                ('Optuna manual trials configuration', self.optuna_manual_trials),
                 ('Optuna journal', self.optuna_journal),
                 ('Optuna resume', self.optuna_resume),
+                ('Optuna number of random trials', self.optuna_random_trials),
             ]
             attributes.extend(optuna_attributes)
 

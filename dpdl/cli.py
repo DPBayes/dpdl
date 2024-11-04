@@ -332,6 +332,13 @@ def cli(
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
         ] = 20,
+        optuna_random_trials: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Number of random trials to start the optimization with',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = 10,
         optuna_target_metric: Annotated[
             Optional[str],
             typer.Option(
@@ -353,6 +360,13 @@ def cli(
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
         ] = 'conf/optuna_hypers.conf',
+        optuna_manual_trials: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Configuration file defining manual trials to start the optimziation with',
+                rich_help_panel='Bayesian optimization (Optuna) options',
+            )
+        ] = None,
         optuna_journal: Annotated[
             Optional[str],
             typer.Option(
