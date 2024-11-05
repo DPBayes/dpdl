@@ -53,6 +53,7 @@ NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
 OPTUNA_JOURNAL="$LOG_DIR/optuna.journal"
 PHYSICAL_BATCH_SIZE="40"
+PEFT="film"
 
 # Function to check if a job has been submitted
 function is_job_submitted() {
@@ -137,9 +138,10 @@ do
                 fi
 
                 if [ "$method" == "fixed_params" ]; then
-                    echo sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py optimize \
+                    sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py optimize \
                         --num-workers 7 \
                         --model-name $model \
+                        --peft $PEFT \
                         --dataset-name $dataset \
                         --subset-size $subset_size \
                         --dataset-label-field $label_field \
@@ -163,9 +165,10 @@ do
                         --optuna-journal $OPTUNA_JOURNAL
 
                 elif [ "$method" == "seeded_warmup" ]; then
-                    echo sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py optimize \
+                    sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py optimize \
                         --num-workers 7 \
                         --model-name $model \
+                        --peft $PEFT \
                         --dataset-name $dataset \
                         --subset-size $subset_size \
                         --dataset-label-field $label_field \
@@ -190,9 +193,10 @@ do
                         --optuna-journal $OPTUNA_JOURNAL
 
                 elif [ "$method" == "full_optimization" ]; then
-                    echo sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py optimize \
+                    sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py optimize \
                         --num-workers 7 \
                         --model-name $model \
+                        --peft $PEFT \
                         --dataset-name $dataset \
                         --subset-size $subset_size \
                         --dataset-label-field $label_field \
@@ -204,6 +208,8 @@ do
                         --n-trials $REMAINING_TRIALS \
                         --seed $seed \
                         --optuna-config $OPTUNA_CONFIG \
+                        --optuna-target-metric MulticlassAccuracy \
+                        --optuna-direction maximize \
                         --experiment-name $EXPERIMENT_NAME \
                         --physical-batch-size $PHYSICAL_BATCH_SIZE \
                         --log-dir $LOG_DIR \
@@ -229,4 +235,3 @@ do
         done
     done
 done
-
