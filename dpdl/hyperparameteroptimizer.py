@@ -84,7 +84,9 @@ class HyperparameterOptimizer:
                 sampler = sampler_cls(seed=configuration.seed)
 
             # we will store the information about the trials on disk in a journal file
-            storage = optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(journal_fpath))
+            storage = optuna.storages.JournalStorage(
+                optuna.storages.journal.JournalFileBackend(journal_fpath),
+            )
 
             # should we try to resume an existing study?
             load_if_exists = configuration.optuna_resume
