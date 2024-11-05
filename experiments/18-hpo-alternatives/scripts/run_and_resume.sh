@@ -22,7 +22,7 @@ EPSILON=4  # Fixed ε = 4.0
 SEEDS=(42)
 METHODS=("fixed_params" "seeded_warmup" "full_optimization")  # Methods (1), (2), (3)
 
-OPTUNA_CONFIG="conf/optuna_hypers-alternative-hpo.conf"
+OPTUNA_CONFIG="conf/optuna_hypers-hpo-alternatives.conf"
 
 # These contain the hypers for the manual trials
 declare -A MANUAL_TRIAL_FILES

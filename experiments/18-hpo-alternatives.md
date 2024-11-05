@@ -42,14 +42,9 @@ We will conduct the experiment using a single model and we will train FiLM param
 
 ```
 batch_size:
-  options:
-  - 256
-  - 512
-  - 1024
-  - 2048
-  - 4096
-  - -1
-  type: categorical
+  max: 192 
+  min: -1        
+  type: int
 learning_rate:
   max: 0.01
   min: 1.0e-7
