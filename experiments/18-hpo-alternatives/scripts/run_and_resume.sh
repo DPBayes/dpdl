@@ -19,7 +19,7 @@ MODELS=("vit_base_patch16_224.augreg_in21k")
 DATASETS=("dpdl-benchmark/cifar10_10pct_plus_cifar100_humans" "datasets/cifar100" "dpdl-benchmark/svhn_cropped_balanced")
 EPOCHS=40
 EPSILON=4  # Fixed ε = 4.0
-SEEDS=(42)
+SEEDS=(43 44 45 46 47 48 49 50 51 52)
 METHODS=("fixed_params" "seeded_warmup" "full_optimization")  # Methods (1), (2), (3)
 
 OPTUNA_CONFIG="conf/optuna_hypers-hpo-alternatives.conf"
