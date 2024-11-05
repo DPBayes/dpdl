@@ -27,15 +27,15 @@ OPTUNA_CONFIG="conf/optuna_hypers-hpo-alternatives.conf"
 # These contain the hypers for the manual trials
 declare -A MANUAL_TRIAL_FILES
 MANUAL_TRIAL_FILES=(
-    ["dpdl-benchmark/cifar10_10pct_plus_cifar100_humans"]="optuna_trials-cifar10_10pct_plus_cifar100_humans.conf"
-    ["cifar100"]="optuna_trials-cifar100.conf"
-    ["dpdl-benchmark/svhn_cropped_balanced"]="optuna_trials-svhn_cropped_balanced.conf"
+    ["dpdl-benchmark/cifar10_10pct_plus_cifar100_humans"]="conf/optuna_trials-cifar10_10pct_plus_cifar100_humans.conf"
+    ["cifar100"]="conf/optuna_trials-cifar100.conf"
+    ["dpdl-benchmark/svhn_cropped_balanced"]="conf/optuna_trials-svhn_cropped_balanced.conf"
 )
 
 declare -A DATASET_LABEL_FIELDS
 DATASET_LABEL_FIELDS=(
     ["dpdl-benchmark/cifar10_10pct_plus_cifar100_humans"]="label"
-    ["cifar100"]="label"
+    ["cifar100"]="fine_label"
     ["dpdl-benchmark/svhn_cropped_balanced"]="label"
 )
 
