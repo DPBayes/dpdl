@@ -75,7 +75,7 @@ class Configuration(BaseModel):
     optuna_target_metric: str = 'loss'
     optuna_direction: Literal['minimize', 'maximize'] = 'minimize'
     optuna_config: str = 'conf/optuna_hypers.conf'
-    optuna_manual_trials: str = None
+    optuna_manual_trials: Optional[str] = None
     optuna_journal: str = 'optuna.journal'
     optuna_resume: bool = False
     optuna_sampler: str = 'BoTorchSampler'
