@@ -122,7 +122,7 @@ class Configuration(BaseModel):
         imbalance_factor = values.get('imbalance_factor')
         fairness_imbalance_class = values.get('fairness_imbalance_class')
 
-        if imbalance_factor and not fairness_imbalance_class:
+        if fairness_imbalance_class and not imbalance_factor:
             raise ValueError(
                 'Parameter "imbalance_factor" is required when using "fairness_imbalance_class".'
             )
