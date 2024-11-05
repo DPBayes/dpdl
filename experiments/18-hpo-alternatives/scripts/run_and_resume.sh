@@ -28,21 +28,21 @@ OPTUNA_CONFIG="conf/optuna_hypers-hpo-alternatives.conf"
 declare -A MANUAL_TRIAL_FILES
 MANUAL_TRIAL_FILES=(
     ["dpdl-benchmark/cifar10_10pct_plus_cifar100_humans"]="optuna_trials-cifar10_10pct_plus_cifar100_humans.conf"
-    ["datasets/cifar100"]="optuna_trials-cifar100.conf"
+    ["cifar100"]="optuna_trials-cifar100.conf"
     ["dpdl-benchmark/svhn_cropped_balanced"]="optuna_trials-svhn_cropped_balanced.conf"
 )
 
 declare -A DATASET_LABEL_FIELDS
 DATASET_LABEL_FIELDS=(
     ["dpdl-benchmark/cifar10_10pct_plus_cifar100_humans"]="label"
-    ["datasets/cifar100"]="label"
+    ["cifar100"]="label"
     ["dpdl-benchmark/svhn_cropped_balanced"]="label"
 )
 
 declare -A SUBSET_SIZES
 SUBSET_SIZES=(
     ["dpdl-benchmark/cifar10_10pct_plus_cifar100_humans"]="1.0"
-    ["datasets/cifar100"]="0.1"
+    ["cifar100"]="0.1"
     ["dpdl-benchmark/svhn_cropped_balanced"]="0.1"
 )
 
