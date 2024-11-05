@@ -69,6 +69,38 @@ max_grad_norm:
 - **datasets/dpdl-benchmark/svhn_cropped_balanced - 10% subset**
 
 ## Hyperparameters for manual trials
+We will use the following hypers for the manual trials
 
-TBD
+- **datasets/dpdl-benchmark/cifar10_10pct_plus_cifar100_humans - 100% subset**
+
+```
+batch_size,learning_rate,max_grad_norm
+-1,0.0001,100
+-1,0.001,200
+4096,0.005,0.2
+-1,0.00001,30
+4096,0.000005,5
+```
+
+- **datasets/cifar100 - 10% subset**
+
+```
+batch_size,learning_rate,max_grad_norm
+-1,0.01146721822610171,8.032763561513777
+512,0.0018234252312577773,5.197043613978144
+4096,0.0006622044316498266,0.2
+2048,0.0013000468531533824,0.2
+1024,0.008388927125427848,2.6501643524991607
+```
+
+- **datasets/dpdl-benchmark/svhn_cropped_balanced - 10% subset**
+
+```
+batch_size,learning_rate,max_grad_norm
+552,0.002555,0.399278
+2624,0.001801,3.522622
+1720,0.001864,3.315861
+-1,0.0011933853983893783,4.273636041943903
+2048,0.000834180101442897,3.216640876127639
+```
 
