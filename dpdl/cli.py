@@ -294,14 +294,14 @@ def cli(
         Optional[float],
         typer.Option(
             help='Clip bound learning rate for the adaptive clipping (for "adaptive" clipping mode)',
-            rich_help_panel="Opacus options",
+            rich_help_panel='Opacus options',
         ),
     ] = 1.0,
     clip_bound_lower_bound: Annotated[
         Optional[float],
         typer.Option(
             help='The lower bound of adaptive clipping bound (for "adaptive" clipping mode)',
-            rich_help_panel="Opacus options",
+            rich_help_panel='Hyperparameter options',
         ),
     ] = 1.0,
     secure_mode: Annotated[
@@ -406,14 +406,14 @@ def cli(
         Optional[bool],
         typer.Option(
             help='Record layer-wise gradients before clipping',
-            rich_help_panel='',
+            rich_help_panel='Research options',
         )
     ] = False,
     verbose_callback: Annotated[
         Optional[bool],
         typer.Option(
             help='Enable debug callback for detailed output',
-            rich_help_panel='',
+            rich_help_panel='Debug options',
         )
     ] = False,
 ):

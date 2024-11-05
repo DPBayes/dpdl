@@ -110,12 +110,24 @@ class Configuration(BaseModel):
     record_gradient_norms: Optional[bool] = False
     verbose_callback: Optional[bool] = False
     cache_dataset_transforms: Optional[bool] = False
+    weight_perturbation_level: float = 0
 
     class Config:
         # Fix Pydantic warning:
         # UserWarning: Field "model_name" has conflict with protected namespace "model_".
         protected_namespaces = ()
 
+    @root_validator(pre=True)
+    def check_fairness_imbalance_factor(cls, values):
+        imbalance_factor = values.get('imbalance_factor')
+        fairness_imbalance_class = values.get('fairness_imbalance_class')
+
+        if imbalance_factor and not fairness_imbalance_class:
+            raise ValueError(
+                'Parameter "imbalance_factor" is required when using "fairness_imbalance_class".'
+            )
+
+        return values
     @root_validator(pre=True)
     def check_command(cls, values):
         command = values.get('command')
@@ -178,7 +190,7 @@ class Configuration(BaseModel):
             ('Dataset name', self.dataset_name),
             ('Dataset label field', self.dataset_label_field),
             ('Dataset imbalance factor', self.imbalance_factor),
-            ('fairness imbalance class', self.fairness_imbalance_class),
+            ('Fairness imbalance class', self.fairness_imbalance_class),
             ('Cache dataset transforms', self.cache_dataset_transforms),
             ('Validation size', self.validation_size),
             ('Test size', self.test_size),
@@ -195,6 +207,7 @@ class Configuration(BaseModel):
             ('Zero head weights', self.zero_head),
             ('PEFT method', self.peft),
             ('Use pretrained model', self.pretrained),
+            ('Pretrained model weight perturbation noise level', self.weight_perturbation_level),
             ('Use precomputed features', self.cache_features),
             ('Use steps instead of epochs', self.use_steps),
             ('Evaluation mode', self.evaluation_mode),

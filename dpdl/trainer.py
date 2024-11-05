@@ -8,7 +8,7 @@ from opacus.privacy_engine import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 from .models.model_factory import ModelFactory
-from .callbacks import CallbackHandler, CallbackFactory
+from .callback_factory import CallbackHandler, CallbackFactory
 from .configurationmanager import ConfigurationManager, Configuration, Hyperparameters
 from .datamodules import DataModule, DataModuleFactory
 from .optimizers import OptimizerFactory
@@ -300,6 +300,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         super().__init__(**kwargs)
 
     def _has_target_privacy_params(self):
+        if self.target_epsilon == -1:
+            return False
+
         if not any([self.target_epsilon, self.target_delta]):
             return False
 
@@ -347,6 +350,9 @@ class DifferentiallyPrivateTrainer(Trainer):
                 optim_args=self.optim_args,
             )
         else:
+            if self.target_epsilon == -1:
+                self.noise_multiplier = 0
+
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
                 module=model,
                 optimizer=optimizer,
@@ -585,6 +591,23 @@ class TrainerFactory:
 
             return target_delta, target_epsilon
 
+        def _get_epochs_and_steps(configuration, hyperparams, datamodule):
+            # Differentially Private Learning with Adaptive Clipping
+            # Andrew, et al.
+            # https://arxiv.org/abs/1905.03871
+
+            noise_multiplier_andrew = datamodule.batch_size / 20
+
+            optimizers_args = {
+                'target_unclipped_quantile': hyperparams.target_quantile,
+                'count_threshold': hyperparams.count_threshold,
+                'clipbound_learning_rate': hyperparams.clip_bound_lr,
+                'max_clipbound': float('inf'),
+                'min_clipbound': hyperparams.clip_bound_lower_bound,
+                'unclipped_num_std': noise_multiplier_andrew,
+            }
+            return optimizers_args
+
         # First initialize the DataModule, it will know about the number of classes
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
         num_classes = datamodule.get_num_classes()
@@ -613,14 +636,7 @@ class TrainerFactory:
         target_delta, target_epsilon = _get_target_privacy_params(hyperparams)
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
-        optim_args = {
-            "target_unclipped_quantile": hyperparams.target_quantile,
-            "count_threshold": hyperparams.count_threshold,
-            "clipbound_learning_rate": hyperparams.clip_bound_lr,
-            "max_clipbound": 1e10,
-            "min_clipbound": hyperparams.clip_bound_lower_bound,
-            "unclipped_num_std": datamodule.batch_size/20, # NOTE: used by Andrew, et al.
-        }
+        optimizers_args = _get_epochs_and_steps(configuration, hyperparams, datamodule)
 
         # instantiate a differentialy private trained
         trainer = DifferentiallyPrivateTrainer(
@@ -645,10 +661,10 @@ class TrainerFactory:
             callback_handler=callback_handler,
             validation_frequency=configuration.validation_frequency,
             record_grad_and_noise=configuration.record_snr,
-            optim_args=optim_args,
+            optim_args=optimizers_args,
         )
 
-        log.info(f"optim_args: {optim_args}")
+        log.info(f'The arguments of the optimizer: {optimizers_args}')
 
         return trainer
 
@@ -677,4 +693,3 @@ class TrainerFactory:
             epochs = hyperparams.epochs
 
         return epochs, total_steps
-

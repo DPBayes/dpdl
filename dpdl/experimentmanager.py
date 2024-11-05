@@ -147,6 +147,9 @@ def log_final_epsilon(config_manager, trainer):
     if not config_manager.configuration.privacy:
         return
 
+    if config_manager.hyperparams.target_epsilon == -1:
+        return
+
     log_dir = config_manager.configuration.log_dir
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
