@@ -1,18 +1,25 @@
 import logging
 import timm
+import torch
 
 from .model_base import ModelBase
 from .timm_model import TimmModel
 from .wide_resnet import WideResNet
-from .koskela_model import KoskelaNet
-from .greyscale_koskela_model import KoskelaNetGrayscale
+from .koskela_model import KoskelaNet, KoskelaNetGrayscale
 
 from dpdl.configurationmanager import Configuration, Hyperparameters
 from dpdl.peft import PeftFactory
 
 log = logging.getLogger(__name__)
 
+def add_noise_to_weights(model, noise_level):
+    for name, param in model.named_parameters():
+        if 'weight' in name:
+            noise = torch.randn(param.size()) * noise_level
+            param.data.add_(noise)
+
 class ModelFactory:
+
     @staticmethod
     def get_model(
         configuration: Configuration,
@@ -42,11 +49,11 @@ class ModelFactory:
             model_instance = WideResNet(depth=depth, width=width, num_classes=num_classes)
             transforms = model_instance.get_transforms()
         elif configuration.model_name == 'koskela-net':
-            if configuration.dataset_name not in ["ylecun/mnist"]:
                 model_instance = KoskelaNet()
-            else:
-                model_instance = KoskelaNetGrayscale()
                 transforms = model_instance.get_transforms()
+        elif configuration.model_name == 'koskela-net-grayscale':
+            model_instance = KoskelaNetGrayscale()
+            transforms = model_instance.get_transforms()
         else:
             # Default to using TimmModel
             model_instance = TimmModel(
@@ -65,6 +72,10 @@ class ModelFactory:
             num_classes=num_classes,
             use_feature_cache=configuration.cache_features,
         )
+
+        # Add noise to (pretrained) weights?
+        if configuration.weight_perturbation_level > 0:
+            add_noise_to_weights(model, configuration.weight_perturbation_level)
 
         # zero the head weights?
         if configuration.zero_head:
