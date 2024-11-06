@@ -69,33 +69,63 @@ We will use the following hypers for the manual trials
 - **datasets/dpdl-benchmark/cifar10_10pct_plus_cifar100_humans - 100% subset**
 
 ```
-batch_size,learning_rate,max_grad_norm
--1,0.0001,100
--1,0.001,200
-4096,0.005,0.2
--1,0.00001,30
-4096,0.000005,5
+trials:
+  - batch_size: -1
+    learning_rate: 0.0001
+    max_grad_norm: 100
+  - batch_size: -1
+    learning_rate: 0.001
+    max_grad_norm: 200
+  - batch_size: 4096
+    learning_rate: 0.005
+    max_grad_norm: 0.2
+  - batch_size: -1
+    learning_rate: 0.00001
+    max_grad_norm: 30
+  - batch_size: 4096
+    learning_rate: 0.000005
+    max_grad_norm: 5
 ```
 
 - **datasets/cifar100 - 10% subset**
 
 ```
-batch_size,learning_rate,max_grad_norm
--1,0.01146721822610171,8.032763561513777
-512,0.0018234252312577773,5.197043613978144
-4096,0.0006622044316498266,0.2
-2048,0.0013000468531533824,0.2
-1024,0.008388927125427848,2.6501643524991607
+trials:
+  - batch_size: -1
+    learning_rate: 0.01146721822610171
+    max_grad_norm: 8.032763561513777
+  - batch_size: 512
+    learning_rate: 0.0018234252312577773
+    max_grad_norm: 5.197043613978144
+  - batch_size: 4096
+    learning_rate: 0.0006622044316498266
+    max_grad_norm: 0.2
+  - batch_size: 2048
+    learning_rate: 0.0013000468531533824
+    max_grad_norm: 0.2
+  - batch_size: 1024
+    learning_rate: 0.008388927125427848
+    max_grad_norm: 2.6501643524991607
 ```
 
 - **datasets/dpdl-benchmark/svhn_cropped_balanced - 10% subset**
 
 ```
-batch_size,learning_rate,max_grad_norm
-552,0.002555,0.399278
-2624,0.001801,3.522622
-1720,0.001864,3.315861
--1,0.0011933853983893783,4.273636041943903
-2048,0.000834180101442897,3.216640876127639
+trials:
+  - batch_size: -1
+    learning_rate: 0.005118027933402733
+    max_grad_norm: 0.2                                                      
+  - batch_size: 2048                                                        
+    learning_rate: 0.0026650235528432164
+    max_grad_norm: 10                         
+  - batch_size: 4096                                            
+    learning_rate: 0.0023759799947526772
+    max_grad_norm: 0.56                       
+  - batch_size: 4096
+    max_grad_norm: 2.280923284647107
+    learning_rate: 0.001                      
+  - batch_size: 4096
+    learning_rate: 0.004625057835779846
+    max_grad_norm: 0.2
 ```
 
