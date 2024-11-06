@@ -46,7 +46,7 @@ batch_size:
   min: -1        
   type: int
 learning_rate:
-  max: 0.01
+  max: 0.1
   min: 1.0e-7
   type: float
   log_space: True
