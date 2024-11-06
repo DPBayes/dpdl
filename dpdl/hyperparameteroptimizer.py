@@ -130,6 +130,10 @@ class HyperparameterOptimizer:
                 # add the trials to the queue if they are not there yet
                 enqueued_trial_count = 0
                 for trial in manual_trials:
+                    # if batch size is set to full batch (-1), then we need to map
+                    # it to the actual full batch to keep optuna happy
+                    if trial.get('batch_size') == -1:
+                        trial['batch_size'] = max_batch_size
 
                     # Optuna calls this method inside `enqueue_trial`, but we
                     # need to also keep track of how many manual trials we are
