@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Base configurations
 EXPERIMENT_BASE="18-hpo-alternatives"
-LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
+LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data_good_good_bad_avg"
 mkdir -p $LOG_DIR
 
 # We keep track of submitted jobs here
