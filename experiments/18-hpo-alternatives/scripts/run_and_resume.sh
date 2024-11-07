@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Base configurations
 EXPERIMENT_BASE="18-hpo-alternatives"
-LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data_good_good_bad_avg"
+LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
 mkdir -p $LOG_DIR
 
 # We keep track of submitted jobs here
@@ -153,6 +153,8 @@ do
                         --n-trials $REMAINING_TRIALS \
                         --seed $seed \
                         --optuna-config $OPTUNA_CONFIG \
+                        --optuna-target-metric MulticlassAccuracy \
+                        --optuna-direction maximize \
                         --experiment-name $EXPERIMENT_NAME \
                         --physical-batch-size $PHYSICAL_BATCH_SIZE \
                         --log-dir $LOG_DIR \
@@ -181,6 +183,8 @@ do
                         --seed $seed \
                         --optuna-manual-trials $MANUAL_TRIAL_FILE \
                         --optuna-config $OPTUNA_CONFIG \
+                        --optuna-target-metric MulticlassAccuracy \
+                        --optuna-direction maximize \
                         --experiment-name $EXPERIMENT_NAME \
                         --physical-batch-size $PHYSICAL_BATCH_SIZE \
                         --log-dir $LOG_DIR \
