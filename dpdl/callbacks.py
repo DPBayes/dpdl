@@ -10,7 +10,6 @@ import torch.nn.functional as F
 
 from collections import defaultdict
 from typing import List
-from torch_geometric_median import geometric_median
 
 from .configurationmanager import Configuration, Hyperparameters
 from .utils import tensor_to_python_type
@@ -838,20 +837,12 @@ class RecordGradientStatisticsCallback(Callback):
             if self.gradients_per_class[cls]:
                 all_gradients = torch.cat(self.gradients_per_class[cls], dim=0)
 
-                # Nonparametric Skewness and Geometric Median-based Skewness over Samples
-                row_data_samples.update(
-                    self._calculate_nonparametric_skewness(cls, all_gradients, over='samples')
-                )
-                row_data_samples.update(
-                    self._calculate_geo_median_based_skewness(cls, all_gradients, over='samples')
-                )
-
                 # Mean-based Kurtosis over Samples
                 row_data_samples.update(
                     self._calculate_mean_based_kurtosis(cls, all_gradients, over='samples')
                 )
 
-                # Nonparametric Skewness and Geometric Median-based Skewness over Features
+                # Nonparametric Skewness and Skewness over Features
                 row_data_features.update(
                     self._calculate_nonparametric_skewness(cls, all_gradients, over='features')
                 )
@@ -898,29 +889,6 @@ class RecordGradientStatisticsCallback(Callback):
 
         row_data[f'Class_{cls}_Nonparametric_Skewness'] = nonparametric_skewness
         row_data[f'Class_{cls}_Nonparametric_Skewness_Std'] = nonparametric_skewness_std
-
-        return row_data
-
-    def _calculate_geo_median_based_skewness(self, cls, all_gradients, over='samples'):
-        row_data = {}
-
-        if over == 'features':
-            all_gradients = all_gradients.T
-
-        # Compute the geometric median
-        geo_median = geometric_median(all_gradients).median
-
-        # Compute mean and standard deviation
-        mean = torch.mean(all_gradients, dim=0)  # Mean over samples or features depending on transpose
-        std = torch.std(all_gradients, dim=0)
-
-        # Geometric median-based skewness: (mean - geometric median) / std
-        geo_median_skewness = ((mean - geo_median) / (std + 1e-6))
-        geo_median_skewness_std = geo_median_skewness.std().item()
-        geo_median_skewness = geo_median_skewness.mean().item()
-
-        row_data[f'Class_{cls}_Geo_Skewness'] = geo_median_skewness
-        row_data[f'Class_{cls}_Geo_Skewness_Std'] = geo_median_skewness_std
 
         return row_data
 
