@@ -12,7 +12,7 @@ Many of the ideas that we are using come from [fastai](https://github.com/fastai
 
 ### Install dependencies
 
-`pip install torch timm datasets typer[all] optuna optuna-integration botorch torchmetrics pydantic peft torch-geometric-median`
+`pip install torch timm datasets typer[all] optuna optuna-integration botorch torchmetrics pydantic peft`
 
 We also need to install our own fork of Opacus, as we have some modifications there
 
