@@ -98,7 +98,6 @@ class KoskelaNetGrayscale(nn.Module):
     def get_transforms(self):
         return transforms.Compose(
             [
-                transforms.Grayscale(num_output_channels=1),
                 transforms.ToTensor(),
             ]
         )

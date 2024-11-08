@@ -743,10 +743,12 @@ class ImageDataModule(DataModule):
         # Function for converting a torch.Tensor to RGB
         def to_rgb_tensor(x):
             if isinstance(x, torch.Tensor):
-                if len(x.shape) == 3 and x.shape[0] == 1:  # Grayscale tensor (C, H, W)
-                    return x.repeat(3, 1, 1)  # Convert 1-channel to 3-channel (RGB)
+                if len(x.shape) == 2:  # Grayscale tensor (H, W)
+                    return x.unsqueeze(0)  # Add a channel dimension to make it (1, H, W)
+                elif len(x.shape) == 3 and x.shape[0] == 1:
+                    return x  # Already grayscale with (1, H, W) shape
                 elif len(x.shape) == 3 and x.shape[0] == 3:
-                    return x  # Already RGB
+                    return x.mean(dim=0, keepdim=True)  # Convert RGB to grayscale with (1, H, W) shape
                 else:
                     raise ValueError('Input tensor is not a valid image tensor.')
             return x
