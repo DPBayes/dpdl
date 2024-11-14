@@ -15,7 +15,7 @@ JOB_STATUS_LOG="$LOG_DIR/submitted_jobs.log"
 touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 
 # Experiment parameters
-MODELS=("vit_base_patch16_224.augreg_in21k")
+MODELS=("vit_tiny_patch16_224.augreg_in21k")
 DATASETS=("dpdl-benchmark/cifar10_10pct_plus_cifar100_humans")
 EPOCHS=40
 MAX_GRAD_NORMS=(1e-05 0.001 1.0 3.4996355115805833 12.247448713915892 42.861606445482 150.0)
