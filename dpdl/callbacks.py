@@ -28,7 +28,7 @@ class CallbackHandler:
 
 
 class Callback:
-    def _is_global_zero(self, trainer):
+    def _is_global_zero(self):
         return torch.distributed.get_rank() == 0
 
     def on_train_start(self, trainer):
@@ -89,6 +89,7 @@ class Callback:
         for key, value in metrics.items():
             log.info(f" - {key}: {value}.")
 
+
 class RecordEpochStatsCallback(Callback):
     def __init__(self, use_steps=False):
         self.use_steps = use_steps
@@ -99,7 +100,7 @@ class RecordEpochStatsCallback(Callback):
         ).cuda()
 
     def on_train_start(self, trainer):
-        if self._is_global_zero(trainer):
+        if self._is_global_zero():
             if self.use_steps:
                 batch_size = trainer.datamodule.batch_size
                 data_size = len(trainer.get_dataloader("train").dataset)
@@ -113,13 +114,13 @@ class RecordEpochStatsCallback(Callback):
                 log.info(f"!!! Starting training for {trainer.epochs} epochs.")
 
     def on_train_end(self, trainer):
-        if self._is_global_zero(trainer):
+        if self._is_global_zero():
             log.info("!!! Training finished.")
 
     def on_train_epoch_start(self, trainer, epoch):
         self.train_loss.reset()
 
-        if self._is_global_zero(trainer):
+        if self._is_global_zero():
             log.info(f"--------------------------------------------------")
             if not self.use_steps:
                 log.info(f"Starting training epoch {epoch+1}.")
@@ -129,7 +130,7 @@ class RecordEpochStatsCallback(Callback):
     def on_train_epoch_end(self, trainer, epoch, metrics):
         loss = self.train_loss.compute()
 
-        if self._is_global_zero(trainer):
+        if self._is_global_zero():
             if not self.use_steps:
                 log.info(f"Epoch {epoch+1} finished. Loss: {loss:.4f}.")
             else:
@@ -144,7 +145,7 @@ class RecordEpochStatsCallback(Callback):
         loss = self.evaluation_loss.compute()
         self.evaluation_loss.reset()
 
-        if torch.distributed.get_rank() == 0:
+        if self._is_global_zero():
             log.info(f"Validation finished. Loss: {loss:.4f}.")
             self._log_metrics(metrics, "Validation metrics")
 
@@ -155,7 +156,7 @@ class RecordEpochStatsCallback(Callback):
         loss = self.evaluation_loss.compute()
         self.evaluation_loss.reset()
 
-        if torch.distributed.get_rank() == 0:
+        if self._is_global_zero():
             log.info(f"Test finished. Loss: {loss:.4f}.")
             self._log_metrics(metrics, "Test metrics")
 
@@ -182,7 +183,7 @@ class RecordSNR(Callback):
         self.snr_values.append(snr)
 
     def on_train_end(self, trainer, *args, **kwargs):
-        if torch.distributed.get_rank() == 0:
+        if self._is_global_zero():
             file_path = os.path.join(self.log_dir, "signal-to-noise-ratio.csv")
 
             with open(file_path, "w", newline="") as fh:
@@ -202,100 +203,6 @@ class RecordSNR(Callback):
             log.info(f"Signal-to-Noise ratio data saved at {file_path}")
 
 
-class RecordGradientNormsCallback(Callback):
-    def __init__(self, log_dir: str = None, max_grad_norm: float = 0.0):
-        self.log_dir = log_dir
-        self.max_grad_norm = max_grad_norm
-
-        # cache data at each epoch for mini-batch and/or multi-gpu
-        self.norms_per_layer_sample = {}
-        self.proportion_per_class = {}
-        self.layer_mean_norms_per_class = {}
-
-        # record the history
-        self.grad_history = []
-
-    def on_train_batch_end(self, trainer, batch_idx, batch, loss, *args, **kwargs):
-        # compute per sample norms from optimizer, which is a list contains NN's weights and bias
-        per_layer_per_sample_norms = [
-            g.view(len(g), -1).norm(2, dim=-1) for g in trainer.optimizer.grad_samples
-        ]
-        _, class_labels = batch
-
-        for class_label in class_labels.unique():
-            class_mask = class_labels == class_label
-            # preperation: concatenate the per-sample norm for each class
-            if class_label.item() not in self.norms_per_layer_sample.keys():
-                self.norms_per_layer_sample[class_label.item()] = list(
-                    norms[class_mask] for norms in per_layer_per_sample_norms
-                )
-            else:
-                for layer_index in range(len(per_layer_per_sample_norms)):
-                    self.norms_per_layer_sample[class_label.item()][layer_index] = (
-                        torch.cat(
-                            (
-                                self.norms_per_layer_sample[class_label.item()][
-                                    layer_index
-                                ],
-                                per_layer_per_sample_norms[layer_index][class_mask],
-                            ),
-                            dim=0,
-                        )
-                    )
-            # preperation: concatenate the per-sample norm for each class
-            masked_per_layer_per_sample_norms = [
-                norms[class_mask] for norms in per_layer_per_sample_norms
-            ]
-            # clipped proportion: compute the norm by sample
-            per_sample_norms = torch.norm(
-                torch.stack(masked_per_layer_per_sample_norms), p=2, dim=0
-            )
-            # clipped proportion: compute the proportion of clipped samples
-            clipped_num_this_class = (
-                (per_sample_norms > self.max_grad_norm).sum().item()
-            )
-            total_num_this_class = sum(class_mask)
-            if total_num_this_class == 0:
-                self.proportion_per_class[class_label] = 0
-            else:
-                self.proportion_per_class[class_label] = (
-                    clipped_num_this_class / total_num_this_class
-                )
-
-            # layer norm: computing the mean norm over layer
-            for (
-                class_label,
-                layer_norms_per_class,
-            ) in self.norms_per_layer_sample.items():
-                mean_layer_norms_per_class = []
-                for layer_norms in layer_norms_per_class:
-                    mean_layer_norms_per_class.append(
-                        torch.mean(layer_norms, dim=0).item()
-                    )
-                self.layer_mean_norms_per_class[class_label] = (
-                    mean_layer_norms_per_class
-                )
-
-        # save
-        if self._is_global_zero(trainer):
-            self.grad_history.append(
-                {
-                    "step": batch_idx,
-                    "data": self.layer_mean_norms_per_class,
-                    "clipped_proportion": self.proportion_per_class,
-                }
-            )
-
-    def on_train_end(self, trainer, *args, **kwargs):
-        if self._is_global_zero(trainer):
-            file_path = os.path.join(self.log_dir, f"gradient_norms_last.json")
-            converted_data = tensor_to_python_type(self.grad_history)
-            with open(file_path, "w") as fh:
-                json.dump(converted_data, fh)
-
-            log.info(f"Gradient norm data saved to {file_path}")
-
-
 class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
     def __init__(self, log_dir: str, max_grad_norm: float):
         self.log_dir = log_dir
@@ -308,97 +215,82 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
         self.num_classes = trainer.datamodule.get_num_classes()
 
     def on_train_batch_start(self, *args, **kwargs):
-        # Reset accumulated norms at the start of each logical batch
-        self.body_norms_per_class = {cls: [] for cls in range(self.num_classes)}
-        self.head_norms_per_class = {cls: [] for cls in range(self.num_classes)}
-        self.accumulated_labels = []
+        # Initialize accumulators for each class at the start of each logical batch
+        self.body_norms_accumulator = {cls: [] for cls in range(self.num_classes)}
+        self.head_norms_accumulator = {cls: [] for cls in range(self.num_classes)}
 
     def on_train_physical_batch_end(self, trainer, batch_idx, batch, *args, **kwargs):
         batch_data, class_labels = batch
 
         with torch.no_grad():
-            # Track body and head gradients per class
             for cls in range(self.num_classes):
                 cls_mask = (class_labels == cls)
                 if cls_mask.sum() == 0:
                     continue
 
-                # Body gradient norms
-                body_grad_norms = []
-                for module in self.body.modules():
-                    if hasattr(module, 'weight') and module.weight is not None and module.weight.requires_grad:
-                        grad_samples = module.weight.grad_sample.view(len(module.weight.grad_sample), -1)
-                        body_grad_norms.append(grad_samples[cls_mask].norm(p=2, dim=-1))
-
+                # Body gradient norms per class
+                body_grad_norms = [
+                    module.weight.grad_sample[cls_mask].view(-1).norm(p=2)
+                    for module in self.body.modules()
+                    if hasattr(module, 'weight') and module.weight is not None and module.weight.requires_grad
+                ]
                 if body_grad_norms:
-                    body_class_norm = torch.cat(body_grad_norms).norm(p=2)
-                    self.body_norms_per_class[cls].append(body_class_norm.item())
+                    mean_body_norm = torch.stack(body_grad_norms).mean().item()
+                    self.body_norms_accumulator[cls].append(mean_body_norm)
 
-                # Head gradient norms
-                head_grad_norms = []
-                for module in self.head.modules():
-                    if hasattr(module, 'weight') and module.weight is not None and module.weight.requires_grad:
-                        grad_samples = module.weight.grad_sample.view(len(module.weight.grad_sample), -1)
-                        head_grad_norms.append(grad_samples[cls_mask].norm(p=2, dim=-1))
-
+                # Head gradient norms per class
+                head_grad_norms = [
+                    module.weight.grad_sample[cls_mask].view(-1).norm(p=2)
+                    for module in self.head.modules()
+                    if hasattr(module, 'weight') and module.weight is not None and module.weight.requires_grad
+                ]
                 if head_grad_norms:
-                    head_class_norm = torch.cat(head_grad_norms).norm(p=2)
-                    self.head_norms_per_class[cls].append(head_class_norm.item())
+                    mean_head_norm = torch.stack(head_grad_norms).mean().item()
+                    self.head_norms_accumulator[cls].append(mean_head_norm)
 
-            # Accumulate labels for later use
-            self.accumulated_labels.append(class_labels)
+                # Clear memory after each physical batch
+                del body_grad_norms, head_grad_norms
+                torch.cuda.empty_cache()
 
     def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
-        # Calculate the mean norm for each class, body, and head
+        # Aggregate the per-class gradient norms for the logical batch
         row_data = {'step': batch_idx}
 
         for cls in range(self.num_classes):
-            if self.body_norms_per_class[cls]:
-                body_mean_norm = sum(self.body_norms_per_class[cls]) / len(self.body_norms_per_class[cls])
-            else:
-                body_mean_norm = 0.0
+            # Calculate mean of body and head norms across physical batches
+            body_mean_norm = (
+                sum(self.body_norms_accumulator[cls]) / len(self.body_norms_accumulator[cls])
+                if self.body_norms_accumulator[cls] else 0.0
+            )
+            head_mean_norm = (
+                sum(self.head_norms_accumulator[cls]) / len(self.head_norms_accumulator[cls])
+                if self.head_norms_accumulator[cls] else 0.0
+            )
 
-            if self.head_norms_per_class[cls]:
-                head_mean_norm = sum(self.head_norms_per_class[cls]) / len(self.head_norms_per_class[cls])
-            else:
-                head_mean_norm = 0.0
-
-            # Record the mean norms for body and head for this class
+            # Store the calculated norms
             row_data[f'Class_{cls}_Body_Mean_Norm'] = body_mean_norm
             row_data[f'Class_{cls}_Head_Mean_Norm'] = head_mean_norm
 
         # Save the data for this batch
         self.grad_history.append(row_data)
 
+        # Clear accumulators for the next logical batch
+        for cls in range(self.num_classes):
+            self.body_norms_accumulator[cls].clear()
+            self.head_norms_accumulator[cls].clear()
+
     def on_train_end(self, trainer, *args, **kwargs):
-        # Save the gradient norms to a CSV file
-        if self._is_global_zero(trainer):
+        if self._is_global_zero():
             file_path = os.path.join(self.log_dir, 'gradient_norms_body_head_per_class.csv')
             self._save_to_csv(file_path)
 
     def _get_body_and_head(self, model):
-        # Retrieve the head from the timm model
         head = model.get_classifier()
-
-        # Get all layers of the model
-        body_layers = []
-        head_layers = set()
-
-        # Identify parameters in the head so we can exclude them from the body
-        for name, param in head.named_parameters(recurse=True):
-            head_layers.add(name)
-
-        # Everything that is not part of the head is part of the body
-        for name, module in model.named_children():
-            if not any(head_layer in name for head_layer in head_layers):
-                body_layers.append(module)
-
-        body = torch.nn.Sequential(*body_layers)
+        body = torch.nn.Sequential(*list(model.children())[:-1])
 
         return body, head
 
     def _save_to_csv(self, file_path):
-        # Prepare fieldnames
         fieldnames = ['step']
         fieldnames += [f'Class_{cls}_Body_Mean_Norm' for cls in range(self.num_classes)]
         fieldnames += [f'Class_{cls}_Head_Mean_Norm' for cls in range(self.num_classes)]
@@ -415,110 +307,90 @@ class RecordCosineSimilarityCallback(Callback):
     def __init__(self, log_dir: str, max_grad_norm: float, quantiles: list = [0.25, 0.5, 0.75]):
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
-        self.quantiles = quantiles  # List of gradient quantiles for comparison
+        self.quantiles = quantiles
         self.cosine_similarities_history = []
-        self.accumulated_gradients = []
+
+    def on_train_start(self, *args, **kwargs):
+        # Accumulate statistics at the physical batch level here
+        self.mean_grad_clipped_accumulator = []
+        self.mean_grad_unclipped_accumulator = []
+        self.median_grad_unclipped_accumulator = []
 
     def on_train_batch_start(self, *args, **kwargs):
-        # Reset accumulated gradients at the start of each logical batch
-        self.accumulated_gradients = []
+        # Reset accumlators at the start of logical batch
+        self.mean_grad_clipped_accumulator.clear()
+        self.mean_grad_unclipped_accumulator.clear()
+        self.median_grad_unclipped_accumulator.clear()
 
     def on_train_physical_batch_end(self, trainer, *args, **kwargs):
         with torch.no_grad():
-            # Collect per-sample gradients for the current physical batch
-            per_sample_gradients = [
-                g.view(len(g), -1) for g in trainer.optimizer.grad_samples
-            ]
-
-            # Concatenate the gradients across layers for each example
+            per_sample_gradients = [g.view(len(g), -1) for g in trainer.optimizer.grad_samples]
             flattened_gradients = torch.cat(per_sample_gradients, dim=-1)
 
-            # Accumulate gradients across physical batches
-            self.accumulated_gradients.append(flattened_gradients)
+            # Compute per-sample norms and clipping factors
+            per_sample_norms = flattened_gradients.norm(p=2, dim=1)
+            clip_factors = (self.max_grad_norm / (per_sample_norms + 1e-6)).clamp(max=1.0)
+            clip_factors = clip_factors.unsqueeze(-1)
 
-    def on_train_batch_end(self, trainer, *args, **kwargs):
+            # Clip gradients
+            clipped_gradients = clip_factors * flattened_gradients
+
+            # Compute and accumulate per-physical-batch statistics
+            self.mean_grad_unclipped_accumulator.append(flattened_gradients.mean(dim=0))
+            self.mean_grad_clipped_accumulator.append(clipped_gradients.mean(dim=0))
+            self.median_grad_unclipped_accumulator.append(torch.median(flattened_gradients, dim=0).values)
+
+        # Make sure memory is cleared
+        del per_sample_gradients, flattened_gradients, per_sample_norms, clip_factors, clipped_gradients
+        torch.cuda.empty_cache()
+
+    def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
         with torch.no_grad():
-            # Concatenate all accumulated gradients after logical batch completion
-            all_gradients = torch.cat(self.accumulated_gradients, dim=0)  # Shape (B, D)
+            # Stack the accumulated means and medians of physical batches
+            mean_unclipped_stack = torch.stack(self.mean_grad_unclipped_accumulator, dim=0)
+            mean_clipped_stack = torch.stack(self.mean_grad_clipped_accumulator, dim=0)
+            median_unclipped_stack = torch.stack(self.median_grad_unclipped_accumulator, dim=0)
 
-            # Compute per-sample norms
-            per_sample_norms = all_gradients.norm(p=2, dim=1)  # Shape (B)
-
-            # Compute per-sample clip factors
-            per_sample_clip_factors = (self.max_grad_norm / (per_sample_norms + 1e-6)) # Shape (B)
-            per_sample_clip_factors = per_sample_clip_factors.clamp(max=1.0)
-            per_sample_clip_factors = per_sample_clip_factors.unsqueeze(-1)  # Shape (B, 1)
-
-            # Clip the gradients
-            clipped_gradients = per_sample_clip_factors * all_gradients  # Shape: (B, D)
-
-            # Mean and median aggregation -> Shape (D)
-            mean_grad_unclipped = torch.mean(all_gradients, dim=0)
-            mean_grad_clipped = torch.mean(clipped_gradients, dim=0)
-            median_grad_unclipped = torch.median(all_gradients, dim=0).values
+            # Compute aggregated means and medians for the logical batch
+            mean_grad_unclipped = mean_unclipped_stack.mean(dim=0)
+            mean_grad_clipped = mean_clipped_stack.mean(dim=0)
+            median_grad_unclipped = torch.median(median_unclipped_stack, dim=0).values
 
             # Compute cosine similarities
-            clipped_mean_vs_unclipped_mean = torch.nn.functional.cosine_similarity(
-                mean_grad_clipped,
-                mean_grad_unclipped,
-                dim=0,
-                eps=1e-8,
-            )
-
-            clipped_mean_vs_unclipped_median = torch.nn.functional.cosine_similarity(
-                mean_grad_clipped,
-                median_grad_unclipped,
-                dim=0,
-                eps=1e-8,
-            )
-
-            unclipped_mean_vs_unclipped_median = torch.nn.functional.cosine_similarity(
-                mean_grad_unclipped,
-                median_grad_unclipped,
-                dim=0,
-                eps=1e-8,
-            )
-
             cosine_similarities = {
-                'clipped_mean_vs_unclipped_mean': clipped_mean_vs_unclipped_mean.item(),
-                'clipped_mean_vs_unclipped_median': clipped_mean_vs_unclipped_median.item(),
-                'unclipped_mean_vs_unclipped_median': unclipped_mean_vs_unclipped_median.item(),
+                'clipped_mean_vs_unclipped_mean': torch.nn.functional.cosine_similarity(
+                    mean_grad_clipped, mean_grad_unclipped, dim=0, eps=1e-8
+                ).item(),
+                'clipped_mean_vs_unclipped_median': torch.nn.functional.cosine_similarity(
+                    mean_grad_clipped, median_grad_unclipped, dim=0, eps=1e-8
+                ).item(),
+                'unclipped_mean_vs_unclipped_median': torch.nn.functional.cosine_similarity(
+                    mean_grad_unclipped, median_grad_unclipped, dim=0, eps=1e-8
+                ).item(),
             }
 
-            # Perform clipping at quantile thresholds
+            # Cosine similarities against the quantiles
+            all_norms = torch.stack([g.norm(p=2) for g in self.mean_grad_unclipped_accumulator])
             for quantile in self.quantiles:
-                threshold = torch.quantile(per_sample_norms, quantile)
-                quantile_clip_factors = (threshold / (per_sample_norms + 1e-6)).clamp(max=1.0)
-                quantile_clip_factors = quantile_clip_factors.unsqueeze(-1)  # Shape (B, 1)
+                threshold = torch.quantile(all_norms, quantile).item()
+                quantile_clip_factor = (threshold / (all_norms.mean() + 1e-6)).clamp(max=1.0)
+                quantile_clipped_mean_grad = quantile_clip_factor * mean_grad_unclipped
 
-                quantile_clipped_gradients = quantile_clip_factors * all_gradients  # Shape (B, D)
-                mean_grad_quantile_clipped = torch.mean(quantile_clipped_gradients, dim=0)
+                cosine_similarities[f'clipped_{quantile}_vs_clipped_mean'] = torch.nn.functional.cosine_similarity(
+                    quantile_clipped_mean_grad, mean_grad_clipped, dim=0, eps=1e-8
+                ).item()
+                cosine_similarities[f'clipped_{quantile}_vs_unclipped_mean'] = torch.nn.functional.cosine_similarity(
+                    quantile_clipped_mean_grad, mean_grad_unclipped, dim=0, eps=1e-8
+                ).item()
+                cosine_similarities[f'clipped_{quantile}_vs_unclipped_median'] = torch.nn.functional.cosine_similarity(
+                    quantile_clipped_mean_grad, median_grad_unclipped, dim=0, eps=1e-8
+                ).item()
 
-                # Compute cosine similarities for quantile-clipped gradients
-                quantile_clipped_vs_clipped_mean = torch.nn.functional.cosine_similarity(
-                    mean_grad_quantile_clipped, mean_grad_clipped, dim=0, eps=1e-8
-                )
-
-                quantile_clipped_vs_unclipped_mean = torch.nn.functional.cosine_similarity(
-                    mean_grad_quantile_clipped, mean_grad_unclipped, dim=0, eps=1e-8
-                )
-
-                quantile_clipped_vs_unclipped_median = torch.nn.functional.cosine_similarity(
-                    mean_grad_quantile_clipped, median_grad_unclipped, dim=0, eps=1e-8
-                )
-
-                cosine_similarities[f'clipped_{quantile}_vs_clipped_mean'] = quantile_clipped_vs_clipped_mean.item()
-                cosine_similarities[f'clipped_{quantile}_vs_unclipped_mean'] = quantile_clipped_vs_unclipped_mean.item()
-                cosine_similarities[f'clipped_{quantile}_vs_unclipped_median'] = quantile_clipped_vs_unclipped_median.item()
-
-            # Save cosine similarity per logical batch
+            # Store results for this logical batch
             self.cosine_similarities_history.append(cosine_similarities)
 
-            # Reset for the next logical batch
-            self.accumulated_gradients = []
-
     def on_train_end(self, trainer, *args, **kwargs):
-        if torch.distributed.get_rank() == 0:
+        if self._is_global_zero():
             file_path = os.path.join(self.log_dir, 'cosine-similarities.csv')
 
             with open(file_path, 'w', newline='') as fh:
@@ -558,113 +430,99 @@ class RecordPerClassCosineSimilarityCallback(Callback):
         self.max_grad_norm = max_grad_norm
 
     def on_train_start(self, trainer, *args, **kwargs):
-        # Get the number of classes from datamodule
         self.num_classes = trainer.datamodule.get_num_classes()
-
-        # Container for the cosine similarities
         self.cosine_similarities_history = {cls: [] for cls in range(self.num_classes)}
 
     def on_train_batch_start(self, *args, **kwargs):
-        # Reset accumulated gradients and labels when logical batch starts
-        self.accumulated_gradients = []
-        self.accumulated_labels = []
+        # Reset accumulators for each logical batch
+        self.sum_mean_grad_unclipped = {cls: 0 for cls in range(self.num_classes)}
+        self.sum_mean_grad_clipped = {cls: 0 for cls in range(self.num_classes)}
+        self.num_batches = {cls: 0 for cls in range(self.num_classes)}
 
     def on_train_physical_batch_end(self, trainer, batch_idx, batch, *args, **kwargs):
-        batch_data, class_labels = batch
-
         with torch.no_grad():
-            # Collect per-sample gradients for the current physical batch
-            per_sample_gradients = [
-                g.view(len(g), -1) for g in trainer.optimizer.grad_samples
-            ]
+            batch_data, class_labels = batch
 
-            # Create a Torch tensor of the per sample gradients
+            # Collect per-sample gradients for the current physical batch
+            per_sample_gradients = [g.view(len(g), -1) for g in trainer.optimizer.grad_samples]
             flattened_gradients = torch.cat(per_sample_gradients, dim=-1)
 
-            # Accumulate gradients and labels over physical batches
-            self.accumulated_gradients.append(flattened_gradients)
-            self.accumulated_labels.append(class_labels)
+            # Make sure ememory is cleared
+            del per_sample_gradients
+            torch.cuda.empty_cache()
 
-    def on_train_batch_end(self, trainer, *args, **kwargs):
-        with torch.no_grad():
-            # Concatenate all accumulated gradients and labels for this logical batch
-            all_gradients = torch.cat(self.accumulated_gradients, dim=0)
-            all_labels = torch.cat(self.accumulated_labels, dim=0)
-
-            # Handle per class cosine similarity calculation
+            # Process gradients for each class
             for cls in range(self.num_classes):
-                mask = (all_labels == cls)
+                mask = (class_labels == cls)
                 if mask.sum() == 0:
                     continue
 
-                # We want the gradients that belong to this specific class
-                class_gradients = all_gradients[mask]
+                # Select the gradients of current class
+                class_gradients = flattened_gradients[mask]
                 class_norms = class_gradients.norm(p=2, dim=1)
 
-                # Calculate clipping factors based on class norms
-                class_clip_factors = (self.max_grad_norm / (class_norms + 1e-6)).clamp(max=1.0)
-                class_clip_factors = class_clip_factors.unsqueeze(-1)  # Shape (B_class, 1)
-
-                # Apply clipping to gradients
+                # Compute clipped gradients
+                class_clip_factors = (self.max_grad_norm / (class_norms + 1e-6)).clamp(max=1.0).unsqueeze(-1)
                 clipped_gradients = class_clip_factors * class_gradients
 
-                # Compute mean and median for unclipped and clipped gradients
-                mean_grad_unclipped = torch.mean(class_gradients, dim=0)
-                mean_grad_clipped = torch.mean(clipped_gradients, dim=0)
-                median_grad_unclipped = torch.median(class_gradients, dim=0).values
+                # Compute mean gradients for this class in this physical batch
+                mean_grad_unclipped = class_gradients.mean(dim=0)
+                mean_grad_clipped = clipped_gradients.mean(dim=0)
 
-                # Compute cosine similarities
-                clipped_mean_vs_unclipped_mean = torch.nn.functional.cosine_similarity(
+                # Accumulate sums for means
+                self.sum_mean_grad_unclipped[cls] += mean_grad_unclipped
+                self.sum_mean_grad_clipped[cls] += mean_grad_clipped
+                self.num_batches[cls] += 1
+
+                # Make sure memory is cleared
+                del mask, class_gradients, class_norms, class_clip_factors, clipped_gradients
+                torch.cuda.empty_cache()
+
+            # Make sure memory is cleared
+            del batch_data, class_labels, flattened_gradients
+            torch.cuda.empty_cache()
+
+    def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
+        with torch.no_grad():
+            # Compute aggregate statistic for each class out of the running means
+            for cls in range(self.num_classes):
+                if self.num_batches[cls] == 0:
+                    continue
+
+                # Compute aggregated means for this class
+                mean_grad_unclipped = self.sum_mean_grad_unclipped[cls] / self.num_batches[cls]
+                mean_grad_clipped = self.sum_mean_grad_clipped[cls] / self.num_batches[cls]
+
+                # Calculate cosine similarities from the aggregated means
+                cosine_similarity = torch.nn.functional.cosine_similarity(
                     mean_grad_clipped, mean_grad_unclipped, dim=0, eps=1e-8
-                )
+                ).item()
 
-                clipped_mean_vs_unclipped_median = torch.nn.functional.cosine_similarity(
-                    mean_grad_clipped, median_grad_unclipped, dim=0, eps=1e-8
-                )
-
-                unclipped_mean_vs_unclipped_median = torch.nn.functional.cosine_similarity(
-                    mean_grad_unclipped, median_grad_unclipped, dim=0, eps=1e-8
-                )
-
-                # Save all cosine similarities for this class
+                # Store the cosine similarity results for this class
                 self.cosine_similarities_history[cls].append({
-                    'clipped_mean_vs_unclipped_mean': clipped_mean_vs_unclipped_mean.item(),
-                    'clipped_mean_vs_unclipped_median': clipped_mean_vs_unclipped_median.item(),
-                    'unclipped_mean_vs_unclipped_median': unclipped_mean_vs_unclipped_median.item(),
+                    'step': batch_idx,
+                    'clipped_mean_vs_unclipped_mean': cosine_similarity
                 })
 
-        # Reset for the next logical batch
-        self.accumulated_gradients = []
-        self.accumulated_labels = []
-
     def on_train_end(self, trainer, *args, **kwargs):
-        if torch.distributed.get_rank() == 0:
+        if self._is_global_zero():
+            # Save cosine similarities for each class separately
             for cls in range(self.num_classes):
                 file_path = os.path.join(self.log_dir, f'cosine_similarity_class_{cls}.csv')
-
-                self._save_to_csv(
-                    file_path,
-                    self.cosine_similarities_history[cls],
-                    f'Cosine Similarities (Class {cls})',
-                )
+                self._save_to_csv(file_path, self.cosine_similarities_history[cls], f'Cosine Similarities (Class {cls})')
 
     def _save_to_csv(self, file_path, history, column_name):
-        # Save the cosine similarity history to a CSV file
         with open(file_path, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
                 'Step',
                 'Clipped_Mean_vs_Unclipped_Mean',
-                'Clipped_Mean_vs_Unclipped_Median',
-                'Unclipped_Mean_vs_Unclipped_Median',
             ])
 
-            for step, record in enumerate(history):
+            for record in history:
                 writer.writerow([
-                    step,
+                    record['step'],
                     record['clipped_mean_vs_unclipped_mean'],
-                    record['clipped_mean_vs_unclipped_median'],
-                    record['unclipped_mean_vs_unclipped_median'],
                 ])
 
         log.info(f'{column_name} data saved at {file_path}')
@@ -689,7 +547,7 @@ class RecordPerClassAccuracyCallback(Callback):
             self.per_class_accuracies_history.append(per_class_accuracies_list)
 
     def on_train_end(self, trainer, *args, **kwargs):
-        if torch.distributed.get_rank() == 0:
+        if self._is_global_zero():
             file_path = os.path.join(self.log_dir, 'per-class-accuracies.csv')
 
             # Save the per-class accuracies history to a CSV
@@ -720,11 +578,11 @@ class RecordClippedProportionsPerClassCallback(Callback):
         # Get the number of classes from the datamodule
         self.num_classes = trainer.datamodule.get_num_classes()
 
-        # Initialize container for clipped proportions
+        # Initialize container for the clipped proportions
         self.clipped_proportions_history = []
 
     def on_train_batch_start(self, *args, **kwargs):
-        # Reset accumulated gradients and labels at the start of each logical batch
+        # Reset accumlated gradients and labels at the start of logical batch
         self.accumulated_gradients = []
         self.accumulated_labels = []
 
@@ -742,6 +600,10 @@ class RecordClippedProportionsPerClassCallback(Callback):
             # Accumulate gradients and labels across physical batches
             self.accumulated_gradients.append(flattened_gradients)
             self.accumulated_labels.append(class_labels)
+
+        # Make sure memory is cleared
+        del per_sample_gradients, flattened_gradients
+        torch.cuda.empty_cache()
 
     def on_train_batch_end(self, trainer, *args, **kwargs):
         with torch.no_grad():
@@ -778,7 +640,7 @@ class RecordClippedProportionsPerClassCallback(Callback):
 
     def on_train_end(self, trainer, *args, **kwargs):
         # Only save on rank 0 to avoid duplicate files in distributed setups
-        if torch.distributed.get_rank() == 0:
+        if self._is_global_zero():
             file_path = os.path.join(self.log_dir, 'clipped_proportions_per_class.csv')
             self._save_to_csv(file_path, self.clipped_proportions_history)
 
@@ -804,125 +666,102 @@ class RecordGradientStatisticsCallback(Callback):
         self.grad_history_samples = []
         self.grad_history_features = []
 
-    def on_train_start(self, trainer, *args, **kwargs):
-        self.num_classes = trainer.datamodule.get_num_classes()
-
     def on_train_batch_start(self, *args, **kwargs):
-        # Reset accumulated gradients at the start of each logical batch
-        self.gradients_per_class = {cls: [] for cls in range(self.num_classes)}
+        # Reset accumulators at the start of each logical batch
+        self.statistics_samples = {'mean': [], 'median': [], 'std': []}
+        self.statistics_features = {'mean': [], 'median': [], 'std': []}
 
     def on_train_physical_batch_end(self, trainer, batch_idx, batch, *args, **kwargs):
         batch_data, class_labels = batch
 
         with torch.no_grad():
-            # Collect gradients for all layers and flatten them for each class
-            per_sample_gradients = [
-                g.view(len(g), -1) for g in trainer.optimizer.grad_samples
-            ]
+            # Collect gradients for all layers and flatten them for each sample
+            per_sample_gradients = [g.view(len(g), -1) for g in trainer.optimizer.grad_samples]
             flattened_gradients = torch.cat(per_sample_gradients, dim=-1)
 
-            # Accumulate flattened gradients per class
-            for cls in range(self.num_classes):
-                cls_mask = (class_labels == cls)
-                if cls_mask.sum() == 0:
-                    continue
+            # Compute statistics over samples
+            mean_samples = flattened_gradients.mean(dim=0)
+            median_samples = torch.median(flattened_gradients, dim=0).values
+            std_samples = flattened_gradients.std(dim=0)
 
-                self.gradients_per_class[cls].append(flattened_gradients[cls_mask])
+            self.statistics_samples['mean'].append(mean_samples)
+            self.statistics_samples['median'].append(median_samples)
+            self.statistics_samples['std'].append(std_samples)
+
+            # Compute statistics over features
+            mean_features = flattened_gradients.mean(dim=1)
+            median_features = torch.median(flattened_gradients, dim=1).values
+            std_features = flattened_gradients.std(dim=1)
+
+            self.statistics_features['mean'].append(mean_features)
+            self.statistics_features['median'].append(median_features)
+            self.statistics_features['std'].append(std_features)
+
+        # Make sure memory is cleared
+        del per_sample_gradients, flattened_gradients
+        torch.cuda.empty_cache()
 
     def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
         row_data_samples = {'step': batch_idx}
         row_data_features = {'step': batch_idx}
 
-        for cls in range(self.num_classes):
-            if self.gradients_per_class[cls]:
-                all_gradients = torch.cat(self.gradients_per_class[cls], dim=0)
+        # Calculate the statistics for the logical batch, first over the samples ...
+        if self.statistics_samples['mean']:
+            # Stack accumulated statistics
+            mean_samples_concat = torch.cat(self.statistics_samples['mean'], dim=0)
+            median_samples_concat = torch.cat(self.statistics_samples['median'], dim=0)
+            std_samples_concat = torch.cat(self.statistics_samples['std'], dim=0)
 
-                # Mean-based Kurtosis over Samples
-                row_data_samples.update(
-                    self._calculate_mean_based_kurtosis(cls, all_gradients, over='samples')
-                )
+            # Compute final statistics over the logical batch
+            mean_samples = mean_samples_concat.mean(dim=0)
+            median_samples = torch.median(median_samples_concat, dim=0).values
+            std_samples = std_samples_concat.mean(dim=0)
 
-                # Nonparametric Skewness and Skewness over Features
-                row_data_features.update(
-                    self._calculate_nonparametric_skewness(cls, all_gradients, over='features')
-                )
-                row_data_features.update(
-                    self._calculate_geo_median_based_skewness(cls, all_gradients, over='features')
-                )
+            # Nonparametric skewness over samples
+            skewness_samples = ((mean_samples - median_samples) / (std_samples + 1e-6))
+            skewness_mean_samples = skewness_samples.mean().item()
+            skewness_std_samples = skewness_samples.std().item()
 
-                # Mean-based Kurtosis over Features
-                row_data_features.update(
-                    self._calculate_mean_based_kurtosis(cls, all_gradients, over='features')
-                )
+            row_data_samples['Nonparametric_Skewness'] = skewness_mean_samples
+            row_data_samples['Nonparametric_Skewness_Std'] = skewness_std_samples
 
-        # Save the data for this batch
+        # ... and then over the features
+        if self.statistics_features['mean']:
+            # Stack accumulated statistics
+            mean_features_concat = torch.cat(self.statistics_features['mean'], dim=0)
+            median_features_concat = torch.cat(self.statistics_features['median'], dim=0)
+            std_features_concat = torch.cat(self.statistics_features['std'], dim=0)
+
+            # Compute final statistics over the logical batch
+            mean_features = mean_features_concat.mean(dim=0)
+            median_features = torch.median(median_features_concat, dim=0).values
+            std_features = std_features_concat.mean(dim=0)
+
+            # Nonparametric skewness over features
+            skewness_features = ((mean_features - median_features) / (std_features + 1e-6))
+            skewness_mean_features = skewness_features.mean().item()
+            skewness_std_features = skewness_features.std().item()
+
+            row_data_features['Nonparametric_Skewness'] = skewness_mean_features
+            row_data_features['Nonparametric_Skewness_Std'] = skewness_std_features
+
+        # Save the data for this logical batch
         self.grad_history_samples.append(row_data_samples)
         self.grad_history_features.append(row_data_features)
 
     def on_train_end(self, trainer, *args, **kwargs):
-        if self._is_global_zero(trainer):
+        if self._is_global_zero():
             self._save_to_csv(
-                'gradient_statistics_per_class_over_samples.csv',
+                'gradient_statistics_over_samples.csv',
                 self.grad_history_samples,
             )
             self._save_to_csv(
-                'gradient_statistics_per_class_over_features.csv',
+                'gradient_statistics_over_features.csv',
                 self.grad_history_features,
             )
 
-    def _calculate_nonparametric_skewness(self, cls, all_gradients, over='samples'):
-        row_data = {}
-
-        # Switch dimensions if calculating over features
-        if over == 'features':
-            all_gradients = all_gradients.T
-
-        # Compute mean, median, and standard deviation
-        mean = torch.mean(all_gradients, dim=0)
-        median = torch.median(all_gradients, dim=0).values
-        std = torch.std(all_gradients, dim=0)
-
-        # Nonparametric skewness: (mean - median) / std
-        nonparametric_skewness = ((mean - median) / (std + 1e-6))
-        nonparametric_skewness_std = nonparametric_skewness.std().item()
-        nonparametric_skewness = nonparametric_skewness.mean().item()
-
-        row_data[f'Class_{cls}_Nonparametric_Skewness'] = nonparametric_skewness
-        row_data[f'Class_{cls}_Nonparametric_Skewness_Std'] = nonparametric_skewness_std
-
-        return row_data
-
-    def _calculate_mean_based_kurtosis(self, cls, all_gradients, over='samples'):
-        row_data = {}
-
-        if over == 'features':
-            all_gradients = all_gradients.T
-
-        # Compute the mean and deviations from the mean
-        mean_per_sample = torch.mean(all_gradients, dim=0)
-
-        # Correct the dimension of unsqueeze based on the target
-        diffs_per_sample = all_gradients - mean_per_sample.unsqueeze(0)
-
-        # Compute standard deviation and Z-scores
-        std_per_sample = torch.sqrt(torch.mean(diffs_per_sample ** 2.0, dim=0))
-        zscores_per_sample = diffs_per_sample / (std_per_sample.unsqueeze(0) + 1e-6)
-
-        # Compute kurtosis (mean-based)
-        mean_kurtosis_per_sample = torch.mean(zscores_per_sample ** 4.0, dim=0) - 3.0
-        mean_kurtosis = torch.mean(mean_kurtosis_per_sample).item()
-
-        row_data[f'Class_{cls}_Mean_Kurtosis'] = mean_kurtosis
-
-        return row_data
-
     def _save_to_csv(self, file_name, grad_history):
-        fieldnames = ['step']
-        fieldnames += [f'Class_{cls}_Nonparametric_Skewness' for cls in range(self.num_classes)]
-        fieldnames += [f'Class_{cls}_Nonparametric_Skewness_Std' for cls in range(self.num_classes)]
-        fieldnames += [f'Class_{cls}_Geo_Skewness' for cls in range(self.num_classes)]
-        fieldnames += [f'Class_{cls}_Geo_Skewness_Std' for cls in range(self.num_classes)]
-        fieldnames += [f'Class_{cls}_Mean_Kurtosis' for cls in range(self.num_classes)]
+        fieldnames = ['step', 'Nonparametric_Skewness', 'Nonparametric_Skewness_Std']
 
         file_path = os.path.join(self.log_dir, file_name)
 
@@ -935,9 +774,9 @@ class RecordGradientStatisticsCallback(Callback):
 
 
 class DebugProbeCallback(Callback):
-    def _is_global_zero(self, trainer):
+    def _is_global_zero(self):
         log.info(f"[DEBUG] Calling _is_global_zero")
-        return torch.distributed.get_rank() == 0
+        super().__is_global_zero()
 
     def on_train_start(self, trainer):
         log.info(f"[DEBUG] on_train_start")
@@ -1008,12 +847,6 @@ class CallbackFactory:
             experiment_name = configuration.experiment_name
             full_log_dir = pathlib.Path(f"{log_dir}/{experiment_name}")
             max_grad_norm = hyperparams.max_grad_norm
-
-            #callbacks.append(
-            #    RecordGradientNormsCallback(
-            #        log_dir=full_log_dir, max_grad_norm=max_grad_norm
-            #    )
-            #)
 
             callbacks.append(
                 RecordBodyAndHeadGradientNormsPerClassCallback(
