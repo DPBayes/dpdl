@@ -7,7 +7,7 @@ log = logging.getLogger(__name__)
 
 
 class Callback:
-    def _is_global_zero(self, trainer):
+    def _is_global_zero(self):
         return torch.distributed.get_rank() == 0
 
     def on_train_start(self, trainer):
