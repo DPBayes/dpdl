@@ -7,7 +7,7 @@ import torchmetrics
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 from .models.model_factory import ModelFactory
-from .callbacks import CallbackHandler, CallbackFactory
+from .callback_factory import CallbackHandler, CallbackFactory
 from .configurationmanager import ConfigurationManager, Configuration, Hyperparameters
 from .datamodules import DataModule, DataModuleFactory
 from .optimizers import OptimizerFactory
