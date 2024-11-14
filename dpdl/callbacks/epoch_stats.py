@@ -1,6 +1,5 @@
 import math
 import logging
-import torch
 import torchmetrics
 from .base_callback import Callback
 

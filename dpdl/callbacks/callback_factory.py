@@ -1,13 +1,23 @@
 import logging
 import pathlib
-import torch
 
 from typing import List
 
-from .configurationmanager import Configuration, Hyperparameters
-from .utils import tensor_to_python_type
+from ..configurationmanager import Configuration, Hyperparameters
+from ..utils import tensor_to_python_type
 
-from .callbacks import *
+
+from .base_callback import Callback
+from .body_head_gradient import RecordBodyAndHeadGradientNormsPerClassCallback
+from .cosine_similarity import (
+    RecordCosineSimilarityCallback,
+    RecordPerClassCosineSimilarityCallback,
+)
+from .debug import DebugProbeCallback
+from .epoch_stats import RecordEpochStatsCallback
+from .gradient_proportion import RecordClippedProportionsPerClassCallback
+from .gradient_stats import RecordGradientStatisticsCallback
+from .per_class_accuracy import RecordPerClassAccuracyCallback
 
 log = logging.getLogger(__name__)
 
@@ -28,13 +38,6 @@ class CallbackFactory:
         callbacks = [
             RecordEpochStatsCallback(use_steps=configuration.use_steps),
         ]
-
-        if configuration.record_snr:
-            log_dir = configuration.log_dir
-            experiment_name = configuration.experiment_name
-            full_log_dir = pathlib.Path(f"{log_dir}/{experiment_name}")
-
-            callbacks.append(RecordSNR(log_dir=full_log_dir))
 
         if configuration.record_gradient_norms:
             log_dir = configuration.log_dir
