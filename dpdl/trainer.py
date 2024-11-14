@@ -294,7 +294,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         self.privacy_engine = opacus.PrivacyEngine(**privacy_engine_args)
 
-        super().__init__(**kwargs)
+        super().__init__(seed=seed, **kwargs)
 
     def _has_target_privacy_params(self):
         if self.target_epsilon == -1:
