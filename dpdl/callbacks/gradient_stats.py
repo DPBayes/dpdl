@@ -2,7 +2,6 @@ import csv
 import os
 import torch
 from .base_callback import Callback
-from torch_geometric_median import geometric_median
 import logging
 
 log = logging.getLogger(__name__)
