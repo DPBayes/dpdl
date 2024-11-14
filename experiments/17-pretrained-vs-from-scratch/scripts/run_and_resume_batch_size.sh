@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Base configurations
 EXPERIMENT_BASE="17-pretrained-vs-from-scratch"
-LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
+LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data_batch_size"
 mkdir -p $LOG_DIR
 
 # We keep track of submitted jobs here
@@ -15,7 +15,7 @@ JOB_STATUS_LOG="$LOG_DIR/submitted_jobs.log"
 touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 
 # Experiment parameters
-MODELS=("vit_base_patch16_224.augreg_in21k")
+MODELS=("vit_tiny_patch16_224.augreg_in21k")
 DATASETS=("dpdl-benchmark/cifar10_10pct_plus_cifar100_humans")
 EPOCHS=40
 BATCH_SIZES=(256 512 1024 2048 4096 -1)
