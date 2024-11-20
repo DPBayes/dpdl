@@ -303,7 +303,7 @@ def cli(
             help='The lower bound of adaptive clipping bound (for "adaptive" clipping mode)',
             rich_help_panel='Hyperparameter options',
         ),
-    ] = 1.0,
+    ] = None,
     secure_mode: Annotated[
         Optional[bool],
         typer.Option(
