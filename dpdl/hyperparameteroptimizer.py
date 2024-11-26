@@ -310,11 +310,11 @@ class HyperparameterOptimizer:
             # update the hyperparameter value in configuration
             setattr(config_manager.hyperparams, target_hyper, hyper_value)
 
-        # train the modeol
-        trainer = TrainerFactory.get_trainer(config_manager)
-
         # while tuning hypers, do not validate
         config_manager.configuration.validation_frequency = 0
+
+        # get the trainer with updated config
+        trainer = TrainerFactory.get_trainer(config_manager)
 
         if torch.distributed.get_rank() == 0:
             log.info(f'Starting trial {trial.number}.')
