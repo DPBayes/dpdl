@@ -12,7 +12,7 @@ from .trainer import TrainerFactory
 from .datamodules import DataModuleFactory
 from .models.model_factory import ModelFactory
 from .configurationmanager import ConfigurationManager
-from .experimentmanager import save_study, log_final_epsilon
+from .experimentmanager import save_study, log_final_epsilon, save_hpo_metrics
 
 log = logging.getLogger(__name__)
 
@@ -325,6 +325,14 @@ class HyperparameterOptimizer:
         # optimization objective is the validation loss
         if torch.distributed.get_rank() == 0:
             loss, metrics = trainer.validate()
+
+            if config_manager.configuration.record_metrics_during_hpo:
+                save_hpo_metrics(
+                    config_manager,
+                    loss,
+                    metrics,
+                    trial_index=trial.number,
+                )
 
             # let's share the loss and metrics with other ranks
             # rank 0 is the source

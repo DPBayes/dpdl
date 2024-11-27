@@ -402,6 +402,13 @@ def cli(
                 rich_help_panel='',
             )
         ] = False,
+        record_hpo_metrics: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record metrics during hyperparameter optimization',
+                rich_help_panel='',
+            )
+        ] = False,
     ):
 
     config_manager = ConfigurationManager(ctx.params)
