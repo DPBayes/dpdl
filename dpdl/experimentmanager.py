@@ -86,6 +86,36 @@ def _copy_optuna_study_to_experiment_dir(config_manager: ConfigurationManager):
         to_storage=dst_storage,
     )
 
+def save_hpo_metrics(
+        config_manager: ConfigurationManager,
+        loss: torch.Tensor,
+        metrics: dict,
+        trial_index: int,
+    ):
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+
+    metrics = tensor_to_python_type(metrics)
+
+    # if exists, read the data
+    if (full_log_dir / 'hpo_metrics.json').exists():
+        with open(full_log_dir / 'hpo_metrics.json', 'r') as fh:
+            data = json.load(fh)
+    else:
+        data = []
+
+    data.append({
+        'trial_index': trial_index,
+        'loss': loss.item(),
+        **metrics,
+    })
+
+    # save the data
+    with open(full_log_dir / 'hpo_metrics.json', 'w') as fh:
+        json.dump(data, fh)
+
+
 def start_experiment_logging(
         log: logging.Logger,
         config_manager: ConfigurationManager,
