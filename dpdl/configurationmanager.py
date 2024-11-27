@@ -96,7 +96,6 @@ class Configuration(BaseModel):
     model_save_fpath: Optional[str] = None
     record_gradient_norms: Optional[bool] = False
     verbose_callback: Optional[bool] = False
-    record_hpo_metrics: Optional[bool] = False
     cache_dataset_transforms: Optional[bool] = False
     weight_perturbation_level: float = 0
 
@@ -190,7 +189,6 @@ class Configuration(BaseModel):
             ('Model save file path', self.model_save_fpath),
             ('Record gradient norms', self.record_gradient_norms),
             ('Enable the debug callback output',self.verbose_callback),
-            ('Record HPO metrics', self.record_hpo_metrics),
         ]
 
         if self.privacy:
