@@ -326,7 +326,8 @@ class HyperparameterOptimizer:
         if torch.distributed.get_rank() == 0:
             loss, metrics = trainer.validate()
 
-            if config_manager.configuration.record_metrics_during_hpo:
+            if config_manager.configuration.record_hpo_metrics:
+                log.info("Writing the loss and metrics of current trial into file.")
                 save_hpo_metrics(
                     config_manager,
                     loss,
