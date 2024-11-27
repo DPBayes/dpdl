@@ -1,4 +1,5 @@
 import gc
+
 import logging
 import optuna
 import torch
@@ -11,11 +12,13 @@ from .trainer import TrainerFactory
 from .datamodules import DataModuleFactory
 from .models.model_factory import ModelFactory
 from .configurationmanager import ConfigurationManager
-from .experimentmanager import save_study, log_final_epsilon
+from .experimentmanager import save_study, log_final_epsilon, save_hpo_metrics
 
 log = logging.getLogger(__name__)
 
+
 class HyperparameterOptimizer:
+
     # helper function for reading Optuna hyperparameter configuration that
     # includes types, options, lower and upper bounds, etc for hyperparams
     @staticmethod
@@ -25,8 +28,29 @@ class HyperparameterOptimizer:
 
         return config
 
+    # helper function for reading possible manual trials configued
+    @staticmethod
+    def read_manual_trials(manual_trials_fpath):
+        with open(manual_trials_fpath, 'rb') as fh:
+            manual_trials = yaml.safe_load(fh)
+
+        return manual_trials.get('trials', [])
+
+    @staticmethod
+    def validate_manual_trials(manual_trials, target_hypers):
+        for trial in manual_trials:
+            invalid_keys = [key for key in trial if key not in target_hypers]
+            if invalid_keys:
+                raise ValueError(f'Invalid hyperparameters in manual trial: {invalid_keys}. These should be defined in `--target-hypers`')
+
     @staticmethod
     def optimize_hypers(config_manager: ConfigurationManager) -> None:
+
+        # we do not want to record gradient norms during the HPO trials. it makes much
+        # more sense to record the stuff only for the final eveluation. so save the state,
+        # disable gradient recording, and later restore the state before final eval round.
+        record_gradient_norms_state = config_manager.configuration.record_gradient_norms
+        config_manager.configuration.record_gradient_norms = False
 
         configuration = config_manager.configuration
 
@@ -48,7 +72,7 @@ class HyperparameterOptimizer:
 
         # optuna needs a global process group with 'gloo' backend for communication.
         # "Create a global gloo backend when group is None and WORLD is nccl."
-        # - https://optuna.readthedocs.io/en/stable/reference/generated/optuna.integration.TorchDistributedTrial.html
+        # # - https://optuna.readthedocs.io/en/stable/reference/generated/optuna.integration.TorchDistributedTrial.html
         optuna_process_group = torch.distributed.new_group(
             backend='gloo',
         )
@@ -75,6 +99,11 @@ class HyperparameterOptimizer:
         if torch.distributed.get_rank() == 0:
             journal_fpath = configuration.optuna_journal
 
+            # we will store the information about the trials on disk in a journal file
+            storage = optuna.storages.JournalStorage(
+                optuna.storages.journal.JournalFileBackend(journal_fpath),
+            )
+
             # we manually define the sampler to be able to set the seed
             if configuration.optuna_sampler == 'BoTorchSampler':
                 sampler_cls = getattr(optuna.integration, configuration.optuna_sampler)
@@ -83,14 +112,8 @@ class HyperparameterOptimizer:
                 sampler_cls = getattr(optuna.samplers, configuration.optuna_sampler)
                 sampler = sampler_cls(seed=configuration.seed)
 
-            # we will store the information about the trials on disk in a journal file
-            storage = optuna.storages.JournalStorage(
-                optuna.storages.journal.JournalFileBackend(journal_fpath),
-            )
-
             # should we try to resume an existing study?
             load_if_exists = configuration.optuna_resume
-
             study = optuna.create_study(
                 storage=storage,
                 study_name=configuration.experiment_name,
@@ -99,14 +122,47 @@ class HyperparameterOptimizer:
                 direction=configuration.optuna_direction,
             )
 
-            # no we can actually run the study
+            # add any possible manual trials that we want to run
+            if configuration.optuna_manual_trials:
+                manual_trials = HyperparameterOptimizer.read_manual_trials(configuration.optuna_manual_trials)
+                HyperparameterOptimizer.validate_manual_trials(manual_trials, target_hypers)
+
+                # add the trials to the queue if they are not there yet
+                enqueued_trial_count = 0
+                for trial in manual_trials:
+                    # if batch size is set to full batch (-1), then we need to map
+                    # it to the actual full batch to keep optuna happy
+                    if trial.get('batch_size') == -1:
+                        trial['batch_size'] = max_batch_size
+
+                    # Optuna calls this method inside `enqueue_trial`, but we
+                    # need to also keep track of how many manual trials we are
+                    # enqueuing that have not been completed yet
+                    if not study._should_skip_enqueue(trial):
+                        log.info(f'Enqueuing trial: {trial}')
+                        study.enqueue_trial(trial, skip_if_exists=True)
+                        enqueued_trial_count += 1
+
+                log.info(f'Enqueued {enqueued_trial_count} manual trials.')
+
+                if enqueued_trial_count >= configuration.n_trials:
+                    raise ValueError('The number of enqueued trials exceeds or matches the total number of trials. Please reduce the number of manual trials or increase `n_trials` to allow Optuna to perform additional trials.')
+
+                # Adjust number of random trials to account for enqueued trials
+                remaining_random_trials = max(configuration.optuna_random_trials - enqueued_trial_count, 0)
+                log.info(f'Setting n_startup_trials to {remaining_random_trials} to account for enqueued trials.')
+                sampler = sampler_cls(
+                    n_startup_trials=remaining_random_trials,
+                    seed=configuration.seed,
+                )
+
             study.optimize(
                 objective,
                 n_trials=configuration.n_trials,
                 gc_after_trial=True, # garbage collect after each trial
             )
         else:
-            # "Please set trial object in rank-0 node and set `None` in the other rank node."
+            # "Please set trial object in rank-0 node and set `None` in the other rank node.
             # - https://optuna.readthedocs.io/en/stable/reference/generated/optuna.integration.TorchDistributedTrial.html
             for _ in range(configuration.n_trials):
                 objective(None)
@@ -134,6 +190,10 @@ class HyperparameterOptimizer:
 
         # and finally, let's unpack the best params from the list
         best_params = broadcast_objects[0]
+
+        # restore the state of gradient norms recording. if it was enabled, we want
+        # to keep it enabled for the final training round
+        config_manager.configuration.record_gradient_norms = record_gradient_norms_state
 
         # now we can train/evaluate for the final time with best params
         metrics = HyperparameterOptimizer._final_evaluation_round(best_params, config_manager)
@@ -265,6 +325,15 @@ class HyperparameterOptimizer:
         # optimization objective is the validation loss
         if torch.distributed.get_rank() == 0:
             loss, metrics = trainer.validate()
+
+            if config_manager.configuration.record_hpo_metrics:
+                log.info("Writing the loss and metrics of current trial into file.")
+                save_hpo_metrics(
+                    config_manager,
+                    loss,
+                    metrics,
+                    trial_index=trial.number,
+                )
 
             # let's share the loss and metrics with other ranks
             # rank 0 is the source

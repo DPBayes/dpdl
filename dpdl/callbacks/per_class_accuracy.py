@@ -17,7 +17,7 @@ class RecordPerClassAccuracyCallback(Callback):
         train_metrics = trainer._unwrap_model().train_metrics.compute()
 
         # Extract per-class accuracies
-        per_class_accuracies = train_metrics.get("MulticlassAccuracyPerClass", None)
+        per_class_accuracies = train_metrics.get('MulticlassAccuracyPerClass', None)
 
         if per_class_accuracies is not None:
             # Convert to a list for easier logging and saving
@@ -26,18 +26,18 @@ class RecordPerClassAccuracyCallback(Callback):
             self.per_class_accuracies_history.append(per_class_accuracies_list)
 
     def on_train_end(self, trainer, *args, **kwargs):
-        if torch.distributed.get_rank() == 0:
-            file_path = os.path.join(self.log_dir, "per-class-accuracies.csv")
+        if self._is_global_zero():
+            file_path = os.path.join(self.log_dir, 'per-class-accuracies.csv')
 
             # Save the per-class accuracies history to a CSV
-            with open(file_path, "w", newline="") as fh:
+            with open(file_path, 'w', newline='') as fh:
                 writer = csv.writer(fh)
 
                 # Construct header row for the CSV
-                header = ["Step"]
+                header = ['Step']
 
                 for i in range(len(self.per_class_accuracies_history[0])):
-                    header += [f"Class_{i}"]
+                    header += [f'Class_{i}']
 
                 writer.writerow(header)
 
@@ -45,4 +45,4 @@ class RecordPerClassAccuracyCallback(Callback):
                 for i, accuracies in enumerate(self.per_class_accuracies_history):
                     writer.writerow([i] + accuracies)
 
-            log.info(f"Per-class accuracy data saved at {file_path}")
+            log.info(f'Per-class accuracy data saved at {file_path}')
