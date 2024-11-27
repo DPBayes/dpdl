@@ -1,6 +1,5 @@
 import math
 import logging
-import torch
 import torchmetrics
 from .base_callback import Callback
 
@@ -17,7 +16,7 @@ class RecordEpochStatsCallback(Callback):
         ).cuda()
 
     def on_train_start(self, trainer):
-        if self._is_global_zero(trainer):
+        if self._is_global_zero():
             if self.use_steps:
                 batch_size = trainer.datamodule.batch_size
                 data_size = len(trainer.get_dataloader("train").dataset)
@@ -31,13 +30,13 @@ class RecordEpochStatsCallback(Callback):
                 log.info(f"!!! Starting training for {trainer.epochs} epochs.")
 
     def on_train_end(self, trainer):
-        if self._is_global_zero(trainer):
+        if self._is_global_zero():
             log.info("!!! Training finished.")
 
     def on_train_epoch_start(self, trainer, epoch):
         self.train_loss.reset()
 
-        if self._is_global_zero(trainer):
+        if self._is_global_zero():
             log.info(f"--------------------------------------------------")
             if not self.use_steps:
                 log.info(f"Starting training epoch {epoch+1}.")
@@ -47,7 +46,7 @@ class RecordEpochStatsCallback(Callback):
     def on_train_epoch_end(self, trainer, epoch, metrics):
         loss = self.train_loss.compute()
 
-        if self._is_global_zero(trainer):
+        if self._is_global_zero():
             if not self.use_steps:
                 log.info(f"Epoch {epoch+1} finished. Loss: {loss:.4f}.")
             else:
@@ -62,7 +61,7 @@ class RecordEpochStatsCallback(Callback):
         loss = self.evaluation_loss.compute()
         self.evaluation_loss.reset()
 
-        if torch.distributed.get_rank() == 0:
+        if self._is_global_zero():
             log.info(f"Validation finished. Loss: {loss:.4f}.")
             self._log_metrics(metrics, "Validation metrics")
 
@@ -73,7 +72,7 @@ class RecordEpochStatsCallback(Callback):
         loss = self.evaluation_loss.compute()
         self.evaluation_loss.reset()
 
-        if torch.distributed.get_rank() == 0:
+        if self._is_global_zero():
             log.info(f"Test finished. Loss: {loss:.4f}.")
             self._log_metrics(metrics, "Test metrics")
 

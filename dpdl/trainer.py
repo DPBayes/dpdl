@@ -8,7 +8,7 @@ from opacus.privacy_engine import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 from .models.model_factory import ModelFactory
-from .callback_factory import CallbackHandler, CallbackFactory
+from .callbacks.callback_factory import CallbackHandler, CallbackFactory
 from .configurationmanager import ConfigurationManager, Configuration, Hyperparameters
 from .datamodules import DataModule, DataModuleFactory
 from .optimizers import OptimizerFactory
@@ -297,7 +297,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         self.privacy_engine = PrivacyEngine(**privacy_engine_args)
 
-        super().__init__(**kwargs)
+        super().__init__(seed=seed, **kwargs)
 
     def _has_target_privacy_params(self):
         if self.target_epsilon == -1:

@@ -2,7 +2,6 @@ import logging
 import pathlib
 import torch
 import typer
-import dpdl.utils as utils
 
 from pydantic import BaseModel, root_validator
 from typing import Optional, List, Literal
@@ -18,11 +17,7 @@ class Hyperparameters(BaseModel):
     noise_multiplier: Optional[float]
     max_grad_norm: Optional[float]
     target_epsilon: Optional[float]
-    privacy: bool = True  # Only used in __str__
-    target_quantile: Optional[float]
-    count_threshold: Optional[float]
-    clip_bound_lr: Optional[float]
-    clip_bound_lower_bound: Optional[float]
+    privacy: bool = True # Only used in __str__
 
     @root_validator(pre=True)
     def check_batch_size_or_sample_rate(cls, values):
@@ -45,19 +40,10 @@ class Hyperparameters(BaseModel):
             privacy_hypers = [
                 ('Sample rate', self.sample_rate),
                 ('Noise multiplier', self.noise_multiplier),
-                ('Max grad norm', self.max_grad_norm),
+                ('Max grad norn', self.max_grad_norm),
                 ('Target epsilon', self.target_epsilon),
             ]
             hypers.extend(privacy_hypers)
-
-        if self.target_quantile or self.count_threshold or self.clip_bound_lr:
-            adaptive_hypers = [
-                ('Target quantile', self.target_quantile),
-                ('Count threshold', self.count_threshold),
-                ('Clipping bound leraning rate', self.clip_bound_lr),
-                ('clip_bound_lower_bound', self.clip_bound_lower_bound)
-            ]
-            hypers.extend(adaptive_hypers)
 
         max_key_length = max(len(hyper[0]) for hyper in hypers)
         hyper_str = [f'{hyper[0]:<{max_key_length}}: {hyper[1]}' for hyper in hypers]
@@ -84,10 +70,12 @@ class Configuration(BaseModel):
     normalize_clipping: bool = False
     record_snr: bool = False
     n_trials: int = 20
+    optuna_random_trials: int = 10
     target_hypers: List[str] = []
     optuna_target_metric: str = 'loss'
     optuna_direction: Literal['minimize', 'maximize'] = 'minimize'
     optuna_config: str = 'conf/optuna_hypers.conf'
+    optuna_manual_trials: Optional[str] = None
     optuna_journal: str = 'optuna.journal'
     optuna_resume: bool = False
     optuna_sampler: str = 'BoTorchSampler'
@@ -103,7 +91,6 @@ class Configuration(BaseModel):
     dataset_label_field: Optional[str] = None
     max_test_examples: Optional[int] = None
     imbalance_factor: Optional[float] = None
-    fairness_imbalance_class: Optional[int] = None
     validation_size: Optional[float] = 0.1
     test_size: Optional[float] = 0.1
     model_save_fpath: Optional[str] = None
@@ -117,17 +104,6 @@ class Configuration(BaseModel):
         # UserWarning: Field "model_name" has conflict with protected namespace "model_".
         protected_namespaces = ()
 
-    @root_validator(pre=True)
-    def check_fairness_imbalance_factor(cls, values):
-        imbalance_factor = values.get('imbalance_factor')
-        fairness_imbalance_class = values.get('fairness_imbalance_class')
-
-        if fairness_imbalance_class and not imbalance_factor:
-            raise ValueError(
-                'Parameter "imbalance_factor" is required when using "fairness_imbalance_class".'
-            )
-
-        return values
     @root_validator(pre=True)
     def check_command(cls, values):
         command = values.get('command')
@@ -190,7 +166,6 @@ class Configuration(BaseModel):
             ('Dataset name', self.dataset_name),
             ('Dataset label field', self.dataset_label_field),
             ('Dataset imbalance factor', self.imbalance_factor),
-            ('Fairness imbalance class', self.fairness_imbalance_class),
             ('Cache dataset transforms', self.cache_dataset_transforms),
             ('Validation size', self.validation_size),
             ('Test size', self.test_size),
@@ -213,7 +188,7 @@ class Configuration(BaseModel):
             ('Evaluation mode', self.evaluation_mode),
             ('Model save file path', self.model_save_fpath),
             ('Record gradient norms', self.record_gradient_norms),
-            ('Enable the debug callback output', self.verbose_callback)
+            ('Enable the debug callback output',self.verbose_callback),
         ]
 
         if self.privacy:
@@ -234,8 +209,10 @@ class Configuration(BaseModel):
                 ('Optuna target metric', self.optuna_target_metric),
                 ('Optuna direction', self.optuna_direction),
                 ('Optuna config', self.optuna_config),
+                ('Optuna manual trials configuration', self.optuna_manual_trials),
                 ('Optuna journal', self.optuna_journal),
                 ('Optuna resume', self.optuna_resume),
+                ('Optuna number of random trials', self.optuna_random_trials),
             ]
             attributes.extend(optuna_attributes)
 

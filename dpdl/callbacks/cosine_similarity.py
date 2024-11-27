@@ -8,182 +8,124 @@ log = logging.getLogger(__name__)
 
 
 class RecordCosineSimilarityCallback(Callback):
-    def __init__(
-        self, log_dir: str, max_grad_norm: float, quantiles: list = [0.25, 0.5, 0.75]
-    ):
+    def __init__(self, log_dir: str, max_grad_norm: float, quantiles: list = [0.25, 0.5, 0.75]):
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
-        self.quantiles = quantiles  # List of gradient quantiles for comparison
+        self.quantiles = quantiles
         self.cosine_similarities_history = []
-        self.accumulated_gradients = []
+
+    def on_train_start(self, *args, **kwargs):
+        # Accumulate statistics at the physical batch level here
+        self.mean_grad_clipped_accumulator = []
+        self.mean_grad_unclipped_accumulator = []
+        self.median_grad_unclipped_accumulator = []
 
     def on_train_batch_start(self, *args, **kwargs):
-        # Reset accumulated gradients at the start of each logical batch
-        self.accumulated_gradients = []
+        # Reset accumlators at the start of logical batch
+        self.mean_grad_clipped_accumulator.clear()
+        self.mean_grad_unclipped_accumulator.clear()
+        self.median_grad_unclipped_accumulator.clear()
 
     def on_train_physical_batch_end(self, trainer, *args, **kwargs):
         with torch.no_grad():
-            # Collect per-sample gradients for the current physical batch
-            per_sample_gradients = [
-                g.view(len(g), -1) for g in trainer.optimizer.grad_samples
-            ]
-
-            # Concatenate the gradients across layers for each example
+            per_sample_gradients = [g.view(len(g), -1) for g in trainer.optimizer.grad_samples]
             flattened_gradients = torch.cat(per_sample_gradients, dim=-1)
 
-            # Accumulate gradients across physical batches
-            self.accumulated_gradients.append(flattened_gradients)
+            # Compute per-sample norms and clipping factors
+            per_sample_norms = flattened_gradients.norm(p=2, dim=1)
+            clip_factors = (self.max_grad_norm / (per_sample_norms + 1e-6)).clamp(max=1.0)
+            clip_factors = clip_factors.unsqueeze(-1)
 
-    def on_train_batch_end(self, trainer, *args, **kwargs):
+            # Clip gradients
+            clipped_gradients = clip_factors * flattened_gradients
+
+            # Compute and accumulate per-physical-batch statistics
+            self.mean_grad_unclipped_accumulator.append(flattened_gradients.mean(dim=0))
+            self.mean_grad_clipped_accumulator.append(clipped_gradients.mean(dim=0))
+            self.median_grad_unclipped_accumulator.append(torch.median(flattened_gradients, dim=0).values)
+
+        # Make sure memory is cleared
+        del per_sample_gradients, flattened_gradients, per_sample_norms, clip_factors, clipped_gradients
+        torch.cuda.empty_cache()
+
+    def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
         with torch.no_grad():
-            # Concatenate all accumulated gradients after logical batch completion
-            all_gradients = torch.cat(self.accumulated_gradients, dim=0)  # Shape (B, D)
+            # Stack the accumulated means and medians of physical batches
+            mean_unclipped_stack = torch.stack(self.mean_grad_unclipped_accumulator, dim=0)
+            mean_clipped_stack = torch.stack(self.mean_grad_clipped_accumulator, dim=0)
+            median_unclipped_stack = torch.stack(self.median_grad_unclipped_accumulator, dim=0)
 
-            # Compute per-sample norms
-            per_sample_norms = all_gradients.norm(p=2, dim=1)  # Shape (B)
-
-            # Compute per-sample clip factors
-            per_sample_clip_factors = self.max_grad_norm / (
-                per_sample_norms + 1e-6
-            )  # Shape (B)
-            per_sample_clip_factors = per_sample_clip_factors.clamp(max=1.0)
-            per_sample_clip_factors = per_sample_clip_factors.unsqueeze(
-                -1
-            )  # Shape (B, 1)
-
-            # Clip the gradients
-            clipped_gradients = per_sample_clip_factors * all_gradients  # Shape: (B, D)
-
-            # Mean and median aggregation -> Shape (D)
-            mean_grad_unclipped = torch.mean(all_gradients, dim=0)
-            mean_grad_clipped = torch.mean(clipped_gradients, dim=0)
-            median_grad_unclipped = torch.median(all_gradients, dim=0).values
+            # Compute aggregated means and medians for the logical batch
+            mean_grad_unclipped = mean_unclipped_stack.mean(dim=0)
+            mean_grad_clipped = mean_clipped_stack.mean(dim=0)
+            median_grad_unclipped = torch.median(median_unclipped_stack, dim=0).values
 
             # Compute cosine similarities
-            clipped_mean_vs_unclipped_mean = torch.nn.functional.cosine_similarity(
-                mean_grad_clipped,
-                mean_grad_unclipped,
-                dim=0,
-                eps=1e-8,
-            )
-
-            clipped_mean_vs_unclipped_median = torch.nn.functional.cosine_similarity(
-                mean_grad_clipped,
-                median_grad_unclipped,
-                dim=0,
-                eps=1e-8,
-            )
-
-            unclipped_mean_vs_unclipped_median = torch.nn.functional.cosine_similarity(
-                mean_grad_unclipped,
-                median_grad_unclipped,
-                dim=0,
-                eps=1e-8,
-            )
-
             cosine_similarities = {
-                "clipped_mean_vs_unclipped_mean": clipped_mean_vs_unclipped_mean.item(),
-                "clipped_mean_vs_unclipped_median": clipped_mean_vs_unclipped_median.item(),
-                "unclipped_mean_vs_unclipped_median": unclipped_mean_vs_unclipped_median.item(),
+                'clipped_mean_vs_unclipped_mean': torch.nn.functional.cosine_similarity(
+                    mean_grad_clipped, mean_grad_unclipped, dim=0, eps=1e-8
+                ).item(),
+                'clipped_mean_vs_unclipped_median': torch.nn.functional.cosine_similarity(
+                    mean_grad_clipped, median_grad_unclipped, dim=0, eps=1e-8
+                ).item(),
+                'unclipped_mean_vs_unclipped_median': torch.nn.functional.cosine_similarity(
+                    mean_grad_unclipped, median_grad_unclipped, dim=0, eps=1e-8
+                ).item(),
             }
 
-            # Perform clipping at quantile thresholds
+            # Cosine similarities against the quantiles
+            all_norms = torch.stack([g.norm(p=2) for g in self.mean_grad_unclipped_accumulator])
             for quantile in self.quantiles:
-                threshold = torch.quantile(per_sample_norms, quantile)
-                quantile_clip_factors = (threshold / (per_sample_norms + 1e-6)).clamp(
-                    max=1.0
-                )
-                quantile_clip_factors = quantile_clip_factors.unsqueeze(
-                    -1
-                )  # Shape (B, 1)
+                threshold = torch.quantile(all_norms, quantile).item()
+                quantile_clip_factor = (threshold / (all_norms.mean() + 1e-6)).clamp(max=1.0)
+                quantile_clipped_mean_grad = quantile_clip_factor * mean_grad_unclipped
 
-                quantile_clipped_gradients = (
-                    quantile_clip_factors * all_gradients
-                )  # Shape (B, D)
-                mean_grad_quantile_clipped = torch.mean(
-                    quantile_clipped_gradients, dim=0
-                )
+                cosine_similarities[f'clipped_{quantile}_vs_clipped_mean'] = torch.nn.functional.cosine_similarity(
+                    quantile_clipped_mean_grad, mean_grad_clipped, dim=0, eps=1e-8
+                ).item()
+                cosine_similarities[f'clipped_{quantile}_vs_unclipped_mean'] = torch.nn.functional.cosine_similarity(
+                    quantile_clipped_mean_grad, mean_grad_unclipped, dim=0, eps=1e-8
+                ).item()
+                cosine_similarities[f'clipped_{quantile}_vs_unclipped_median'] = torch.nn.functional.cosine_similarity(
+                    quantile_clipped_mean_grad, median_grad_unclipped, dim=0, eps=1e-8
+                ).item()
 
-                # Compute cosine similarities for quantile-clipped gradients
-                quantile_clipped_vs_clipped_mean = (
-                    torch.nn.functional.cosine_similarity(
-                        mean_grad_quantile_clipped, mean_grad_clipped, dim=0, eps=1e-8
-                    )
-                )
-
-                quantile_clipped_vs_unclipped_mean = (
-                    torch.nn.functional.cosine_similarity(
-                        mean_grad_quantile_clipped, mean_grad_unclipped, dim=0, eps=1e-8
-                    )
-                )
-
-                quantile_clipped_vs_unclipped_median = (
-                    torch.nn.functional.cosine_similarity(
-                        mean_grad_quantile_clipped,
-                        median_grad_unclipped,
-                        dim=0,
-                        eps=1e-8,
-                    )
-                )
-
-                cosine_similarities[f"clipped_{quantile}_vs_clipped_mean"] = (
-                    quantile_clipped_vs_clipped_mean.item()
-                )
-                cosine_similarities[f"clipped_{quantile}_vs_unclipped_mean"] = (
-                    quantile_clipped_vs_unclipped_mean.item()
-                )
-                cosine_similarities[f"clipped_{quantile}_vs_unclipped_median"] = (
-                    quantile_clipped_vs_unclipped_median.item()
-                )
-
-            # Save cosine similarity per logical batch
+            # Store results for this logical batch
             self.cosine_similarities_history.append(cosine_similarities)
 
-            # Reset for the next logical batch
-            self.accumulated_gradients = []
-
     def on_train_end(self, trainer, *args, **kwargs):
-        if torch.distributed.get_rank() == 0:
-            file_path = os.path.join(self.log_dir, "cosine-similarities.csv")
+        if self._is_global_zero():
+            file_path = os.path.join(self.log_dir, 'cosine-similarities.csv')
 
-            with open(file_path, "w", newline="") as fh:
+            with open(file_path, 'w', newline='') as fh:
                 writer = csv.writer(fh)
                 header = [
-                    "Step",
-                    "Clipped_Mean_vs_Unclipped_Mean",
-                    "Clipped_Mean_vs_Unclipped_Median",
-                    "Unclipped_Mean_vs_Unclipped_Median",
+                    'Step',
+                    'Clipped_Mean_vs_Unclipped_Mean',
+                    'Clipped_Mean_vs_Unclipped_Median',
+                    'Unclipped_Mean_vs_Unclipped_Median',
                 ]
-                header += [
-                    f"Clipped_{quantile}_vs_Clipped_Mean" for quantile in self.quantiles
-                ]
-                header += [
-                    f"Clipped_{quantile}_vs_Unclipped_Mean"
-                    for quantile in self.quantiles
-                ]
-                header += [
-                    f"Clipped_{quantile}_vs_Unclipped_Median"
-                    for quantile in self.quantiles
-                ]
+                header += [f'Clipped_{quantile}_vs_Clipped_Mean' for quantile in self.quantiles]
+                header += [f'Clipped_{quantile}_vs_Unclipped_Mean' for quantile in self.quantiles]
+                header += [f'Clipped_{quantile}_vs_Unclipped_Median' for quantile in self.quantiles]
 
                 writer.writerow(header)
 
                 for step, record in enumerate(self.cosine_similarities_history):
                     row = [step]
                     row += [
-                        record["clipped_mean_vs_unclipped_mean"],
-                        record["clipped_mean_vs_unclipped_median"],
-                        record["unclipped_mean_vs_unclipped_median"],
+                        record['clipped_mean_vs_unclipped_mean'],
+                        record['clipped_mean_vs_unclipped_median'],
+                        record['unclipped_mean_vs_unclipped_median']
                     ]
                     for quantile in self.quantiles:
-                        row.append(record[f"clipped_{quantile}_vs_clipped_mean"])
-                        row.append(record[f"clipped_{quantile}_vs_unclipped_mean"])
-                        row.append(record[f"clipped_{quantile}_vs_unclipped_median"])
+                        row.append(record[f'clipped_{quantile}_vs_clipped_mean'])
+                        row.append(record[f'clipped_{quantile}_vs_unclipped_mean'])
+                        row.append(record[f'clipped_{quantile}_vs_unclipped_median'])
 
                     writer.writerow(row)
 
-            log.info(f"Cosine similarity data saved at {file_path}")
-
+            log.info(f'Cosine similarity data saved at {file_path}')
 
 class RecordPerClassCosineSimilarityCallback(Callback):
     def __init__(self, log_dir: str, max_grad_norm: float):
@@ -191,129 +133,99 @@ class RecordPerClassCosineSimilarityCallback(Callback):
         self.max_grad_norm = max_grad_norm
 
     def on_train_start(self, trainer, *args, **kwargs):
-        # Get the number of classes from datamodule
         self.num_classes = trainer.datamodule.get_num_classes()
-
-        # Container for the cosine similarities
         self.cosine_similarities_history = {cls: [] for cls in range(self.num_classes)}
 
     def on_train_batch_start(self, *args, **kwargs):
-        # Reset accumulated gradients and labels when logical batch starts
-        self.accumulated_gradients = []
-        self.accumulated_labels = []
+        # Reset accumulators for each logical batch
+        self.sum_mean_grad_unclipped = {cls: 0 for cls in range(self.num_classes)}
+        self.sum_mean_grad_clipped = {cls: 0 for cls in range(self.num_classes)}
+        self.num_batches = {cls: 0 for cls in range(self.num_classes)}
 
     def on_train_physical_batch_end(self, trainer, batch_idx, batch, *args, **kwargs):
-        batch_data, class_labels = batch
-
         with torch.no_grad():
-            # Collect per-sample gradients for the current physical batch
-            per_sample_gradients = [
-                g.view(len(g), -1) for g in trainer.optimizer.grad_samples
-            ]
+            batch_data, class_labels = batch
 
-            # Create a Torch tensor of the per sample gradients
+            # Collect per-sample gradients for the current physical batch
+            per_sample_gradients = [g.view(len(g), -1) for g in trainer.optimizer.grad_samples]
             flattened_gradients = torch.cat(per_sample_gradients, dim=-1)
 
-            # Accumulate gradients and labels over physical batches
-            self.accumulated_gradients.append(flattened_gradients)
-            self.accumulated_labels.append(class_labels)
+            # Make sure ememory is cleared
+            del per_sample_gradients
+            torch.cuda.empty_cache()
 
-    def on_train_batch_end(self, trainer, *args, **kwargs):
-        with torch.no_grad():
-            # Concatenate all accumulated gradients and labels for this logical batch
-            all_gradients = torch.cat(self.accumulated_gradients, dim=0)
-            all_labels = torch.cat(self.accumulated_labels, dim=0)
-
-            # Handle per class cosine similarity calculation
+            # Process gradients for each class
             for cls in range(self.num_classes):
-                mask = all_labels == cls
+                mask = (class_labels == cls)
                 if mask.sum() == 0:
                     continue
 
-                # We want the gradients that belong to this specific class
-                class_gradients = all_gradients[mask]
+                # Select the gradients of current class
+                class_gradients = flattened_gradients[mask]
                 class_norms = class_gradients.norm(p=2, dim=1)
 
-                # Calculate clipping factors based on class norms
-                class_clip_factors = (self.max_grad_norm / (class_norms + 1e-6)).clamp(
-                    max=1.0
-                )
-                class_clip_factors = class_clip_factors.unsqueeze(
-                    -1
-                )  # Shape (B_class, 1)
-
-                # Apply clipping to gradients
+                # Compute clipped gradients
+                class_clip_factors = (self.max_grad_norm / (class_norms + 1e-6)).clamp(max=1.0).unsqueeze(-1)
                 clipped_gradients = class_clip_factors * class_gradients
 
-                # Compute mean and median for unclipped and clipped gradients
-                mean_grad_unclipped = torch.mean(class_gradients, dim=0)
-                mean_grad_clipped = torch.mean(clipped_gradients, dim=0)
-                median_grad_unclipped = torch.median(class_gradients, dim=0).values
+                # Compute mean gradients for this class in this physical batch
+                mean_grad_unclipped = class_gradients.mean(dim=0)
+                mean_grad_clipped = clipped_gradients.mean(dim=0)
 
-                # Compute cosine similarities
-                clipped_mean_vs_unclipped_mean = torch.nn.functional.cosine_similarity(
+                # Accumulate sums for means
+                self.sum_mean_grad_unclipped[cls] += mean_grad_unclipped
+                self.sum_mean_grad_clipped[cls] += mean_grad_clipped
+                self.num_batches[cls] += 1
+
+                # Make sure memory is cleared
+                del mask, class_gradients, class_norms, class_clip_factors, clipped_gradients
+                torch.cuda.empty_cache()
+
+            # Make sure memory is cleared
+            del batch_data, class_labels, flattened_gradients
+            torch.cuda.empty_cache()
+
+    def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
+        with torch.no_grad():
+            # Compute aggregate statistic for each class out of the running means
+            for cls in range(self.num_classes):
+                if self.num_batches[cls] == 0:
+                    continue
+
+                # Compute aggregated means for this class
+                mean_grad_unclipped = self.sum_mean_grad_unclipped[cls] / self.num_batches[cls]
+                mean_grad_clipped = self.sum_mean_grad_clipped[cls] / self.num_batches[cls]
+
+                # Calculate cosine similarities from the aggregated means
+                cosine_similarity = torch.nn.functional.cosine_similarity(
                     mean_grad_clipped, mean_grad_unclipped, dim=0, eps=1e-8
-                )
+                ).item()
 
-                clipped_mean_vs_unclipped_median = (
-                    torch.nn.functional.cosine_similarity(
-                        mean_grad_clipped, median_grad_unclipped, dim=0, eps=1e-8
-                    )
-                )
-
-                unclipped_mean_vs_unclipped_median = (
-                    torch.nn.functional.cosine_similarity(
-                        mean_grad_unclipped, median_grad_unclipped, dim=0, eps=1e-8
-                    )
-                )
-
-                # Save all cosine similarities for this class
-                self.cosine_similarities_history[cls].append(
-                    {
-                        "clipped_mean_vs_unclipped_mean": clipped_mean_vs_unclipped_mean.item(),
-                        "clipped_mean_vs_unclipped_median": clipped_mean_vs_unclipped_median.item(),
-                        "unclipped_mean_vs_unclipped_median": unclipped_mean_vs_unclipped_median.item(),
-                    }
-                )
-
-        # Reset for the next logical batch
-        self.accumulated_gradients = []
-        self.accumulated_labels = []
+                # Store the cosine similarity results for this class
+                self.cosine_similarities_history[cls].append({
+                    'step': batch_idx,
+                    'clipped_mean_vs_unclipped_mean': cosine_similarity
+                })
 
     def on_train_end(self, trainer, *args, **kwargs):
-        if torch.distributed.get_rank() == 0:
+        if self._is_global_zero():
+            # Save cosine similarities for each class separately
             for cls in range(self.num_classes):
-                file_path = os.path.join(
-                    self.log_dir, f"cosine_similarity_class_{cls}.csv"
-                )
-
-                self._save_to_csv(
-                    file_path,
-                    self.cosine_similarities_history[cls],
-                    f"Cosine Similarities (Class {cls})",
-                )
+                file_path = os.path.join(self.log_dir, f'cosine_similarity_class_{cls}.csv')
+                self._save_to_csv(file_path, self.cosine_similarities_history[cls], f'Cosine Similarities (Class {cls})')
 
     def _save_to_csv(self, file_path, history, column_name):
-        # Save the cosine similarity history to a CSV file
-        with open(file_path, "w", newline="") as f:
+        with open(file_path, 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(
-                [
-                    "Step",
-                    "Clipped_Mean_vs_Unclipped_Mean",
-                    "Clipped_Mean_vs_Unclipped_Median",
-                    "Unclipped_Mean_vs_Unclipped_Median",
-                ]
-            )
+            writer.writerow([
+                'Step',
+                'Clipped_Mean_vs_Unclipped_Mean',
+            ])
 
-            for step, record in enumerate(history):
-                writer.writerow(
-                    [
-                        step,
-                        record["clipped_mean_vs_unclipped_mean"],
-                        record["clipped_mean_vs_unclipped_median"],
-                        record["unclipped_mean_vs_unclipped_median"],
-                    ]
-                )
+            for record in history:
+                writer.writerow([
+                    record['step'],
+                    record['clipped_mean_vs_unclipped_mean'],
+                ])
 
-        log.info(f"{column_name} data saved at {file_path}")
+        log.info(f'{column_name} data saved at {file_path}')

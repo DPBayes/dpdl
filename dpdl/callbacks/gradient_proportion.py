@@ -16,11 +16,11 @@ class RecordClippedProportionsPerClassCallback(Callback):
         # Get the number of classes from the datamodule
         self.num_classes = trainer.datamodule.get_num_classes()
 
-        # Initialize container for clipped proportions
+        # Initialize container for the clipped proportions
         self.clipped_proportions_history = []
 
     def on_train_batch_start(self, *args, **kwargs):
-        # Reset accumulated gradients and labels at the start of each logical batch
+        # Reset accumlated gradients and labels at the start of logical batch
         self.accumulated_gradients = []
         self.accumulated_labels = []
 
@@ -39,6 +39,10 @@ class RecordClippedProportionsPerClassCallback(Callback):
             self.accumulated_gradients.append(flattened_gradients)
             self.accumulated_labels.append(class_labels)
 
+        # Make sure memory is cleared
+        del per_sample_gradients, flattened_gradients
+        torch.cuda.empty_cache()
+
     def on_train_batch_end(self, trainer, *args, **kwargs):
         with torch.no_grad():
             # Concatenate all accumulated gradients and labels after logical batch completion
@@ -48,7 +52,7 @@ class RecordClippedProportionsPerClassCallback(Callback):
             clipped_proportions = []
 
             for cls in range(self.num_classes):
-                mask = all_labels == cls
+                mask = (all_labels == cls)
                 if mask.sum() == 0:
                     # If no gradients for this class, mark as 0 clipped proportion
                     clipped_proportions.append(0.0)
@@ -74,20 +78,20 @@ class RecordClippedProportionsPerClassCallback(Callback):
 
     def on_train_end(self, trainer, *args, **kwargs):
         # Only save on rank 0 to avoid duplicate files in distributed setups
-        if torch.distributed.get_rank() == 0:
-            file_path = os.path.join(self.log_dir, "clipped_proportions_per_class.csv")
+        if self._is_global_zero():
+            file_path = os.path.join(self.log_dir, 'clipped_proportions_per_class.csv')
             self._save_to_csv(file_path, self.clipped_proportions_history)
 
     def _save_to_csv(self, file_path, history):
         # Save the clipped proportions history to a single CSV file
-        with open(file_path, "w", newline="") as f:
+        with open(file_path, 'w', newline='') as f:
             writer = csv.writer(f)
             # Write the header row
-            header = ["Step"] + [f"Class_{i}" for i in range(self.num_classes)]
+            header = ['Step'] + [f'Class_{i}' for i in range(self.num_classes)]
             writer.writerow(header)
 
             # Write the clipped proportions for each step
             for step, proportions in enumerate(history):
                 writer.writerow([step] + proportions)
 
-        log.info(f"Clipped proportions data saved at {file_path}")
+        log.info(f'Clipped proportions data saved at {file_path}')
