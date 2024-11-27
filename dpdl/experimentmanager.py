@@ -88,7 +88,7 @@ def _copy_optuna_study_to_experiment_dir(config_manager: ConfigurationManager):
 
 def save_hpo_metrics(
         config_manager: ConfigurationManager,
-        loss: torch.Tensor,
+        loss: float,
         metrics: dict,
         trial_index: int,
     ):
@@ -107,7 +107,7 @@ def save_hpo_metrics(
 
     data.append({
         'trial_index': trial_index,
-        'loss': loss.item(),
+        'loss': loss,
         **metrics,
     })
 
