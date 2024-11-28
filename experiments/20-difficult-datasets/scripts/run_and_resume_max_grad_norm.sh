@@ -18,6 +18,8 @@ touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 MODELS=("vit_base_patch16_224.augreg_in21k")
 DATASETS=(
     "dpdl-benchmark/sun397"
+    "dpdl-benchmark/svhn_cropped_balanced"
+    "cifar100"
 )
 
 EPOCHS=40
@@ -30,11 +32,15 @@ OPTUNA_CONFIG="conf/optuna_hypers-difficult-datasets.conf"
 declare -A DATASET_LABEL_FIELDS
 DATASET_LABEL_FIELDS=(
     ["dpdl-benchmark/sun397"]="label"
+    ["dpdl-benchmark/svhn_cropped_balanced"]="label"
+    ["cifar100"]="fine_label"
 )
 
 declare -A SUBSET_SIZES
 SUBSET_SIZES=(
     ["dpdl-benchmark/sun397"]="0.1"
+    ["dpdl-benchmark/svhn_cropped_balanced"]="0.1"
+    ["cifar100"]="0.1"
 )
 
 # Other settings
