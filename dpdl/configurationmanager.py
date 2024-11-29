@@ -18,6 +18,10 @@ class Hyperparameters(BaseModel):
     max_grad_norm: Optional[float]
     target_epsilon: Optional[float]
     privacy: bool = True # Only used in __str__
+    target_quantile: Optional[float]
+    count_threshold: Optional[float]
+    clip_bound_lr: Optional[float]
+    clip_bound_lower_bound: Optional[float]
 
     @root_validator(pre=True)
     def check_batch_size_or_sample_rate(cls, values):
@@ -44,6 +48,15 @@ class Hyperparameters(BaseModel):
                 ('Target epsilon', self.target_epsilon),
             ]
             hypers.extend(privacy_hypers)
+
+        if self.target_quantile or self.count_threshold or self.clip_bound_lr:
+            adaptive_hypers = [
+                ('Target quantile', self.target_quantile),
+                ('Count threshold', self.count_threshold),
+                ('Clipping bound leraning rate', self.clip_bound_lr),
+                ('clip_bound_lower_bound', self.clip_bound_lower_bound)
+            ]
+            hypers.extend(adaptive_hypers)
 
         max_key_length = max(len(hyper[0]) for hyper in hypers)
         hyper_str = [f'{hyper[0]:<{max_key_length}}: {hyper[1]}' for hyper in hypers]
@@ -91,6 +104,7 @@ class Configuration(BaseModel):
     dataset_label_field: Optional[str] = None
     max_test_examples: Optional[int] = None
     imbalance_factor: Optional[float] = None
+    fairness_imbalance_class: Optional[int] = None
     validation_size: Optional[float] = 0.1
     test_size: Optional[float] = 0.1
     model_save_fpath: Optional[str] = None
@@ -103,6 +117,18 @@ class Configuration(BaseModel):
         # Fix Pydantic warning:
         # UserWarning: Field "model_name" has conflict with protected namespace "model_".
         protected_namespaces = ()
+
+    @root_validator(pre=True)
+    def check_fairness_imbalance_factor(cls, values):
+        imbalance_factor = values.get('imbalance_factor')
+        fairness_imbalance_class = values.get('fairness_imbalance_class')
+
+        if fairness_imbalance_class and not imbalance_factor:
+            raise ValueError(
+                'Parameter "imbalance_factor" is required when using "fairness_imbalance_class".'
+            )
+
+        return values
 
     @root_validator(pre=True)
     def check_command(cls, values):
