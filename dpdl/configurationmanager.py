@@ -188,7 +188,7 @@ class Configuration(BaseModel):
             ('Evaluation mode', self.evaluation_mode),
             ('Model save file path', self.model_save_fpath),
             ('Record gradient norms', self.record_gradient_norms),
-            ('Enable the debug callback output',self.verbose_callback)
+            ('Enable the debug callback output',self.verbose_callback),
         ]
 
         if self.privacy:
