@@ -605,6 +605,8 @@ class DataModule:
                 np.random.choice(indices, num_samples, replace=False)
             )
 
+        #print(f"First 10 samples: {sampled_indices[:10]}")
+
         sampled_dataset = dataset.select(sampled_indices)
 
         if torch.distributed.get_rank() == 0:

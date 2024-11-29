@@ -220,6 +220,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        fairness_imbalance_class: Annotated[
+            Optional[int],
+            typer.Option(
+                help="Class to imbalance for fairness experiments",
+                rich_help_panel="Dataset options",
+            )
+        ] = None,
         max_test_examples: Annotated[
             Optional[int],
             typer.Option(
@@ -269,6 +276,34 @@ def cli(
                 rich_help_panel='Opacus options',
             )
         ] = 1.0,
+        target_quantile: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Target quantile for the adaptive clipping (for "adaptive" clipping mode)',
+                rich_help_panel='Opacus options',
+            )
+        ] = 1.0,
+        count_threshold: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Count threshold for the adaptive clipping (for "adaptive" clipping mode)',
+                rich_help_panel='Opacus options',
+            )
+        ] = 1.0,
+        clip_bound_lr: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Clip bound learning rate for the adaptive clipping (for "adaptive" clipping mode)',
+                rich_help_panel='Opacus options',
+            ),
+        ] = 1.0,
+        clip_bound_lower_bound: Annotated[
+            Optional[float],
+            typer.Option(
+                help='The lower bound of adaptive clipping bound (for "adaptive" clipping mode)',
+                rich_help_panel='Hyperparameter options',
+            ),
+        ] = None,
         clipping_mode: Annotated[
             Optional[str],
             typer.Option(
