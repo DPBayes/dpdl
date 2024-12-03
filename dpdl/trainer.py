@@ -51,10 +51,11 @@ class Trainer:
         if self.epochs and self.total_steps:
             raise ValueError('You should provide either "epochs" or "total_steps", not both.')
 
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.setup()
 
     def setup(self):
-        self.model = self.model.cuda()
+        self.model = self.model.to(self.device)
         self.model = torch.nn.parallel.DistributedDataParallel(self.model)
 
     def fit(self):
@@ -141,8 +142,8 @@ class Trainer:
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
-        X = X.cuda(non_blocking=True)
-        y = y.cuda(non_blocking=True)
+        X = X.cuda(non_blocking=True) if self.device == 'cuda' else X
+        y = y.cuda(non_blocking=True) if self.device == 'cuda' else y
 
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
@@ -228,8 +229,8 @@ class Trainer:
         self.callback_handler.call(f'on_{mode}_batch_start', self, batch_idx, batch)
 
         X, y = batch
-        X = X.cuda(non_blocking=True)
-        y = y.cuda(non_blocking=True)
+        X = X.cuda(non_blocking=True) if self.device == 'cuda' else X
+        y = y.cuda(non_blocking=True) if self.device == 'cuda' else y
 
         logits = self.model(X)
         loss = self._unwrap_model().criterion(logits, y)
@@ -318,11 +319,11 @@ class DifferentiallyPrivateTrainer(Trainer):
         return True
 
     def setup(self):
-        noise_generator = torch.Generator(device=torch.cuda.current_device())
+        noise_generator = torch.Generator(device=torch.cuda.current_device() if self.device == 'cuda' else 'cpu')
         if self.seed:
             noise_generator.manual_seed(self.seed)
 
-        self.model = self.model.cuda()
+        self.model = self.model.to(self.device)
 
         # let's be distributed by default and wrap the model for Opacus DDP.
         # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
@@ -466,8 +467,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.optimizer.zero_grad()
 
         X, y = batch
-        X = X.cuda(non_blocking=True)
-        y = y.cuda(non_blocking=True)
+        X = X.cuda(non_blocking=True) if self.device == 'cuda' else X
+        y = y.cuda(non_blocking=True) if self.device == 'cuda' else y
 
         logits = self.model(X)
         loss = self._unwrap_model().criterion(logits, y)

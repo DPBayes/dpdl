@@ -1,5 +1,6 @@
 import math
 import logging
+import torch
 import torchmetrics
 from .base_callback import Callback
 
@@ -10,10 +11,12 @@ class RecordEpochStatsCallback(Callback):
     def __init__(self, use_steps=False):
         self.use_steps = use_steps
 
-        self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        self.train_loss = torchmetrics.aggregation.MeanMetric().to(self.device)
         self.evaluation_loss = torchmetrics.aggregation.MeanMetric(
             sync_on_compute=False
-        ).cuda()
+        ).to(self.device)
 
     def on_train_start(self, trainer):
         if self._is_global_zero():
