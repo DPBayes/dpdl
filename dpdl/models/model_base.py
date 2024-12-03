@@ -16,8 +16,9 @@ class ModelBase(torch.nn.Module):
         self.model = model_instance
         self.num_classes = num_classes
         self.use_feature_cache = use_feature_cache
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        self._criterion = torch.nn.CrossEntropyLoss().cuda()
+        self._criterion = torch.nn.CrossEntropyLoss().to(self.device)
 
         # let's track the training accuracy
         self.train_metrics = torchmetrics.MetricCollection(
@@ -25,15 +26,15 @@ class ModelBase(torch.nn.Module):
                 "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
                     num_classes=self.num_classes,
                     average="macro",
-                ).cuda(),
+                ).to(self.device),
                 "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
                     num_classes=self.num_classes,
                     average="micro",
-                ).cuda(),
+                ).to(self.device),
                 "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
                     num_classes=self.num_classes,
                     average="none",
-                ).cuda(),
+                ).to(self.device),
             }
         )
 
@@ -49,17 +50,17 @@ class ModelBase(torch.nn.Module):
                     num_classes=self.num_classes,
                     average="macro",
                     sync_on_compute=False,
-                ).cuda(),
+                ).to(self.device),
                 "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
                     num_classes=self.num_classes,
                     average="micro",
                     sync_on_compute=False,
-                ).cuda(),
+                ).to(self.device),
                 "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
                     num_classes=self.num_classes,
                     average="none",
                     sync_on_compute=False,
-                ).cuda(),
+                ).to(self.device),
             }
         )
 

@@ -30,9 +30,11 @@ def main():
         f'Rank {rank} initializing - our world size is {world_size} and local rank is {local_rank}.'
     )
 
+
+    backend_engine = 'nccl' if torch.cuda.is_available() else 'gloo'
     # Initialize the process group
     torch.distributed.init_process_group(
-        backend='nccl',
+        backend=backend_engine,
         world_size=world_size,
         rank=rank,
         timeout=datetime.timedelta(
@@ -40,7 +42,7 @@ def main():
         ),  # Transformations can be slow, increase timeout
     )
 
-    log.info(f'Rank {rank} initialized.')
+    log.info(f'Rank {rank} initialized, with {backend_engine} as backend.')
 
     if torch.distributed.get_rank() == 0:
         log.info('All ranks initialized.')
