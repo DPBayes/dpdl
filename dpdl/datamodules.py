@@ -87,6 +87,8 @@ class DataModule:
             # Now other ranks can load them to memory directly from disk
             self._load_datasets()
 
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     def initialize(self, transforms: torchvision.transforms.transforms.Compose):
         self.transforms = transforms
 
@@ -638,7 +640,7 @@ class ImageDataModule(DataModule):
 
             return examples
 
-        model = model.cuda()
+        model = model.to(self.device)
         _extract_features_fn = partial(_extract_features, model, self._image_field)
 
         if torch.distributed.get_rank() == 0:
