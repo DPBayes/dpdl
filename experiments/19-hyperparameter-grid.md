@@ -6,7 +6,7 @@ We still have not been able to understand especially the clipping bound hyperpar
 
 ## Objective
 
-We want design a grid over the hyperparameters that we will train on. The initial objecticve is to record the accuracy of the different hyperparameter combinations and inspect what kind of effects the different hyperparameters have on the resulting accuracy.
+We design a grid over the hyperparameters that we will train on. The initial objecticve is to record the accuracy of the different hyperparameter combinations and inspect what kind of effects the different hyperparameters have on the resulting accuracy.
 
 We are also interested in studying if different hyperparameter pairs (e.g. the clipping bound and the batch size) have a joint effect on the resulting accuracy.
 
@@ -14,26 +14,73 @@ We are also interested in studying if different hyperparameter pairs (e.g. the c
 
 We will fix the epochs at 40 and train the model using combinations drawn from the following grids:
 
-- We will construct a logarithmic grid for the learning rates in the range [1e-4, 0.05].
-- For the batch sizes we will use a logarithmic grid [256, 512, 1024, 2048, 4096, -1], where -1 denotes full batch.
-- For the clipping bound we will use the grid [1e-2, 0.1, 1, 3.5, 12.25, 42.96, 150.0] (`[1e-2, 0.1] + list(np.geomspace(1, 150, 5))`)
+* For 10% of sun397
+    - ε: 1, 4, 10
+    - LR: 0.001, 0.002, 0.003, 0.005, 0.009, 0.015, 0.025 (`np.geomspace(1e-3, 0.025, 7)`)
+    - BS: 192, 512, 1024, 2048, 4096, Full batch
+    - CB: 0.1, 1.0, 10.0, 22.5, 35.0, 47.5, 60.0 (`[0.1, 1.0] + np.linspace(10, 60, 5).tolist()`)
 
-We will train the model over the grid for 3 different epsilon values:
+- For 10% of SVHN (Balanced)
+    - ε: TBD
+    - LR: 0.001, 0.002, 0.003, 0.005, 0.009, 0.015, 0.025 (`np.geomspace(1e-3, 0.025, 7)`)
+    - BS: 192, 512, 1024, 2048, 4096, Full batch
+    - CB: TBD ([1e-3, 15])
 
-- ε = {1, 4, 8}
+- For 10% of CIFAR-100
+    - ε: TBD
+    - LR: 0.001, 0.002, 0.003, 0.006, 0.011, 0.019, 0.035 (`np.geomspace(1e-3, 0.035, 7)`)
+    - BS: 192, 512, 1024, 2048, 4096, Full batch
+    - CB: TBD ([1e-3, 5])
+
+## Motivation for hyperparameter ranges
+
+In [experiment on difficult datasets](20-difficult-datasets.md) we performed analysis on the hyperparameters via two methods:
+- Sweep over range of hyperparameters and optimize the others
+- Optimize all hyperparameters for a range of epsilons
+
+Based on these results, we decided to select the above ranges.
+
+After initial test run using the same range for all epsilon, we will run a comparison with using epsilon specific grids.
+
+The below plots motivate our initial decisions on grid values.
+
+#### Clipping bound
+<div align="center">
+  <img src="images/19-plots/accuracy_vs_max_grad_norm/accuracy_vs_max_grad_norm_sun397.png" width="30%">
+  <img src="images/19-plots/accuracy_vs_max_grad_norm/accuracy_vs_max_grad_norm_svhn_cropped_balanced.png" width="30%">
+  <img src="images/19-plots/accuracy_vs_max_grad_norm/accuracy_vs_max_grad_norm_cifar100.png" width="30%">
+</div>
+
+### Learning rate
+<div align="center">
+  <img src="images/19-plots/optimized_learning_rate_vs_epsilon/optimized_learning_rate_vs_epsilon_sun397.png" width="30%">
+  <img src="images/19-plots/optimized_learning_rate_vs_epsilon/optimized_learning_rate_vs_epsilon_svhn_cropped_balanced.png" width="30%">
+  <img src="images/19-plots/optimized_learning_rate_vs_epsilon/optimized_learning_rate_vs_epsilon_cifar100.png" width="30%">
+</div>
+
+### Batch size
+<div align="center">
+  <img src="images/19-plots/optimized_batch_size_vs_epsilon/optimized_batch_size_vs_epsilon_sun397.png" width="30%">
+  <img src="images/19-plots/optimized_batch_size_vs_epsilon/optimized_batch_size_vs_epsilon_svhn_cropped_balanced.png" width="30%">
+  <img src="images/19-plots/optimized_batch_size_vs_epsilon/optimized_batch_size_vs_epsilon_cifar100.png" width="30%">
+</div>
+
+### Extended epsilon range for SUN397
+<div align="center">
+  <img src="images/19-plots/epsilon_vs_accuracy/epsilon_vs_accuracy_sun397.png" width="30%">
+</div>
 
 ## Models
 
-We will conduct the experiment using a single model and we will train FiLM parameters:
+We will conduct the experiment using a single model and we will train FiLM parameters.
 
 - **Vision Transformer (vit_base_patch16_224.augreg_in21k)**
 
 ## Datasets
 
-We will use the same datasets as in the [previous experiment on HPO alternatives](18-hpo-alternatives.md):
+These datasets seemed to display different response with respect to the hyperparameters in [previous experiment on difficult datasets based on our findings using 10% of SUN397 dataset](20-difficult-datasets.md):
 
-- **datasets/dpdl-benchmark/cifar10_10pct_plus_cifar100_humans - 100% subset**
-- **datasets/cifar100 - 10% subset**
+- **datasets/dpdl-benchmark/sun397 - 10% subset**
 - **datasets/dpdl-benchmark/svhn_cropped_balanced - 10% subset**
+- **datasets/cifar100 - 10% subset**
 
-The motivation is that we will have some datasets that we saw in the previous experiment to be stable, so if we compare the results to the ones achieved with HPO, we don't have to wonder if the the results disagree because of the unstability of the HPO. The one more demanding dataset is added for obvious reasons.
