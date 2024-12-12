@@ -117,6 +117,7 @@ class Configuration(BaseModel):
     cache_dataset_transforms: Optional[bool] = False
     weight_perturbation_level: float = 0
     protected_feature: Optional[str] = None
+    record_loss_by_step: Optional[bool] = False
     record_loss_by_epoch: Optional[bool] = False
 
     class Config:
@@ -133,6 +134,14 @@ class Configuration(BaseModel):
             raise ValueError(
                 'Parameter "imbalance_factor" is required when using "fairness_imbalance_class".'
             )
+
+    @root_validator(pre=True)
+    def check_record_loss_by_step(cls, values):
+        record_loss_by_step = values.get('record_loss_by_step')
+        use_steps = values.get('use_steps')
+
+        if record_loss_by_step and not use_steps:
+            raise ValueError('Unable to record trian loss by step when using epochs. Hint: `--use-steps`')
 
         return values
 
