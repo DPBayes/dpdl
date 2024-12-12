@@ -15,20 +15,20 @@ We are also interested in studying if different hyperparameter pairs (e.g. the c
 We will fix the epochs at 40 and train the model using combinations drawn from the following grids:
 
 * For 10% of sun397
-    - ε: 1, 4, 10
-    - LR: 0.001, 0.002, 0.003, 0.005, 0.009, 0.015, 0.025 (`np.geomspace(1e-3, 0.025, 7)`)
+    - ε: 1, 4, 8
+    - LR: 0.0005, 0.0010, 0.0018, 0.0035, 0.0068, 0.0130, 0.0250 (`np.geomspace(5e-4, 0.025, 7)`)
     - BS: 192, 512, 1024, 2048, 4096, Full batch
     - CB: 0.1, 1.0, 10.0, 22.5, 35.0, 47.5, 60.0 (`[0.1, 1.0] + np.linspace(10, 60, 5).tolist()`)
 
 - For 10% of SVHN (Balanced)
     - ε: TBD
-    - LR: 0.001, 0.002, 0.003, 0.005, 0.009, 0.015, 0.025 (`np.geomspace(1e-3, 0.025, 7)`)
+    - LR: 0.0005, 0.0010, 0.0018, 0.0035, 0.0068, 0.0130, 0.0250 (`np.geomspace(5e-4, 0.025, 7)`)
     - BS: 192, 512, 1024, 2048, 4096, Full batch
     - CB: TBD ([1e-3, 15])
 
 - For 10% of CIFAR-100
     - ε: TBD
-    - LR: 0.001, 0.002, 0.003, 0.006, 0.011, 0.019, 0.035 (`np.geomspace(1e-3, 0.035, 7)`)
+    - LR: 0.0005, 0.0010, 0.0021, 0.0042, 0.0085, 0.0172, 0.0350 (`np.geomspace(1e-3, 0.035, 7)`)
     - BS: 192, 512, 1024, 2048, 4096, Full batch
     - CB: TBD ([1e-3, 5])
 
