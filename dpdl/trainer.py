@@ -269,7 +269,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         target_epsilon: float = 0,
         target_delta: float = 0,
         seed: int = 0,
-        record_grad_and_noise: bool = False,
         **kwargs,
     ):
         self.noise_multiplier = noise_multiplier
@@ -286,11 +285,6 @@ class DifferentiallyPrivateTrainer(Trainer):
             'accountant': accountant,
             'secure_mode': secure_mode,
         }
-
-        if record_grad_and_noise:
-            # the argument is only supported in Opacus installed
-            # from our `record_grad_and_noise` branch
-            privacy_engine_args['record_grad_and_noise'] = True
 
         self.privacy_engine = opacus.PrivacyEngine(**privacy_engine_args)
 
@@ -636,7 +630,6 @@ class TrainerFactory:
             seed=configuration.seed,
             callback_handler=callback_handler,
             validation_frequency=configuration.validation_frequency,
-            record_grad_and_noise=configuration.record_snr,
         )
 
         return trainer

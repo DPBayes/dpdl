@@ -68,7 +68,6 @@ class Configuration(BaseModel):
     accountant: str = 'prv'
     poisson_sampling: bool = True
     normalize_clipping: bool = False
-    record_snr: bool = False
     n_trials: int = 20
     optuna_random_trials: int = 10
     target_hypers: List[str] = []
@@ -121,16 +120,6 @@ class Configuration(BaseModel):
 
         if command not in ['train', 'optimize', 'show-layers']:
             raise ValueError('Command must be "train", "optimize", or "show-layers".')
-
-        return values
-
-    @root_validator(pre=True)
-    def check_record_snr(cls, values):
-        record_snr = values.get('record_snr')
-        use_steps = values.get('use_steps')
-
-        if record_snr and not use_steps:
-            raise ValueError('Unable to record signal-to-ratio when using epochs. Hint: `--use-steps`')
 
         return values
 
@@ -210,7 +199,6 @@ class Configuration(BaseModel):
                 ('Accountant', self.accountant),
                 ('Poisson sampling', self.poisson_sampling),
                 ('Normalize clipping', self.normalize_clipping),
-                ('Record SNR', self.record_snr),
             ]
             attributes.extend(privacy_attributes)
 
