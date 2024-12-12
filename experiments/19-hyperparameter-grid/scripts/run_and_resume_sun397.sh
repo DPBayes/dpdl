@@ -80,7 +80,7 @@ do
             do
                 for learning_rate in $LEARNING_RATES
                 do
-                    rounded_learning_rate=$(printf "%.3f" $learning_rate)
+                    rounded_learning_rate=$(printf "%.4f" $learning_rate)
 
                     for max_grad_norm in $MAX_GRAD_NORMS
                     do

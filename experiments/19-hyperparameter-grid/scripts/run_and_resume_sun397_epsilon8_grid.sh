@@ -20,7 +20,7 @@ DATASETS=(
 )
 
 EPOCHS=40
-LEARNING_RATES="0.0005 0.0009596915518332421 0.001842015749320193 0.003535533905932737 0.006786044041487265 0.013025018273967286 0.025"
+LEARNING_RATES="0.0025 0.003535533905932737 0.004999999999999999 0.0070710678118654745 0.01 0.01414213562373095 0.02"
 BATCH_SIZES="3275 3841 4506 5286 6201 7274 -1"
 MAX_GRAD_NORMS="0.10, 1.75, 3.40, 5.05, 6.70, 8.35, 10.00"
 EPSILONS="8"
@@ -80,7 +80,7 @@ do
             do
                 for learning_rate in $LEARNING_RATES
                 do
-                    rounded_learning_rate=$(printf "%.3f" $learning_rate)
+                    rounded_learning_rate=$(printf "%.4f" $learning_rate)
 
                     for max_grad_norm in $MAX_GRAD_NORMS
                     do
