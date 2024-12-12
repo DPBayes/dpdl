@@ -98,6 +98,7 @@ class Configuration(BaseModel):
     cache_dataset_transforms: Optional[bool] = False
     weight_perturbation_level: float = 0
     record_loss_by_step: Optional[bool] = False
+    record_loss_by_epoch: Optional[bool] = False
 
     class Config:
         # Fix Pydantic warning:
@@ -189,6 +190,7 @@ class Configuration(BaseModel):
             ('Model save file path', self.model_save_fpath),
             ('Record gradient norms', self.record_gradient_norms),
             ('Record train loss by step', self.record_loss_by_step),
+            ('Record train/valid loss by epoch', self.record_loss_by_epoch),
             ('Enable the debug callback output',self.verbose_callback),
         ]
 

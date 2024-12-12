@@ -269,6 +269,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_loss_by_epoch: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record train/validation loss by epoch',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         noise_multiplier: Annotated[
             Optional[float],
             typer.Option(
