@@ -8,7 +8,7 @@ set -euo pipefail
 
 # Base configurations
 EXPERIMENT_BASE="19-hyperparameter-grid"
-LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data_sun397_epsilon8"
+LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data_sun397_epsilon8_specific_grid"
 mkdir -p $LOG_DIR
 
 # Experiment parameters
@@ -22,7 +22,7 @@ DATASETS=(
 EPOCHS=40
 LEARNING_RATES="0.0025 0.003535533905932737 0.004999999999999999 0.0070710678118654745 0.01 0.01414213562373095 0.02"
 BATCH_SIZES="3275 3841 4506 5286 6201 7274 -1"
-MAX_GRAD_NORMS="0.10, 1.75, 3.40, 5.05, 6.70, 8.35, 10.00"
+MAX_GRAD_NORMS="0.10 1.75 3.40 5.05 6.70 8.35 10.00"
 EPSILONS="8"
 SEEDS="42"
 
