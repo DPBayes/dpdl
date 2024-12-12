@@ -1,12 +1,9 @@
 import logging
 import pathlib
-
 from typing import List
 
 from ..configurationmanager import Configuration, Hyperparameters
 from ..utils import tensor_to_python_type
-
-
 from .base_callback import Callback
 from .body_head_gradient import RecordBodyAndHeadGradientNormsPerClassCallback
 from .cosine_similarity import (
@@ -37,14 +34,16 @@ class CallbackFactory:
     @staticmethod
     def get_callbacks(
         configuration: Configuration, hyperparams: Hyperparameters) -> List[Callback]:
+
+        log_dir = configuration.log_dir
+        experiment_name = configuration.experiment_name
+        full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+
         callbacks = [
             RecordEpochStatsCallback(use_steps=configuration.use_steps),
         ]
 
         if configuration.record_gradient_norms:
-            log_dir = configuration.log_dir
-            experiment_name = configuration.experiment_name
-            full_log_dir = pathlib.Path(f"{log_dir}/{experiment_name}")
             max_grad_norm = hyperparams.max_grad_norm
 
             callbacks.append(
