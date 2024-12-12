@@ -367,13 +367,6 @@ def cli(
                 rich_help_panel='Opacus options',
             )
         ] = False,
-        record_snr: Annotated[
-            Optional[bool],
-            typer.Option(
-                help='Record the Signal-to-Noise ratio per step (requires --use-steps)',
-                rich_help_panel='Opacus options',
-            )
-        ] = False,
         accountant: Annotated[
             Optional[str],
             typer.Option(
