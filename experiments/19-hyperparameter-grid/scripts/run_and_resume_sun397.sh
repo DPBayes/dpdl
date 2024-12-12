@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Base configurations
 EXPERIMENT_BASE="19-hyperparameter-grid"
-LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data_sun397"
+LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data_sun397_epsilon8"
 mkdir -p $LOG_DIR
 
 # Experiment parameters
@@ -19,11 +19,11 @@ DATASETS=(
 )
 
 EPOCHS=40
-LEARNING_RATES="0.001 0.0017099759466766963 0.002924017738212867 0.004999999999999999 0.00854987973338349 0.014620088691064332 0.025"
+LEARNING_RATES="0.0005 0.0009596915518332421 0.001842015749320193 0.003535533905932737 0.006786044041487265 0.013025018273967286 0.025"
 BATCH_SIZES="192 512 1024 2048 4096 -1"
 MAX_GRAD_NORMS="0.1 1.0 10.0 22.5 35.0 47.5 60"
 #EPSILONS="1 4 10"
-EPSILONS="10"
+EPSILONS="8"
 SEEDS="42"
 
 declare -A DATASET_LABEL_FIELDS
@@ -47,6 +47,8 @@ USE_STEPS="--use-steps"
 NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
 PEFT="--peft film"
+RECORD_LOSS="--record-loss-by-step --record-loss-by-epoch"
+EVALUATION_MODE="--evaluation-mode"
 
 # Function to check if a job is already in queue
 function is_job_in_queue() {
@@ -88,7 +90,7 @@ do
                         do
                             rounded_epsilon=$(printf "%.2f" $epsilon)
 
-                            EXPERIMENT_NAME="${model}_${clean_dataset_name}_Subset${subset_size}_Epsilon${rounded_epsilon}_BatchSize${batch_size}_LearningRate${rounded_learning_rate}_MaxGradNorm${rounded_max_grad_norm}"
+                            EXPERIMENT_NAME="${model}_${clean_dataset_name}_Subset${subset_size}_Epsilon${rounded_epsilon}_BatchSize${batch_size}_LearningRate${rounded_learning_rate}_MaxGradNorm${rounded_max_grad_norm}_Seed${seed}"
 
                             EXPERIMENT_DIR="$LOG_DIR/$EXPERIMENT_NAME"
                             mkdir -p "$EXPERIMENT_DIR"
@@ -105,7 +107,7 @@ do
                             fi
 
                             # Submit the job
-                            echo sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py train \
+                            sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py train \
                                 --num-workers 7 \
                                 --model-name $model \
                                 --dataset-name $dataset \
@@ -125,9 +127,9 @@ do
                                 $PRIVACY \
                                 $USE_STEPS \
                                 $NORMALIZE_CLIPPING \
-                                $OVERWRITE_EXPERIMENT
-
-                            exit
+                                $OVERWRITE_EXPERIMENT \
+                                $RECORD_LOSS \
+                                $EVALUATION_MODE
 
                             SBATCH_EXIT_CODE=$?
 
