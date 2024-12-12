@@ -255,6 +255,20 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_gradient_norms: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record layer-wise gradients before clipping',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
+        record_loss_by_step: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record train loss by step',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         noise_multiplier: Annotated[
             Optional[float],
             typer.Option(
@@ -388,13 +402,6 @@ def cli(
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
         ] = 'BoTorchSampler',
-        record_gradient_norms: Annotated[
-            Optional[bool],
-            typer.Option(
-                help='Record layer-wise gradients before clipping',
-                rich_help_panel='',
-            )
-        ] = False,
         verbose_callback: Annotated[
             Optional[bool],
             typer.Option(

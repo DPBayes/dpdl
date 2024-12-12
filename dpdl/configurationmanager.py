@@ -98,11 +98,22 @@ class Configuration(BaseModel):
     verbose_callback: Optional[bool] = False
     cache_dataset_transforms: Optional[bool] = False
     weight_perturbation_level: float = 0
+    record_loss_by_step: Optional[bool] = False
 
     class Config:
         # Fix Pydantic warning:
         # UserWarning: Field "model_name" has conflict with protected namespace "model_".
         protected_namespaces = ()
+
+    @root_validator(pre=True)
+    def check_record_loss_by_step(cls, values):
+        record_loss_by_step = values.get('record_loss_by_step')
+        use_steps = values.get('use_steps')
+
+        if record_loss_by_step and not use_steps:
+            raise ValueError('Unable to record trian loss by step when using epochs. Hint: `--use-steps`')
+
+        return values
 
     @root_validator(pre=True)
     def check_command(cls, values):
@@ -188,6 +199,7 @@ class Configuration(BaseModel):
             ('Evaluation mode', self.evaluation_mode),
             ('Model save file path', self.model_save_fpath),
             ('Record gradient norms', self.record_gradient_norms),
+            ('Record train loss by step', self.record_loss_by_step),
             ('Enable the debug callback output',self.verbose_callback),
         ]
 
