@@ -58,6 +58,10 @@ def process_experiment_directory(directory, pattern=None):
                 if os.path.exists(final_metrics_file_path):
                     experiment_data['final_metrics'] = read_json_file(final_metrics_file_path)
 
+                test_metrics_file_path = os.path.join(experiment_path, 'test_metrics')
+                if os.path.exists(test_metrics_file_path):
+                    experiment_data['test_metrics'] = read_json_file(test_metrics_file_path)
+
                 snr_file_path = os.path.join(experiment_path, 'signal-to-noise-ratio.csv')
                 if os.path.exists(snr_file_path):
                     experiment_data['signal_to_noise_ratio'] = read_csv_file(snr_file_path)
