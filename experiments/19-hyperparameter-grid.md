@@ -14,29 +14,30 @@ We are also interested in studying if different hyperparameter pairs (e.g. the c
 
 We will fix the epochs at 40 and train the model using combinations drawn from the following grids:
 
-* For 10% of sun397
-    - ε: 1, 4, 8
-    - LR: 0.0005, 0.0010, 0.0018, 0.0035, 0.0068, 0.0130, 0.0250 (`np.geomspace(5e-4, 0.025, 7)`)
-    - BS: 192, 512, 1024, 2048, 4096, 8192, Full batch (8534)
-    - CB: 0.1, 1.0, 10.0, 22.5, 35.0, 47.5, 60.0 (`[0.1, 1.0] + np.linspace(10, 60, 5).tolist()`)
 
-* For 10% of sun397 (**epsilon specific grid**)
-    - ε: 8
-    - LR: 0.003 0.004 0.005 0.007 0.010 0.014 0.020 (`np.geomspace(0.0025, 0.02, 7)`)
-    - BS: 3275, 3841, 4506, 5286, 6201, 7274, Full batch (8534) (`map(math.floor, np.geomspace(3275, 8534, 7)`)
-    - CB: 0.10, 1.75, 3.40, 5.05, 6.70, 8.35, 10.00 (`np.linspace(0.1, 10, 7)`)
+- For 10% of sun397
+  - ε: 1, 4, 8
+  - LR: 0.0005, 0.0010, 0.0018, 0.0035, 0.0068, 0.0130, 0.0250 (`np.geomspace(5e-4, 0.025, 7)`)
+  - BS: 192, 512, 1024, 2048, 4096, 8192, Full batch (8534)
+  - CB: 0.1, 1.0, 10.0, 22.5, 35.0, 47.5, 60.0 (`[0.1, 1.0] + np.linspace(10, 60, 5).tolist()`)
+
+- ~~For 10% of sun397 (**epsilon specific grid**)~~
+  - ~~ε: 8~~
+  - ~~LR: 0.003 0.004 0.005 0.007 0.010 0.014 0.020 (`np.geomspace(0.0025, 0.02, 7)`)~~
+  - ~~BS: 3275, 3841, 4506, 5286, 6201, 7274, Full batch (8534) (`map(math.floor, np.geomspace(3275, 8534, 7)`)~~
+  - ~~CB: 0.10, 1.75, 3.40, 5.05, 6.70, 8.35, 10.00 (`np.linspace(0.1, 10, 7)`)~~
 
 - For 10% of SVHN (Balanced)
-    - ε: TBD
-    - LR: 0.0005, 0.0010, 0.0018, 0.0035, 0.0068, 0.0130, 0.0250 (`np.geomspace(5e-4, 0.025, 7)`)
-    - BS: 192, 512, 1024, 2048, 4096, Full batch
-    - CB: TBD ([1e-3, 15])
+  - ε: 1, 4, 8
+  - LR: 0.0005, 0.0010, 0.0021, 0.0042, 0.0085, 0.0172, 0.0350 (`np.geomspace(5e-4, 0.035, 7)`)
+  - BS: 192, 512, 1024, 2048, 4096, Full batch
+  - CB: 0.001, 0.005, 0.025, 0.122, 0.608, 3.020, 15.000 (`np.geomspace(1e-3, 15, 7)`)
 
 - For 10% of CIFAR-100
-    - ε: TBD
-    - LR: 0.0005, 0.0010, 0.0021, 0.0042, 0.0085, 0.0172, 0.0350 (`np.geomspace(1e-3, 0.035, 7)`)
-    - BS: 192, 512, 1024, 2048, 4096, Full batch
-    - CB: TBD ([1e-3, 5])
+  - ε: 1, 4, 8
+  - BS: 192, 512, 1024, 2048, 4096, Full batch
+  - LR: 0.0005, 0.0010, 0.0018, 0.0035, 0.0068, 0.0130, 0.0250 (`np.geomspace(5e-4, 0.025, 7)`)
+  - CB: 0.001, 0.004, 0.017, 0.071, 0.292, 1.209, 5.000 (`np.geomspace(1e-3, 5, 7)`)
 
 ## Motivation for hyperparameter ranges
 
@@ -46,7 +47,7 @@ In [experiment on difficult datasets](20-difficult-datasets.md) we performed ana
 
 Based on these results, we decided to select the above ranges.
 
-After initial test run using the same range for all epsilon, we will run a comparison with using epsilon specific grids.
+~~After initial test run using the same range for all epsilon, we will run a comparison with using epsilon specific grids.~~ Turned out that the epsilon specific grids are not very useful--the average accuracy was too high to detect any patterns.
 
 The below plots motivate our initial decisions on grid values.
 
