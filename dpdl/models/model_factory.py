@@ -6,6 +6,7 @@ from .model_base import ModelBase
 from .timm_model import TimmModel
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet, KoskelaNetGrayscale
+from .simple_nn import MisAlignNN
 
 from dpdl.configurationmanager import Configuration, Hyperparameters
 from dpdl.peft import PeftFactory
@@ -53,6 +54,9 @@ class ModelFactory:
                 transforms = model_instance.get_transforms()
         elif configuration.model_name == 'koskela-net-grayscale':
             model_instance = KoskelaNetGrayscale()
+            transforms = model_instance.get_transforms()
+        elif configuration.model_name == 'simple-nn':
+            model_instance = MisAlignNN()
             transforms = model_instance.get_transforms()
         else:
             # Default to using TimmModel
