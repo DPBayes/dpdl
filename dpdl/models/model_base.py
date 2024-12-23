@@ -2,6 +2,8 @@ import os
 import torch
 import torchmetrics
 
+from .logistic_model import LogisticRegression
+
 
 class ModelBase(torch.nn.Module):
     def __init__(
@@ -18,7 +20,10 @@ class ModelBase(torch.nn.Module):
         self.use_feature_cache = use_feature_cache
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        self._criterion = torch.nn.CrossEntropyLoss().to(self.device)
+        if isinstance(self.model, LogisticRegression):
+            self._criterion = torch.nn.BCELoss().to(self.device)
+        else:
+            self._criterion = torch.nn.CrossEntropyLoss().to(self.device)
 
         # let's track the training accuracy
         self.train_metrics = torchmetrics.MetricCollection(
@@ -76,8 +81,16 @@ class ModelBase(torch.nn.Module):
     def forward_features(self, x):
         return self.model.forward_features(x)
 
+
     def criterion(self, logits, targets):
-        return self._criterion(logits, targets)
+        if isinstance(self.model, LogisticRegression):
+            if len(targets.shape) == 1:
+                targets = targets.unsqueeze(1)
+            return self._criterion(logits, targets)
+        else:
+            if len(logits.shape) > 1 and logits.shape[1] == 1:
+                logits = logits.squeeze(1)
+            return self._criterion(logits, targets)
 
     def show_layers(self):
         log.info("Layers:")

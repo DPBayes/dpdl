@@ -7,6 +7,7 @@ from .timm_model import TimmModel
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet, KoskelaNetGrayscale
 from .simple_nn import MisAlignNN
+from .logistic_model import LogisticRegression
 
 from dpdl.configurationmanager import Configuration, Hyperparameters
 from dpdl.peft import PeftFactory
@@ -50,13 +51,17 @@ class ModelFactory:
             model_instance = WideResNet(depth=depth, width=width, num_classes=num_classes)
             transforms = model_instance.get_transforms()
         elif configuration.model_name == 'koskela-net':
-                model_instance = KoskelaNet()
-                transforms = model_instance.get_transforms()
+            model_instance = KoskelaNet()
+            transforms = model_instance.get_transforms()
         elif configuration.model_name == 'koskela-net-grayscale':
             model_instance = KoskelaNetGrayscale()
             transforms = model_instance.get_transforms()
         elif configuration.model_name == 'simple-nn':
             model_instance = MisAlignNN()
+            transforms = model_instance.get_transforms()
+        elif configuration.model_name == 'logistic':
+            imput_dim = 96 if configuration.dataset_name == 'adult' else 107
+            model_instance = LogisticRegression(imput_dim)
             transforms = model_instance.get_transforms()
         else:
             # Default to using TimmModel
@@ -90,4 +95,3 @@ class ModelFactory:
             model = PeftFactory.get_peft_model(model, configuration)
 
         return model, transforms
-

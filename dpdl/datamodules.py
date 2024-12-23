@@ -6,8 +6,10 @@ import pathlib
 import torch
 import torchvision
 import numpy as np
+import pandas as pd
 import random
 
+from sklearn.model_selection import train_test_split
 from collections import Counter
 from functools import partial
 from PIL import Image
@@ -15,6 +17,7 @@ from typing import Tuple
 
 from dpdl.utils import seed_everything
 from .configurationmanager import Configuration, Hyperparameters
+from .tabularprocess import preprocess_adult_census_income, preprocess_dutch_dataset, balance_classes
 
 log = logging.getLogger(__name__)
 
@@ -604,7 +607,7 @@ class DataModule:
                 np.random.choice(indices, num_samples, replace=False)
             )
 
-        #print(f"First 10 samples: {sampled_indices[:10]}")
+        # print(f"First 10 samples: {sampled_indices[:10]}")
 
         sampled_dataset = dataset.select(sampled_indices)
 
@@ -816,31 +819,176 @@ class ImageDataModule(DataModule):
 
         return features, labels
 
+class TabularDataModule(DataModule):
+    def __init__(
+        self,
+        target_column: str,
+        protected_column: str,
+        val_rate: float = 0.3,
+        **kwargs
+    ):
+        self.target_column = target_column
+        self.protected_column = protected_column
+        self.val_rate = val_rate
+        super().__init__(**kwargs)
+        self.num_classes = 2
+
+    def _add_rgb_transform(self):
+        pass
+
+    def _replace_to_tensor_with_to_float(self):
+        pass
+
+    def _create_dataset_splits(self):
+        pass
+
+    def _load_datasets(self):
+        """Load and preprocess datasets."""
+        if torch.distributed.get_rank() == 0:
+            log.info(f'Loading tabular dataset "{self.dataset_name}".')
+
+        # Load and preprocess the dataset
+        if self.dataset_name == "adult":
+            df = pd.read_csv("./data/adult/adult.csv", sep=",")
+            df = preprocess_adult_census_income(df)
+        elif self.dataset_name == "dutch":
+            df = pd.read_csv("./data/dutch/dutch.csv", sep=",")
+            df = preprocess_dutch_dataset(df)
+        else:
+            raise ValueError(f"Unsupported dataset: {self.dataset_name}")
+
+        # balance classes
+        train_val, test = balance_classes(df, base_column=self.protected_column)
+
+        # split the features and target
+        train_val_X = train_val.drop(self.target_column, axis=1)
+        train_val_y = train_val[self.target_column]
+
+        test_X = test.drop(self.target_column, axis=1)
+        test_y = test[self.target_column]
+
+        X_train, X_val, y_train, y_val = train_test_split(
+            train_val_X.values,
+            train_val_y.values,
+            test_size=self.val_rate,
+            random_state=self.seed,
+        )
+
+        self.train_dataset = list(
+            zip(
+                torch.tensor(X_train, dtype=torch.float32),
+                torch.tensor(y_train, dtype=torch.float32)
+            )
+        )
+        self.val_dataset = list(
+            zip(
+                torch.tensor(X_val, dtype=torch.float32),
+                torch.tensor(y_val, dtype=torch.float32),
+            )
+        )
+        self.test_dataset = list(
+            zip(
+                torch.tensor(test_X.values, dtype=torch.float32),
+                torch.tensor(test_y.values, dtype=torch.float32),
+            )
+        )
+
+    def _initialize_dataloaders(self):
+        """Create DataLoader instances for train and validation datasets."""
+        self.train_dataloader = torch.utils.data.DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            pin_memory=torch.cuda.is_available(),
+        )
+        self.val_dataloader = torch.utils.data.DataLoader(
+            self.val_dataset,
+            batch_size=len(self.val_dataset),
+            shuffle=False,
+            pin_memory=torch.cuda.is_available(),
+        )
+        self.test_dataloader = torch.utils.data.DataLoader(
+            self.test_dataset,
+            batch_size=len(self.test_dataset),
+            shuffle=False,
+            pin_memory=torch.cuda.is_available(),
+        )
+        self._dataloaders = {
+            'train': self.train_dataloader,
+            'valid': self.val_dataloader,
+            'test': self.test_dataloader,
+        }
+
+    def get_dataloader(self, name):
+        return self._dataloaders.get(name)
+
+    def get_dataset(self, is_train=True):
+        """Return the dataset for training or validation."""
+        return self.train_dataset if is_train else self.val_dataset
+
+    def initialize(self, transforms: torchvision.transforms.transforms.Compose):
+        self.transforms = transforms
+
+        if self.transforms:
+            if not self._cache_transforms:
+                self._replace_to_tensor_with_to_float()
+
+        if torch.distributed.get_rank() == 0:
+            self._initialize_datasets()
+            torch.distributed.barrier()
+        else:
+            torch.distributed.barrier()
+            self._initialize_datasets()
+
+        if self.batch_size == -1:
+            self.batch_size = len(self.train_dataset)
+
+        # if sample_rate is set, we set train batch size to int(sample_rate*N)
+        if self.sample_rate and self.sample_rate > 0:
+            batch_size = int(self.sample_rate * len(self.train_dataset))
+
+            if torch.distributed.get_rank() == 0:
+                log.info(
+                    f'Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.'
+                )
+
+            self.batch_size = batch_size
+
+        self._initialize_dataloaders()
+
+
 class DataModuleFactory:
     @staticmethod
     def get_datamodule(
         configuration: Configuration,
         hyperparams: Hyperparameters,
     ) -> DataModule:
-        datamodule = ImageDataModule(
-            dataset_name=configuration.dataset_name,
-            num_workers=configuration.num_workers,
-            physical_batch_size=configuration.physical_batch_size,
-            subset_size=configuration.subset_size,
-            validation_size=configuration.validation_size,
-            test_size=configuration.test_size,
-            shots=configuration.shots,
-            seed=configuration.seed,
-            batch_size=hyperparams.batch_size,
-            sample_rate=hyperparams.sample_rate,
-            privacy=configuration.privacy,
-            evaluation_mode=configuration.evaluation_mode,
-            label_field=configuration.dataset_label_field,
-            max_test_examples=configuration.max_test_examples,
-            imbalance_factor=configuration.imbalance_factor,
-            fairness_imbalance_class=configuration.fairness_imbalance_class,
-            cache_transforms=configuration.cache_dataset_transforms,
-        )
+
+        if configuration.dataset_name not in ["adult", "dutch"]:
+            datamodule = ImageDataModule(
+                dataset_name=configuration.dataset_name,
+                num_workers=configuration.num_workers,
+                physical_batch_size=configuration.physical_batch_size,
+                subset_size=configuration.subset_size,
+                validation_size=configuration.validation_size,
+                test_size=configuration.test_size,
+                shots=configuration.shots,
+                seed=configuration.seed,
+                batch_size=hyperparams.batch_size,
+                sample_rate=hyperparams.sample_rate,
+                privacy=configuration.privacy,
+                evaluation_mode=configuration.evaluation_mode,
+                label_field=configuration.dataset_label_field,
+                max_test_examples=configuration.max_test_examples,
+                imbalance_factor=configuration.imbalance_factor,
+                fairness_imbalance_class=configuration.fairness_imbalance_class,
+                cache_transforms=configuration.cache_dataset_transforms,
+            )
+        else:
+            datamodule = TabularDataModule(
+                dataset_name=configuration.dataset_name,
+                target_column=configuration.dataset_label_field,
+                protected_column=configuration.protected_feature,
+            )
 
         return datamodule
-
