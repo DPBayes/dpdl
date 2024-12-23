@@ -437,6 +437,13 @@ def cli(
                 rich_help_panel='',
             )
         ] = False,
+        protected_feature: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Protected feature for fairness experiments',
+                rich_help_panel='Fairness options',
+            )
+        ] = None,
     ):
 
     config_manager = ConfigurationManager(ctx.params)
