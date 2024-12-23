@@ -174,18 +174,14 @@ class DataModule:
         if self._fairness_imbalance_class:
             if torch.distributed.get_rank() == 0:
                 log.info("Creating fairness imbalanced train set..")
-
-            self.train_dataset = self._get_fairness_imbalanced_subset(self.train_dataset)
+                self.train_dataset = self._get_fairness_imbalanced_subset(self.train_dataset)
 
             if torch.distributed.get_rank() == 0:
-                # log.info("We will not create fairness imbalanced validation and test sets.")
                 log.info("Creating fairness imbalanced validation set..")
-            self.val_dataset = self._get_fairness_imbalanced_subset(self.val_dataset)
+                self.val_dataset = self._get_fairness_imbalanced_subset(self.val_dataset)
 
             if torch.distributed.get_rank() == 0:
-                log.info("We will not create fairness imbalanced validation and test sets.")
-            #     log.info("Creating fairness imbalanced test set..")
-            # self.test_dataset = self._get_fairness_imbalanced_subset(self.test_dataset)
+                log.info(f"We will not create fairness imbalanced test sets. Size of test set: {len(self.test_dataset)}")
 
         # if subset of dataset is requested, we'll do stratified sampling
         if self.subset_size is not None and self.subset_size < 1.0:
