@@ -990,6 +990,22 @@ class DataModuleFactory:
                 dataset_name=configuration.dataset_name,
                 target_column=configuration.dataset_label_field,
                 protected_column=configuration.protected_feature,
+                num_workers=configuration.num_workers,
+                physical_batch_size=configuration.physical_batch_size,
+                subset_size=configuration.subset_size,
+                validation_size=configuration.validation_size,
+                test_size=configuration.test_size,
+                shots=configuration.shots,
+                seed=configuration.seed,
+                batch_size=hyperparams.batch_size,
+                sample_rate=hyperparams.sample_rate,
+                privacy=configuration.privacy,
+                evaluation_mode=configuration.evaluation_mode,
+                label_field=configuration.dataset_label_field,
+                max_test_examples=configuration.max_test_examples,
+                imbalance_factor=configuration.imbalance_factor,
+                fairness_imbalance_class=configuration.fairness_imbalance_class,
+                cache_transforms=configuration.cache_dataset_transforms,
             )
 
         return datamodule
