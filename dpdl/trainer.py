@@ -121,7 +121,12 @@ class Trainer:
     def _handle_virtual_epoch_end(self, epoch):
         # compute the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
+
         self._unwrap_model().train_metrics.reset()
+        if hasattr(self._unwrap_model(), 'extra_train_metrics'):
+            extra_metrics = self._unwrap_model().extra_train_metrics.compute()
+            self._unwrap_model().extra_train_metrics.reset()
+            metrics = {**metrics, **extra_metrics}
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
@@ -163,6 +168,9 @@ class Trainer:
             X_splitted = X_split[i]
             y_splitted = y_split[i]
             physical_batch = (X_splitted, y_splitted)
+            if self.use_fairness_metrics:
+                protected_feature = X_splitted[:, -1]
+                protected_feature = protected_feature.cuda(non_blocking=True) if self.device == 'cuda' else protected_feature
 
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
@@ -176,6 +184,8 @@ class Trainer:
             # update the metrics if there are any
             preds = torch.argmax(logits, dim=1)
             self._unwrap_model().train_metrics.update(preds, y_split[i])
+            if self.use_fairness_metrics:
+                self._unwrap_model().extra_train_metrics.update(logits, y, protected_feature)
 
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
@@ -216,6 +226,11 @@ class Trainer:
         evaluation_loss /= len(dataloader)
 
         metrics = self._unwrap_model().valid_metrics.compute()
+        if hasattr(self._unwrap_model(), 'extra_valid_metrics'):
+            extra_metrics = self._unwrap_model().extra_valid_metrics.compute()
+            self._unwrap_model().extra_valid_metrics.reset()
+            metrics = {**metrics, **extra_metrics}
+
         self._unwrap_model().valid_metrics.reset()
 
         torch.set_grad_enabled(True)
@@ -232,12 +247,18 @@ class Trainer:
         X = X.cuda(non_blocking=True) if self.device == 'cuda' else X
         y = y.cuda(non_blocking=True) if self.device == 'cuda' else y
 
+        if self.use_fairness_metrics:
+            protected_feature = X[:, -1]
+            protected_feature = protected_feature.cuda(non_blocking=True) if self.device == 'cuda' else protected_feature
+
         logits = self.model(X)
         loss = self._unwrap_model().criterion(logits, y)
         loss = loss.item()
 
         preds = torch.argmax(logits, dim=1)
         self._unwrap_model().valid_metrics.update(preds, y)
+        if self.use_fairness_metrics:
+            self._unwrap_model().extra_valid_metrics.update(logits, y, protected_feature)
 
         self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss)
         return loss
@@ -273,6 +294,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         seed: int = 0,
         record_grad_and_noise: bool = False,
         optim_args: dict = None,
+        use_fairness_metrics: bool = False,
         **kwargs,
     ):
         self.noise_multiplier = noise_multiplier
@@ -284,6 +306,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.poisson_sampling = poisson_sampling
         self.normalize_clipping = normalize_clipping
         self.optim_args = optim_args
+        self.use_fairness_metrics = use_fairness_metrics
 
         # setup opacus privacy engine
         privacy_engine_args = {
@@ -461,7 +484,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
                 logical_batch_completed = False
 
-        #assert step == self.total_steps, f'Mismatch in total steps count: Expected {self.total_steps} total steps, but stepped {step} times!'
+        # assert step == self.total_steps, f'Mismatch in total steps count: Expected {self.total_steps} total steps, but stepped {step} times!'
 
     def fit_one_batch(self, batch_idx, batch):
         self.optimizer.zero_grad()
@@ -469,6 +492,10 @@ class DifferentiallyPrivateTrainer(Trainer):
         X, y = batch
         X = X.cuda(non_blocking=True) if self.device == 'cuda' else X
         y = y.cuda(non_blocking=True) if self.device == 'cuda' else y
+
+        if self.use_fairness_metrics:
+            protected_feature = X[:, -1]
+            protected_feature = protected_feature.cuda(non_blocking=True) if self.device == 'cuda' else protected_feature
 
         logits = self.model(X)
         loss = self._unwrap_model().criterion(logits, y)
@@ -481,7 +508,10 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # update metrics if there are any
         preds = torch.argmax(logits, dim=1)
+
         self._unwrap_model().train_metrics.update(preds, y)
+        if self.use_fairness_metrics:
+            self._unwrap_model().extra_train_metrics.update(logits, y, protected_feature)
 
         return loss
 
@@ -503,6 +533,10 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # compute and reset the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
+        if hasattr(self._unwrap_model(), 'extra_train_metrics'):
+            extra_metrics = self._unwrap_model().extra_train_metrics.compute()
+            self._unwrap_model().extra_train_metrics.reset()
+            metrics = {**metrics, **extra_metrics}
         self._unwrap_model().train_metrics.reset()
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
@@ -663,6 +697,7 @@ class TrainerFactory:
             validation_frequency=configuration.validation_frequency,
             record_grad_and_noise=configuration.record_snr,
             optim_args=optimizers_args,
+            use_fairness_metrics=True if configuration.protected_feature else False,
         )
 
         log.info(f'The arguments of the optimizer: {optimizers_args}')
