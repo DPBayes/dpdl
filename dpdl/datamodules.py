@@ -859,6 +859,7 @@ class TabularDataModule(DataModule):
 
         # balance classes
         train_val, test = balance_classes(df, base_column=self.protected_column)
+        index_protected_column = df.columns.get_loc(self.protected_column)
 
         # split the features and target
         train_val_X = train_val.drop(self.target_column, axis=1)

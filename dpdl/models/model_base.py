@@ -3,7 +3,7 @@ import torch
 import torchmetrics
 
 from .logistic_model import LogisticRegression
-
+from .fairness_metric import GroupAccuracy
 
 class ModelBase(torch.nn.Module):
     def __init__(
@@ -11,6 +11,7 @@ class ModelBase(torch.nn.Module):
         model_instance: torch.nn.Module = None,
         num_classes: int = 10,
         use_feature_cache: bool = False,
+
     ):
 
         super().__init__()
@@ -43,6 +44,14 @@ class ModelBase(torch.nn.Module):
             }
         )
 
+        self.extra_train_metrics = torchmetrics.MetricCollection(
+            {
+                "AccuracyOfProtectedGroups": GroupAccuracy(
+                    num_classes=self.num_classes
+                ).to(self.device),
+            }
+        )
+
         # we only validate on rank 0, so there's no need to
         # synchronize when calculating the metrics.
         # NB: If `sync_on_compute` is enabled, this breaks
@@ -69,6 +78,14 @@ class ModelBase(torch.nn.Module):
             }
         )
 
+        self.extra_valid_metrics = torchmetrics.MetricCollection(
+            {
+                "AccuracyOfProtectedGroups": GroupAccuracy(
+                    num_classes=self.num_classes
+                ).to(self.device),
+            }
+        )
+
     def forward(self, x):
         if self.use_feature_cache:
             return self.model.forward_head(x)
@@ -80,7 +97,6 @@ class ModelBase(torch.nn.Module):
 
     def forward_features(self, x):
         return self.model.forward_features(x)
-
 
     def criterion(self, logits, targets):
         if isinstance(self.model, LogisticRegression):
