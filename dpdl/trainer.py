@@ -123,7 +123,7 @@ class Trainer:
         metrics = self._unwrap_model().train_metrics.compute()
 
         self._unwrap_model().train_metrics.reset()
-        if hasattr(self._unwrap_model(), 'extra_train_metrics'):
+        if self.use_fairness_metrics:
             extra_metrics = self._unwrap_model().extra_train_metrics.compute()
             self._unwrap_model().extra_train_metrics.reset()
             metrics = {**metrics, **extra_metrics}
@@ -226,7 +226,7 @@ class Trainer:
         evaluation_loss /= len(dataloader)
 
         metrics = self._unwrap_model().valid_metrics.compute()
-        if hasattr(self._unwrap_model(), 'extra_valid_metrics'):
+        if self.use_fairness_metrics:
             extra_metrics = self._unwrap_model().extra_valid_metrics.compute()
             self._unwrap_model().extra_valid_metrics.reset()
             metrics = {**metrics, **extra_metrics}
@@ -533,7 +533,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # compute and reset the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
-        if hasattr(self._unwrap_model(), 'extra_train_metrics'):
+        if self.use_fairness_metrics:
             extra_metrics = self._unwrap_model().extra_train_metrics.compute()
             self._unwrap_model().extra_train_metrics.reset()
             metrics = {**metrics, **extra_metrics}
