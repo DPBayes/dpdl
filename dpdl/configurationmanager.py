@@ -22,6 +22,7 @@ class Hyperparameters(BaseModel):
     count_threshold: Optional[float]
     clip_bound_lr: Optional[float]
     clip_bound_lower_bound: Optional[float]
+    count_noise_denom: Optional[int]
 
     @root_validator(pre=True)
     def check_batch_size_or_sample_rate(cls, values):
@@ -54,7 +55,8 @@ class Hyperparameters(BaseModel):
                 ('Target quantile', self.target_quantile),
                 ('Count threshold', self.count_threshold),
                 ('Clipping bound leraning rate', self.clip_bound_lr),
-                ('clip_bound_lower_bound', self.clip_bound_lower_bound)
+                ('clip_bound_lower_bound', self.clip_bound_lower_bound),
+                ('count_noise_denom', self.count_noise_denom)
             ]
             hypers.extend(adaptive_hypers)
 
