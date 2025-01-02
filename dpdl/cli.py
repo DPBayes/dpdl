@@ -304,6 +304,13 @@ def cli(
                 rich_help_panel='Hyperparameter options',
             ),
         ] = None,
+        count_noise_denom: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Count noise denominator for the adaptive clipping (for "adaptive" clipping mode)',
+                rich_help_panel='Opacus options',
+            ),
+        ] = 10,
         clipping_mode: Annotated[
             Optional[str],
             typer.Option(
