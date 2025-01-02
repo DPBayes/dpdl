@@ -631,7 +631,9 @@ class TrainerFactory:
             # Andrew, et al.
             # https://arxiv.org/abs/1905.03871
 
-            noise_multiplier_andrew = datamodule.batch_size / 20
+            noise_multiplier_andrew = (
+                datamodule.batch_size / hyperparams.count_noise_denom
+            )
 
             optimizers_args = {
                 'target_unclipped_quantile': hyperparams.target_quantile,
