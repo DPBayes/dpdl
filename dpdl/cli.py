@@ -311,6 +311,13 @@ def cli(
                 rich_help_panel='Opacus options',
             ),
         ] = 10,
+        clip_bound_init: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Initial clipping bound (for "adaptive" clipping mode)',
+                rich_help_panel='Hyperparameter options',
+            ),
+        ] = 1.0,
         clipping_mode: Annotated[
             Optional[str],
             typer.Option(
