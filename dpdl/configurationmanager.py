@@ -23,6 +23,7 @@ class Hyperparameters(BaseModel):
     clip_bound_lr: Optional[float]
     clip_bound_lower_bound: Optional[float]
     count_noise_denom: Optional[int]
+    clip_bound_init: Optional[float]
 
     @root_validator(pre=True)
     def check_batch_size_or_sample_rate(cls, values):
@@ -57,6 +58,7 @@ class Hyperparameters(BaseModel):
                 ('Clipping bound leraning rate', self.clip_bound_lr),
                 ('clip_bound_lower_bound', self.clip_bound_lower_bound),
                 ('count_noise_denom', self.count_noise_denom)
+                ('clip_bound_init', self.clip_bound_init)
             ]
             hypers.extend(adaptive_hypers)
 
