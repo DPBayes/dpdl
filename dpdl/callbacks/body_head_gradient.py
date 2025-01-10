@@ -90,7 +90,7 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
 
     def _get_body_and_head(self, model):
         head = model.get_classifier()
-        body = torch.nn.Sequential(*list(model.children())[:-1])
+        body = model.get_body()
 
         return body, head
 
