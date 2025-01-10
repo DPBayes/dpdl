@@ -93,6 +93,9 @@ class ModelBase(torch.nn.Module):
     def get_classifier(self):
         return self.model.get_classifier()
 
+    def get_body(self):
+        return torch.nn.Sequential(*list(self.model.children())[:-1])
+
     def save_model(self, fpath):
         # Extract the directory from the path
         directory = os.path.dirname(fpath)
