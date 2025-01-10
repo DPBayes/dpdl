@@ -57,8 +57,8 @@ class Hyperparameters(BaseModel):
                 ('Count threshold', self.count_threshold),
                 ('Clipping bound leraning rate', self.clip_bound_lr),
                 ('clip_bound_lower_bound', self.clip_bound_lower_bound),
-                ('count_noise_denom', self.count_noise_denom)
-                ('clip_bound_init', self.clip_bound_init)
+                ('count_noise_denom', self.count_noise_denom),
+                ('clip_bound_init', self.clip_bound_init),
             ]
             hypers.extend(adaptive_hypers)
 
