@@ -693,12 +693,8 @@ class TrainerFactory:
             seed=configuration.seed,
             callback_handler=callback_handler,
             validation_frequency=configuration.validation_frequency,
-<<<<<<< HEAD
-            record_grad_and_noise=configuration.record_snr,
             optim_args=optimizers_args,
             use_fairness_metrics=True if configuration.protected_feature else False,
-=======
->>>>>>> 1c11867 (Remove old code related to SNR recording.)
         )
 
         log.info(f'The arguments of the optimizer: {optimizers_args}')
