@@ -448,9 +448,9 @@ def cli(
         # log test accuracy and run time, and save model if asked
         if torch.distributed.get_rank() == 0:
             log.info('Evaluating on test set..')
-            _, test_metrics = trainer.test()
+            test_loss, test_metrics = trainer.test()
 
-            log_test_metrics(config_manager, test_metrics)
+            log_test_metrics(config_manager, test_metrics, test_loss)
             log_runtime(config_manager, start_time, end_time)
             log_final_epsilon(config_manager, trainer)
 
