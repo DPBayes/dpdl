@@ -163,12 +163,13 @@ def log_runtime(config_manager, start_time, end_time):
     with open(f'{full_log_dir}/runtime', 'w') as fh:
         fh.write(f'{elapsed_timedelta}\n')
 
-def log_test_metrics(config_manager, metrics):
+def log_test_metrics(config_manager, metrics, loss):
     log_dir = config_manager.configuration.log_dir
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
     metrics = tensor_to_python_type(metrics)
+    metrics['loss'] = loss
 
     with open(f'{full_log_dir}/test_metrics', 'w') as fh:
         json.dump(metrics, fh)
