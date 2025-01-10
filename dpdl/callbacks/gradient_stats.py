@@ -56,14 +56,9 @@ class RecordGradientStatisticsCallback(Callback):
         # Calculate the statistics for the logical batch, first over the samples ...
         if self.statistics_samples['mean']:
             # Stack accumulated statistics
-            mean_samples_concat = torch.cat(self.statistics_samples['mean'], dim=0)
-            median_samples_concat = torch.cat(self.statistics_samples['median'], dim=0)
-            std_samples_concat = torch.cat(self.statistics_samples['std'], dim=0)
-
-            # Compute final statistics over the logical batch
-            mean_samples = mean_samples_concat.mean(dim=0)
-            median_samples = torch.median(median_samples_concat, dim=0).values
-            std_samples = std_samples_concat.mean(dim=0)
+            mean_samples = torch.cat(self.statistics_samples['mean'], dim=0)
+            median_samples = torch.cat(self.statistics_samples['median'], dim=0)
+            std_samples = torch.cat(self.statistics_samples['std'], dim=0)
 
             # Nonparametric skewness over samples
             skewness_samples = ((mean_samples - median_samples) / (std_samples + 1e-6))
@@ -76,14 +71,9 @@ class RecordGradientStatisticsCallback(Callback):
         # ... and then over the features
         if self.statistics_features['mean']:
             # Stack accumulated statistics
-            mean_features_concat = torch.cat(self.statistics_features['mean'], dim=0)
-            median_features_concat = torch.cat(self.statistics_features['median'], dim=0)
-            std_features_concat = torch.cat(self.statistics_features['std'], dim=0)
-
-            # Compute final statistics over the logical batch
-            mean_features = mean_features_concat.mean(dim=0)
-            median_features = torch.median(median_features_concat, dim=0).values
-            std_features = std_features_concat.mean(dim=0)
+            mean_features = torch.cat(self.statistics_features['mean'], dim=0)
+            median_features = torch.cat(self.statistics_features['median'], dim=0)
+            std_features = torch.cat(self.statistics_features['std'], dim=0)
 
             # Nonparametric skewness over features
             skewness_features = ((mean_features - median_features) / (std_features + 1e-6))
