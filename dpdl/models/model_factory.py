@@ -60,7 +60,7 @@ class ModelFactory:
             model_instance = MisAlignNN()
             transforms = model_instance.get_transforms()
         elif configuration.model_name == 'logistic':
-            imput_dim = 96 if configuration.dataset_name == 'adult' else 107
+            imput_dim = 96 if configuration.dataset_name == 'adult' else 50
             model_instance = LogisticRegression(imput_dim)
             transforms = model_instance.get_transforms()
         else:
