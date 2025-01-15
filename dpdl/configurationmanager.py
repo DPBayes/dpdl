@@ -133,6 +133,8 @@ class Configuration(BaseModel):
             raise ValueError(
                 'Parameter "imbalance_factor" is required when using "fairness_imbalance_class".'
             )
+        
+        return values
 
     @root_validator(pre=True)
     def check_record_loss_by_step(cls, values):
