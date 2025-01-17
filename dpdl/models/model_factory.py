@@ -3,7 +3,6 @@ import timm
 import torch
 
 from .model_base import ModelBase
-from .timm_model import TimmModel
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet
 
@@ -52,15 +51,14 @@ class ModelFactory:
             model_instance = KoskelaNet()
             transforms = model_instance.get_transforms()
         else:
-            # Default to using TimmModel
-            model_instance = TimmModel(
-                model_name=configuration.model_name,
-                num_classes=num_classes,
+            model_instance = timm.create_model(
+                configuration.model_name,
                 pretrained=configuration.pretrained,
+                num_classes=num_classes,
             )
 
             # Resolve data config and create transforms
-            model_config = timm.data.resolve_data_config({}, model=model_instance.model)
+            model_config = timm.data.resolve_data_config({}, model=model_instance)
             transforms = timm.data.transforms_factory.create_transform(**model_config)
 
         # Wrap the instantiated model with ModelBase
