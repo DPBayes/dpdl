@@ -17,7 +17,7 @@ touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 # Experiment parameters
 MODELS=("vit_base_patch16_224.augreg_in21k")
 DATASETS=(
-#    "cifar100"
+    "cifar100"
     "dpdl-benchmark/svhn_cropped"
 #    "dpdl-benchmark/sun397"
 #    "dpdl-benchmark/patch_camelyon"
@@ -133,7 +133,7 @@ do
             fi
 
             # Submit the job
-            echo sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py optimize \
+            sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py optimize \
                 --num-workers 7 \
                 --model-name $model \
                 --dataset-name $dataset \
@@ -160,7 +160,6 @@ do
                 $OVERWRITE_EXPERIMENT \
                 $OPTUNA_RESUME \
                 --optuna-journal $OPTUNA_JOURNAL
-            exit
 
             SBATCH_EXIT_CODE=$?
 
