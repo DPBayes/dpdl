@@ -44,13 +44,13 @@ class RecordCosineSimilarityCallback(Callback):
             self.mean_grad_clipped_accumulator.append(clipped_gradients.mean(dim=0))
             self.median_grad_unclipped_accumulator.append(torch.median(flattened_gradients, dim=0).values)
 
-        # Make sure memory is cleared
-        del per_sample_gradients, flattened_gradients, per_sample_norms, clip_factors, clipped_gradients
-        torch.cuda.empty_cache()
+            # Make sure memory is cleared
+            del per_sample_gradients, flattened_gradients, per_sample_norms, clip_factors, clipped_gradients
+            torch.cuda.empty_cache()
 
     def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
         with torch.no_grad():
-            # Stack the accumulated means and medians of physical batches
+            # Stack the accumulated means and medians of physical batches for easy processing
             mean_unclipped_stack = torch.stack(self.mean_grad_unclipped_accumulator, dim=0)
             mean_clipped_stack = torch.stack(self.mean_grad_clipped_accumulator, dim=0)
             median_unclipped_stack = torch.stack(self.median_grad_unclipped_accumulator, dim=0)
@@ -74,10 +74,17 @@ class RecordCosineSimilarityCallback(Callback):
             }
 
             # Cosine similarities against the quantiles
-            all_norms = torch.stack([g.norm(p=2) for g in self.mean_grad_unclipped_accumulator])
+            all_per_sample_norms = torch.cat([
+                g.view(len(g), -1).norm(p=2, dim=1) for g in trainer.optimizer.grad_samples
+            ])
+
             for quantile in self.quantiles:
-                threshold = torch.quantile(all_norms, quantile).item()
-                quantile_clip_factor = (threshold / (all_norms.mean() + 1e-6)).clamp(max=1.0)
+                threshold = torch.quantile(all_per_sample_norms, quantile)
+
+                mean_grad_unclipped_norm = mean_grad_unclipped.norm(p=2)
+                quantile_clip_factor = threshold / (mean_grad_unclipped_norm + 1e-6)
+                quantile_clip_factor = quantile_clip_factor.clamp(max=1.0)
+
                 quantile_clipped_mean_grad = quantile_clip_factor * mean_grad_unclipped
 
                 cosine_similarities[f'clipped_{quantile}_vs_clipped_mean'] = torch.nn.functional.cosine_similarity(
