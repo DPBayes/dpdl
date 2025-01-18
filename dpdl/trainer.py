@@ -382,6 +382,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         # track the logical batch loss here
         logical_batch_loss = 0
 
+        # track the number of physical batches in a logical batch
+        n_physical_batch_in_logical = 0
+
         # flag to keep track of logical batches
         logical_batch_completed = False
 
@@ -407,7 +410,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 # now, let's check if we are going to reach the end of logical batch.
                 # the optimizer will not skip next gradient update if we are not at
                 # the end of the logical batch. there's currently pretty much no other
-                # way to do it than this, becaues we don't know the size of the logical
+                # way to do it than this, because we don't know the size of the logical
                 # batch that was sampled.
                 if not self.optimizer._check_skip_next_step(False):
                     step += 1
@@ -422,12 +425,21 @@ class DifferentiallyPrivateTrainer(Trainer):
                 # notify the callbacks of a physical batch end
                 self.callback_handler.call('on_train_physical_batch_end', self, batch_idx, batch, batch_loss)
 
+                # accumulate loss and count the number of physical batches in a logical batch
                 logical_batch_loss += batch_loss
+                n_physical_batch_in_logical += 1
 
                 if logical_batch_completed:
-                    self.callback_handler.call('on_train_batch_end', self, n_logical_batches, None, logical_batch_loss)
+                    self.callback_handler.call(
+                        'on_train_batch_end',
+                        self,
+                        n_logical_batches,
+                        None,
+                        logical_batch_completed / n_physical_batch_in_logical, # mean of physical batch losses
+                    )
                     n_logical_batches += 1
                     logical_batch_loss = 0
+                    n_physical_batch_in_logical = 0
 
                 # and next we check for epoch end
                 if (logical_batch_completed and step % steps_per_epoch == 0) or step == self.total_steps:
@@ -448,8 +460,6 @@ class DifferentiallyPrivateTrainer(Trainer):
                         self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
 
                 logical_batch_completed = False
-
-        #assert step == self.total_steps, f'Mismatch in total steps count: Expected {self.total_steps} total steps, but stepped {step} times!'
 
     def fit_one_batch(self, batch_idx, batch):
         self.optimizer.zero_grad()
