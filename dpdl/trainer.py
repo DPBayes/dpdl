@@ -435,7 +435,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                         self,
                         n_logical_batches,
                         None,
-                        logical_batch_completed / n_physical_batch_in_logical, # mean of physical batch losses
+                        logical_batch_loss / n_physical_batch_in_logical, # mean of physical batch losses
                     )
                     n_logical_batches += 1
                     logical_batch_loss = 0
