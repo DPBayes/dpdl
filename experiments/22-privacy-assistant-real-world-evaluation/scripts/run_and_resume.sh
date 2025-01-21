@@ -19,8 +19,8 @@ MODELS=("vit_base_patch16_224.augreg_in21k")
 DATASETS=(
     "cifar100"
     "dpdl-benchmark/svhn_cropped"
-#    "dpdl-benchmark/sun397"
-#    "dpdl-benchmark/patch_camelyon"
+    "dpdl-benchmark/sun397"
+    "dpdl-benchmark/patch_camelyon"
 #    "dpdl-benchmark/cassava"
 )
 EPOCHS=40
@@ -38,8 +38,8 @@ DATASET_LABEL_FIELDS=(
 
 declare -A SUBSET_SIZES
 SUBSET_SIZES=(
-    ["cifar100"]="0.1"
-    ["dpdl-benchmark/svhn_cropped"]="0.1"
+    ["cifar100"]="1.0"
+    ["dpdl-benchmark/svhn_cropped"]="1.0"
     ["dpdl-benchmark/sun397"]="0.1"
     ["dpdl-benchmark/patch_camelyon"]="0.02"
     ["dpdl-benchmark/cassava"]="1.0"
@@ -84,6 +84,10 @@ do
 
         # Remove possible prefix from the dataset name
         clean_dataset_name=${dataset#dpdl-benchmark/}
+
+        if [ "$clean_dataset_name" = 'sun397' ]; then
+            EPSILONS="$EPSILONS 17.211049379522922 18.513763796523516 19.915081431424372 21.42246561959156 23.04394460062014 24.788154276266493 26.664384204753418 28.682627076411382 30.853631934159846 33.18896142227813 35.701053368369394 38.40328702649928 41.310054334316945 44.436836563669 47.80028677294355 51.41831850028046 55.31020117002272 59.49666272053798 64.0"
+        fi
 
         for epsilon in $EPSILONS
         do
