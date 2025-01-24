@@ -17,10 +17,10 @@ touch $JOB_STATUS_LOG  # Create the file if it doesn't exist
 # Experiment parameters
 MODELS=("vit_base_patch16_224.augreg_in21k")
 DATASETS=(
-    "cifar100"
-    "dpdl-benchmark/svhn_cropped"
+#    "cifar100"
+#    "dpdl-benchmark/svhn_cropped"
     "dpdl-benchmark/sun397"
-    "dpdl-benchmark/patch_camelyon"
+#    "dpdl-benchmark/patch_camelyon"
 #    "dpdl-benchmark/cassava"
 )
 EPOCHS=40
@@ -38,8 +38,8 @@ DATASET_LABEL_FIELDS=(
 
 declare -A SUBSET_SIZES
 SUBSET_SIZES=(
-    ["cifar100"]="1.0"
-    ["dpdl-benchmark/svhn_cropped"]="1.0"
+    ["cifar100"]="0.1"
+    ["dpdl-benchmark/svhn_cropped"]="0.1"
     ["dpdl-benchmark/sun397"]="0.1"
     ["dpdl-benchmark/patch_camelyon"]="0.02"
     ["dpdl-benchmark/cassava"]="1.0"
