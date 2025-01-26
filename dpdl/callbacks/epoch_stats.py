@@ -3,20 +3,23 @@ import logging
 import torch
 import torchmetrics
 from .base_callback import Callback
+import csv
+import os
 
 log = logging.getLogger(__name__)
 
 
 class RecordEpochStatsCallback(Callback):
-    def __init__(self, use_steps=False):
+    def __init__(self, use_steps=False, experiment_name=None):
         self.use_steps = use_steps
-
+        self.experiment_name = experiment_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-
         self.train_loss = torchmetrics.aggregation.MeanMetric().to(self.device)
         self.evaluation_loss = torchmetrics.aggregation.MeanMetric(
             sync_on_compute=False
         ).to(self.device)
+        self.adaptive_cb_history = []
+        self.metric_history = []
 
     def on_train_start(self, trainer):
         if self._is_global_zero():
@@ -54,8 +57,29 @@ class RecordEpochStatsCallback(Callback):
                 log.info(f"Epoch {epoch+1} finished. Loss: {loss:.4f}.")
             else:
                 log.info(f"Approximate epoch {epoch+1} finished. Loss: {loss:.4f}.")
-
             self._log_metrics(metrics, "Train metrics")
+
+            def _convert_tensor(item):
+                if isinstance(item, torch.Tensor):
+                    item = item.detach().cpu()
+                    return item.item() if item.dim() == 0 else item.tolist()
+                return item
+
+            os.makedirs("cb_history", exist_ok=True)
+            clipbound = getattr(trainer.optimizer, "clipbound", None)
+
+            row_data = {"epoch": epoch + 1, "clipbound": _convert_tensor(clipbound)}
+            for k, v in metrics.items():
+                row_data[k] = _convert_tensor(v)
+
+            csv_path = os.path.join("cb_history", f"{self.experiment_name}.csv")
+            file_exists = os.path.isfile(csv_path)
+            with open(csv_path, "a", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=row_data.keys())
+                if not file_exists:
+                    writer.writeheader()
+                writer.writerow(row_data)
+            pass
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss):
         self.train_loss.update(loss)

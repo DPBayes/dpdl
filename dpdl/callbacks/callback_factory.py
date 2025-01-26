@@ -40,7 +40,7 @@ class CallbackFactory:
         full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
         callbacks = [
-            RecordEpochStatsCallback(use_steps=configuration.use_steps),
+            RecordEpochStatsCallback(use_steps=configuration.use_steps, experiment_name=experiment_name),
         ]
 
         if configuration.record_gradient_norms:
