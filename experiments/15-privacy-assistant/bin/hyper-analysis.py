@@ -323,6 +323,51 @@ def plot_epsilon_vs_batch_size(df: pd.DataFrame, title: str = "", save_path: str
     plt.close()
 
 
+def plot_epsilon_vs_accuracy(df: pd.DataFrame, title: str = "", save_path: str = ""):
+    """
+    Create a line plot with epsilons on the x-axis, MulticlassAccuracy on the y-axis,
+    and different colored lines for each dataset. Save the plot.
+
+    Parameters:
+    - df: DataFrame containing the data.
+    - title: Title of the plot.
+    - save_path: Path to save the plot image.
+    """
+    # Aggregate data: Compute mean accuracy for each dataset and epsilon
+    df_agg = (
+        df.groupby(["dataset_short_name", "epsilon"])["MulticlassAccuracy"]
+        .mean()
+        .reset_index()
+    )
+
+    plt.figure(figsize=(10, 6))
+    sns.lineplot(
+        data=df_agg,
+        x="epsilon",
+        y="MulticlassAccuracy",
+        hue="dataset_short_name",
+        marker="o",
+    )
+    plt.title(title)
+    plt.xlabel("Epsilon")
+    plt.ylabel("Mean Accuracy")
+    plt.xscale("log")  # Use log scale for epsilon
+
+    # Set x-ticks to actual epsilon values rounded to two decimals
+    unique_epsilons = sorted(df_agg["epsilon"].unique())
+    plt.xticks(
+        ticks=unique_epsilons, labels=[f"{e:.2f}" for e in unique_epsilons], rotation=45
+    )
+    plt.legend(title="Dataset", bbox_to_anchor=(1.05, 1), loc="upper left")
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches="tight")
+        print(f"Saved epsilon vs. accuracy plot to {save_path}")
+
+    plt.close()
+
+
 def main(
     json_file: str,
     every_nth_epsilon: int,
@@ -356,6 +401,7 @@ def main(
         "learning_rate": "learning_rate",
         "max_grad_norm": "max_grad_norm",
         "batch_size": "batch_size",
+        "accuracy": "accuracy",
     }
 
     for plot_type in line_plot_types.values():
@@ -379,6 +425,17 @@ def main(
     print(f"Filtered datasets. Number of records after filtering: {len(df_selected)}")
 
     # Do the actual plotting
+    plot_epsilon_vs_accuracy(
+        df=df_selected,
+        title="Epsilon vs. Mean Accuracy by Dataset",
+        save_path=os.path.join(
+            output_dir,
+            plot_subdirs["line_plots"],
+            line_plot_types["accuracy"],
+            "epsilon_vs_accuracy.png",
+        ),
+    )
+
     pairplot_vars = [
         "learning_rate",
         "batch_size",
@@ -451,6 +508,17 @@ def main(
         df_dataset = df_selected[df_selected["dataset_short_name"] == dataset]
         print(f"Generating plots for dataset: {dataset}")
 
+        plot_epsilon_vs_accuracy(
+            df=df_dataset,
+            title=f"Epsilon vs. Mean Accuracy for {dataset}",
+            save_path=os.path.join(
+                output_dir,
+                plot_subdirs["line_plots"],
+                line_plot_types["accuracy"],
+                f"epsilon_vs_accuracy_{dataset}.png",
+            ),
+        )
+
         plot_density(
             df=df_dataset,
             x="learning_rate",
@@ -467,7 +535,7 @@ def main(
         plot_pairplot(
             df=df_dataset,
             variables=pairplot_vars,
-            hue=None,
+            hue="epsilon",
             title=f"Pair Plot of Hyperparameters, Epsilon, and Accuracy for {dataset}",
             save_path=os.path.join(
                 output_dir, plot_subdirs["pair_plots"], f"pairplot_{dataset}.png"
