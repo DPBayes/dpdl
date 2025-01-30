@@ -32,6 +32,8 @@ Load your Python environment, or use pre-installed environment on LUMI (see belo
 
 Run `python run.py`, `python run.py --help`, or `python run.py -h`.
 
+![](images/usage.png)
+
 ### Creating a Slurm script
 
 There is a tool for creating Slurm run scripts for LUMI
