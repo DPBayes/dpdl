@@ -1,8 +1,10 @@
 import csv
-import os
-import torch
-from .base_callback import Callback
 import logging
+import os
+
+import torch
+
+from .base_callback import Callback
 
 log = logging.getLogger(__name__)
 
@@ -134,6 +136,7 @@ class RecordCosineSimilarityCallback(Callback):
 
             log.info(f'Cosine similarity data saved at {file_path}')
 
+
 class RecordPerClassCosineSimilarityCallback(Callback):
     def __init__(self, log_dir: str, max_grad_norm: float):
         self.log_dir = log_dir
@@ -141,7 +144,7 @@ class RecordPerClassCosineSimilarityCallback(Callback):
 
     def on_train_start(self, trainer, *args, **kwargs):
         self.num_classes = trainer.datamodule.get_num_classes()
-        self.cosine_similarities_history = {cls: [] for cls in range(self.num_classes)}
+        self.cosine_similarities_history = []
 
     def on_train_batch_start(self, *args, **kwargs):
         # Reset accumulators for each logical batch
@@ -157,82 +160,69 @@ class RecordPerClassCosineSimilarityCallback(Callback):
             per_sample_gradients = [g.view(len(g), -1) for g in trainer.optimizer.grad_samples]
             flattened_gradients = torch.cat(per_sample_gradients, dim=-1)
 
-            # Make sure ememory is cleared
             del per_sample_gradients
             torch.cuda.empty_cache()
 
-            # Process gradients for each class
             for cls in range(self.num_classes):
                 mask = (class_labels == cls)
                 if mask.sum() == 0:
                     continue
 
-                # Select the gradients of current class
                 class_gradients = flattened_gradients[mask]
                 class_norms = class_gradients.norm(p=2, dim=1)
-
-                # Compute clipped gradients
                 class_clip_factors = (self.max_grad_norm / (class_norms + 1e-6)).clamp(max=1.0).unsqueeze(-1)
                 clipped_gradients = class_clip_factors * class_gradients
 
-                # Compute mean gradients for this class in this physical batch
                 mean_grad_unclipped = class_gradients.mean(dim=0)
                 mean_grad_clipped = clipped_gradients.mean(dim=0)
 
-                # Accumulate sums for means
                 self.sum_mean_grad_unclipped[cls] += mean_grad_unclipped
                 self.sum_mean_grad_clipped[cls] += mean_grad_clipped
                 self.num_batches[cls] += 1
 
-                # Make sure memory is cleared
                 del mask, class_gradients, class_norms, class_clip_factors, clipped_gradients
                 torch.cuda.empty_cache()
 
-            # Make sure memory is cleared
             del batch_data, class_labels, flattened_gradients
             torch.cuda.empty_cache()
 
     def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
         with torch.no_grad():
-            # Compute aggregate statistic for each class out of the running means
+            # Create a row for this step with one column per class.
+            row = {'Step': batch_idx}
+
             for cls in range(self.num_classes):
                 if self.num_batches[cls] == 0:
-                    continue
+                    # If no update for this class in the batch, record a placeholder
+                    row[f'Clipped_Mean_vs_Unclipped_Mean_Class{cls}'] = None
+                else:
+                    mean_grad_unclipped = self.sum_mean_grad_unclipped[cls] / self.num_batches[cls]
+                    mean_grad_clipped = self.sum_mean_grad_clipped[cls] / self.num_batches[cls]
 
-                # Compute aggregated means for this class
-                mean_grad_unclipped = self.sum_mean_grad_unclipped[cls] / self.num_batches[cls]
-                mean_grad_clipped = self.sum_mean_grad_clipped[cls] / self.num_batches[cls]
+                    cosine_similarity = torch.nn.functional.cosine_similarity(
+                        mean_grad_clipped, mean_grad_unclipped, dim=0, eps=1e-8
+                    ).item()
 
-                # Calculate cosine similarities from the aggregated means
-                cosine_similarity = torch.nn.functional.cosine_similarity(
-                    mean_grad_clipped, mean_grad_unclipped, dim=0, eps=1e-8
-                ).item()
+                    row[f'Clipped_Mean_vs_Unclipped_Mean_Class{cls}'] = cosine_similarity
 
-                # Store the cosine similarity results for this class
-                self.cosine_similarities_history[cls].append({
-                    'step': batch_idx,
-                    'clipped_mean_vs_unclipped_mean': cosine_similarity
-                })
+            self.cosine_similarities_history.append(row)
 
     def on_train_end(self, trainer, *args, **kwargs):
         if self._is_global_zero():
-            # Save cosine similarities for each class separately
-            for cls in range(self.num_classes):
-                file_path = os.path.join(self.log_dir, f'cosine_similarity_class_{cls}.csv')
-                self._save_to_csv(file_path, self.cosine_similarities_history[cls], f'Cosine Similarities (Class {cls})')
+            header = ['Step'] + [
+                f'Clipped_Mean_vs_Unclipped_Mean_Class{cls}' for cls in range(self.num_classes)
+            ]
 
-    def _save_to_csv(self, file_path, history, column_name):
+            file_path = os.path.join(self.log_dir, 'cosine-similarity-per-class.csv')
+            self._save_to_csv(file_path, self.cosine_similarities_history, header)
+
+    def _save_to_csv(self, file_path, history, header):
         with open(file_path, 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow([
-                'Step',
-                'Clipped_Mean_vs_Unclipped_Mean',
-            ])
+            writer.writerow(header)
 
             for record in history:
-                writer.writerow([
-                    record['step'],
-                    record['clipped_mean_vs_unclipped_mean'],
-                ])
+                writer.writerow([record.get(col, None) for col in header])
 
-        log.info(f'{column_name} data saved at {file_path}')
+        log.info(f'Cosine Similarities data saved at {file_path}')
+
