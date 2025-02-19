@@ -412,14 +412,23 @@ class DifferentiallyPrivateTrainer(Trainer):
         # track the logical batch loss here
         logical_batch_loss = 0
 
-        # flag to keep track of logical batches
+        # track the number of physical batches in a logical batch
+        n_physical_batch_in_logical = 0
+
+        # flag to indicate the beginning of a new logical batch
+        logical_batch_begin = True
+
+        # flag to indicate that a logical batch has been completed (set via the optimizer check)
         logical_batch_completed = False
 
         # to calculate the start/end of an epoch, we need the number
         # of steps in an epoch.
         steps_per_epoch = self._calculate_steps_per_epoch()
 
-        self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
+        # At the very start, call on_train_batch_start for the first logical batch.
+        if logical_batch_begin:
+            self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
+            logical_batch_begin = False
 
         # if 'total_steps' is set then Opacus will do the stepping for us, or
         # more precisely: the dataloader will have exactly 'total_steps' batches.
@@ -442,6 +451,8 @@ class DifferentiallyPrivateTrainer(Trainer):
                 if not self.optimizer._check_skip_next_step(False):
                     step += 1
                     logical_batch_completed = True
+                else:
+                    logical_batch_completed = False
 
                 # notify the callbacks of a physical batch start
                 self.callback_handler.call('on_train_physical_batch_start', self, batch_idx, batch)
@@ -454,10 +465,25 @@ class DifferentiallyPrivateTrainer(Trainer):
 
                 logical_batch_loss += batch_loss
 
+                # if the logical batch is complete, notify batch end and reset counters
                 if logical_batch_completed:
-                    self.callback_handler.call('on_train_batch_end', self, n_logical_batches, None, logical_batch_loss)
+                    self.callback_handler.call(
+                        'on_train_batch_end',
+                        self,
+                        n_logical_batches,
+                        None,
+                        logical_batch_loss / n_physical_batch_in_logical,  # mean of physical batch losses
+                    )
                     n_logical_batches += 1
                     logical_batch_loss = 0
+
+                    # the next iteration starts a new logical batch
+                    logical_batch_begin = True
+
+                # At the beginning of a new logical batch, call on_train_batch_start.
+                if logical_batch_begin:
+                    self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
+                    logical_batch_begin = False
 
                 # and next we check for epoch end
                 if (logical_batch_completed and step % steps_per_epoch == 0) or step == self.total_steps:
@@ -475,11 +501,15 @@ class DifferentiallyPrivateTrainer(Trainer):
                     if step < self.total_steps:
                         virtual_epoch += 1
                         self._handle_virtual_epoch_start(virtual_epoch)
+                        # Start a new logical batch for the new epoch.
                         self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
+                        logical_batch_begin = False
 
+                # Reset the logical batch completion flag for the next iteration.
                 logical_batch_completed = False
 
-        # assert step == self.total_steps, f'Mismatch in total steps count: Expected {self.total_steps} total steps, but stepped {step} times!'
+        if step != self.total_steps:
+            log.warn(f'Was going to step for {self.total_steps}, but stepped only {step} steps.')
 
     def fit_one_batch(self, batch_idx, batch):
         self.optimizer.zero_grad()
