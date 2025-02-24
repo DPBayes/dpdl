@@ -18,6 +18,8 @@ After the optimization is done, we will evaluate the resulting model on the test
 
 2. We will train the same model using each set of the hyperparameters found in the previous step and evaluate the model on the test test.
 
+We will also repeat the step 2 with the best hyperparameters from the [experiment 24](24-hypers-as-a-function-of-epsilon.md) grid. We refer to this method as "grid HPO".
+
 ## Models
 
 - **Vision Transformer (vit_base_patch16_224.augreg_in21k)**
