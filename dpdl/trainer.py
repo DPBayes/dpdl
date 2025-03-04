@@ -266,8 +266,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         poisson_sampling: bool = True,
         normalize_clipping: bool = False,
         secure_mode: bool = False,
-        target_epsilon: float = 0,
-        target_delta: float = 0,
+        target_epsilon: float = None,
+        target_delta: float = None,
+        noise_batch_ratio: float = None,
         seed: int = 0,
         **kwargs,
     ):
@@ -276,6 +277,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.clipping_mode = clipping_mode
         self.target_epsilon = target_epsilon
         self.target_delta = target_delta
+        self.noise_batch_ratio = noise_batch_ratio
         self.seed = seed
         self.poisson_sampling = poisson_sampling
         self.normalize_clipping = normalize_clipping
@@ -294,17 +296,26 @@ class DifferentiallyPrivateTrainer(Trainer):
         if self.target_epsilon == -1:
             return False
 
-        if not any([self.target_epsilon, self.target_delta]):
+        if not self.target_epsilon:
             return False
 
+        if self.target_epsilon or not self.target_delta:
+            raise ValueError('Parameter "target_epsilon" and "target_delta" not given.')
+
+        if self.noise_batch_ratio or not self.target_delta:
+            raise ValueError('Parameter "target_epsilon" and "target_delta" not given.')
+
+        if all([self.target_epsilon, self.noise_batch_ratio]):
+            raise ValueError('Parameters "target_epsilon" and "noise_batch_ratio" are exclusive.')
+
+        if all([self.target_epsilon, self.noise_multiplier]):
+            raise ValueError('Parameters "target_epsilon" and "noise_multiplier" are exlusive.')
+
+        if all([self.noise_batch_ratio, self.noise_multiplier]):
+            raise ValueError('Parameters "noise_batch_ratio" and "noise_multiplier" are exclusive.')
+
         if self.target_epsilon and not self.target_delta:
-            raise RuntimeError('Parameter "target_delta" present, but "target_epsilon" is missing.')
-
-        if self.target_delta and not self.target_epsilon:
-            raise RuntimeError('Parameter "target_delta" present, but "target_epsilon" is missing.')
-
-        if self.target_epsilon and self.noise_multiplier:
-            raise RuntimeError('Parameter "noise_multiplier" can not be used when target epsilon is given.')
+            raise ValueError('Parameter "target_epsilon" present, but "target_delta" is missing.')
 
         return True
 
@@ -325,6 +336,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # setup differential privacy for the model, optimize, and dataloader
         if self._has_target_privacy_params():
+            log.info(f'!!!!!!!!!!! WE HAVE PRIVACY PARAMS.')
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private_with_epsilon(
                 module=model,
                 optimizer=optimizer,
@@ -340,8 +352,14 @@ class DifferentiallyPrivateTrainer(Trainer):
                 total_steps=self.total_steps,
             )
         else:
+            log.info(f'!!!!!!!!!!! WE -DONT- HAVE PRIVACY PARAMS. NOISE MULTIPLIER {self.noise_multiplier}.')
             if self.target_epsilon == -1:
                 self.noise_multiplier = 0
+
+            if self.noise_batch_ratio:
+                log.info(f'!!!!!!!!!!! WE NOISE BATCH RATIO: {self.noise_batch_ratio}.')
+                self.noise_multiplier = self.noise_batch_ratio * self.datamodule.batch_size
+                log.info(f'!!!!!!!!!!! --> SETTING NOISE LEVEL TO {self.noise_multiplier}.')
 
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
                 module=model,
@@ -602,13 +620,16 @@ class TrainerFactory:
             return min(1e-5, 1 / N_prime)
 
         def _get_target_privacy_params(hyperparams):
+            N = len(datamodule.get_dataloader('train').dataset)
+            target_delta = _calculate_target_delta(N)
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Dataset size is {N}, setting target delta to: {target_delta}.')
+
             # are we given a target epsilon?
             if hyperparams.target_epsilon is not None:
-                N = len(datamodule.get_dataloader('train').dataset)
-                target_delta = _calculate_target_delta(N)
                 target_epsilon = hyperparams.target_epsilon
             else:
-                target_delta = None
                 target_epsilon = None
 
             return target_delta, target_epsilon
@@ -653,6 +674,7 @@ class TrainerFactory:
             max_grad_norm=hyperparams.max_grad_norm,
             target_epsilon=target_epsilon,
             target_delta=target_delta,
+            noise_batch_ratio=hyperparams.noise_batch_ratio,
             poisson_sampling=configuration.poisson_sampling,
             normalize_clipping=configuration.normalize_clipping,
             # config
