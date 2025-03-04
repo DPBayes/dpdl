@@ -339,6 +339,13 @@ def cli(
                 rich_help_panel='Opacus options',
             )
         ] = None,
+        noise_batch_ratio: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Noise-batch ratio (https://arxiv.org/abs/2501.18914)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
         target_hypers: Annotated[
             Optional[List[str]],
             typer.Option(
@@ -459,7 +466,10 @@ def cli(
 
             log_test_metrics(config_manager, test_metrics, test_loss)
             log_runtime(config_manager, start_time, end_time)
-            log_final_epsilon(config_manager, trainer)
+
+            # XXX: For some reason this currently time-outs or causes an OOM
+            # error depending on the noise-batch ratio.
+            #log_final_epsilon(config_manager, trainer)
 
             if save_fpath := config_manager.configuration.model_save_fpath:
                 log.info(f'Saving model to: "{save_fpath}"')
