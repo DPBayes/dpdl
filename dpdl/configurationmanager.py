@@ -17,6 +17,7 @@ class Hyperparameters(BaseModel):
     noise_multiplier: Optional[float]
     max_grad_norm: Optional[float]
     target_epsilon: Optional[float]
+    noise_batch_ratio: Optional[float]
     privacy: bool = True # Only used in __str__
 
     @root_validator(pre=True)
@@ -25,6 +26,33 @@ class Hyperparameters(BaseModel):
 
         if all([batch_size, sample_rate]):
             raise ValueError('Either batch_size or sample_rate must be set, but not both.')
+
+        return values
+
+    @root_validator(pre=True)
+    def check_target_epsilon_or_noise_multiplier(cls, values):
+        target_epsilon, noise_multiplier = values.get('target_epsilon'), values.get('noise_multiplier')
+
+        if all([target_epsilon, noise_multiplier]):
+            raise ValueError('Both, target_epsilon and noise_multiplier given.')
+
+        return values
+
+    @root_validator(pre=True)
+    def check_target_epsilon_or_noise_batch_ratio(cls, values):
+        target_epsilon, noise_batch_ratio = values.get('target_epsilon'), values.get('noise_batch_ratio')
+
+        if all([target_epsilon, noise_batch_ratio]):
+            raise ValueError('Both, target_epsilon and noise_batch_ratio given.')
+
+        return values
+
+    @root_validator(pre=True)
+    def check_noise_batch_ratio_or_noise_multiplier(cls, values):
+        noise_multiplier, noise_batch_ratio = values.get('noise_multiplier'), values.get('noise_batch_ratio')
+
+        if all([noise_multiplier, noise_batch_ratio]):
+            raise ValueError('Both, noise_multiplier and noise_batch_ratio given.')
 
         return values
 
@@ -42,6 +70,7 @@ class Hyperparameters(BaseModel):
                 ('Noise multiplier', self.noise_multiplier),
                 ('Max grad norn', self.max_grad_norm),
                 ('Target epsilon', self.target_epsilon),
+                ('Noise-batch ratio', self.noise_batch_ratio),
             ]
             hypers.extend(privacy_hypers)
 
@@ -229,13 +258,6 @@ class ConfigurationManager:
 
         self.configuration = Configuration(**cli_params)
         self.hyperparams = Hyperparameters(**cli_params)
-
-        # Opacus calculates noise multiplier is target epsilon is given
-        if self.hyperparams.target_epsilon is not None:
-            if torch.distributed.get_rank() == 0:
-                log.info('We have "target_epsilon" defined. Removing "noise_multiplier".')
-
-            self.hyperparams.noise_multiplier = None
 
         # remove the target hypers from hyperparams as they will be set in trials
         for target_hyper in self.configuration.target_hypers:
