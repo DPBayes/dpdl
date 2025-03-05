@@ -6,6 +6,7 @@ from ..configurationmanager import Configuration, Hyperparameters
 from ..utils import tensor_to_python_type
 from .base_callback import Callback
 from .body_head_gradient import RecordBodyAndHeadGradientNormsPerClassCallback
+from .checkpoint import CheckpointCallback
 from .cosine_similarity import (
     RecordCosineSimilarityCallback,
     RecordPerClassCosineSimilarityCallback,
@@ -90,5 +91,13 @@ class CallbackFactory:
 
         if configuration.record_loss_by_epoch:
             callbacks.append(RecordLossesByEpochCallback(log_dir=full_log_dir))
+
+        if configuration.checkpoint_step_interval:
+            callbacks.append(
+                CheckpointCallback(
+                    log_dir=full_log_dir,
+                    checkpoint_step_interval=configuration.checkpoint_step_interval,
+                )
+            )
 
         return callbacks
