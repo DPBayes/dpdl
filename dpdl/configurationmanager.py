@@ -128,6 +128,7 @@ class Configuration(BaseModel):
     weight_perturbation_level: float = 0
     record_loss_by_step: Optional[bool] = False
     record_loss_by_epoch: Optional[bool] = False
+    checkpoint_step_interval: Optional[int] = None
 
     class Config:
         # Fix Pydantic warning:
@@ -220,7 +221,8 @@ class Configuration(BaseModel):
             ('Record gradient norms', self.record_gradient_norms),
             ('Record train loss by step', self.record_loss_by_step),
             ('Record train/valid loss by epoch', self.record_loss_by_epoch),
-            ('Enable the debug callback output',self.verbose_callback),
+            ('Checkpoint every nth step', self.checkpoint_step_interval),
+            ('Enable callback debug logging', self.verbose_callback),
         ]
 
         if self.privacy:

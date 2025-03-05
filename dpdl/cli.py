@@ -122,6 +122,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = False,
+        checkpoint_step_interval: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Save model checkpoint on every nth step',
+                rich_help_panel='Training options',
+            )
+        ] = None,
         model_name: Annotated[
             str,
             typer.Option(
