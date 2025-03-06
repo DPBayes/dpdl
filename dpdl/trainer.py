@@ -183,8 +183,8 @@ class Trainer:
 
         return logical_batch_loss
 
-    def validate(self, epoch=None):
-        return self._evaluate('validation', epoch)
+    def validate(self, epoch=None, enable_callbacks=True):
+        return self._evaluate('validation', epoch, enable_callbacks)
 
     def test(self):
         return self._evaluate('test')
@@ -195,8 +195,12 @@ class Trainer:
     def get_datamodule(self):
         return self.datamodule
 
-    def _evaluate(self, mode, epoch=None):
-        self.callback_handler.call(f'on_{mode}_epoch_start', self, epoch)
+    def _evaluate(self, mode, epoch=None, enable_callbacks=True):
+        if enable_callbacks:
+            self.callback_handler.call(f'on_{mode}_epoch_start', self, epoch)
+
+        self._unwrap_model().valid_metrics.reset()
+
         self.model.eval()
         torch.set_grad_enabled(False)
 
@@ -208,23 +212,24 @@ class Trainer:
         dataloader = self.datamodule.get_dataloader(dataloader_name)
 
         for batch_idx, batch in enumerate(dataloader):
-            loss = self._evaluate_one_batch(mode, batch_idx, batch)
+            loss = self._evaluate_one_batch(mode, batch_idx, batch, enable_callbacks)
             evaluation_loss += loss
 
         evaluation_loss /= len(dataloader)
 
         metrics = self._unwrap_model().valid_metrics.compute()
-        self._unwrap_model().valid_metrics.reset()
 
         torch.set_grad_enabled(True)
         self.model.train()
 
-        self.callback_handler.call(f'on_{mode}_epoch_end', self, epoch, metrics)
+        if enable_callbacks:
+            self.callback_handler.call(f'on_{mode}_epoch_end', self, epoch, metrics)
 
         return evaluation_loss, metrics
 
-    def _evaluate_one_batch(self, mode, batch_idx, batch):
-        self.callback_handler.call(f'on_{mode}_batch_start', self, batch_idx, batch)
+    def _evaluate_one_batch(self, mode, batch_idx, batch, enable_callbacks):
+        if enable_callbacks:
+            self.callback_handler.call(f'on_{mode}_batch_start', self, batch_idx, batch)
 
         X, y = batch
         X = X.cuda(non_blocking=True)
@@ -235,9 +240,12 @@ class Trainer:
         loss = loss.item()
 
         preds = torch.argmax(logits, dim=1)
+
         self._unwrap_model().valid_metrics.update(preds, y)
 
-        self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss)
+        if enable_callbacks:
+            self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss)
+
         return loss
 
     def _unwrap_model(self):
