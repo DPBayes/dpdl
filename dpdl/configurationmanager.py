@@ -129,6 +129,7 @@ class Configuration(BaseModel):
     record_loss_by_step: Optional[bool] = False
     record_loss_by_epoch: Optional[bool] = False
     checkpoint_step_interval: Optional[int] = None
+    disable_epsilon_logging: Optional[bool] = False
 
     class Config:
         # Fix Pydantic warning:
