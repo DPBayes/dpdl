@@ -262,6 +262,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_gradient_norms_quantiles: Annotated[
+            Optional[List[int]],
+            typer.Option(
+                help='Quantiles for gradient norms',
+                rich_help_panel='Logging options',
+            )
+        ] = [25, 50, 75],
         record_loss_by_step: Annotated[
             Optional[bool],
             typer.Option(
