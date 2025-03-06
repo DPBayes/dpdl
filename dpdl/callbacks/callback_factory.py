@@ -48,7 +48,7 @@ class CallbackFactory:
 
             callbacks.append(
                 RecordBodyAndHeadGradientNormsPerClassCallback(
-                    log_dir=full_log_dir, max_grad_norm=max_grad_norm
+                    log_dir=full_log_dir, max_grad_norm=max_grad_norm, quantiles=configuration.quantiles
                 )
             )
 

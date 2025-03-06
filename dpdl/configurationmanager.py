@@ -94,6 +94,7 @@ class Configuration(BaseModel):
     test_size: Optional[float] = 0.1
     model_save_fpath: Optional[str] = None
     record_gradient_norms: Optional[bool] = False
+    record_gradient_norms_quantiles: Optional[List[int]] = [25, 50, 75]
     verbose_callback: Optional[bool] = False
     cache_dataset_transforms: Optional[bool] = False
     weight_perturbation_level: float = 0
@@ -189,6 +190,7 @@ class Configuration(BaseModel):
             ('Evaluation mode', self.evaluation_mode),
             ('Model save file path', self.model_save_fpath),
             ('Record gradient norms', self.record_gradient_norms),
+            ('Record gradient norms quantiles', self.record_gradient_norms_quantiles),
             ('Record train loss by step', self.record_loss_by_step),
             ('Record train/valid loss by epoch', self.record_loss_by_epoch),
             ('Enable the debug callback output',self.verbose_callback),
