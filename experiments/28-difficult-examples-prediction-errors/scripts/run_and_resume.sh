@@ -21,7 +21,7 @@ DATASETS=(
 )
 EPOCHS=40
 EPSILONS="1 2 4 8"
-MAX_GRAD_NORMS="1e-4 1e-2 1 10"
+MAX_GRAD_NORMS="0.0001 0.01 1 10"
 OPTUNA_CONFIG="conf/optuna_hypers-difficult-examples-prediction-errors.conf"
 
 declare -A DATASET_LABEL_FIELDS
@@ -129,7 +129,7 @@ do
                 fi
 
                 # Submit the job
-                sbatch -J $EXPERIMENT_NAME run8-test.sh run.py optimize \
+                sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                     --num-workers 7 \
                     --model-name $model \
                     --dataset-name $dataset \
@@ -160,8 +160,6 @@ do
                     "$SAVE_MODEL $MODEL_SAVE_PATH"
 
                 SBATCH_EXIT_CODE=$?
-
-                exit
 
                 if [ $SBATCH_EXIT_CODE -eq 0 ]; then
                     echo "Job $EXPERIMENT_NAME submitted successfully."
