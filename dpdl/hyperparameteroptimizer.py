@@ -52,6 +52,12 @@ class HyperparameterOptimizer:
         record_gradient_norms_state = config_manager.configuration.record_gradient_norms
         config_manager.configuration.record_gradient_norms = False
 
+        # same with loss record, only for the final model
+        record_loss_by_step_state = config_manager.configuration.record_loss_by_step
+        record_loss_by_epoch_state = config_manager.configuration.record_loss_by_epoch
+        config_manager.configuration.record_loss_by_step = False
+        config_manager.configuration.record_loss_by_epoch = False
+
         configuration = config_manager.configuration
 
         # the targeted hypers from command line
@@ -191,9 +197,11 @@ class HyperparameterOptimizer:
         # and finally, let's unpack the best params from the list
         best_params = broadcast_objects[0]
 
-        # restore the state of gradient norms recording. if it was enabled, we want
+        # restore the state of gradient/loss recording. if it was enabled, we want
         # to keep it enabled for the final training round
         config_manager.configuration.record_gradient_norms = record_gradient_norms_state
+        config_manager.configuration.record_loss_by_step = record_loss_by_step_state
+        config_manager.configuration.record_loss_by_epoch = record_loss_by_epoch_state
 
         # now we can train/evaluate for the final time with best params
         metrics = HyperparameterOptimizer._final_evaluation_round(best_params, config_manager)
