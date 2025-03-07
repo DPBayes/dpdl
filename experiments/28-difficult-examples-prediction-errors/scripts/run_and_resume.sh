@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Base configurations
 EXPERIMENT_BASE="28-difficult-examples-prediction-errors"
-LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
+LOG_DIR="/scratch/$PROJECT/experiments/$EXPERIMENT_BASE/data"
 mkdir -p $LOG_DIR
 
 # We keep track of submitted jobs here
@@ -44,6 +44,8 @@ NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
 OPTUNA_JOURNAL="$LOG_DIR/optuna.journal"
 PEFT="--peft film"
+SAVE_MODEL="--model-save-path"
+RECORD="--record-gradient-norms --record-loss-by-step --record-loss-by-epoch"
 
 # Function to check if a job has been submitted
 function is_job_submitted() {
@@ -153,7 +155,8 @@ do
                     $OVERWRITE_EXPERIMENT \
                     $OPTUNA_RESUME \
                     --optuna-journal $OPTUNA_JOURNAL \
-                    --model-save-path $MODEL_SAVE_PATH
+                    $RECORD \
+                    "$SAVE_MODEL $MODEL_SAVE_PATH"
 
                 SBATCH_EXIT_CODE=$?
 
