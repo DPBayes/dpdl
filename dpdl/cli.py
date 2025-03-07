@@ -290,6 +290,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        disable_epsilon_logging: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Disable logging of final epsilon (only needed if this causes problems with e.g. low noise multiplier)',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         noise_multiplier: Annotated[
             Optional[float],
             typer.Option(
@@ -474,9 +481,10 @@ def cli(
             log_test_metrics(config_manager, test_metrics, test_loss)
             log_runtime(config_manager, start_time, end_time)
 
-            # XXX: For some reason this currently time-outs or causes an OOM
-            # error depending on the noise-batch ratio.
-            #log_final_epsilon(config_manager, trainer)
+            # We need to have an option to disable this, as it might fail due to an OOM
+            # error if using very small noise multipliers.
+            if not config_manager.configuration.disable_epsilon_logging:
+                log_final_epsilon(config_manager, trainer)
 
             if save_fpath := config_manager.configuration.model_save_fpath:
                 log.info(f'Saving model to: "{save_fpath}"')
