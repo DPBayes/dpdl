@@ -44,7 +44,7 @@ NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
 OPTUNA_JOURNAL="$LOG_DIR/optuna.journal"
 PEFT="--peft film"
-SAVE_MODEL="--model-save-path"
+SAVE_MODEL="--model-save-fpath"
 RECORD="--record-gradient-norms --record-loss-by-step --record-loss-by-epoch"
 
 # Function to check if a job has been submitted
@@ -75,6 +75,7 @@ do
 
         # Remove possible prefix from the dataset name
         clean_dataset_name=${dataset#dpdl-benchmark/}
+        clean_dataset_name=${dataset#zalando-datasets/}
 
         for epsilon in $EPSILONS
         do
@@ -82,7 +83,7 @@ do
             do
                 rounded_epsilon=$(printf "%.4f" $epsilon)
 
-                EXPERIMENT_NAME="${model}_${clean_dataset_name}_Subset${subset_size}_Epsilon${rounded_epsilon}"
+                EXPERIMENT_NAME="${model}_${clean_dataset_name}_Subset${subset_size}_Epsilon${rounded_epsilon}_MaxGradNorm${max_grad_norm}"
                 EXPERIMENT_DIR="$LOG_DIR/$EXPERIMENT_NAME"
                 mkdir -p "$EXPERIMENT_DIR"
 
@@ -128,7 +129,7 @@ do
                 fi
 
                 # Submit the job
-                sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
+                sbatch -J $EXPERIMENT_NAME run8-test.sh run.py optimize \
                     --num-workers 7 \
                     --model-name $model \
                     --dataset-name $dataset \
@@ -159,6 +160,8 @@ do
                     "$SAVE_MODEL $MODEL_SAVE_PATH"
 
                 SBATCH_EXIT_CODE=$?
+
+                exit
 
                 if [ $SBATCH_EXIT_CODE -eq 0 ]; then
                     echo "Job $EXPERIMENT_NAME submitted successfully."
