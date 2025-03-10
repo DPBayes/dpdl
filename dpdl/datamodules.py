@@ -66,6 +66,8 @@ class DataModule:
         self._fairness_imbalance_class = fairness_imbalance_class
         self._cache_transforms = cache_transforms
 
+        log.info(f"   !!! self._fairness_imbalance_class: {self._fairness_imbalance_class}")
+
         self._dataloaders = {
             'train': None,
             'valid': None,
@@ -156,7 +158,7 @@ class DataModule:
 
         # Imbalance before subsetting. If done in other order, we can get into
         # trouble with e.g. classes with zero examples
-        # Fairness-style imbalance
+        # exponential distribution, not Fairness-style imbalance
         if self._imbalance_factor and not self._fairness_imbalance_class:
             if torch.distributed.get_rank() == 0:
                 log.info('Creating imbalanced train set..')
@@ -191,23 +193,6 @@ class DataModule:
                 log.info(
                     f"We will not create fairness imbalanced test sets. Size of test set: {len(self.test_dataset)}"
                 )
-
-        # Expotentially imbalanced dataset
-        if self._imbalance_factor:
-            if torch.distributed.get_rank() == 0:
-                log.info('Creating imbalanced train set..')
-
-            self.train_dataset = self._get_imbalanced_subset(self.train_dataset)
-
-            if torch.distributed.get_rank() == 0:
-                log.info('Creating imbalanced validation set..')
-
-            self.val_dataset = self._get_imbalanced_subset(self.val_dataset)
-
-            if torch.distributed.get_rank() == 0:
-                log.info('Creating imbalanced test set..')
-
-            self.test_dataset = self._get_imbalanced_subset(self.test_dataset)
 
         # if subset of dataset is requested, we'll do stratified sampling
         if self.subset_size is not None and self.subset_size < 1.0:
@@ -858,6 +843,7 @@ class DataModuleFactory:
             label_field=configuration.dataset_label_field,
             max_test_examples=configuration.max_test_examples,
             imbalance_factor=configuration.imbalance_factor,
+            fairness_imbalance_class=configuration.fairness_imbalance_class,
             cache_transforms=configuration.cache_dataset_transforms,
         )
 
