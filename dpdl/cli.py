@@ -227,6 +227,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        fairness_imbalance_class: Annotated[
+            Optional[int],
+            typer.Option(
+                help="Class to imbalance for fairness-style experiments, i.e., only one class is subsampled",
+                rich_help_panel="Dataset options",
+            )
+        ] = None,
         max_test_examples: Annotated[
             Optional[int],
             typer.Option(
