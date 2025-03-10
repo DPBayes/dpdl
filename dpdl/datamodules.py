@@ -66,8 +66,6 @@ class DataModule:
         self._fairness_imbalance_class = fairness_imbalance_class
         self._cache_transforms = cache_transforms
 
-        log.info(f"   !!! self._fairness_imbalance_class: {self._fairness_imbalance_class}")
-
         self._dataloaders = {
             'train': None,
             'valid': None,
