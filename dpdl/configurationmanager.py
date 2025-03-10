@@ -239,6 +239,7 @@ class Configuration(BaseModel):
             ('Record train/valid loss by epoch', self.record_loss_by_epoch),
             ('Checkpoint every nth step', self.checkpoint_step_interval),
             ('Enable callback debug logging', self.verbose_callback),
+            ('Fairness-style subsampling class', self.fairness_imbalance_class)
         ]
 
         if self.privacy:
