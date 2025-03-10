@@ -119,6 +119,7 @@ class Configuration(BaseModel):
     dataset_label_field: Optional[str] = None
     max_test_examples: Optional[int] = None
     imbalance_factor: Optional[float] = None
+    fairness_imbalance_class: Optional[int] = None
     validation_size: Optional[float] = 0.1
     test_size: Optional[float] = 0.1
     model_save_fpath: Optional[str] = None
@@ -136,6 +137,18 @@ class Configuration(BaseModel):
         # Fix Pydantic warning:
         # UserWarning: Field "model_name" has conflict with protected namespace "model_".
         protected_namespaces = ()
+
+    @root_validator(pre=True)
+    def check_fairness_imbalance_factor(cls, values):
+        imbalance_factor = values.get('imbalance_factor')
+        fairness_imbalance_class = values.get('fairness_imbalance_class')
+
+        if fairness_imbalance_class and not imbalance_factor:
+            raise ValueError(
+                'Parameter "imbalance_factor" is required when using "fairness_imbalance_class".'
+            )
+
+        return values
 
     @root_validator(pre=True)
     def check_record_loss_by_step(cls, values):
