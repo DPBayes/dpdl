@@ -307,10 +307,10 @@ class DifferentiallyPrivateTrainer(Trainer):
         if not self.target_epsilon:
             return False
 
-        if self.target_epsilon or not self.target_delta:
+        if self.target_epsilon and not self.target_delta:
             raise ValueError('Parameter "target_epsilon" and "target_delta" not given.')
 
-        if self.noise_batch_ratio or not self.target_delta:
+        if self.noise_batch_ratio and not self.target_delta:
             raise ValueError('Parameter "target_epsilon" and "target_delta" not given.')
 
         if all([self.target_epsilon, self.noise_batch_ratio]):
