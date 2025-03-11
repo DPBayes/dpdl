@@ -2,12 +2,12 @@ import logging
 import os
 import torch
 import json
+import torchmetrics
 
 from .base_callback import Callback
 from ..utils import tensor_to_python_type
 
 log = logging.getLogger(__name__)
-
 
 class CheckpointCallback(Callback):
     def __init__(self, log_dir: str, checkpoint_step_interval: int):
@@ -18,10 +18,15 @@ class CheckpointCallback(Callback):
 
         os.makedirs(self.checkpoints_dir, exist_ok=True)
 
+        # Initialize mean metric for accumulating train loss over interval
+        self.interval_loss = torchmetrics.aggregation.MeanMetric().cuda()
+
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, **kwargs):
         if not self._is_global_zero():
             return
 
+        # Update loss aggregator with current batch loss
+        self.interval_loss.update(loss)
         self.global_step += 1
 
         if self.global_step % self.checkpoint_step_interval == 0:
@@ -34,8 +39,16 @@ class CheckpointCallback(Callback):
             metrics = trainer._unwrap_model().valid_metrics.compute()
             trainer._unwrap_model().valid_metrics.reset()
 
+            # Compute the average train loss since the last checkpoint
+            avg_train_loss = self.interval_loss.compute().item()
+
+            # Reset metric
+            self.interval_loss.reset()
+
+            # Add the average train loss to the metrics dictionary
             metrics = {
                 'loss': loss,
+                'avg_train_loss_since_last_checkpoint': avg_train_loss,
                 **metrics,
             }
 
@@ -55,9 +68,16 @@ class CheckpointCallback(Callback):
             metrics = trainer._unwrap_model().valid_metrics.compute()
             trainer._unwrap_model().valid_metrics.reset()
 
+            # Compute avg loss since last checkpoint
+            avg_train_loss = self.interval_loss.compute().item()
+            self.interval_loss.reset()
+
+            metrics['avg_train_loss_since_last_checkpoint'] = avg_train_loss
+
             metrics_path = os.path.join(
                 self.checkpoints_dir, f'final_checkpoint_{self.global_step}_metrics.json'
             )
+
             self.save_metrics(metrics, metrics_path)
 
     def save_checkpoint(self, trainer, checkpoint_path: str):
