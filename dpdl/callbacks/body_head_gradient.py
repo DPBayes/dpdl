@@ -87,6 +87,7 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
                     body_q = np.percentile(self.body_norms_accumulator[cls], q)
                     row_data[f'Class_{cls}_Body_Q{q}_Norm'] = body_q
             else:
+                body_q = 0
                 body_mean_norm = 0.0
 
             if self.head_norms_accumulator[cls]:
@@ -95,6 +96,7 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
                     head_q = np.percentile(self.head_norms_accumulator[cls], q)
                     row_data[f'Class_{cls}_Head_Q{q}_Norm'] = head_q
             else:
+                body_q = 0
                 head_mean_norm = 0.0
 
             # Store the calculated norms
