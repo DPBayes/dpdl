@@ -260,17 +260,18 @@ class HyperparameterOptimizer:
         # now all the ranks have access to the metrics
         loss, metrics = broadcast_objects
 
-        if metrics and torch.distributed.get_rank() == 0:
-            log.info('Final metrics:')
-            for key, value in metrics.items():
-                log.info(f' - {key}: {value}.')
+        if torch.distributed.get_rank() == 0:
+            if metrics:
+                log.info('Final metrics:')
+                for key, value in metrics.items():
+                    log.info(f' - {key}: {value}.')
 
-        log_final_epsilon(config_manager, trainer)
+            log_final_epsilon(config_manager, trainer)
 
-        # save model if requested
-        if save_fpath := config_manager.configuration.model_save_fpath:
-            log.info(f'Saving model to: "{save_fpath}"')
-            trainer.save_model(save_fpath)
+            # save model if requested
+            if save_fpath := config_manager.configuration.model_save_fpath:
+                log.info(f'Saving model to: "{save_fpath}"')
+                trainer.save_model(save_fpath)
 
         return metrics
 
