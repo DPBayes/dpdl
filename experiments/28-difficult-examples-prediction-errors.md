@@ -18,7 +18,7 @@ After this initial exploration is done, we will consider next steps such as intr
 
 ## Methodology
 
-We will fix the epochs at 40, clipping bound at { 1e-4, 1e-2, 1, 10 }, and optimize the other hyperparameters (batch size, learning rate) using 20 trials of Bayesian optimization.
+We will fix the epochs at 40, clipping bound at { 1e-15, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10 }, and optimize the other hyperparameters (batch size, learning rate) using 20 trials of Bayesian optimization.
 
 We will conduct experiment with ε = { 1, 2, 4, 8 }.
 
