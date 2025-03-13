@@ -1,11 +1,11 @@
+import json
 import logging
 import os
-import torch
-import json
+
 import torchmetrics
 
-from .base_callback import Callback
 from ..utils import tensor_to_python_type
+from .base_callback import Callback
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class CheckpointCallback(Callback):
         os.makedirs(self.checkpoints_dir, exist_ok=True)
 
         # Initialize mean metric for accumulating train loss over interval
-        self.interval_loss = torchmetrics.aggregation.MeanMetric().cuda()
+        self.interval_loss = torchmetrics.aggregation.MeanMetric(sync_on_compute=False).cuda()
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, **kwargs):
         if not self._is_global_zero():
@@ -41,8 +41,6 @@ class CheckpointCallback(Callback):
 
             # Compute the average train loss since the last checkpoint
             avg_train_loss = self.interval_loss.compute().item()
-
-            # Reset metric
             self.interval_loss.reset()
 
             # Add the average train loss to the metrics dictionary
@@ -58,27 +56,29 @@ class CheckpointCallback(Callback):
             self.save_metrics(metrics, metrics_path)
 
     def on_train_end(self, trainer, *args, **kwargs):
-        if self._is_global_zero():
-            final_checkpoint_path = os.path.join(
-                self.checkpoints_dir, 'final_checkpoint.pt'
-            )
-            self.save_checkpoint(trainer, final_checkpoint_path)
+        if not self._is_global_zero():
+            return
 
-            trainer.validate(enable_callbacks=False)
-            metrics = trainer._unwrap_model().valid_metrics.compute()
-            trainer._unwrap_model().valid_metrics.reset()
+        final_checkpoint_path = os.path.join(
+            self.checkpoints_dir, f'final_checkpoint_step_{self.global_step}.pt'
+        )
+        self.save_checkpoint(trainer, final_checkpoint_path)
 
-            # Compute avg loss since last checkpoint
-            avg_train_loss = self.interval_loss.compute().item()
-            self.interval_loss.reset()
+        trainer.validate(enable_callbacks=False)
+        metrics = trainer._unwrap_model().valid_metrics.compute()
+        trainer._unwrap_model().valid_metrics.reset()
 
-            metrics['avg_train_loss_since_last_checkpoint'] = avg_train_loss
+        # Compute avg loss since last checkpoint
+        avg_train_loss = self.interval_loss.compute().item()
+        self.interval_loss.reset()
 
-            metrics_path = os.path.join(
-                self.checkpoints_dir, f'final_checkpoint_{self.global_step}_metrics.json'
-            )
+        metrics['avg_train_loss_since_last_checkpoint'] = avg_train_loss
 
-            self.save_metrics(metrics, metrics_path)
+        metrics_path = os.path.join(
+            self.checkpoints_dir, f'final_checkpoint_step_{self.global_step}_metrics.json'
+        )
+
+        self.save_metrics(metrics, metrics_path)
 
     def save_checkpoint(self, trainer, checkpoint_path: str):
         trainer.save_model(checkpoint_path)
