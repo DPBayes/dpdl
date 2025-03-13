@@ -206,9 +206,9 @@ class HyperparameterOptimizer:
         # now we can train/evaluate for the final time with best params
         metrics = HyperparameterOptimizer._final_evaluation_round(best_params, config_manager)
 
-        if torch.distributed.get_rank() == 0:
-            # save this study to experiment directory
-            save_study(config_manager, study, metrics)
+        #if torch.distributed.get_rank() == 0:
+        #    # save this study to experiment directory
+        #    save_study(config_manager, study, metrics)
 
     @staticmethod
     def _final_evaluation_round(best_params, config_manager):
@@ -225,8 +225,8 @@ class HyperparameterOptimizer:
         # enable evaluation mode (train on train+valid and validate on test)
         config_manager.configuration.evaluation_mode = True
 
-        # no need to validate
-        config_manager.configuration.validation_frequency = 0
+        # we want to validate during the final evaluation round
+        config_manager.configuration.validation_frequency = 1
 
         # construct the final model
         trainer = TrainerFactory.get_trainer(config_manager)
