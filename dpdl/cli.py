@@ -248,6 +248,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = False,
+        split_seed: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Random seed for creating dataset subsets',
+                rich_help_panel='Dataset options',
+            )
+        ] = 42,
         log_dir: Annotated[
             str,
             typer.Option(
