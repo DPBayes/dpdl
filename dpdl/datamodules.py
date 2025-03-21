@@ -275,14 +275,14 @@ class DataModule:
             # Split the training dataset into training and validation
             self.train_dataset, val_and_test_split = self._dataset_splits['train'].train_test_split(
                 test_size=(self.test_size + self.val_size),
-                seed=self.split_seed,
+                seed=self.seed,
                 shuffle=True,
                 stratify_by_column=self._label_field,
             ).values()
 
             self.val_dataset, self.test_dataset = val_and_test_split.train_test_split(
                 test_size=0.5,
-                seed=self.split_seed,
+                seed=self.seed,
                 shuffle=True,
                 stratify_by_column=self._label_field,
             ).values()
@@ -292,7 +292,7 @@ class DataModule:
             # Split the training dataset into training and validation
             self.train_dataset, self.val_dataset = self._dataset_splits['train'].train_test_split(
                 test_size=self.test_size,
-                seed=self.split_seed,
+                seed=self.seed,
                 shuffle=True,
                 stratify_by_column=self._label_field,
             ).values()
@@ -462,6 +462,10 @@ class DataModule:
         self.val_sampler, self.test_sampler = None, None
 
     def _get_stratified_subset(self, dataset):
+        # Split the dataset using `split_seed`
+        g = torch.Generator()
+        g.manual_seed(self.split_seed)
+
         # Convert labels to a tensor
         labels = torch.tensor(dataset[self._label_field])
 
@@ -482,13 +486,13 @@ class DataModule:
             num_samples_per_class = max(1, num_samples_per_class)
 
             # Randomly choose the required number of indices for the current label
-            chosen_indices = torch.randperm(len(label_indices))[:num_samples_per_class]
+            chosen_indices = torch.randperm(len(label_indices), generator=g)[:num_samples_per_class]
 
             # Add the chosen indices to the sampled_indices list
             sampled_indices.extend(label_indices[chosen_indices].tolist())
 
         # Shuffle the sampled indices for randomization
-        sampled_indices = torch.tensor(sampled_indices)[torch.randperm(len(sampled_indices))].tolist()
+        sampled_indices = torch.tensor(sampled_indices)[torch.randperm(len(sampled_indices), generator=g)].tolist()
 
         # Return the selected subset of the dataset
         return dataset.select(sampled_indices)
@@ -534,29 +538,29 @@ class DataModule:
         num_classes = len(label_counts)
         max_count = max(label_counts.values())
 
-        # Calculate the number of samples per class based on the exponential distribution
+        # Calculate the number of samples per class based on an exponential distribution
         img_num_per_cls = [
             max(1, int(max_count * (self._imbalance_factor ** (cls_idx / (num_classes - 1.0)))))
             for cls_idx in range(num_classes)
         ]
 
-        # Get list of all class indices
-        class_indices = list(range(num_classes))
+        # Create a torch generator for reproducibility
+        g = torch.Generator()
+        g.manual_seed(self.split_seed)
 
         # Collect indices for each class
         class_indices = {cls: [] for cls in range(num_classes)}
         for idx, sample in enumerate(dataset):
             class_indices[sample[self._label_field]].append(idx)
 
-        # Sample indices based on the class indices and calculated number of samples per class
+        # Sample indices for each class using torch.randperm
         sampled_indices = []
-        for cls_idx, original_cls_idx in enumerate(class_indices):
-            indices = class_indices[original_cls_idx]
-            sampled_indices.extend(
-                np.random.choice(indices, img_num_per_cls[cls_idx], replace=False)
-            )
+        for cls, indices in class_indices.items():
+            indices_tensor = torch.tensor(indices)
+            perm = torch.randperm(len(indices_tensor), generator=g)
+            selected = indices_tensor[perm[:img_num_per_cls[cls]]]
+            sampled_indices.extend(selected.tolist())
 
-        # Create a new dataset with the sampled indices
         sampled_dataset = dataset.select(sampled_indices)
 
         if torch.distributed.get_rank() == 0:
@@ -570,54 +574,47 @@ class DataModule:
         Creates an imbalanced subset with one class having less examples than the others.
         """
         if not self._fairness_imbalance_class:
-            raise ValueError(
-                "Fairness imbalance class must be provided for creating an imbalanced dataset."
-            )
+            raise ValueError('Fairness imbalance class must be provided for creating an imbalanced dataset.')
 
         if self._imbalance_factor == 1.0:
-            raise ValueError(
-                "Imbalance factor must be less than 1.0 for creating a imbalanced dataset."
-            )
+            raise ValueError('Imbalance factor must be less than 1.0 for creating an imbalanced dataset.')
 
-        label_counts = Counter(dataset[self._label_field])
-        label_counts = list(label_counts.values())
+        # Get label counts as a list of counts
+        label_counts = list(Counter(dataset[self._label_field]).values())
         num_classes = len(label_counts)
 
+        # Determine number of samples per class: for the fairness-imbalanced class, reduce the count
         img_num_per_cls = [
-            (
-                label_counts[i]
-                if i != self._fairness_imbalance_class
-                else int(label_counts[i] * self._imbalance_factor)
-            )
+            label_counts[i] if i != self._fairness_imbalance_class else int(label_counts[i] * self._imbalance_factor)
             for i in range(num_classes)
         ]
 
+        # Create a torch generator for reproducibility
+        g = torch.Generator()
+        g.manual_seed(self.split_seed)
+
+        # Collect indices for each class
         class_indices = {cls: [] for cls in range(num_classes)}
         for idx, sample in enumerate(dataset):
             class_indices[sample[self._label_field]].append(idx)
 
+        # Sample indices for each class using torch.randperm
         sampled_indices = []
-        for cls_idx, original_cls_idx in enumerate(class_indices):
-            indices = class_indices[original_cls_idx]
-            num_samples = img_num_per_cls[cls_idx]
-
+        for cls, indices in class_indices.items():
+            num_samples = img_num_per_cls[cls]
             if num_samples > len(indices):
-                log.warning(
-                    f"Requested {num_samples} samples for class {original_cls_idx}, but only {len(indices)} available. Adjusting to {len(indices)}."
-                )
+                log.warning(f'Requested {num_samples} samples for class {cls}, but only {len(indices)} available. Adjusting to {len(indices)}.')
                 num_samples = len(indices)
-
-            sampled_indices.extend(
-                np.random.choice(indices, num_samples, replace=False)
-            )
+            indices_tensor = torch.tensor(indices)
+            perm = torch.randperm(len(indices_tensor), generator=g)
+            selected = indices_tensor[perm[:num_samples]]
+            sampled_indices.extend(selected.tolist())
 
         sampled_dataset = dataset.select(sampled_indices)
 
         if torch.distributed.get_rank() == 0:
             distribution = Counter(sampled_dataset[self._label_field])
-            log.info(
-                f"Created fairness imbalanced dataset (size: {len(sampled_dataset)}) with class distribution: {sorted(distribution.items())}"
-            )
+            log.info(f'Created fairness imbalanced dataset (size: {len(sampled_dataset)}) with class distribution: {sorted(distribution.items())}')
 
         return sampled_dataset
 
@@ -843,6 +840,7 @@ class DataModuleFactory:
             imbalance_factor=configuration.imbalance_factor,
             fairness_imbalance_class=configuration.fairness_imbalance_class,
             cache_transforms=configuration.cache_dataset_transforms,
+            split_seed=configuration.split_seed,
         )
 
         return datamodule

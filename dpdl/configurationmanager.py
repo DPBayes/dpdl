@@ -132,6 +132,7 @@ class Configuration(BaseModel):
     record_loss_by_epoch: Optional[bool] = False
     checkpoint_step_interval: Optional[int] = None
     disable_epsilon_logging: Optional[bool] = False
+    split_seed: Optional[int] = 42
 
     class Config:
         # Fix Pydantic warning:
@@ -239,7 +240,8 @@ class Configuration(BaseModel):
             ('Record train/valid loss by epoch', self.record_loss_by_epoch),
             ('Checkpoint every nth step', self.checkpoint_step_interval),
             ('Enable callback debug logging', self.verbose_callback),
-            ('Fairness-style subsampling class', self.fairness_imbalance_class)
+            ('Fairness-style subsampling class', self.fairness_imbalance_class),
+            ('Random seed for creating dataset subsets', self.split_seed),
         ]
 
         if self.privacy:
