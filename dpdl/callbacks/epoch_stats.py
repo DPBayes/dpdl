@@ -67,6 +67,7 @@ class RecordEpochStatsCallback(Callback):
 
             os.makedirs("cb_history", exist_ok=True)
             clipbound = getattr(trainer.optimizer, "clipbound", None)
+            log.info(f" - clipbound: {clipbound}")
 
             row_data = {"epoch": epoch + 1, "clipbound": _convert_tensor(clipbound)}
             for k, v in metrics.items():

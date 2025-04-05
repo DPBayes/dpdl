@@ -751,8 +751,10 @@ class ImageDataModule(DataModule):
                     return x.unsqueeze(0)  # Add a channel dimension to make it (1, H, W)
                 elif len(x.shape) == 3 and x.shape[0] == 1:
                     return x  # Already grayscale with (1, H, W) shape
+                    #return x.repeat(3, 1, 1)
                 elif len(x.shape) == 3 and x.shape[0] == 3:
                     return x.mean(dim=0, keepdim=True)  # Convert RGB to grayscale with (1, H, W) shape
+                    #return x
                 else:
                     raise ValueError('Input tensor is not a valid image tensor.')
             return x

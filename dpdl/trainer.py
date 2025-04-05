@@ -464,6 +464,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 self.callback_handler.call('on_train_physical_batch_end', self, batch_idx, batch, batch_loss)
 
                 logical_batch_loss += batch_loss
+                n_physical_batch_in_logical += 1
 
                 # if the logical batch is complete, notify batch end and reset counters
                 if logical_batch_completed:
@@ -476,6 +477,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                     )
                     n_logical_batches += 1
                     logical_batch_loss = 0
+                    n_physical_batch_in_logical = 0
 
                     # the next iteration starts a new logical batch
                     logical_batch_begin = True

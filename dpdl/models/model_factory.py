@@ -2,6 +2,8 @@ import logging
 import timm
 import torch
 
+import torch.nn as nn
+
 from .model_base import ModelBase
 from .timm_model import TimmModel
 from .wide_resnet import WideResNet
@@ -11,6 +13,8 @@ from .logistic_model import LogisticRegression
 
 from dpdl.configurationmanager import Configuration, Hyperparameters
 from dpdl.peft import PeftFactory
+
+from opacus.validators import ModuleValidator
 
 log = logging.getLogger(__name__)
 
@@ -72,7 +76,8 @@ class ModelFactory:
             )
 
             # Resolve data config and create transforms
-            model_config = timm.data.resolve_data_config({}, model=model_instance.model)
+            #model_config = timm.data.resolve_data_config({}, model=model_instance.model)
+            model_config = {'input_size': (1, 224, 224),'mean': [0.5], 'std': [0.5]}
             transforms = timm.data.transforms_factory.create_transform(**model_config)
 
         # Wrap the instantiated model with ModelBase
@@ -81,6 +86,10 @@ class ModelFactory:
             num_classes=num_classes,
             use_feature_cache=configuration.cache_features,
         )
+
+        if 'resnet' in configuration.model_name:
+            log.info("Model is fixed with ModuleValidator.fix")
+            model = ModuleValidator.fix(model)
 
         # Add noise to (pretrained) weights?
         if configuration.weight_perturbation_level > 0:

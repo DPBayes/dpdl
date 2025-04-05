@@ -1,0 +1,37 @@
+epochs:
+  min: 25
+  max: 75
+  type: int
+batch_size:
+  min: 3000
+  max: 10000
+  type: int
+  log_space: True
+learning_rate:
+  max: 15.0
+  min: 1.0e-1
+  type: float
+  log_space: True
+max_grad_norm:
+  max: 50.0
+  min: 1.0e-3
+  type: float
+  log_space: True
+target_quantile:
+  max: 0.9
+  min: 0.1
+  type: float
+clip_bound_lr:
+  max: 1.0
+  min: 0.05
+  type: float
+  log_space: True
+count_threshold:
+  max: 10.0
+  min: 0.1
+  type: float
+clip_bound_lower_bound:
+  max: 10.0
+  min: 1.0e-4
+  type: float
+  log_space: True

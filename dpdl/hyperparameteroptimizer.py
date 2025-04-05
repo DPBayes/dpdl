@@ -280,6 +280,8 @@ class HyperparameterOptimizer:
         trial = optuna.integration.TorchDistributedTrial(trial, group=process_group)
 
         for target_hyper in target_hypers:
+            log.info(f"target_hypers: {target_hypers}")
+            log.info(f"optuna_config: {optuna_config}")
             if optuna_config[target_hyper]['type'] == 'float':
                 hyper_value = trial.suggest_float(
                     target_hyper,
