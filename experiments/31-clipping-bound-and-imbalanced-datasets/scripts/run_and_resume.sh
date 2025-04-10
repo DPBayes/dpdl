@@ -1,20 +1,20 @@
 #!/bin/bash
 ####################################################################
-### Experiment: Clipping bound and imblanaced datasets
+### Experiment: Clipping bound and imbalanced datasets
 ####################################################################
 
 set -euo pipefail
 
 # Base configurations
 EXPERIMENT_BASE="31-clipping-bound-and-imbalanced-datasets"
-LOG_DIR="/scratch/$PROJECT/experiments/$EXPERIMENT_BASE/data_cifar100"
-mkdir -p $LOG_DIR
+LOG_DIR="/scratch/$PROJECT/experiments/$EXPERIMENT_BASE/data_cifarmix"
+mkdir -p "$LOG_DIR"
 
 # Experiment parameters
 MODELS=("vit_base_patch16_224.augreg_in21k")
 DATASETS=(
+#    "cifar100"
     "dpdl-benchmark/cifar10_10pct_plus_cifar100_humans"
-    "cifar100"
 )
 
 EPOCHS=40
@@ -37,8 +37,26 @@ SUBSET_SIZES=(
     ["cifar100"]="0.1"
 )
 
+# Mapping for CIFAR-100 dataset sizes after imbalancing
+declare -A CIFAR100_SIZES
+CIFAR100_SIZES=(
+    ["0.1"]="1911"
+    ["0.25"]="2658"
+    ["0.5"]="3558"
+    ["1.0"]="5000"
+)
+
+# Mapping for CIFAR-MIX dataset sizes after imbalancing
+declare -A CIFARMIX_SIZES
+CIFARMIX_SIZES=(
+    ["0.1"]="3010"
+    ["0.25"]="4098"
+    ["0.5"]="5419"
+    ["1.0"]="7500"
+)
+
 # Other settings
-OVERWRITE_EXPERIMENT="--overwrite-experiment" # These are fast to run, overwrite by default
+OVERWRITE_EXPERIMENT="--overwrite-experiment"  # These are fast to run, overwrite by default
 PRIVACY="--privacy"
 USE_STEPS="--use-steps"
 NORMALIZE_CLIPPING="--normalize-clipping"
@@ -58,13 +76,11 @@ function is_job_in_queue() {
     fi
 }
 
-for seed in $SEEDS
-do
+for seed in $SEEDS; do
     # Loop over configurations
-    for model in "${MODELS[@]}"
-    do
-        for dataset in "${DATASETS[@]}"
-        do
+    for model in "${MODELS[@]}"; do
+        for dataset in "${DATASETS[@]}"; do
+
             # Get the label field name for this dataset
             label_field=${DATASET_LABEL_FIELDS[$dataset]}
 
@@ -74,21 +90,34 @@ do
             # Remove possible prefix from the dataset name
             clean_dataset_name=${dataset#dpdl-benchmark/}
 
-            for batch_size in $BATCH_SIZES
-            do
-                for learning_rate in $LEARNING_RATES
-                do
+            for batch_size in $BATCH_SIZES; do
+                for learning_rate in $LEARNING_RATES; do
                     rounded_learning_rate=$(printf "%.4f" $learning_rate)
 
-                    for max_grad_norm in $MAX_GRAD_NORMS
-                    do
+                    for max_grad_norm in $MAX_GRAD_NORMS; do
                         rounded_max_grad_norm=$(printf "%.4f" $max_grad_norm)
 
-                        for epsilon in $EPSILONS
-                        do
-                            for imbalance_factor in $IMBALANCE_FACTORS
-                            do
+                        for epsilon in $EPSILONS; do
+                            for imbalance_factor in $IMBALANCE_FACTORS; do
                                 rounded_epsilon=$(printf "%.2f" $epsilon)
+
+                                # Skip experiment if batch_size is not -1 and exceeds available dataset size for CIFAR-100
+                                if [ "$batch_size" != "-1" ] && [ "$dataset" = "cifar100" ]; then
+                                    dataset_size=${CIFAR100_SIZES[$imbalance_factor]}
+                                    if [ "$batch_size" -gt "$dataset_size" ]; then
+                                        echo "Skipping ${model}_${clean_dataset_name}_Subset${subset_size}_ImbalanceFactor${imbalance_factor}_Epsilon${rounded_epsilon}_BatchSize${batch_size}_LearningRate${rounded_learning_rate}_MaxGradNorm${rounded_max_grad_norm}_Seed${seed}: batch size ($batch_size) > dataset size ($dataset_size)"
+                                        continue
+                                    fi
+                                fi
+
+                                # Skip experiment if batch_size is not -1 and exceeds available dataset size for CIFAR-100
+                                if [ "$batch_size" != "-1" ] && [ "$dataset" = "dpdl-benchmark/cifar10_10pct_plus_cifar100_humans" ]; then
+                                    dataset_size=${CIFARMIX_SIZES[$imbalance_factor]}
+                                    if [ "$batch_size" -gt "$dataset_size" ]; then
+                                        echo "Skipping ${model}_${clean_dataset_name}_Subset${subset_size}_ImbalanceFactor${imbalance_factor}_Epsilon${rounded_epsilon}_BatchSize${batch_size}_LearningRate${rounded_learning_rate}_MaxGradNorm${rounded_max_grad_norm}_Seed${seed}: batch size ($batch_size) > dataset size ($dataset_size)"
+                                        continue
+                                    fi
+                                fi
 
                                 EXPERIMENT_NAME="${model}_${clean_dataset_name}_Subset${subset_size}_ImbalanceFactor${imbalance_factor}_Epsilon${rounded_epsilon}_BatchSize${batch_size}_LearningRate${rounded_learning_rate}_MaxGradNorm${rounded_max_grad_norm}_Seed${seed}"
 
@@ -107,7 +136,7 @@ do
                                 fi
 
                                 # Submit the job
-                                sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py train \
+                                sbatch -J $EXPERIMENT_NAME run8.sh run.py train \
                                     --num-workers 7 \
                                     --model-name $model \
                                     --dataset-name $dataset \
