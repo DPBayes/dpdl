@@ -1,4 +1,4 @@
-# Effect of class imbalance on the hyperparameters
+# Hyperparameters as a function of ε
 
 ## Motivation
 
@@ -34,6 +34,12 @@ We will run the experiment with
 - **dpdl-benchmark/cassava - 100% subset**
 - **dpdl-benchmark/svhn_cropped - 10% subset**
 - **dpdl-benchmark/svhn_cropped_balanced - 10% subset**
+
+## Difficult datasets
+
+We will also try experiment with hard datasets, as the results with SUN397 hints that more difficult datasets might require larger clipping bounds
+
+- **dpdl-benchmark/imagenet-hard-medium - 100% subset** ![paper](https://openreview.net/pdf?id=76w7bsdViZf)
 
 ## Epsilon Values
 
