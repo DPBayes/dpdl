@@ -41,6 +41,7 @@ class DataModule:
         label_field: str = None,
         image_field: str = None,
         imbalance_factor: float = None,
+        imbalance_reverse: bool = False,
         fairness_imbalance_class: int = None,
         cache_transforms: bool = False,
     ):
@@ -63,6 +64,7 @@ class DataModule:
         self._label_field = label_field
         self._stratify_shots = stratify_shots
         self._imbalance_factor = imbalance_factor
+        self._imbalance_reverse = imbalance_reverse
         self._fairness_imbalance_class = fairness_imbalance_class
         self._cache_transforms = cache_transforms
 
@@ -161,20 +163,24 @@ class DataModule:
             if torch.distributed.get_rank() == 0:
                 log.info('Creating imbalanced train set..')
 
-            self.train_dataset = self._get_imbalanced_subset(self.train_dataset)
+            self.train_dataset = self._get_imbalanced_subset(self.train_dataset, self._imbalance_reverse)
 
             if torch.distributed.get_rank() == 0:
                 log.info('Creating imbalanced validation set..')
 
-            self.val_dataset = self._get_imbalanced_subset(self.val_dataset)
+            self.val_dataset = self._get_imbalanced_subset(self.val_dataset, self._imbalance_reverse)
 
             if torch.distributed.get_rank() == 0:
                 log.info('Creating imbalanced test set..')
 
-            self.test_dataset = self._get_imbalanced_subset(self.test_dataset)
+            self.test_dataset = self._get_imbalanced_subset(self.test_dataset, self._imbalance_reverse)
 
         # NOTE: we use full data for validation and test, but scale the metrics accordingly.
         if self._fairness_imbalance_class:
+
+            if self._imbalance_reverse:
+                raise ValueError('Cannot reverse imbalance for fairness style imbalanced dataset.')
+
             if torch.distributed.get_rank() == 0:
                 log.info("Creating fairness imbalanced train set..")
                 self.train_dataset = self._get_fairness_imbalanced_subset(
@@ -524,36 +530,45 @@ class DataModule:
 
         return subset
 
-    def _get_imbalanced_subset(self, dataset):
+    def _get_imbalanced_subset(self, dataset, reverse=False):
         """
         Creates an imbalanced subset using an exponential distribution.
 
         https://github.com/richardaecn/class-balanced-loss/blob/1d7857208a2abc03d84e35a9d5383af8225d4b4d/src/data_utils.py#L93-L115
+
+        If reverse is True, the class distribution is inverted:
+          - The class that originally gets the most samples now gets the least,
+          - And vice versa.
         """
         if not self._imbalance_factor:
             raise ValueError('Imbalance factor must be provided for creating an imbalanced dataset.')
 
-        # Get the label counts
+        # Get the label counts and basic statistics.
         label_counts = Counter(dataset[self._label_field])
         num_classes = len(label_counts)
         max_count = max(label_counts.values())
 
-        # Calculate the number of samples per class based on an exponential distribution
+        # Calculate the number of samples per class based on an exponential distribution.
+        # For cls_idx = 0 we get max_count and for cls_idx = num_classes-1 we get fewer samples.
         img_num_per_cls = [
             max(1, int(max_count * (self._imbalance_factor ** (cls_idx / (num_classes - 1.0)))))
             for cls_idx in range(num_classes)
         ]
 
-        # Create a torch generator for reproducibility
+        # Do we want to flip the imbalance order?
+        if reverse:
+            img_num_per_cls.reverse()
+
+        # Create a torch generator for reproducibility.
         g = torch.Generator()
         g.manual_seed(self.split_seed)
 
-        # Collect indices for each class
+        # Collect indices for each class.
         class_indices = {cls: [] for cls in range(num_classes)}
         for idx, sample in enumerate(dataset):
             class_indices[sample[self._label_field]].append(idx)
 
-        # Sample indices for each class using torch.randperm
+        # Sample indices for each class using torch.randperm.
         sampled_indices = []
         for cls, indices in class_indices.items():
             indices_tensor = torch.tensor(indices)
@@ -838,6 +853,7 @@ class DataModuleFactory:
             label_field=configuration.dataset_label_field,
             max_test_examples=configuration.max_test_examples,
             imbalance_factor=configuration.imbalance_factor,
+            imbalance_reverse=configuration.imbalance_reverse,
             fairness_imbalance_class=configuration.fairness_imbalance_class,
             cache_transforms=configuration.cache_dataset_transforms,
             split_seed=configuration.split_seed,

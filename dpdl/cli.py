@@ -227,6 +227,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        imbalance_reverse: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Flip the order of classes when imbalancing',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
         fairness_imbalance_class: Annotated[
             Optional[int],
             typer.Option(
