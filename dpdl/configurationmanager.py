@@ -80,7 +80,7 @@ class Hyperparameters(BaseModel):
         return 'Hyperparameters:\n  ' + '\n  '.join(hyper_str) + '\n'
 
 class Configuration(BaseModel):
-    command: Literal['train', 'optimize', 'show-layers']
+    command: Literal['train', 'optimize', 'predict', 'show-layers']
     privacy: bool = True
     model_name: str = 'resnet50'
     optimizer: str = 'Adam'
@@ -166,8 +166,8 @@ class Configuration(BaseModel):
     def check_command(cls, values):
         command = values.get('command')
 
-        if command not in ['train', 'optimize', 'show-layers']:
-            raise ValueError('Command must be "train", "optimize", or "show-layers".')
+        if command not in ['train', 'optimize', 'predict', 'show-layers']:
+            raise ValueError('Command must be "train", "optimize", "predict", or "show-layers".')
 
         return values
 
