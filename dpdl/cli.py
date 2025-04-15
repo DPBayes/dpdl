@@ -9,6 +9,7 @@ from typing_extensions import Annotated
 
 from .configurationmanager import ConfigurationManager
 from .hyperparameteroptimizer import HyperparameterOptimizer
+from .predictor import PredictorFactory
 from .trainer import TrainerFactory
 from .models.model_factory import ModelFactory
 from .utils import seed_everything
@@ -21,7 +22,7 @@ def cli(
         command: Annotated[
             str,
             typer.Argument(
-                help='Command to run ("train", "optimize", or "show-layers")',
+                help='Command to run ("train", "optimize", "infer" or "show-layers")',
             )
         ],
         use_steps: Annotated[
@@ -451,6 +452,13 @@ def cli(
                 rich_help_panel='',
             )
         ] = False,
+        dataset_split: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Dataset split to use for inference',
+                rich_help_panel='Inference options',
+            )
+        ] = 'test',
     ):
 
     config_manager = ConfigurationManager(ctx.params)
@@ -504,7 +512,7 @@ def cli(
                 log.info(f'Saving model to: "{save_fpath}"')
                 trainer.save_model(save_fpath)
 
-    if config_manager.get_command() == 'optimize':
+    elif config_manager.get_command() == 'optimize':
         if torch.distributed.get_rank() == 0:
             log.info('Starting hyperparameter optimization.')
             log.info(config_manager.configuration)
@@ -519,3 +527,16 @@ def cli(
         if torch.distributed.get_rank() == 0:
             log_runtime(config_manager, start_time, end_time)
 
+    elif config_manager.get_command() == 'predict':
+        if torch.distributed.get_rank() == 0:
+            log.info('Starting inference.')
+            log.info(config_manager.configuration)
+
+        seed_everything(config_manager.configuration.seed)
+
+        predictor = PredictorFactory.get_predictor(config_manager)
+
+        start_time = time.time()
+
+        end_time = time.time()
+        log_runtime(config_manager, start_time, end_time)

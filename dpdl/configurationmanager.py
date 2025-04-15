@@ -133,6 +133,7 @@ class Configuration(BaseModel):
     checkpoint_step_interval: Optional[int] = None
     disable_epsilon_logging: Optional[bool] = False
     split_seed: Optional[int] = 42
+    dataset_split: Optional[str] = None
 
     class Config:
         # Fix Pydantic warning:
@@ -267,6 +268,11 @@ class Configuration(BaseModel):
                 ('Optuna number of random trials', self.optuna_random_trials),
             ]
             attributes.extend(optuna_attributes)
+        elif self.command == 'predict':
+            predict_attributes = [
+                ('Dataset split', self.dataset_split),
+            ]
+            attributes.extend(predict_attributes)
 
         max_key_length = max(len(attr[0]) for attr in attributes)
         attribute_str = [f'{attr[0]:<{max_key_length}}: {attr[1]}' for attr in attributes]
