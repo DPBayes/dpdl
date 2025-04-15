@@ -22,7 +22,7 @@ def cli(
         command: Annotated[
             str,
             typer.Argument(
-                help='Command to run ("train", "optimize", "infer" or "show-layers")',
+                help='Command to run ("train", "optimize", "predict" or "show-layers")',
             )
         ],
         use_steps: Annotated[
@@ -534,9 +534,10 @@ def cli(
 
         seed_everything(config_manager.configuration.seed)
 
-        predictor = PredictorFactory.get_predictor(config_manager)
-
         start_time = time.time()
+
+        predictor = PredictorFactory.get_predictor(config_manager)
+        predictor.predict(config_manager.configuration)
 
         end_time = time.time()
         log_runtime(config_manager, start_time, end_time)

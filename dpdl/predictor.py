@@ -1,5 +1,11 @@
 import torch
 import logging
+
+import torch.nn.functional as F
+import pandas as pd
+import os
+from torch.nn.parallel import DistributedDataParallel as DDP
+
 from .datamodules import DataModuleFactory
 from .models.model_factory import ModelFactory
 from .callbacks.callback_factory import CallbackHandler, CallbackFactory
@@ -52,35 +58,98 @@ class Predictor:
             log.info(f"load model from {fpath}")
         self.model.eval()
 
-    def predict(self):
-        """
-        predict the dataset
 
-        returns:
-            torch.Tensor: the prediction result
+    def predict(self, configuration):
         """
-        self.model.eval()
-        dataloader = self.datamodule.get_dataloader(self.dataset_split)
-        predictions = []
+        Perform prediction using the model on the specified dataset split.
+        All ranks compute prediction in parallel using DDP, and rank 0 gathers 
+        the results and saves them as a CSV file.
+
+        Args:
+            configuration: A Configuration object that provides dataset_split and log path.
+        """
+        import torch.nn.functional as F
+        import pandas as pd
+        import os
+
+        model = self.model.cuda()
+        from torch.nn.parallel import DistributedDataParallel as DDP
+        model = DDP(model)
+        model.eval()
+
+        dataset_split = configuration.dataset_split or "test"
+        dataloader = self.datamodule.get_dataloader(dataset_split)
+
+        local_preds = []
+        local_probs = []
+        local_labels = []
+        local_indices = []
 
         with torch.no_grad():
-            for batch_idx, batch in enumerate(dataloader):
-                self.callback_handler.call(
-                    'on_predict_batch_start', self, batch_idx, batch
-                )
-
-                X = batch[0] if isinstance(batch, (list, tuple)) else batch
+            for i, (X, y) in enumerate(dataloader):
                 X = X.cuda(non_blocking=True)
-                logits = self.model(X)
 
-                preds = torch.argmax(logits, dim=1)
-                predictions.append(preds.cpu())
+                logits = model(X)
+                probs = F.softmax(logits, dim=1)
+                pred = torch.argmax(probs, dim=1)
+                conf = torch.max(probs, dim=1).values
 
-                self.callback_handler.call(
-                    'on_predict_batch_end', self, batch_idx, batch, preds.cpu()
+                batch_size = X.shape[0]
+                global_offset = i * dataloader.batch_size
+
+                local_preds.append(pred)
+                local_probs.append(conf)
+                local_labels.append(y.cuda())
+                local_indices.append(
+                    torch.arange(global_offset, global_offset + batch_size, device=pred.device)
                 )
 
-        return torch.cat(predictions)
+        local_preds = torch.cat(local_preds)
+        local_probs = torch.cat(local_probs)
+        local_labels = torch.cat(local_labels)
+        local_indices = torch.cat(local_indices)
+
+        world_size = torch.distributed.get_world_size()
+
+        def alloc_like(x):
+            return [torch.zeros_like(x) for _ in range(world_size)]
+
+        gathered_preds = alloc_like(local_preds)
+        gathered_probs = alloc_like(local_probs)
+        gathered_labels = alloc_like(local_labels)
+        gathered_indices = alloc_like(local_indices)
+
+        torch.distributed.all_gather(gathered_preds, local_preds)
+        torch.distributed.all_gather(gathered_probs, local_probs)
+        torch.distributed.all_gather(gathered_labels, local_labels)
+        torch.distributed.all_gather(gathered_indices, local_indices)
+
+        if torch.distributed.get_rank() == 0:
+            all_preds = torch.cat([t.cpu() for t in gathered_preds]).numpy()
+            all_probs = torch.cat([t.cpu() for t in gathered_probs]).numpy()
+            all_labels = torch.cat([t.cpu() for t in gathered_labels]).numpy()
+            all_indices = torch.cat([t.cpu() for t in gathered_indices]).numpy()
+
+            # Create a DataFrame and sort by the index.
+            df = (
+                pd.DataFrame({
+                    "index": all_indices,
+                    "label": all_labels,
+                    "prediction": all_preds,
+                    "confidence": all_probs,
+                })
+                .sort_values("index")
+                .reset_index(drop=True)
+            )
+
+            # Use the configuration to determine save path
+            save_dir = os.path.join(configuration.log_dir, configuration.experiment_name)
+            os.makedirs(save_dir, exist_ok=True)
+            save_path = os.path.join(save_dir, f"predictions_{dataset_split}.csv")
+
+            df.to_csv(save_path, index=False)
+            log.info(f"Saved predictions to: {save_path}")
+
 
 
 class PredictorFactory:
@@ -110,6 +179,8 @@ class PredictorFactory:
             CallbackFactory.get_callbacks(configuration, hyperparams)
         )
 
+        log.info("Predictor will be init soon")
+
         predictor = Predictor(
             model=model,
             datamodule=datamodule,
@@ -117,5 +188,7 @@ class PredictorFactory:
             callback_handler=callback_handler,
             seed=configuration.seed,
         )
+
+        log.info("Predictor is inited")
 
         return predictor
