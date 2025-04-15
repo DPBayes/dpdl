@@ -71,6 +71,7 @@ class ModelBase(torch.nn.Module):
                 "ConfusionMatrix": torchmetrics.ConfusionMatrix(
                     task="multiclass" if self.num_classes > 2 else "binary",
                     num_classes=self.num_classes,
+                    sync_on_compute=False,
                 ).cuda(),
             }
         )
