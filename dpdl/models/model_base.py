@@ -38,6 +38,10 @@ class ModelBase(torch.nn.Module):
                     num_classes=self.num_classes,
                     average="none",
                 ).cuda(),
+                "ConfusionMatrix": torchmetrics.ConfusionMatrix(
+                    task="multiclass" if self.num_classes > 2 else "binary",
+                    num_classes=self.num_classes,
+                ).cuda(),
             }
         )
 
@@ -63,6 +67,10 @@ class ModelBase(torch.nn.Module):
                     num_classes=self.num_classes,
                     average="none",
                     sync_on_compute=False,
+                ).cuda(),
+                "ConfusionMatrix": torchmetrics.ConfusionMatrix(
+                    task="multiclass" if self.num_classes > 2 else "binary",
+                    num_classes=self.num_classes,
                 ).cuda(),
             }
         )
