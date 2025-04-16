@@ -11,7 +11,7 @@ from .datamodules import DataModule, DataModuleFactory
 from .models.model_base import ModelBase
 from .models.model_factory import ModelFactory
 from .callbacks.callback_factory import CallbackHandler, CallbackFactory
-from .utils import seed_everything, tensor_to_python_type
+from .utils import tensor_to_python_type
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class Predictor:
     def predict(self, configuration):
         """
         Perform prediction using the model on the specified dataset split.
-        All ranks compute prediction in parallel using DDP, and rank 0 gathers 
+        All ranks compute prediction in parallel using DDP, and rank 0 gathers
         the results and saves them as a CSV file.
 
         Args:
@@ -87,14 +87,11 @@ class Predictor:
                 logits = model(X)
                 probs = F.softmax(logits, dim=1)
                 pred = torch.argmax(probs, dim=1)
-                conf = probs
 
-                loss = self._unwrap_model().criterion(logits, y)
-                loss = loss.item()
                 self._unwrap_model().train_metrics.update(pred, y)
 
                 local_preds.append(pred)
-                local_probs.append(conf)
+                local_probs.append(probs)
                 local_labels.append(y)
 
         metrics = self._unwrap_model().train_metrics.compute()
@@ -132,7 +129,7 @@ class Predictor:
 
             save_dir = os.path.join(configuration.log_dir, configuration.experiment_name)
             os.makedirs(save_dir, exist_ok=True)
-            
+
             pred_path = os.path.join(save_dir, f"predictions_{dataset_split}.json")
             df.to_json(pred_path)
             log.info(f"Saved predictions to: {pred_path}")
