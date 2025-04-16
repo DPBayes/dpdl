@@ -7,7 +7,7 @@ import os
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from .datamodules import DataModule, DataModuleFactory
-from .models import ModelBase
+from .models.model_base import ModelBase
 from .models.model_factory import ModelFactory
 from .callbacks.callback_factory import CallbackHandler, CallbackFactory
 from .utils import seed_everything
@@ -79,7 +79,7 @@ class Predictor:
                 logits = model(X)
                 probs = F.softmax(logits, dim=1)
                 pred = torch.argmax(probs, dim=1)
-                conf = probs.values
+                conf = probs
 
                 local_preds.append(pred)
                 local_probs.append(conf)
@@ -107,14 +107,15 @@ class Predictor:
             all_probs = torch.cat([t.cpu() for t in gathered_probs]).numpy()
             all_labels = torch.cat([t.cpu() for t in gathered_labels]).numpy()
 
+            log.info(f"all_probs: {all_probs}, all_preds: {all_preds}, all_labels: {all_labels}")
+            log.info(f"all_probs: {all_probs.shape}, all_preds: {all_preds.shape}, all_labels: {all_labels.shape}")
+
             df = (
                 pd.DataFrame({
                     "label": all_labels,
                     "prediction": all_preds,
-                    "confidence": all_probs,
+                    "confidence": [prob.tolist() for prob in all_probs],
                 })
-                .sort_values("index")
-                .reset_index(drop=True)
             )
 
             # Use the configuration to determine save path
