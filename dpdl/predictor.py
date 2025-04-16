@@ -4,13 +4,14 @@ import logging
 import torch.nn.functional as F
 import pandas as pd
 import os
+import json
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from .datamodules import DataModule, DataModuleFactory
 from .models.model_base import ModelBase
 from .models.model_factory import ModelFactory
 from .callbacks.callback_factory import CallbackHandler, CallbackFactory
-from .utils import seed_everything
+from .utils import seed_everything, tensor_to_python_type
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +51,11 @@ class Predictor:
             "load_model function is not implemented in the Predictor class, will be done later"
         )
 
+    def _unwrap_model(self):
+        # the model is wrapped inside torch distributed,
+        # here we just return the vanilla model
+        return self.model
+
     def predict(self, configuration):
         """
         Perform prediction using the model on the specified dataset split.
@@ -71,6 +77,8 @@ class Predictor:
         local_probs = []
         local_labels = []
 
+        self._unwrap_model().train_metrics.reset()
+
         with torch.no_grad():
             for i, (X, y) in enumerate(dataloader):
                 X = X.cuda(non_blocking=True)
@@ -81,9 +89,15 @@ class Predictor:
                 pred = torch.argmax(probs, dim=1)
                 conf = probs
 
+                loss = self._unwrap_model().criterion(logits, y)
+                loss = loss.item()
+                self._unwrap_model().train_metrics.update(pred, y)
+
                 local_preds.append(pred)
                 local_probs.append(conf)
                 local_labels.append(y)
+
+        metrics = self._unwrap_model().train_metrics.compute()
 
         local_preds = torch.cat(local_preds)
         local_probs = torch.cat(local_probs)
@@ -103,12 +117,10 @@ class Predictor:
         torch.distributed.all_gather(gathered_labels, local_labels)
 
         if torch.distributed.get_rank() == 0:
+            # save prediction results
             all_preds = torch.cat([t.cpu() for t in gathered_preds]).numpy()
             all_probs = torch.cat([t.cpu() for t in gathered_probs]).numpy()
             all_labels = torch.cat([t.cpu() for t in gathered_labels]).numpy()
-
-            log.info(f"all_probs: {all_probs}, all_preds: {all_preds}, all_labels: {all_labels}")
-            log.info(f"all_probs: {all_probs.shape}, all_preds: {all_preds.shape}, all_labels: {all_labels.shape}")
 
             df = (
                 pd.DataFrame({
@@ -118,13 +130,19 @@ class Predictor:
                 })
             )
 
-            # Use the configuration to determine save path
             save_dir = os.path.join(configuration.log_dir, configuration.experiment_name)
             os.makedirs(save_dir, exist_ok=True)
-            save_path = os.path.join(save_dir, f"predictions_{dataset_split}.csv")
+            
+            pred_path = os.path.join(save_dir, f"predictions_{dataset_split}.json")
+            df.to_json(pred_path)
+            log.info(f"Saved predictions to: {pred_path}")
 
-            df.to_csv(save_path, index=False)
-            log.info(f"Saved predictions to: {save_path}")
+            # save prediction metrics
+            metrics_dict = {k: tensor_to_python_type(v) for k, v in metrics.items()}
+            metrics_path = os.path.join(save_dir, "predict_metrics.json")
+            with open(metrics_path, "w") as f:
+                json.dump(metrics_dict, f)
+            log.info(f"Saved predict_metrics to: {metrics_path}")
 
 
 class PredictorFactory:
