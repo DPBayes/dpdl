@@ -15,10 +15,10 @@ See, for example in the heatmap below, we have the classes ranked such that the 
 The goal is to test the following hypotheses:
 
 1. **Macro-accuracy clipping rule**  
-   If *easy* classes dominate the dataset--either by class count **or** by total sample count--then a **small clipping bound** (≈ 10^-2 or lower) should yield the highest **macro accuracy**.
+   If *easy* classes dominate the dataset by class count then a **small clipping bound** (≈ 10^-2 or lower) should yield the highest **macro accuracy**.
 
 2. **Micro-accuracy clipping rule**  
-   If *difficult* (confusable) classes dominate--again by class count **or** sample count--then a **large clipping bound** (≈ 1 or higher)** will yield the highest **micro accuracy**.
+   If *difficult* (confusable) classes dominate by sample count then a **large clipping bound** (≈ 1 or higher)** will yield the highest **micro accuracy**.
 
 3. **Verification of observations on SUN397**  
 
