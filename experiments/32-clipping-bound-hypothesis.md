@@ -1,28 +1,32 @@
-# Clipping bound hypotheses
+# Clipping bound hypothesis
 
 ## Motivation
 
 We have seen in our experiments that the SUN397 dataset seems to prefer larger (>1) clipping bounds. Other datasets that we experimented with, seem to prefer either a small (≈0.1) or a very small (≈10^-4) clipping bound.
 
-After analyzing the results, we have formed hypotheses about what my cause this: **The balance between easy/difficult classes/examples**.
+After analyzing the results, we have formed hypotheses about what may cause this: **The balance between easy/difficult classes/examples**.
 
 See, for example in the heatmap below, we have the classes ranked such that the most difficult classes are at the bottom and the easiest classes are at the top. **In the top left corner we have easy classes and small clipping bounds having high accuracy**. And **in the bottom right corner we have the difficult classes having best accuracy with higher clipping bounds**. NB: When clipping bound is 50, the accuracy starts degrade again in the bottom right corner.
+
+**NB**: This is for _macro_ accuracy.
 
 ![Clipping bound heatmap per class](images/32-cb-heatmap.png)
 
 ## Objective
 
-The goal is to test the following hypotheses:
+The goal of the experiment is to test the following hypothesis that we formed from the observations on SUN397. Let,
 
-1. **Macro-accuracy clipping rule**  
-   If *easy* classes dominate the dataset by class count then a **small clipping bound** (≈ 10^-2 or lower) should yield the highest **macro accuracy**.
+* Cₑ, Cₕ = # easy and # hard classes  
+* Nₑ, Nₕ = total samples in easy and hard classes  
 
-2. **Micro-accuracy clipping rule**  
-   If *difficult* (confusable) classes dominate by sample count then a **large clipping bound** (≈ 1 or higher)** will yield the highest **micro accuracy**.
+The optimal clipping bound depends on which group dominates the metric being optimised:
 
-3. **Verification of observations on SUN397**  
+| Metric (weighting) | Dominance test | If easy dominate | If hard dominate |
+|--------------------|----------------|------------------|------------------|
+| **Macro accuracy** (equal weight per class) | Compare Cₑ to Cₕ | **Small bound** | **Large bound** |
+| **Micro accuracy** (equal weight per sample) | Compare Nₑ to Nₕ | **Small bound** | **Large bound** |
 
-    Futhermore, we should test our observations on SUN397. We can achieve this by constructing SUN397 like datasets from ImageNet-1k using a different balance of easy and difficult classes: *ImageNet397-Easy* (easy-heavy) follows Hypothesis 1, while *ImageNet397-Hard* (difficult-heavy) follows Hypothesis 2.
+In short: **majority rules**--the group contributing more to the metric dictates whether the optimum is small or large.
 
 ## Methodology
 
@@ -46,20 +50,21 @@ We will use the FiLM parameterization.
 
 To remove dataset size as a confounder, every non-SUN split contains **7 500 training images**.  
 
-| Name | Dominance condition | Easy classes | Difficult classes | Images / easy class | Images / difficult class | Total imgs | Hypothesis |
-|------|--------------------|--------------|-------------------|---------------------|--------------------------|------------|------------------|
-| **ImageNet-ClassEasy** | *Class-count* easy-heavy | 10 | 5 | 500 | 500 | 7 500 | **H1 (Macro)** |
-| **ImageNet-SampleEasy** | *Sample-count* easy-heavy | 5 | 5 | 1 000 | 500 | 7 500 | **H1 (Macro)** |
-| **ImageNet-ClassHard** | *Class-count* difficult-heavy | 5 | 10 | 500 | 500 | 7 500 | **H2 (Micro)** |
-| **ImageNet-SampleHard** | *Sample-count* difficult-heavy | 5 | 5 | 500 | 1 000 | 7 500 | **H2 (Micro)** |
-| **ImageNet397-Easy** (10% subset) | SUN-style easy-heavy | 350 easiest | 47 hardest | ≈ 200 | ≈ 200 | 76 127 | **H3 → H1** |
-| **ImageNet397-Hard**  (10% subset) | SUN-style difficult-heavy | 47 easiest | 350 hardest | ≈ 200 | ≈ 200 | 76 127 | **H3 → H2** |
+| Name | Dominance condition | Easy classes | Difficult classes | Images / easy class | Images / difficult class | Total imgs | Metric | CB Hypothesis |
+|------|--------------------|--------------|-------------------|---------------------|--------------------------|------------|------------------|----------|
+| **imagenet-mini-class-easy** | *Class-count* easy-heavy | 10 | 5 | 500 | 500 | 7 500 | Macro | **Small** |
+| **imagenet-mini-sample-easy** | *Sample-count* easy-heavy | 5 | 5 | 1 000 | 500 | 7 500 | Micro | **Small** |
+| **imagenet-mini-class-hard** | *Class-count* difficult-heavy | 5 | 10 | 500 | 500 | 7 500 | Macro | **Large** |
+| **imagenet-mini-sample-hard** | *Sample-count* difficult-heavy | 5 | 5 | 500 | 1 000 | 7 500 | Macro | **Large** |
+| **imagenet397-easy** (10% subset) | SUN-style easy-heavy | 350 easiest | 47 hardest | ≈ 200 | ≈ 200 | 76 127 | Macro/Micro | **Small** |
+| **imagenet397-hard**  (10% subset) | SUN-style difficult-heavy | 47 easiest | 350 hardest | ≈ 200 | ≈ 200 | 76 127 | Macro/Micro | **Large** |
 
 **Construction details**
 
 1. Images are sampled without replacement.
 2. The difficulty/easyness is determined from the confusion matrix and per-class accuracies that we obtained from a forward pass through ImageNet-1k using a Vision Transformer pre-trained on ImageNet-1k (DeIT-Base).
-3. The validation set preserves class proportions.
+3. There is no separate validation split (this can be split from train split if needed).
+4. The ImageNet-1k validation split is used as the test test (no labels are provided for ImageNet-1k test split).
 
 ## Epsilon Values
 
