@@ -38,10 +38,6 @@ class ModelBase(torch.nn.Module):
                     num_classes=self.num_classes,
                     average="none",
                 ).cuda(),
-                "ConfusionMatrix": torchmetrics.ConfusionMatrix(
-                    task="multiclass" if self.num_classes > 2 else "binary",
-                    num_classes=self.num_classes,
-                ).cuda(),
             }
         )
 
@@ -52,6 +48,26 @@ class ModelBase(torch.nn.Module):
         # then we also need to actually run the validation on
         # all the GPUs.
         self.valid_metrics = torchmetrics.MetricCollection(
+            {
+                "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes=self.num_classes,
+                    average="macro",
+                    sync_on_compute=False,
+                ).cuda(),
+                "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes=self.num_classes,
+                    average="micro",
+                    sync_on_compute=False,
+                ).cuda(),
+                "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes=self.num_classes,
+                    average="none",
+                    sync_on_compute=False,
+                ).cuda(),
+            }
+        )
+
+        self.test_metrics = torchmetrics.MetricCollection(
             {
                 "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
                     num_classes=self.num_classes,

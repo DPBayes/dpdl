@@ -199,8 +199,6 @@ class Trainer:
         if enable_callbacks:
             self.callback_handler.call(f'on_{mode}_epoch_start', self, epoch)
 
-        self._unwrap_model().valid_metrics.reset()
-
         self.model.eval()
         torch.set_grad_enabled(False)
 
@@ -208,16 +206,26 @@ class Trainer:
         # performing hyperparameter optimization
         evaluation_loss = 0
 
-        dataloader_name = 'valid' if mode == 'validation' else 'test'
+        if mode == 'validation':
+            dataloader_name = 'valid'
+            metrics_evaluator = self._unwrap_model().valid_metrics
+        elif mode == 'test':
+            dataloader_name = 'test'
+            metrics_evaluator = self._unwrap_model().test_metrics
+        else:
+            raise ValueError(f'Unknown evaluation mode: "{mode}"')
+
         dataloader = self.datamodule.get_dataloader(dataloader_name)
 
+        metrics_evaluator.reset()
+
         for batch_idx, batch in enumerate(dataloader):
-            loss = self._evaluate_one_batch(mode, batch_idx, batch, enable_callbacks)
+            loss = self._evaluate_one_batch(mode, batch_idx, batch, enable_callbacks, metrics_evaluator)
             evaluation_loss += loss
 
         evaluation_loss /= len(dataloader)
 
-        metrics = self._unwrap_model().valid_metrics.compute()
+        metrics = metrics_evaluator.compute()
 
         torch.set_grad_enabled(True)
         self.model.train()
@@ -227,7 +235,7 @@ class Trainer:
 
         return evaluation_loss, metrics
 
-    def _evaluate_one_batch(self, mode, batch_idx, batch, enable_callbacks):
+    def _evaluate_one_batch(self, mode, batch_idx, batch, enable_callbacks, metrics_evaluator):
         if enable_callbacks:
             self.callback_handler.call(f'on_{mode}_batch_start', self, batch_idx, batch)
 
@@ -241,7 +249,7 @@ class Trainer:
 
         preds = torch.argmax(logits, dim=1)
 
-        self._unwrap_model().valid_metrics.update(preds, y)
+        metrics_evaluator.update(preds, y)
 
         if enable_callbacks:
             self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss)
