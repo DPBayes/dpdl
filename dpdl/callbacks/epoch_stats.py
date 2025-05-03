@@ -1,6 +1,9 @@
-import math
 import logging
+import math
+
 import torchmetrics
+
+from ..utils import tensor_to_python_type
 from .base_callback import Callback
 
 log = logging.getLogger(__name__)
@@ -14,6 +17,12 @@ class RecordEpochStatsCallback(Callback):
         self.evaluation_loss = torchmetrics.aggregation.MeanMetric(
             sync_on_compute=False
         ).cuda()
+
+        # Do not log these metrics
+        self._metrics_to_ignore = [
+            'ConfusionMatrix',
+            'MulticlassAccuracyPerClass',
+        ]
 
     def on_train_start(self, trainer):
         if self._is_global_zero():
@@ -78,3 +87,15 @@ class RecordEpochStatsCallback(Callback):
 
     def on_test_batch_end(self, trainer, batch_idx, batch, loss):
         self.evaluation_loss.update(loss)
+
+    def _log_metrics(self, metrics, annotation="Metrics"):
+        if not metrics:
+            return
+
+        metrics = tensor_to_python_type(metrics)
+
+        log.info(annotation + ":")
+        for key, value in metrics.items():
+            if not key in self._metrics_to_ignore:
+                log.info(f" - {key}: {value}.")
+
