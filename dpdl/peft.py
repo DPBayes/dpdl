@@ -109,6 +109,18 @@ class FiLM:
                 modules_to_save=['model.head'],
             )
 
+        if model_name.startswith('vit_small_patch16_224'):
+            return FilmConfig(
+                target_modules=r'.*\.norm\d?',
+                modules_to_save=['model.head'],
+            )
+
+        if model_name.startswith('vit_tiny_patch16_224'):
+            return FilmConfig(
+                target_modules=r'.*\.norm\d?',
+                modules_to_save=['model.head'],
+            )
+
         if model_name.startswith('resnetv2_50x1_bit'):
             return FilmConfig(
                 target_modules=r'.*\.norm\d$',
