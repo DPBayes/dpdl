@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Base configurations
 EXPERIMENT_BASE="33-us-vs-hyfreedp-full"
-LOG_DIR="/projappl/$PROJECT/dpdl/experiments/$EXPERIMENT_BASE/data"
+LOG_DIR="/scratch/$PROJECT/experiments/$EXPERIMENT_BASE/data"
 mkdir -p $LOG_DIR
 
 # We keep track of submitted jobs here
@@ -137,7 +137,7 @@ do
             fi
 
             # Submit the job
-            sbatch -J $EXPERIMENT_NAME run8-rocm.sh run.py optimize \
+            sbatch -J $EXPERIMENT_NAME run8.sh run.py optimize \
                 --num-workers 7 \
                 --model-name $model \
                 --dataset-name $dataset \
