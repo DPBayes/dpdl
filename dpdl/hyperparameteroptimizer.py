@@ -5,6 +5,7 @@ import optuna
 import torch
 import typer
 import yaml
+import math
 
 from functools import partial
 
@@ -25,6 +26,19 @@ class HyperparameterOptimizer:
     def read_optuna_config(config_fpath):
         with open(config_fpath, 'rb') as fh:
             config = yaml.safe_load(fh)
+
+        # coerce numeric types
+        for name, cfg in config.items():
+            t = cfg.get('type')
+            if t == 'float':
+                cfg['min']       = float(cfg['min'])
+                cfg['max']       = float(cfg['max'])
+                cfg['log_space'] = bool(cfg.get('log_space', False))
+            elif t == 'int':
+                cfg['min'] = int(cfg['min'])
+                cfg['max'] = int(cfg['max'])
+            elif t == 'ordered' and 'options' in cfg:
+                cfg['options'] = [float(v) for v in cfg['options']]
 
         return config
 
@@ -184,11 +198,28 @@ class HyperparameterOptimizer:
         # first we need to broadcast the best parameters to all ranks,
         # so we pack them into a list for sending
         if torch.distributed.get_rank() == 0:
-            # rank 0 is the source
-            best_params = study.best_trial.params
-            broadcast_objects = [best_params]
+            raw = study.best_trial.params
+            actual = {}
+
+            # remap ordered hypers to their actual values
+            for key, idx in raw.items():
+                if key.endswith('_idx'):
+                    hyper = key[:-4]
+                    if hyper == 'batch_size':
+                        min_exp = int(math.log2(optuna_config[hyper]['min']))
+                        max_exp = int(math.log2(max_batch_size))
+                        vals = [2**e for e in range(min_exp, max_exp+1)] + [-1]
+                        raw_val = vals[idx]
+                        actual[hyper] = max_batch_size if raw_val == -1 else raw_val
+                    elif hyper == 'max_grad_norm':
+                        actual[hyper] = optuna_config[hyper]['options'][idx]
+                else:
+                    actual[key] = idx
+
+            # rank 0 broadcasts the known best hypers
+            broadcast_objects = [actual]
         else:
-            # other ranks receive
+            # other receive
             broadcast_objects = [None]
 
         # now, broadcast the list from rank 0 to all the other ranks
@@ -206,9 +237,9 @@ class HyperparameterOptimizer:
         # now we can train/evaluate for the final time with best params
         metrics = HyperparameterOptimizer._final_evaluation_round(best_params, config_manager)
 
-        #if torch.distributed.get_rank() == 0:
-        #    # save this study to experiment directory
-        #    save_study(config_manager, study, metrics)
+        if torch.distributed.get_rank() == 0:
+            # save this study to experiment directory
+            save_study(config_manager, study, metrics)
 
     @staticmethod
     def _final_evaluation_round(best_params, config_manager):
@@ -289,32 +320,50 @@ class HyperparameterOptimizer:
         trial = optuna.integration.TorchDistributedTrial(trial, group=process_group)
 
         for target_hyper in target_hypers:
-            if optuna_config[target_hyper]['type'] == 'float':
+            cfg = optuna_config[target_hyper]
+
+            if cfg['type'] == 'ordered':
+                if target_hyper == 'batch_size':
+                    min_exp = int(math.log2(cfg['min']))
+                    max_exp = int(math.log2(max_batch_size))
+
+                    # E.g. 256, 512, 1024, ..., Full batch
+                    vals = [2**e for e in range(min_exp, max_exp+1)] + [-1]
+                else:
+                    vals = cfg['options']
+
+                idx = trial.suggest_int(f'{target_hyper}_idx', 0, len(vals)-1)
+                raw = vals[idx]
+                hyper_value = max_batch_size if (target_hyper=='batch_size' and raw==-1) else raw
+
+            elif cfg['type'] == 'float':
                 hyper_value = trial.suggest_float(
                     target_hyper,
-                    optuna_config[target_hyper]['min'],
-                    optuna_config[target_hyper]['max'],
-                    log=optuna_config[target_hyper].get('log_space', False),
+                    cfg['min'],
+                    cfg['max'],
+                    log=cfg.get('log_space', False),
                 )
 
-            if optuna_config[target_hyper]['type'] == 'int':
-                max_value = optuna_config[target_hyper]['max']
+            elif cfg['type'] == 'int':
+                max_value = cfg['max']
 
                 # Using -1 as max in batch size configuration signals full batch
-                if target_hyper == 'batch_size' and optuna_config[target_hyper]['max'] == -1:
+                if target_hyper == 'batch_size' and cfg['max'] == -1:
                     max_value = max_batch_size
 
                 hyper_value = trial.suggest_int(
                     target_hyper,
-                    optuna_config[target_hyper]['min'],
+                    cfg['min'],
                     max_value,
                 )
 
-            if optuna_config[target_hyper]['type'] == 'categorical':
+            elif cfg['type'] == 'categorical':
                 hyper_value = trial.suggest_categorical(
                     target_hyper,
-                    optuna_config[target_hyper]['options'],
+                    cfg['options'],
                 )
+            else:
+                raise ValueError(f'Unknown type in Optuna config: {cfg["type"]}')
 
             # update the hyperparameter value in configuration
             setattr(config_manager.hyperparams, target_hyper, hyper_value)

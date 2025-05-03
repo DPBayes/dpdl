@@ -35,6 +35,9 @@ def save_study(
         fh.write(study.trials_dataframe().to_csv())
 
     with open(full_log_dir / 'best-params.json', 'w') as fh:
+        json.dump(config_manager.hyperparams.dict(), fh)
+
+    with open(full_log_dir / 'best-params-raw-idx.json', 'w') as fh:
         json.dump(study.best_params, fh)
 
     with open(full_log_dir / 'best-value', 'w') as fh:
