@@ -306,7 +306,16 @@ class DataModule:
             self.test_dataset = self._dataset_splits['test']
 
         if has_validation_split and not has_test_split:
-            raise ValueError('Splitting not implemented: Dataset has validation split but no test split.')
+            # Keep the original train split
+            self.train_dataset = self._dataset_splits['train']
+
+            # Split the validation into validation and test (50/50)
+            self.val_dataset, self.test_dataset = self._dataset_splits['validation'].train_test_split(
+                test_size=0.5,
+                seed=self.seed,
+                shuffle=True,
+                stratify_by_column=self._label_field,
+            ).values()
 
         if self.evaluation_mode:
             # Combine training and validation sets if we have a separate validation set
