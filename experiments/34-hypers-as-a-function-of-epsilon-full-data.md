@@ -14,13 +14,13 @@ We will fix the epochs at 40 and train the models on a grid of hyperparameters.
 
 ```
 - Batch size(4): 256, 1024, 4096, 16834, FULL(50k)
-- Clipping bound(5): 1e-5, 1e-4, 1, 10, 50
+- Clipping bound(4): 1e-5, 1, 10, 50
 - Learning rate: [1.00000000e-05, 2.68269580e-05, 7.19685673e-05, 1.93069773e-04, 5.17947468e-04, 1.38949549e-03, 3.72759372e-03, 1.00000000e-02] (np.geomspace(1e-5,1e-2,8))
 ```
 
-For 3 epsilons (1,3,8), this will take `5x5x8x3 = 600 runs`.
+For 3 epsilons (1,3,8), which is used in HyperFree paper, this will take `5x4x8x3 = 480 runs`.
 
-For a experiment training with FiLM, it will take about `600 x 1.5 = 900 hr` if not consider run experiments parallel.
+For a experiment training with FiLM, it will take about `600 x 1.5 = 720 hr` if not consider run experiments parallel.
 
 
 
