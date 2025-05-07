@@ -1,4 +1,4 @@
-# Hyperparameters as a function of ε with full trainset (100%)
+# Hyperparameters as a function of eps with full trainset (100%)
 
 ## Motivation
 
@@ -18,11 +18,16 @@ We will fix the epochs at 40 and train the models on a grid of hyperparameters.
 - Learning rate: [1.00000000e-05, 2.68269580e-05, 7.19685673e-05, 1.93069773e-04, 5.17947468e-04, 1.38949549e-03, 3.72759372e-03, 1.00000000e-02] (np.geomspace(1e-5,1e-2,8))
 ```
 
-For 3 epsilons (1,3,8), this will take `5x5x8x3 = 600 runs`, and will take about `600 x 1.5 = 900 hr` if not consider run experiments parallel.
+For 3 epsilons (1,3,8), this will take `5x5x8x3 = 600 runs`.
+
+For a experiment training with FiLM, it will take about `600 x 1.5 = 900 hr` if not consider run experiments parallel.
+
+
 
 ## Models
 
 - **Vision Transformer (vit_base_patch16_224.augreg_in21k)**
+
 
 HyperFree use both ViT-base and ViT-small. To reduce the compute cost, and keep consistancy with the rest of paper, which use ViT-Tiny, we may only use ViT-base.
 
@@ -34,5 +39,5 @@ We will run the experiment with
 
 ## Epsilon Values
 
-We will run the experiment over ε = { 1, 3, 8 }.
+We will run the experiment over \eps = { 1, 3, 8 }.
 
