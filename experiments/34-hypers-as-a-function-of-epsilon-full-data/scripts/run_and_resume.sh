@@ -99,7 +99,7 @@ NORMALIZE_CLIPPING="--normalize-clipping"
 ZERO_HEAD="--zero-head"
 PEFT="--peft film"
 RECORD_LOSS="--record-loss-by-step --record-loss-by-epoch"
-RECORD_GRADIENTS="--record-gradient-norms"
+RECORD_GRADIENTS=""
 EVALUATION_MODE="--evaluation-mode"
 
 # Function to check if a job is already in queue
@@ -143,7 +143,7 @@ do
             do
                 for learning_rate in $LEARNING_RATES
                 do
-                    rounded_learning_rate=$(printf "%.4f" $learning_rate)
+                    rounded_learning_rate=$(printf "%.5f" $learning_rate)
 
                     for max_grad_norm in $MAX_GRAD_NORMS
                     do
