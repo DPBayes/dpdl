@@ -66,12 +66,6 @@ class CallbackFactory:
             )
 
             callbacks.append(
-                RecordPerClassAccuracyCallback(
-                    log_dir=full_log_dir,
-                )
-            )
-
-            callbacks.append(
                 RecordClippedProportionsPerClassCallback(
                     log_dir=full_log_dir, max_grad_norm=max_grad_norm
                 )
@@ -83,6 +77,8 @@ class CallbackFactory:
                 )
             )
 
+            configuration.record_per_class_accuracy = True
+
         if configuration.verbose_callback:
             callbacks.append(DebugProbeCallback())
 
@@ -91,6 +87,13 @@ class CallbackFactory:
 
         if configuration.record_loss_by_epoch:
             callbacks.append(RecordLossesByEpochCallback(log_dir=full_log_dir))
+
+        if configuration.record_per_class_accuracy:
+            callbacks.append(
+                RecordPerClassAccuracyCallback(
+                    log_dir=full_log_dir,
+                )
+            )
 
         if configuration.checkpoint_step_interval:
             callbacks.append(
