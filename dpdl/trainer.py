@@ -90,7 +90,10 @@ class Trainer:
                 if step >= self.total_steps:
                     break
 
-                self.fit_one_batch(batch_idx, batch)
+                self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
+                logical_batch_loss = self.fit_one_batch(batch_idx, batch)
+                self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
+
                 step += 1
 
                 if step % steps_per_epoch == 0:
@@ -111,9 +114,14 @@ class Trainer:
                     # start the next virtual epoch
                     self._handle_virtual_epoch_start(virtual_epoch)
 
+        last_step_in_epoch = step % steps_per_epoch
+        if last_step_in_epoch != 0:
+            self._handle_virtual_epoch_end(virtual_epoch)
+
         assert step == self.total_steps, f'Mismatch in total steps count: Expected {self.total_steps} total steps, but stepped {step} times!'
 
     def _handle_virtual_epoch_start(self, epoch):
+        self.model.train()
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
     def _handle_virtual_epoch_end(self, epoch):
@@ -129,7 +137,7 @@ class Trainer:
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
-            self.fit_one_batch(batch_idx, batch)
+            logical_batch_loss = self.fit_one_batch(batch_idx, batch)
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
 
         # compute the epoch metrics
@@ -169,7 +177,7 @@ class Trainer:
             loss.backward()
 
             # keep track of the batch loss
-            logical_batch_loss += loss.item() * N # NB: Unnormalize to track logical batch loss
+            logical_batch_loss += loss.item()
 
             # update the metrics if there are any
             preds = torch.argmax(logits, dim=1)
