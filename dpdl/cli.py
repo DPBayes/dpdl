@@ -312,6 +312,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_per_class_accuracy: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record per-class accuracy',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         disable_epsilon_logging: Annotated[
             Optional[bool],
             typer.Option(
