@@ -33,8 +33,8 @@ For the non-DP run, we will use the following hyperparameters
 ### Inferred difficulty metrics
 
 #### Similarity-Based Measures ([from embedding similarity analysis](https://arxiv.org/abs/2404.05981)):
-- **S_E**: Expected intra-class similarity (how similar examples from the same class are). Higher => confusable.
-- **S_R**: Expected inter-class similarity (how similar examples from different classes are). Lower => More difficult.
+- **S_E**: Expected intra-class similarity (how similar examples from the same class are). Higher => More similar samples inside classes.
+- **S_R**: Expected inter-class similarity (how similar examples from different classes are). Lower => Less similar samples across classes.
 - **bar_S**: Normalized similarity value combining S_E and S_R.
 - **difficulty_sim**: Raw difficulty estimate: `S_R / (S_E + ε)`. Higher => more confusable classes.
 
