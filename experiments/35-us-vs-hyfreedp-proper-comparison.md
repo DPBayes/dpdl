@@ -31,77 +31,59 @@ For the non-DP run, we will use the following hyperparameters
 | ViT-Base  | 98.55   | 92.37    | 96.75 | 98.39 | 89.53   | N/A    |
 
 ### Inferred difficulty metrics
+                     
+#### Similarity‑based measures (embedding‑space analysis [1]):
+- **S_R** – expected **intra‑class** similarity  
+  (average cosine similarity between samples of the *same* class).  
+  Higher => tighter class clusters.
 
-#### Similarity-Based Measures ([from embedding similarity analysis](https://arxiv.org/abs/2404.05981)):
-- **S_E**: Expected intra-class similarity (how similar examples from the same class are). Higher => More similar samples inside classes.
-- **S_R**: Expected inter-class similarity (how similar examples from different classes are). Lower => Less similar samples across classes.
-- **bar_S**: Normalized similarity value combining S_E and S_R.
-- **difficulty_sim**: Raw difficulty estimate: `S_R / (S_E + ε)`. Higher => more confusable classes.
+- **S_E** – expected **inter‑class** similarity  
+  (average cosine similarity between samples of *different* classes).  
+  Lower => classes are more distinct.
 
----
+- **difficulty_sim**: Raw difficulty estimate computed as:  
+  `difficulty_sim = S_E / (S_R + ε)`  
+  > **Higher** values indicate **harder** datasets: more class confusion and weaker clustering.  
+  > **Lower** values indicate **easier** datasets: well-separated and tight class groupings.
 
-#### Accuracy & Learning Dynamics:
-- **base_difficulty**: `1 - test_mean`, direct error rate from test performance.
-- **cv_full**: Coefficient of variation of per-class test accuracies (std / mean).
-- **cv_trimmed**: Same as above but trimmed (removes outliers from both ends).
-- **difficulty**: Composite difficulty = base_difficulty + weighted gap + weighted CV.
-- **gap**: Generalization gap = train_mean - test_mean.
-
----
-
-#### Class Distribution:
-- **gini**: Gini impurity of the class distribution (0 = imbalanced, ~1 = balanced).
-- **imbalance_factor**: `1 - gini`, more intuitive: 1 = perfectly balanced, 0 = fully imbalanced.
-- **lambda_s**: Optional scaling parameter from similarity analysis (used in some S-bar variants).
-- **num_classes**: Number of unique classes in the dataset.
+- **bar_S**: Normalized similarity score combining S_E and S_R using a weighted linear formula.  
+- **hat_S**: Soft-normalized version of bar_S (unit-normalized combination of S_E and S_R).
 
 ---
 
-#### Per-Class Accuracy Stats (on test set):
-- **per_class_min**: Worst-performing class accuracy.
-- **per_class_max**: Best-performing class accuracy.
-- **per_class_median**: Median of all per-class accuracies.
-- **per_class_p25**: 25th percentile (Q1) of per-class accuracies.
-- **per_class_p75**: 75th percentile (Q3) of per-class accuracies.
-- **std**: Standard deviation of per-class accuracies.
+#### Accuracy & learning dynamics
+- **base_difficulty** = `1 – test_mean`
+- **cv_full** – coefficient of variation of per‑class test accuracies
+- **cv_trimmed** – same, after trimming outliers
+- **difficulty** – composite score = base_difficulty + weighted gap + weighted CV
+- **gap** – generalisation gap = train_mean – test_mean
 
 ---
 
-#### Overall Accuracies:
-- **test_mean**: Mean classification accuracy over the test set.
-- **train_mean**: Mean classification accuracy over the train set (final step).
+#### Class distribution
+- **gini** – Gini impurity of the label distribution  
+  0 = completely imbalanced, 1 ~ perfectly balanced
+- **imbalance_factor** = `1 – gini`
+- **lambda_s** – weighting factor used in *bar_S* / *hat_S*
+- **num_classes** – total distinct labels
+
+---
+
+#### Per‑class accuracy stats (test set)
+`per_class_min`, `per_class_max`, `per_class_median`, `per_class_p25`, `per_class_p75`, `std`
+
+---
+
+#### Overall accuracies
+`test_mean`, `train_mean`
+
+---
+
+[1] Cao et al., "A Lightweight Measure of Classification Difficulty from Application Dataset Characteristics," 2024.
 
 ### Datasets as columns
 
-
-## Model: vit_base_patch16_224.augreg_in21k
-
-| metric           |   dpdl-benchmark/sun397 |   food101 |   cifar100 |   dpdl-benchmark/gtsrb |   cifar10 |   dpdl-benchmark/svhn_cropped |
-|:-----------------|------------------------:|----------:|-----------:|-----------------------:|----------:|------------------------------:|
-| S_E              |                   0.124 |     0.191 |      0.257 |                  0.277 |     0.346 |                         0.317 |
-| S_R              |                   0.499 |     0.45  |      0.588 |                  0.571 |     0.63  |                         0.48  |
-| bar_S            |                   0.594 |     0.565 |      0.583 |                  0.574 |     0.571 |                         0.541 |
-| base_difficulty  |                   0.222 |     0.084 |      0.067 |                  0.161 |     0.011 |                         0.062 |
-| cv_full          |                   0.219 |     0.072 |      0.062 |                  0.252 |     0.011 |                         0.03  |
-| cv_trimmed       |                   0.173 |     0.048 |      0.046 |                  0.172 |     0.011 |                         0.03  |
-| difficulty       |                   0.376 |     0.113 |      0.108 |                  0.323 |     0.02  |                         0.072 |
-| difficulty_sim   |                   4.032 |     2.352 |      2.289 |                  2.062 |     1.818 |                         1.512 |
-| gap              |                   0.135 |     0.01  |      0.035 |                  0.154 |     0.007 |                        -0.01  |
-| gini             |                   0.995 |     0.99  |      0.99  |                  0.964 |     0.9   |                         0.885 |
-| hat_S            |                   0.752 |     0.575 |      0.563 |                  0.515 |     0.45  |                         0.339 |
-| lambda_s         |                   0.5   |     0.5   |      0.5   |                  0.5   |     0.5   |                         0.5   |
-| num_classes      |                 397     |   101     |    100     |                 43     |    10     |                        10     |
-| per_class_max    |                   1     |     1     |      1     |                  1     |     0.998 |                         0.964 |
-| per_class_median |                   0.82  |     0.936 |      0.95  |                  0.921 |     0.994 |                         0.947 |
-| per_class_min    |                   0.148 |     0.584 |      0.68  |                  0.033 |     0.969 |                         0.891 |
-| per_class_p25    |                   0.69  |     0.896 |      0.91  |                  0.791 |     0.985 |                         0.914 |
-| per_class_p75    |                   0.913 |     0.952 |      0.97  |                  0.967 |     0.996 |                         0.961 |
-| std              |                   0.17  |     0.066 |      0.058 |                  0.212 |     0.011 |                         0.028 |
-| test_mean        |                   0.778 |     0.916 |      0.933 |                  0.839 |     0.989 |                         0.938 |
-| train_mean       |                   0.912 |     0.927 |      0.968 |                  0.993 |     0.996 |                         0.928 |
-
-
-## Model: vit_base_patch16_clip_224.metaclip_2pt5b
+#### Model: vit_base_patch16_clip_224.metaclip_2pt5b
 
 | metric           |   dpdl-benchmark/sun397 |   cifar100 |   dpdl-benchmark/gtsrb |   food101 |   cifar10 |   dpdl-benchmark/svhn_cropped |
 |:-----------------|------------------------:|-----------:|-----------------------:|----------:|----------:|------------------------------:|
@@ -127,8 +109,33 @@ For the non-DP run, we will use the following hyperparameters
 | test_mean        |                   0.793 |      0.914 |                  0.975 |     0.925 |     0.988 |                         0.959 |
 | train_mean       |                   0.971 |      0.975 |                  1     |     0.955 |     1     |                         0.96  |
 
+#### Model: vit_base_patch16_224.augreg_in21k
 
-## Model: vit_small_patch16_224.augreg_in21k
+| metric           |   dpdl-benchmark/sun397 |   food101 |   cifar100 |   dpdl-benchmark/gtsrb |   cifar10 |   dpdl-benchmark/svhn_cropped |
+|:-----------------|------------------------:|----------:|-----------:|-----------------------:|----------:|------------------------------:|
+| S_E              |                   0.124 |     0.191 |      0.257 |                  0.277 |     0.346 |                         0.317 |
+| S_R              |                   0.499 |     0.45  |      0.588 |                  0.571 |     0.63  |                         0.48  |
+| bar_S            |                   0.594 |     0.565 |      0.583 |                  0.574 |     0.571 |                         0.541 |
+| base_difficulty  |                   0.222 |     0.084 |      0.067 |                  0.161 |     0.011 |                         0.062 |
+| cv_full          |                   0.219 |     0.072 |      0.062 |                  0.252 |     0.011 |                         0.03  |
+| cv_trimmed       |                   0.173 |     0.048 |      0.046 |                  0.172 |     0.011 |                         0.03  |
+| difficulty       |                   0.376 |     0.113 |      0.108 |                  0.323 |     0.02  |                         0.072 |
+| difficulty_sim   |                   4.032 |     2.352 |      2.289 |                  2.062 |     1.818 |                         1.512 |
+| gap              |                   0.135 |     0.01  |      0.035 |                  0.154 |     0.007 |                        -0.01  |
+| gini             |                   0.995 |     0.99  |      0.99  |                  0.964 |     0.9   |                         0.885 |
+| hat_S            |                   0.752 |     0.575 |      0.563 |                  0.515 |     0.45  |                         0.339 |
+| lambda_s         |                   0.5   |     0.5   |      0.5   |                  0.5   |     0.5   |                         0.5   |
+| num_classes      |                 397     |   101     |    100     |                 43     |    10     |                        10     |
+| per_class_max    |                   1     |     1     |      1     |                  1     |     0.998 |                         0.964 |
+| per_class_median |                   0.82  |     0.936 |      0.95  |                  0.921 |     0.994 |                         0.947 |
+| per_class_min    |                   0.148 |     0.584 |      0.68  |                  0.033 |     0.969 |                         0.891 |
+| per_class_p25    |                   0.69  |     0.896 |      0.91  |                  0.791 |     0.985 |                         0.914 |
+| per_class_p75    |                   0.913 |     0.952 |      0.97  |                  0.967 |     0.996 |                         0.961 |
+| std              |                   0.17  |     0.066 |      0.058 |                  0.212 |     0.011 |                         0.028 |
+| test_mean        |                   0.778 |     0.916 |      0.933 |                  0.839 |     0.989 |                         0.938 |
+| train_mean       |                   0.912 |     0.927 |      0.968 |                  0.993 |     0.996 |                         0.928 |
+
+#### Model: vit_small_patch16_224.augreg_in21k
 
 | metric           |   dpdl-benchmark/sun397 |   cifar100 |   dpdl-benchmark/gtsrb |   food101 |   cifar10 |   dpdl-benchmark/svhn_cropped |
 |:-----------------|------------------------:|-----------:|-----------------------:|----------:|----------:|------------------------------:|
@@ -155,7 +162,7 @@ For the non-DP run, we will use the following hyperparameters
 | train_mean       |                   0.806 |      0.927 |                  0.976 |     0.87  |     0.99  |                         0.907 |
 
 
-## Model: vit_tiny_patch16_224.augreg_in21k
+#### Model: vit_tiny_patch16_224.augreg_in21k
 
 | metric           |   dpdl-benchmark/sun397 |   cifar100 |   dpdl-benchmark/gtsrb |   cifar10 |   food101 |   dpdl-benchmark/svhn_cropped |
 |:-----------------|------------------------:|-----------:|-----------------------:|----------:|----------:|------------------------------:|
@@ -184,6 +191,17 @@ For the non-DP run, we will use the following hyperparameters
 
 ### Metrics as columns
 
+#### Model: vit_base_patch16_clip_224.metaclip_2pt5b
+
+| dataset                     |   S_E |   S_R |   bar_S |   base_difficulty |   cv_full |   cv_trimmed |   difficulty | difficulty_sim   |   gap |   gini |   hat_S |   lambda_s |   num_classes |   per_class_max |   per_class_median |   per_class_min |   per_class_p25 |   per_class_p75 |   std |   test_mean |   train_mean |
+|:----------------------------|------:|------:|--------:|------------------:|----------:|-------------:|-------------:|:-----------------|------:|-------:|--------:|-----------:|--------------:|----------------:|-------------------:|----------------:|----------------:|----------------:|------:|------------:|-------------:|
+| dpdl-benchmark/sun397       | 0.11  | 0.518 |   0.602 |             0.207 |     0.201 |        0.154 |        0.373 | **4.699**        | 0.178 |  0.995 |   0.787 |        0.5 |           397 |           1     |              0.821 |           0.074 |           0.711 |           0.914 | 0.159 |       0.793 |        0.971 |
+| cifar100                    | 0.175 | 0.552 |   0.594 |             0.086 |     0.071 |        0.058 |        0.146 | **3.154**        | 0.061 |  0.99  |   0.683 |        0.5 |           100 |           1     |              0.94  |           0.73  |           0.88  |           0.96  | 0.065 |       0.914 |        0.975 |
+| dpdl-benchmark/gtsrb        | 0.245 | 0.759 |   0.628 |             0.025 |     0.033 |        0.023 |        0.049 | **3.100**        | 0.025 |  0.964 |   0.677 |        0.5 |            43 |           1     |              0.983 |           0.85  |           0.971 |           0.998 | 0.032 |       0.975 |        1     |
+| food101                     | 0.173 | 0.495 |   0.58  |             0.075 |     0.061 |        0.042 |        0.111 | **2.861**        | 0.03  |  0.99  |   0.65  |        0.5 |           101 |           1     |              0.936 |           0.624 |           0.896 |           0.96  | 0.057 |       0.925 |        0.955 |
+| cifar10                     | 0.277 | 0.634 |   0.589 |             0.012 |     0.011 |        0.011 |        0.024 | **2.293**        | 0.012 |  0.9   |   0.564 |        0.5 |            10 |           0.997 |              0.991 |           0.963 |           0.986 |           0.995 | 0.01  |       0.988 |        1     |
+| dpdl-benchmark/svhn_cropped | 0.356 | 0.731 |   0.594 |             0.041 |     0.02  |        0.02  |        0.051 | **2.055**        | 0     |  0.885 |   0.513 |        0.5 |            10 |           0.976 |              0.965 |           0.916 |           0.958 |           0.971 | 0.019 |       0.959 |        0.96  |
+
 #### Model: vit_base_patch16_224.augreg_in21k
 
 | dataset                     |   S_E |   S_R |   bar_S |   base_difficulty |   cv_full |   cv_trimmed |   difficulty | difficulty_sim   |    gap |   gini |   hat_S |   lambda_s |   num_classes |   per_class_max |   per_class_median |   per_class_min |   per_class_p25 |   per_class_p75 |   std |   test_mean |   train_mean |
@@ -195,17 +213,6 @@ For the non-DP run, we will use the following hyperparameters
 | cifar10                     | 0.346 | 0.63  |   0.571 |             0.011 |     0.011 |        0.011 |        0.02  | **1.818**        |  0.007 |  0.9   |   0.45  |        0.5 |            10 |           0.998 |              0.994 |           0.969 |           0.985 |           0.996 | 0.011 |       0.989 |        0.996 |
 | dpdl-benchmark/svhn_cropped | 0.317 | 0.48  |   0.541 |             0.062 |     0.03  |        0.03  |        0.072 | **1.512**        | -0.01  |  0.885 |   0.339 |        0.5 |            10 |           0.964 |              0.947 |           0.891 |           0.914 |           0.961 | 0.028 |       0.938 |        0.928 |
 
-
-#### Model: vit_base_patch16_clip_224.metaclip_2pt5b
-
-| dataset                     |   S_E |   S_R |   bar_S |   base_difficulty |   cv_full |   cv_trimmed |   difficulty | difficulty_sim   |   gap |   gini |   hat_S |   lambda_s |   num_classes |   per_class_max |   per_class_median |   per_class_min |   per_class_p25 |   per_class_p75 |   std |   test_mean |   train_mean |
-|:----------------------------|------:|------:|--------:|------------------:|----------:|-------------:|-------------:|:-----------------|------:|-------:|--------:|-----------:|--------------:|----------------:|-------------------:|----------------:|----------------:|----------------:|------:|------------:|-------------:|
-| dpdl-benchmark/sun397       | 0.11  | 0.518 |   0.602 |             0.207 |     0.201 |        0.154 |        0.373 | **4.699**        | 0.178 |  0.995 |   0.787 |        0.5 |           397 |           1     |              0.821 |           0.074 |           0.711 |           0.914 | 0.159 |       0.793 |        0.971 |
-| cifar100                    | 0.175 | 0.552 |   0.594 |             0.086 |     0.071 |        0.058 |        0.146 | **3.154**        | 0.061 |  0.99  |   0.683 |        0.5 |           100 |           1     |              0.94  |           0.73  |           0.88  |           0.96  | 0.065 |       0.914 |        0.975 |
-| dpdl-benchmark/gtsrb        | 0.245 | 0.759 |   0.628 |             0.025 |     0.033 |        0.023 |        0.049 | **3.100**        | 0.025 |  0.964 |   0.677 |        0.5 |            43 |           1     |              0.983 |           0.85  |           0.971 |           0.998 | 0.032 |       0.975 |        1     |
-| food101                     | 0.173 | 0.495 |   0.58  |             0.075 |     0.061 |        0.042 |        0.111 | **2.861**        | 0.03  |  0.99  |   0.65  |        0.5 |           101 |           1     |              0.936 |           0.624 |           0.896 |           0.96  | 0.057 |       0.925 |        0.955 |
-| cifar10                     | 0.277 | 0.634 |   0.589 |             0.012 |     0.011 |        0.011 |        0.024 | **2.293**        | 0.012 |  0.9   |   0.564 |        0.5 |            10 |           0.997 |              0.991 |           0.963 |           0.986 |           0.995 | 0.01  |       0.988 |        1     |
-| dpdl-benchmark/svhn_cropped | 0.356 | 0.731 |   0.594 |             0.041 |     0.02  |        0.02  |        0.051 | **2.055**        | 0     |  0.885 |   0.513 |        0.5 |            10 |           0.976 |              0.965 |           0.916 |           0.958 |           0.971 | 0.019 |       0.959 |        0.96  |
 
 
 #### Model: vit_small_patch16_224.augreg_in21k
@@ -230,7 +237,6 @@ For the non-DP run, we will use the following hyperparameters
 | cifar10                     | 0.268 | 0.619 |   0.588 |             0.031 |     0.021 |        0.021 |        0.049 | **2.308**        |  0.015 |  0.9   |   0.567 |        0.5 |            10 |           0.991 |              0.974 |           0.926 |           0.964 |           0.98  | 0.02  |       0.969 |        0.984 |
 | food101                     | 0.265 | 0.507 |   0.561 |             0.16  |     0.115 |        0.086 |        0.202 | **1.915**        | -0.004 |  0.99  |   0.478 |        0.5 |           101 |           1     |              0.864 |           0.504 |           0.808 |           0.904 | 0.096 |       0.84  |        0.835 |
 | dpdl-benchmark/svhn_cropped | 0.353 | 0.595 |   0.56  |             0.089 |     0.046 |        0.046 |        0.112 | **1.683**        | -0     |  0.885 |   0.406 |        0.5 |            10 |           0.955 |              0.914 |           0.845 |           0.893 |           0.946 | 0.042 |       0.911 |        0.91  |
-
 
 ## Models
 
