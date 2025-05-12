@@ -60,11 +60,16 @@ def process_experiment_directory(directory, pattern=None):
 
                 test_metrics_file_path = os.path.join(experiment_path, 'test_metrics')
                 if os.path.exists(test_metrics_file_path):
-                    experiment_data['test_metrics'] = read_json_file(test_metrics_file_path)
+                    test_metrics = read_json_file(test_metrics_file_path)
 
-                snr_file_path = os.path.join(experiment_path, 'signal-to-noise-ratio.csv')
-                if os.path.exists(snr_file_path):
-                    experiment_data['signal_to_noise_ratio'] = read_csv_file(snr_file_path)
+                    if 'ConfusionMatrix' in test_metrics:
+                        del test_metrics['ConfusionMatrix']
+
+                    experiment_data['test_metrics'] = test_metrics
+
+                epoch_losses_file_path = os.path.join(experiment_path, 'epoch_losses.csv')
+                if os.path.exists(epoch_losses_file_path):
+                    experiment_data['losses_by_epoch'] = read_csv_file(epoch_losses_file_path)
 
                 data.append(experiment_data)
 
