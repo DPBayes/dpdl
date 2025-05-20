@@ -103,23 +103,12 @@ class FiLM:
 
     @staticmethod
     def _get_config(model_name: str):
-        if model_name.startswith('vit_base_patch16_224'):
+        if model_name.startswith('vit_'):
             return FilmConfig(
                 target_modules=r'.*\.norm\d?',
                 modules_to_save=['model.head'],
             )
 
-        if model_name.startswith('vit_small_patch16_224'):
-            return FilmConfig(
-                target_modules=r'.*\.norm\d?',
-                modules_to_save=['model.head'],
-            )
-
-        if model_name.startswith('vit_tiny_patch16_224'):
-            return FilmConfig(
-                target_modules=r'.*\.norm\d?',
-                modules_to_save=['model.head'],
-            )
 
         if model_name.startswith('resnetv2_50x1_bit'):
             return FilmConfig(
