@@ -5,11 +5,17 @@ log = logging.getLogger(__name__)
 
 
 class Callback:
+    def __init__(self):
+        self.global_step = 0
+
     def _is_global_zero(self):
         return torch.distributed.get_rank() == 0
 
     def on_train_start(self, trainer):
-        pass
+        self.global_step = 0
+
+    def on_train_batch_end(self, trainer, batch_idx, batch, loss):
+        self.global_step += 1
 
     def on_train_end(self, trainer):
         pass
@@ -24,9 +30,6 @@ class Callback:
         pass
 
     def on_train_physical_batch_start(self, trainer, batch_idx, batch):
-        pass
-
-    def on_train_batch_end(self, trainer, batch_idx, batch, loss):
         pass
 
     def on_train_physical_batch_end(self, trainer, batch_idx, batch, loss):

@@ -11,6 +11,8 @@ log = logging.getLogger(__name__)
 
 class RecordCosineSimilarityCallback(Callback):
     def __init__(self, log_dir: str, max_grad_norm: float, quantiles: list = [0.25, 0.5, 0.75]):
+        super().__init__()
+
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
         self.quantiles = quantiles
@@ -139,6 +141,8 @@ class RecordCosineSimilarityCallback(Callback):
 
 class RecordPerClassCosineSimilarityCallback(Callback):
     def __init__(self, log_dir: str, max_grad_norm: float):
+        super().__init__()
+
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
 
@@ -187,9 +191,11 @@ class RecordPerClassCosineSimilarityCallback(Callback):
             torch.cuda.empty_cache()
 
     def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
+        super().on_train_batch_end(trainer, batch_idx, *args, **kwargs)
+
         with torch.no_grad():
             # Create a row for this step with one column per class.
-            row = {'Step': batch_idx}
+            row = {'Step': self.global_step}
 
             for cls in range(self.num_classes):
                 if self.num_batches[cls] == 0:

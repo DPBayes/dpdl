@@ -9,6 +9,8 @@ log = logging.getLogger(__name__)
 
 class RecordGradientStatisticsCallback(Callback):
     def __init__(self, log_dir: str, max_grad_norm: float):
+        super().__init__() # We'll get `global_step` from super
+
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
         self.grad_history_samples = []
@@ -50,8 +52,10 @@ class RecordGradientStatisticsCallback(Callback):
         torch.cuda.empty_cache()
 
     def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
-        row_data_samples = {'step': batch_idx}
-        row_data_features = {'step': batch_idx}
+        super().on_train_batch_end(trainer, batch_idx, *args, **kwargs)
+
+        row_data_samples = {'step': self.global_step}
+        row_data_features = {'step': self.global_step}
 
         # Calculate the statistics for the logical batch, first over the samples ...
         if self.statistics_samples['mean']:

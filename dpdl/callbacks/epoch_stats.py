@@ -11,6 +11,8 @@ log = logging.getLogger(__name__)
 
 class RecordEpochStatsCallback(Callback):
     def __init__(self, use_steps=False):
+        super().__init__()
+
         self.use_steps = use_steps
 
         self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()

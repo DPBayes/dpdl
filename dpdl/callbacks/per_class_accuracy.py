@@ -9,6 +9,8 @@ log = logging.getLogger(__name__)
 
 class RecordPerClassAccuracyCallback(Callback):
     def __init__(self, log_dir: str):
+        super().__init__()
+
         self.log_dir = log_dir
         self.per_class_accuracies_history = []
 

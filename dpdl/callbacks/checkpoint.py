@@ -11,6 +11,8 @@ log = logging.getLogger(__name__)
 
 class CheckpointCallback(Callback):
     def __init__(self, log_dir: str, checkpoint_step_interval: int):
+        super().__init__()
+
         self.log_dir = log_dir
         self.checkpoint_step_interval = checkpoint_step_interval
         self.global_step = 0

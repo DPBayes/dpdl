@@ -270,10 +270,9 @@ class Trainer:
         return self.model.module
 
     def _calculate_steps_per_epoch(self):
-        data_size = len(self.datamodule.get_dataloader('train').dataset)
-        batch_size = self.datamodule.batch_size
-
-        return math.ceil(data_size / batch_size)
+        N = len(self.datamodule.get_dataloader('train').dataset)
+        B = self.datamodule.batch_size
+        return math.ceil(N / B)
 
     def save_model(self, fpath):
         self.model.save_model(fpath)
@@ -548,26 +547,64 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.model.train()
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
+        logical_idx = 0
+        logical_loss = 0.0
+        phys_in_logical = 0
+        in_new_logical = True
+
         with BatchMemoryManager(
             data_loader=self.datamodule.get_dataloader('train'),
             max_physical_batch_size=self.physical_batch_size,
             optimizer=self.optimizer,
         ) as virtual_dataloader:
-            # the virtual data loader created by BatchMemoryManager enables us to use larger
-            # logical batch sizes that fit in a GPU.
-            for batch_idx, batch in enumerate(virtual_dataloader):
-                self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
-                batch_loss = self.fit_one_batch(batch_idx, batch)
-                self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, batch_loss)
 
-        # compute and reset the epoch metrics
+            for phys_idx, batch in enumerate(virtual_dataloader):
+
+                # if we're starting a new logical batch, signal start
+                if in_new_logical:
+                    self.callback_handler.call(
+                        'on_train_batch_start', self, logical_idx, None
+                    )
+                    in_new_logical = False
+
+                # physical‐batch callbacks
+                self.callback_handler.call(
+                    'on_train_physical_batch_start', self, phys_idx, batch
+                )
+
+                loss = self.fit_one_batch(phys_idx, batch)
+
+                self.callback_handler.call(
+                    'on_train_physical_batch_end', self, phys_idx, batch, loss
+                )
+
+                # accumulate
+                logical_loss += loss
+                phys_in_logical += 1
+
+                # check for logical‐batch boundary
+                if not self.optimizer._check_skip_next_step(False):
+                    avg = logical_loss / phys_in_logical
+                    self.callback_handler.call(
+                        'on_train_batch_end',
+                        self,
+                        logical_idx,
+                        None,
+                        avg,
+                    )
+                    logical_idx += 1
+                    logical_loss = 0.0
+                    phys_in_logical = 0
+                    in_new_logical = True
+
+        # wrap up epoch
         metrics = self._unwrap_model().train_metrics.compute()
         self._unwrap_model().train_metrics.reset()
-
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
     def save_model(self, fpath):
         self.model.module.save_model(fpath)
+
 
 class TrainerFactory:
     @staticmethod
@@ -715,23 +752,43 @@ class TrainerFactory:
         hyperparams: Hyperparameters,
         datamodule: DataModule,
     ):
-        # use steps instead of epochs?
+        """
+        Compute the number of training epochs and total optimizer steps.
+
+        If `use_steps=True`, we convert epochs to total_steps using ceil(N / B),
+        which matches the default logic in Opacus:
+            - sample_rate = 1 / ceil(N / B)
+            - steps = int(1 / sample_rate) = ceil(N / B)
+
+        However, default Opacus might still make more steps than us, because we
+        cap the total number of steps exactly at `total_steps` and Opacus default
+        (`use_steps=False`) always makes a full pass on the dataloader when feeding
+        batches through the BatchMemoryManager.
+
+        Returns:
+            (epochs, total_steps): One of the values will be None depending on mode.
+        """
+
+        # If we're using step-based training and the number of epochs is specified,
+        # convert epochs to total steps using the default Opacus logic.
         if configuration.use_steps and hyperparams.epochs:
-            B = datamodule.batch_size
-
             dataloader = datamodule.get_dataloader('train')
-            N = len(dataloader.dataset)
 
-            total_steps = math.ceil((N*hyperparams.epochs) / B)
+            # Match Opacus: steps_per_epoch = ceil(N / B)
+            N = len(dataloader.dataset)
+            B = datamodule.batch_size
+            steps_per_epoch = math.ceil(N / B)
+            total_steps = steps_per_epoch * hyperparams.epochs
             epochs = None
-        # is the number of steps limited?
+
+        # If total steps are manually specified in config
         elif configuration.use_steps and hyperparams.total_steps:
             total_steps = hyperparams.total_steps
             epochs = None
-        # normal training using epochs
+
+        # Standard epoch-based training
         else:
             total_steps = None
             epochs = hyperparams.epochs
 
         return epochs, total_steps
-

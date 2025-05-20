@@ -11,13 +11,17 @@ log = logging.getLogger(__name__)
 
 class RecordTrainLossByStepCallback(Callback):
     def __init__(self, log_dir: str):
+        super().__init__() # We'll get `global_step` from super
+
         self.log_dir = log_dir
         self.train_losses = []
 
         os.makedirs(self.log_dir, exist_ok=True)
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, **kwargs):
-        self.train_losses.append({'step': batch_idx, 'train_loss': loss})
+        super().on_train_batch_end(trainer, batch_idx, batch, loss, **kwargs)
+
+        self.train_losses.append({'step': self.global_step, 'train_loss': loss})
 
     def on_train_end(self, trainer, *args, **kwargs):
         if self._is_global_zero():
@@ -33,6 +37,8 @@ class RecordTrainLossByStepCallback(Callback):
 
 class RecordLossesByEpochCallback(Callback):
     def __init__(self, log_dir):
+        super().__init__()
+
         self.log_dir = log_dir
         self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()
         self.evaluation_loss = torchmetrics.aggregation.MeanMetric(sync_on_compute=False).cuda()
