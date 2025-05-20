@@ -6,6 +6,9 @@ log = logging.getLogger(__name__)
 
 
 class DebugProbeCallback(Callback):
+    def __init__(self):
+        super().__init__()
+
     def _is_global_zero(self):
         log.info(f"[DEBUG - RANK {torch.distributed.get_rank()}] Calling _is_global_zero")
         super().__is_global_zero()

@@ -9,6 +9,8 @@ log = logging.getLogger(__name__)
 
 class RecordClippedProportionsPerClassCallback(Callback):
     def __init__(self, log_dir: str, max_grad_norm: float):
+        super().__init__()
+
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
 

@@ -10,6 +10,8 @@ log = logging.getLogger(__name__)
 
 class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
     def __init__(self, log_dir: str, max_grad_norm: float, quantiles: list):
+        super().__init__() # We'll get global step from super
+
         self.log_dir = log_dir
         self.max_grad_norm = max_grad_norm
         self.grad_history = []
@@ -76,8 +78,10 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
                 torch.cuda.empty_cache()
 
     def on_train_batch_end(self, trainer, batch_idx, *args, **kwargs):
+        super().on_train_batch_end(trainer, batch_idx, *args, **kwargs)
+
         # Aggregate the per-class gradient norms for the logical batch
-        row_data = {'step': batch_idx}
+        row_data = {'step': self.global_step}
 
         for cls in range(self.num_classes):
             # Calculate statistics of body and head norms across physical batches
