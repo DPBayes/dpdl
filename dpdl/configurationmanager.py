@@ -155,16 +155,6 @@ class Configuration(BaseModel):
         return values
 
     @root_validator(pre=True)
-    def check_record_loss_by_step(cls, values):
-        record_loss_by_step = values.get('record_loss_by_step')
-        use_steps = values.get('use_steps')
-
-        if record_loss_by_step and not use_steps:
-            raise ValueError('Unable to record trian loss by step when using epochs. Hint: `--use-steps`')
-
-        return values
-
-    @root_validator(pre=True)
     def check_command(cls, values):
         command = values.get('command')
 
