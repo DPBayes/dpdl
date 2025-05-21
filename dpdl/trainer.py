@@ -12,6 +12,7 @@ from .configurationmanager import ConfigurationManager, Configuration, Hyperpara
 from .datamodules import DataModule, DataModuleFactory
 from .optimizers import OptimizerFactory
 from .utils import seed_everything
+from .hyfreedp import HyFreeDPOptimizer, split_noise_multiplier
 
 log = logging.getLogger(__name__)
 
@@ -282,17 +283,18 @@ class DifferentiallyPrivateTrainer(Trainer):
         self,
         *,
         # privacy params
+        privacy_engine,
         noise_multiplier: float = 1.0,
         max_grad_norm: float = 1.0,
-        clipping_mode: str = 'flat',
-        accountant: str = 'prv',
         poisson_sampling: bool = True,
         normalize_clipping: bool = False,
+        clipping_mode: str = 'flat',
         secure_mode: bool = False,
         target_epsilon: float = None,
         target_delta: float = None,
         noise_batch_ratio: float = None,
         seed: int = 0,
+        hyfreedp: bool = False,
         **kwargs,
     ):
         self.noise_multiplier = noise_multiplier
@@ -304,14 +306,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.seed = seed
         self.poisson_sampling = poisson_sampling
         self.normalize_clipping = normalize_clipping
-
-        # setup opacus privacy engine
-        privacy_engine_args = {
-            'accountant': accountant,
-            'secure_mode': secure_mode,
-        }
-
-        self.privacy_engine = opacus.PrivacyEngine(**privacy_engine_args)
+        self.privacy_engine = privacy_engine
+        self.hyfreedp = hyfreedp
 
         super().__init__(seed=seed, **kwargs)
 
@@ -347,12 +343,132 @@ class DifferentiallyPrivateTrainer(Trainer):
         if self.seed:
             noise_generator.manual_seed(self.seed)
 
-        self.model = self.model.cuda()
+        vanilla_model = self.model.cuda()
 
         # let's be distributed by default and wrap the model for Opacus DDP.
         # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
         # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
-        model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
+        model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(vanilla_model)
+
+        vanilla_optimizer = self.optimizer
+        train_dataloader = self.datamodule.get_dataloader('train')
+
+        if self.hyfreedp:
+            B = self.datamodule.batch_size
+            N = len(train_dataloader.dataset)
+            sample_rate = B/N
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'HyfreeDP - Splitting noise multiplier.')
+
+            sigma_g, sigma_l = split_noise_multiplier(
+                self.target_epsilon,
+                self.target_delta,
+                self.total_steps,
+                B,
+                N,
+                5,
+            )
+
+            automatic_clipping = False
+
+            dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
+                module=model,
+                optimizer=vanilla_optimizer,
+                data_loader=train_dataloader,
+                noise_multiplier=sigma_g,
+                max_grad_norm=self.max_grad_norm,
+                clipping=self.clipping_mode,
+                noise_generator=noise_generator,
+                poisson_sampling=self.poisson_sampling,
+                automatic_clipping=automatic_clipping,
+                total_steps=self.total_steps,
+            )
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'HyfreeDP - Creating optimizer, q={sample_rate}, σ_g={sigma_g}, σ_l={sigma_l}')
+                if automatic_clipping:
+                    log.info(f'HyfreeDP - Automatic clipping enabled!')
+                else:
+                    log.info(f'HyfreeDP - Automatic clipping disabled!')
+
+            hyfreedp_optimizer = HyFreeDPOptimizer(
+                model=dp_model,
+                loss_fn=vanilla_model._criterion,
+                optimizer=vanilla_optimizer,
+                init_eta=1e-4 / 0.01, # default from the paper, scaled up by gamma from AUTO-S
+                K=5, # default from the paper
+                accountant=self.privacy_engine.accountant,
+                sample_rate=sample_rate,
+                sigma_l=sigma_l,
+                batch_size=B,
+                debug=True,
+            )
+
+
+            # now we can start using the DP'ifyed stuff
+            self.model = dp_model
+            self.datamodule.set_dataloader('train', dp_dataloader)
+            self.optimizer = dp_optimizer
+
+            # Opacus will use HyFreeDP optimizer
+            dp_optimizer.original_optimizer = hyfreedp_optimizer
+
+            return
+
+        # setup differential privacy for the model, optimize, and dataloader
+        if self._has_target_privacy_params():
+            dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private_with_epsilon(
+                module=model,
+                optimizer=vanilla_optimizer,
+                data_loader=train_dataloader,
+                max_grad_norm=self.max_grad_norm,
+                clipping=self.clipping_mode,
+                target_epsilon=self.target_epsilon,
+                target_delta=self.target_delta,
+                epochs=self.epochs,
+                noise_generator=noise_generator,
+                poisson_sampling=self.poisson_sampling,
+                normalize_clipping=self.normalize_clipping,
+                automatic_clipping=self.hyfreedp,
+                total_steps=self.total_steps,
+            )
+        else:
+            if self.target_epsilon == -1:
+                self.noise_multiplier = 0
+
+            if self.noise_batch_ratio:
+                self.noise_multiplier = self.noise_batch_ratio * self.datamodule.batch_size
+
+            dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
+                module=model,
+                optimizer=vanilla_optimizer,
+                data_loader=train_dataloader,
+                noise_multiplier=self.noise_multiplier,
+                max_grad_norm=self.max_grad_norm,
+                clipping=self.clipping_mode,
+                noise_generator=noise_generator,
+                poisson_sampling=self.poisson_sampling,
+                automatic_clipping=self.hyfreedp,
+                total_steps=self.total_steps,
+            )
+
+        # now we can start using the DP'ifyed stuff
+        self.model = dp_model
+        self.datamodule.set_dataloader('train', dp_dataloader)
+        self.optimizer = dp_optimizer
+
+    def setup_old(self):
+        noise_generator = torch.Generator(device=torch.cuda.current_device())
+        if self.seed:
+            noise_generator.manual_seed(self.seed)
+
+        vanilla_model = self.model.cuda()
+
+        # let's be distributed by default and wrap the model for Opacus DDP.
+        # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
+        # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
+        model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(vanilla_model)
 
         optimizer = self.optimizer
         train_dataloader = self.datamodule.get_dataloader('train')
@@ -371,6 +487,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 noise_generator=noise_generator,
                 poisson_sampling=self.poisson_sampling,
                 normalize_clipping=self.normalize_clipping,
+                automatic_clipping=self.hyfreedp,
                 total_steps=self.total_steps,
             )
         else:
@@ -389,9 +506,35 @@ class DifferentiallyPrivateTrainer(Trainer):
                 clipping=self.clipping_mode,
                 noise_generator=noise_generator,
                 poisson_sampling=self.poisson_sampling,
-                normalize_clipping=self.normalize_clipping,
+                automatic_clipping=self.hyfreedp,
                 total_steps=self.total_steps,
             )
+
+
+        if self.hyfreedp:
+            B = self.datamodule.batch_size
+            N = len(train_dataloader.dataset)
+            sample_rate = B/N
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'HyfreeDP - Creating optimizer, sample_rate: {sample_rate}')
+
+            hyfreedp_optimizer = HyFreeDPOptimizer(
+                model=dp_model,
+                loss_fn=vanilla_model._criterion,
+                optimizer=optimizer,
+                init_eta=1e-4, # default from the paper
+                K=5, # default from the paper
+                accountant=self.privacy_engine.accountant,
+                sample_rate=sample_rate,
+                #sigma_l=getattr(configuration, 'sigma_l', None),
+                sigma_l=0.01, # TODO
+                batch_size=B,
+                debug=True,
+            )
+
+            # Opacus will use HyFreeDP optimizer
+            dp_optimizer.original_optimizer = hyfreedp_optimizer
 
         # now we can start using the DP'ifyed stuff
         self.model = dp_model
@@ -529,8 +672,21 @@ class DifferentiallyPrivateTrainer(Trainer):
         y = y.cuda(non_blocking=True)
 
         logits = self.model(X)
-        loss = self._unwrap_model().criterion(logits, y)
 
+        # calculate per-sample losses
+        per_sample_loss = self._unwrap_model().criterion(
+            logits,
+            y,
+            reduction='none',
+        ) # shape (B,)
+
+        # In HyFreeDP, the optimizer needs the per sample losses for privatization
+        self.optimizer.original_optimizer.per_sample_loss = per_sample_loss
+        self.optimizer.original_optimizer.batch_inputs = X
+        self.optimizer.original_optimizer.batch_targets = y
+
+        # now we can manually reduce and continue as usually
+        loss = per_sample_loss.mean()
         loss.backward()
 
         self.optimizer.step()
@@ -691,16 +847,25 @@ class TrainerFactory:
 
             return target_delta, target_epsilon
 
+        # setup opacus privacy engine
+        privacy_engine_args = {
+            'accountant': configuration.accountant,
+            'secure_mode': False,
+        }
+
+        privacy_engine = opacus.PrivacyEngine(**privacy_engine_args)
+
         # First initialize the DataModule, it will know about the number of classes
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
         num_classes = datamodule.get_num_classes()
 
         # Now, setup data, model, and optimizer
         model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes)
-        optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         # The datamodule needs to be aware of the transformations, now we can initialize it
         datamodule.initialize(transforms)
+
+        optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model, datamodule, privacy_engine)
 
         # Are we caching the outputs of the feature extractor
         if configuration.cache_features:
@@ -724,6 +889,7 @@ class TrainerFactory:
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
+            hyfreedp=configuration.hyfreedp,
             # hypers
             epochs=epochs,
             total_steps=total_steps,
@@ -735,8 +901,7 @@ class TrainerFactory:
             poisson_sampling=configuration.poisson_sampling,
             normalize_clipping=configuration.normalize_clipping,
             # config
-            accountant=configuration.accountant,
-            secure_mode=configuration.secure_mode,
+            privacy_engine=privacy_engine,
             clipping_mode=configuration.clipping_mode,
             physical_batch_size=configuration.physical_batch_size,
             seed=configuration.seed,

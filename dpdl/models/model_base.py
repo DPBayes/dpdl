@@ -3,6 +3,7 @@ import os
 
 import torch
 import torchmetrics
+import torch.nn.functional as F
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class ModelBase(torch.nn.Module):
         self.num_classes = num_classes
         self.use_feature_cache = use_feature_cache
 
-        self._criterion = torch.nn.CrossEntropyLoss().cuda()
+        self._criterion = F.cross_entropy
 
         # let's track the training accuracy
         self.train_metrics = torchmetrics.MetricCollection(
@@ -104,8 +105,8 @@ class ModelBase(torch.nn.Module):
     def forward_features(self, x):
         return self.model.forward_features(x)
 
-    def criterion(self, logits, targets):
-        return self._criterion(logits, targets)
+    def criterion(self, logits, targets, **kwargs):
+        return self._criterion(logits, targets, **kwargs)
 
     def show_layers(self):
         log.info("Layers:")

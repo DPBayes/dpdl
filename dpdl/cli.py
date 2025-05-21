@@ -74,6 +74,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = 'Adam',
+        hyfreedp: Annotated[
+            bool,
+            typer.Option(
+                help='Enable hyperparameter-free optimization (HyFreeDP)',
+                rich_help_panel='Training options',
+            )
+        ] = False,
         physical_batch_size: Annotated[
             Optional[int],
             typer.Option(

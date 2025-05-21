@@ -84,6 +84,7 @@ class Configuration(BaseModel):
     privacy: bool = True
     model_name: str = 'resnet50'
     optimizer: str = 'Adam'
+    hyfreedp: bool = False
     dataset_name: str = 'cifar10'
     physical_batch_size: int = 40
     num_workers: int = 8
@@ -246,6 +247,7 @@ class Configuration(BaseModel):
                 ('Accountant', self.accountant),
                 ('Poisson sampling', self.poisson_sampling),
                 ('Normalize clipping', self.normalize_clipping),
+                ('Enable HyFreeDP', self.hyfreedp),
             ]
             attributes.extend(privacy_attributes)
 
