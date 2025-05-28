@@ -60,6 +60,7 @@ We will run the experiment over ε = { 1, 2, 4, 8 }.
 | cifar100  |      1   | ViT-Base  | none   | hpo      | 0.8766    | 0.9228   |
 | cifar100  |      1   | ViT-Small | FiLM   | hpo      | 0.8734    | 0.9036   |
 | cifar100  |      1   | ViT-Tiny  | FiLM   | grid     | 0.8182    | 0.8556   |
+| sun397    |      0.1 | ViT-Base  | FiLM   | grid     | 0.151936  | 0.524212 |
 | sun397    |      0.1 | ViT-Tiny  | none   | hpo      | 0.0488509 | 0.239043 |
 | sun397    |      1   | ViT-Base  | FiLM   | hpo      | 0.620273  | 0.752432 |
 | sun397    |      1   | ViT-Base  | none   | hpo      | 0.458439  | 0.702761 |
@@ -78,6 +79,8 @@ We will run the experiment over ε = { 1, 2, 4, 8 }.
 | ViT-Base  | cifar100  |      1   | FiLM   |         8 | hpo      |  0.9302    | 0.00355945  |       45000 |       1e-05 |       40 |
 | ViT-Base  | cifar100  |      1   | none   |         1 | hpo      |  0.8766    | 0.000237439 |        4096 |      50     |       40 |
 | ViT-Base  | cifar100  |      1   | none   |         8 | hpo      |  0.9228    | 0.000327233 |       32768 |      50     |       40 |
+| ViT-Base  | sun397    |      0.1 | FiLM   |         1 | grid     |  0.151936  | 0.00467531  |        1024 |       1     |       40 |
+| ViT-Base  | sun397    |      0.1 | FiLM   |         8 | grid     |  0.524212  | 0.00467531  |          -1 |      10     |       40 |
 | ViT-Base  | sun397    |      1   | FiLM   |         1 | hpo      |  0.620273  | 0.000550406 |        2048 |      50     |       40 |
 | ViT-Base  | sun397    |      1   | FiLM   |         8 | hpo      |  0.752432  | 0.00233387  |       76127 |      10     |       40 |
 | ViT-Base  | sun397    |      1   | none   |         1 | hpo      |  0.458439  | 0.000498367 |       16384 |      50     |       40 |
@@ -98,4 +101,3 @@ We will run the experiment over ε = { 1, 2, 4, 8 }.
 | ViT-Tiny  | sun397    |      0.1 | none   |         8 | hpo      |  0.239043  | 0.00154029  |        7428 |      50     |       60 |
 | ViT-Tiny  | sun397    |      1   | FiLM   |         1 | grid     |  0.54389   | 0.00372759  |       32768 |      10     |       40 |
 | ViT-Tiny  | sun397    |      1   | FiLM   |         8 | grid     |  0.666428  | 0.00372759  |       32768 |      10     |       40 |
-
