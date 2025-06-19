@@ -255,6 +255,6 @@ def _start_logging_to_files(log: logging.Logger, log_path: pathlib.Path):
 
     # create a file handler for saving stderr logs to a file
     stderr_file_handler = logging.FileHandler(log_path / 'stderr.txt')
-    stderr_file_handler.setLevel(logging.WARNING)
+    stderr_file_handler.setLevel(logging.INFO)
     stderr_file_handler.setFormatter(formatter)
     log.addHandler(stderr_file_handler)
