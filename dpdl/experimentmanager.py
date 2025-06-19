@@ -103,7 +103,7 @@ def save_hpo_metrics(
 
     # if exists, read the data
     if (full_log_dir / 'hpo_metrics.json').exists():
-        with safe_open(full_log_dir / 'hpo_metrics.json', 'r') as fh:
+        with open(full_log_dir / 'hpo_metrics.json', 'r') as fh:
             data = json.load(fh)
     else:
         data = []
