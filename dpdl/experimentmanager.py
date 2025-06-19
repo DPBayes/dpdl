@@ -11,7 +11,7 @@ import torch
 
 from .configurationmanager import ConfigurationManager
 from .trainer import Trainer
-from .utils import tensor_to_python_type
+from .utils import tensor_to_python_type, safe_open
 
 log = logging.getLogger(__name__)
 
@@ -28,25 +28,25 @@ def save_study(
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
-    with open(full_log_dir / 'trials.json', 'w') as fh:
+    with safe_open(full_log_dir / 'trials.json', 'w') as fh:
         fh.write(study.trials_dataframe().to_json())
 
-    with open(full_log_dir / 'trials.csv', 'w') as fh:
+    with safe_open(full_log_dir / 'trials.csv', 'w') as fh:
         fh.write(study.trials_dataframe().to_csv())
 
-    with open(full_log_dir / 'best-params.json', 'w') as fh:
+    with safe_open(full_log_dir / 'best-params.json', 'w') as fh:
         json.dump(config_manager.hyperparams.dict(), fh)
 
-    with open(full_log_dir / 'best-params-raw-idx.json', 'w') as fh:
+    with safe_open(full_log_dir / 'best-params-raw-idx.json', 'w') as fh:
         json.dump(study.best_params, fh)
 
-    with open(full_log_dir / 'best-value', 'w') as fh:
+    with safe_open(full_log_dir / 'best-value', 'w') as fh:
         fh.write(str(study.best_value) + '\n')
 
-    with open(full_log_dir / 'final-metrics', 'w') as fh:
+    with safe_open(full_log_dir / 'final-metrics', 'w') as fh:
         json.dump(final_metrics, fh)
 
-    with open(full_log_dir / 'results-and-configuration.json', 'w') as fh:
+    with safe_open(full_log_dir / 'results-and-configuration.json', 'w') as fh:
         d = {}
         d['best_params'] = study.best_params
         d['best_value'] = study.best_value
@@ -103,7 +103,7 @@ def save_hpo_metrics(
 
     # if exists, read the data
     if (full_log_dir / 'hpo_metrics.json').exists():
-        with open(full_log_dir / 'hpo_metrics.json', 'r') as fh:
+        with safe_open(full_log_dir / 'hpo_metrics.json', 'r') as fh:
             data = json.load(fh)
     else:
         data = []
@@ -115,7 +115,7 @@ def save_hpo_metrics(
     })
 
     # save the data
-    with open(full_log_dir / 'hpo_metrics.json', 'w') as fh:
+    with safe_open(full_log_dir / 'hpo_metrics.json', 'w') as fh:
         json.dump(data, fh)
 
 
@@ -151,7 +151,7 @@ def _log_git_hash(config_manager):
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
-    with open(full_log_dir / 'git-hash', 'w') as fh:
+    with safe_open(full_log_dir / 'git-hash', 'w') as fh:
         git_hash = _get_git_hash()
         fh.write(str(git_hash) + '\n')
 
@@ -163,7 +163,7 @@ def log_runtime(config_manager, start_time, end_time):
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
-    with open(f'{full_log_dir}/runtime', 'w') as fh:
+    with safe_open(f'{full_log_dir}/runtime', 'w') as fh:
         fh.write(f'{elapsed_timedelta}\n')
 
 def log_test_metrics(config_manager, metrics, loss):
@@ -174,7 +174,7 @@ def log_test_metrics(config_manager, metrics, loss):
     metrics = tensor_to_python_type(metrics)
     metrics['loss'] = loss
 
-    with open(f'{full_log_dir}/test_metrics', 'w') as fh:
+    with safe_open(f'{full_log_dir}/test_metrics', 'w') as fh:
         json.dump(metrics, fh)
 
 def log_final_epsilon(config_manager, trainer):
@@ -189,7 +189,7 @@ def log_final_epsilon(config_manager, trainer):
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
     final_epsilon = trainer.get_epsilon()
-    with open(f'{full_log_dir}/final_epsilon', 'w') as fh:
+    with safe_open(f'{full_log_dir}/final_epsilon', 'w') as fh:
         fh.write(f'{final_epsilon}\n')
 
 def _log_gpus(config_manager):
@@ -197,11 +197,11 @@ def _log_gpus(config_manager):
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
-    with open(f'{full_log_dir}/gpu_type', 'w') as fh:
+    with safe_open(f'{full_log_dir}/gpu_type', 'w') as fh:
         gpu_name = torch.cuda.get_device_name()
         fh.write(f'{gpu_name}\n')
 
-    with open(f'{full_log_dir}/gpu_count', 'w') as fh:
+    with safe_open(f'{full_log_dir}/gpu_count', 'w') as fh:
         gpu_count = torch.distributed.get_world_size()
         fh.write(f'{gpu_count}\n')
 
