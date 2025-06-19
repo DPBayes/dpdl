@@ -1,6 +1,10 @@
+import contextlib
 import logging
-import numpy as np
+import os
+import pathlib
 import random
+
+import numpy as np
 import torch
 
 log = logging.getLogger(__name__)
@@ -26,3 +30,25 @@ def tensor_to_python_type(data):
         return [tensor_to_python_type(item) for item in data]
     else:
         return data
+
+@contextlib.contextmanager
+def safe_open(path: pathlib.Path, mode: str = 'w', **kwargs):
+    """
+    An `open` call with error checking that guarantees that the file handle
+    is synced, flushed, and closed or error is thrown.
+
+    NB: We had a couple silent failure when writing experiment files to lustre.
+    """
+    if not mode.startswith(('w','x')):
+        raise ValueError(f"safe_open only supports write modes, got {mode!r}")
+
+    try:
+        fh = open(path, mode, **kwargs)
+        yield fh
+        fh.flush()
+        os.fsync(fh.fileno())
+    except OSError as e:
+        log.error(f'Failed to write {path}: {e}')
+        raise
+    finally:
+        fh.close()
