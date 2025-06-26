@@ -67,9 +67,18 @@ def process_experiment_directory(directory, pattern=None):
 
                     experiment_data['test_metrics'] = test_metrics
 
+                difficulty_file_path = os.path.join(experiment_path, 'similarity_difficulty.json')
+                if os.path.exists(difficulty_file_path):
+                    similarity_difficulty = read_json_file(difficulty_file_path)
+                    experiment_data['similarity_difficulty'] = similarity_difficulty
+
                 epoch_losses_file_path = os.path.join(experiment_path, 'epoch_losses.csv')
                 if os.path.exists(epoch_losses_file_path):
                     experiment_data['losses_by_epoch'] = read_csv_file(epoch_losses_file_path)
+
+                snr_file_path = os.path.join(experiment_path, 'snr_log.csv')
+                if os.path.exists(snr_file_path):
+                    experiment_data['snr_data'] = read_csv_file(snr_file_path)
 
                 data.append(experiment_data)
 
