@@ -124,6 +124,7 @@ class Configuration(BaseModel):
     validation_size: Optional[float] = 0.1
     test_size: Optional[float] = 0.1
     model_save_fpath: Optional[str] = None
+    record_snr: Optional[bool] = False
     record_gradient_norms: Optional[bool] = False
     record_gradient_norms_quantiles: Optional[List[int]] = [25, 50, 75]
     verbose_callback: Optional[bool] = False
@@ -228,6 +229,7 @@ class Configuration(BaseModel):
             ('Use steps instead of epochs', self.use_steps),
             ('Evaluation mode', self.evaluation_mode),
             ('Model save file path', self.model_save_fpath),
+            ('Record signal-to-noise ratio', self.record_snr),
             ('Record gradient norms', self.record_gradient_norms),
             ('Record gradient norms quantiles', self.record_gradient_norms_quantiles),
             ('Record train loss by step', self.record_loss_by_step),

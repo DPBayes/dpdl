@@ -284,6 +284,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_snr: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record signal-to-noise-ratio',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         record_gradient_norms: Annotated[
             Optional[bool],
             typer.Option(
