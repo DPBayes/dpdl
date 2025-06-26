@@ -17,6 +17,7 @@ from .gradient_proportion import RecordClippedProportionsPerClassCallback
 from .gradient_stats import RecordGradientStatisticsCallback
 from .per_class_accuracy import RecordPerClassAccuracyCallback
 from .record_losses import RecordLossesByEpochCallback, RecordTrainLossByStepCallback
+from .record_snr import RecordSNRCallback
 
 log = logging.getLogger(__name__)
 
@@ -92,6 +93,14 @@ class CallbackFactory:
             callbacks.append(
                 RecordPerClassAccuracyCallback(
                     log_dir=full_log_dir,
+                )
+            )
+
+        if configuration.record_snr:
+            callbacks.append(
+                RecordSNRCallback(
+                    log_dir=full_log_dir,
+                    max_grad_norm=hyperparams.max_grad_norm,
                 )
             )
 
