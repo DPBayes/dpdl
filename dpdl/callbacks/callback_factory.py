@@ -7,6 +7,7 @@ from ..utils import tensor_to_python_type
 from .base_callback import Callback
 from .body_head_gradient import RecordBodyAndHeadGradientNormsPerClassCallback
 from .checkpoint import CheckpointCallback
+from .clipping_bias import ClippingBiasCallback
 from .cosine_similarity import (
     RecordCosineSimilarityCallback,
     RecordPerClassCosineSimilarityCallback,
@@ -99,6 +100,14 @@ class CallbackFactory:
         if configuration.record_snr:
             callbacks.append(
                 RecordSNRCallback(
+                    log_dir=full_log_dir,
+                    max_grad_norm=hyperparams.max_grad_norm,
+                )
+            )
+
+        if configuration.record_clipping:
+            callbacks.append(
+                ClippingBiasCallback(
                     log_dir=full_log_dir,
                     max_grad_norm=hyperparams.max_grad_norm,
                 )

@@ -284,6 +284,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_clipping: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record clipping stats (MSE)',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         record_snr: Annotated[
             Optional[bool],
             typer.Option(
