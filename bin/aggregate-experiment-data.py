@@ -80,6 +80,10 @@ def process_experiment_directory(directory, pattern=None):
                 if os.path.exists(snr_file_path):
                     experiment_data['snr_data'] = read_csv_file(snr_file_path)
 
+                clip_stats_file_path = os.path.join(experiment_path, 'clip_stats.csv')
+                if os.path.exists(clip_stats_file_path):
+                    experiment_data['clip_stats'] = read_csv_file(clip_stats)
+
                 data.append(experiment_data)
 
             except Exception as e:
