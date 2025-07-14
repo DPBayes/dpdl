@@ -82,7 +82,7 @@ def process_experiment_directory(directory, pattern=None):
 
                 clip_stats_file_path = os.path.join(experiment_path, 'clip_stats.csv')
                 if os.path.exists(clip_stats_file_path):
-                    experiment_data['clip_stats'] = read_csv_file(clip_stats)
+                    experiment_data['clip_stats'] = read_csv_file(clip_stats_file_path)
 
                 data.append(experiment_data)
 
