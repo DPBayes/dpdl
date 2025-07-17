@@ -103,7 +103,7 @@ class FiLM:
 
     @staticmethod
     def _get_config(model_name: str):
-        if model_name.startswith('vit_'):
+        if model_name.startswith('vit_') or model_name.startswith('deit_'):
             return FilmConfig(
                 target_modules=r'.*\.norm\d?',
                 modules_to_save=['model.head'],
