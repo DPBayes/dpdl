@@ -166,7 +166,7 @@ def log_runtime(config_manager, start_time, end_time):
     with safe_open(f'{full_log_dir}/runtime', 'w') as fh:
         fh.write(f'{elapsed_timedelta}\n')
 
-def log_test_metrics(config_manager, metrics, loss):
+def _log_metrics(config_manager, metrics, loss, split):
     log_dir = config_manager.configuration.log_dir
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
@@ -174,8 +174,15 @@ def log_test_metrics(config_manager, metrics, loss):
     metrics = tensor_to_python_type(metrics)
     metrics['loss'] = loss
 
-    with safe_open(f'{full_log_dir}/test_metrics', 'w') as fh:
+    path = full_log_dir / f'{split}_metrics'
+    with safe_open(str(path), 'w') as fh:
         json.dump(metrics, fh)
+
+def log_test_metrics(config_manager, metrics, loss):
+    _log_metrics(config_manager, metrics, loss, 'test')
+
+def log_train_metrics(config_manager, metrics, loss):
+    _log_metrics(config_manager, metrics, loss, 'train')
 
 def log_final_epsilon(config_manager, trainer):
     if not config_manager.configuration.privacy:

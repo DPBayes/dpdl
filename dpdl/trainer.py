@@ -220,6 +220,9 @@ class Trainer:
         elif mode == 'test':
             dataloader_name = 'test'
             metrics_evaluator = self._unwrap_model().test_metrics
+        elif mode == 'train':
+            dataloader_name = 'train'
+            metrics_evaluator = self._unwrap_model().train_metrics
         else:
             raise ValueError(f'Unknown evaluation mode: "{mode}"')
 

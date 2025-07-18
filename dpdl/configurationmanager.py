@@ -134,6 +134,7 @@ class Configuration(BaseModel):
     record_loss_by_step: Optional[bool] = False
     record_loss_by_epoch: Optional[bool] = False
     record_per_class_accuracy: Optional[bool] = False
+    record_final_train_accuracy: Optional[bool] = False
     checkpoint_step_interval: Optional[int] = None
     disable_epsilon_logging: Optional[bool] = False
     split_seed: Optional[int] = 42
@@ -237,6 +238,7 @@ class Configuration(BaseModel):
             ('Record train loss by step', self.record_loss_by_step),
             ('Record train/valid loss by epoch', self.record_loss_by_epoch),
             ('Record per-class accuracy', self.record_per_class_accuracy),
+            ('Record final training accuracy', self.record_final_train_accuracy),
             ('Checkpoint every nth step', self.checkpoint_step_interval),
             ('Enable callback debug logging', self.verbose_callback),
             ('Fairness-style subsampling class', self.fairness_imbalance_class),
