@@ -1,19 +1,25 @@
 import logging
+import sys
 import time
+from typing import List, Optional
+
 import torch
 import typer
-import sys
-
-from typing import Optional, List
 from typing_extensions import Annotated
 
 from .configurationmanager import ConfigurationManager
+from .experimentmanager import (
+    log_final_epsilon,
+    log_runtime,
+    log_test_metrics,
+    log_train_metrics,
+    start_experiment_logging,
+)
 from .hyperparameteroptimizer import HyperparameterOptimizer
+from .models.model_factory import ModelFactory
 from .predictor import PredictorFactory
 from .trainer import TrainerFactory
-from .models.model_factory import ModelFactory
 from .utils import seed_everything
-from .experimentmanager import start_experiment_logging, log_runtime, log_test_metrics, log_final_epsilon
 
 log = logging.getLogger(__name__)
 
@@ -333,6 +339,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_final_train_accuracy: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Evaluate the final accuracy also on the training set',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         disable_epsilon_logging: Annotated[
             Optional[bool],
             typer.Option(
@@ -522,6 +535,12 @@ def cli(
         start_time = time.time()
         trainer.fit()
         end_time = time.time()
+
+        # log final train accuracy if needed
+        if config_manager.configuration.record_final_train_accuracy:
+            log.info('Evaluating on train set..')
+            train_loss, train_metrics = trainer._evaluate('train', enable_callbacks=False)
+            log_train_metrics(config_manager, train_metrics, train_loss)
 
         # log test accuracy and run time, and save model if asked
         if torch.distributed.get_rank() == 0:
