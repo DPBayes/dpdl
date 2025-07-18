@@ -538,9 +538,13 @@ def cli(
 
         # log final train accuracy if needed
         if config_manager.configuration.record_final_train_accuracy:
-            log.info('Evaluating on train set..')
+            if torch.distributed.get_rank() == 0:
+                log.info('Evaluating on train set..')
+
             train_loss, train_metrics = trainer._evaluate('train', enable_callbacks=False)
-            log_train_metrics(config_manager, train_metrics, train_loss)
+
+            if torch.distributed.get_rank() == 0:
+                log_train_metrics(config_manager, train_metrics, train_loss)
 
         # log test accuracy and run time, and save model if asked
         if torch.distributed.get_rank() == 0:
