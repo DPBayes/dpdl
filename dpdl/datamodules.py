@@ -72,6 +72,7 @@ class DataModule:
             'train': None,
             'valid': None,
             'test': None,
+            'train_eval': None,  # for evaluating on train set
         }
 
         # The _load_datasets method will fill this
@@ -437,6 +438,17 @@ class DataModule:
             pin_memory=True,
             generator=self.generator,
             worker_init_fn=self.seed_worker
+        )
+
+        # when evaluating on the train set, we need a smaller
+        # batch size to avoid running out of host memory.
+        self._dataloaders['train_eval'] = torch.utils.data.DataLoader(
+            self.train_dataset.with_format('torch'),
+            batch_size=self.physical_batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=False,
+            collate_fn=self._dataloaders['train'].collate_fn,
         )
 
         self._dataloaders['valid'] = torch.utils.data.DataLoader(

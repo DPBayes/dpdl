@@ -236,7 +236,7 @@ class Configuration(BaseModel):
             ('Record gradient norms', self.record_gradient_norms),
             ('Record gradient norms quantiles', self.record_gradient_norms_quantiles),
             ('Record train loss by step', self.record_loss_by_step),
-            ('Record train/valid loss by epoch', self.record_loss_by_epoch),
+            ('Record train/valid loss and accuracy by epoch', self.record_loss_by_epoch),
             ('Record per-class accuracy', self.record_per_class_accuracy),
             ('Record final training accuracy', self.record_final_train_accuracy),
             ('Checkpoint every nth step', self.checkpoint_step_interval),
