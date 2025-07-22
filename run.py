@@ -47,6 +47,9 @@ def main():
 
     typer.run(cli)
 
+    # Make sure all processes are in sync before destroying process group
+    torch.distributed.barrier()
+
     torch.distributed.destroy_process_group()
 
     log.info('And we are done!')
