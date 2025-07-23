@@ -63,14 +63,7 @@ class HyperparameterOptimizer:
         # we do not want to record gradient norms during the HPO trials. it makes much
         # more sense to record the stuff only for the final eveluation. so save the state,
         # disable gradient recording, and later restore the state before final eval round.
-        record_gradient_norms_state = config_manager.configuration.record_gradient_norms
-        config_manager.configuration.record_gradient_norms = False
-
-        # same with loss record, only for the final model
-        record_loss_by_step_state = config_manager.configuration.record_loss_by_step
-        record_loss_by_epoch_state = config_manager.configuration.record_loss_by_epoch
-        config_manager.configuration.record_loss_by_step = False
-        config_manager.configuration.record_loss_by_epoch = False
+        config_manager.disable_recording()
 
         configuration = config_manager.configuration
 
@@ -230,9 +223,7 @@ class HyperparameterOptimizer:
 
         # restore the state of gradient/loss recording. if it was enabled, we want
         # to keep it enabled for the final training round
-        config_manager.configuration.record_gradient_norms = record_gradient_norms_state
-        config_manager.configuration.record_loss_by_step = record_loss_by_step_state
-        config_manager.configuration.record_loss_by_epoch = record_loss_by_epoch_state
+        config_manager.restore_recording()
 
         # now we can train/evaluate for the final time with best params
         metrics = HyperparameterOptimizer._final_evaluation_round(best_params, config_manager)
