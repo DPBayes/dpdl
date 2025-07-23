@@ -293,6 +293,32 @@ class ConfigurationManager:
     def get_command(self):
         return self.command
 
+    def disable_recording(self):
+        """
+        Disable all the recording flags.
+
+        This is especially for HPO where we don't want to do the recordings for all
+        the trials, but only for the final evaluation round.
+        """
+
+        cfg = self.configuration
+
+        # get all record_ flags from the Configuration object
+        self._record_backup = {
+            k: getattr(cfg, k)
+            for k in vars(cfg)
+            if k.startswith('record_') and isinstance(getattr(cfg, k), bool)
+        }
+        for k in self._record_backup:
+            setattr(cfg, k, False)
+
+    def restore_recording(self):
+        cfg = self.configuration
+        for k, v in self._record_backup.items():
+            setattr(cfg, k, v)
+
+        self._record_backup.clear()
+
     def save_configuration(self, directory: pathlib.Path):
         if torch.distributed.get_rank() == 0:
             with open(directory / 'configuration.txt', 'w') as fh:
