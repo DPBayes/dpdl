@@ -109,10 +109,21 @@ class FiLM:
                 modules_to_save=['model.head'],
             )
 
-
         if model_name.startswith('resnetv2_50x1_bit'):
             return FilmConfig(
                 target_modules=r'.*\.norm\d$',
+                modules_to_save=['model.head.fc'],
+            )
+
+        if model_name.startswith('poolformer_'):
+            return FilmConfig(
+                target_modules=r'.*\.norm\d?',
+                modules_to_save=['model.head.fc'],
+            )
+
+        if model_name.startswith('convnext_'):
+            return FilmConfig(
+                target_modules=r'.*\.norm|model.*\.stem\.1',
                 modules_to_save=['model.head.fc'],
             )
 
