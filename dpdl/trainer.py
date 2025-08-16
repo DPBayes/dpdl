@@ -612,10 +612,6 @@ class DifferentiallyPrivateTrainer(Trainer):
 class TrainerFactory:
     @staticmethod
     def get_trainer(config_manager: ConfigurationManager) -> Trainer:
-
-        if seed := config_manager.configuration.privacy:
-            seed_everything(seed)
-
         # are we differentially private?
         if config_manager.configuration.privacy:
             return TrainerFactory._get_differentially_private_trainer(config_manager.configuration, config_manager.hyperparams)
