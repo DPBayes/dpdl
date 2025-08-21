@@ -24,6 +24,7 @@ class Hyperparameters(BaseModel):
     clip_bound_lower_bound: Optional[float]
     count_noise_denom: Optional[int]
     clip_bound_init: Optional[float]
+    stability_const: Optional[float] = 0.01
 
     @root_validator(pre=True)
     def check_batch_size_or_sample_rate(cls, values):
@@ -61,6 +62,9 @@ class Hyperparameters(BaseModel):
                 ('clip_bound_init', self.clip_bound_init),
             ]
             hypers.extend(adaptive_hypers)
+
+        if self.stability_const:
+            hypers.append(('Stability constant', self.stability_const))
 
         max_key_length = max(len(hyper[0]) for hyper in hypers)
         hyper_str = [f'{hyper[0]:<{max_key_length}}: {hyper[1]}' for hyper in hypers]

@@ -670,6 +670,7 @@ class TrainerFactory:
                 'min_clipbound': hyperparams.clip_bound_lower_bound,
                 'unclipped_num_std': noise_multiplier_andrew,
                 'init_clipbound': hyperparams.clip_bound_init,
+                'stability_const': hyperparams.stability_const,
             }
             return optimizers_args
 
