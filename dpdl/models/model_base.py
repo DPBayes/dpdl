@@ -1,6 +1,9 @@
 import logging
 import os
 
+from collections import OrderedDict
+from typing import Optional, Dict, Tuple
+
 import torch
 import torchmetrics
 
@@ -134,3 +137,116 @@ class ModelBase(torch.nn.Module):
             os.makedirs(directory, exist_ok=True)
 
         torch.save(self.model.state_dict(), fpath)
+
+    def load_model(
+        self,
+        fpath: str,
+        *,
+        strict: bool = True,
+        map_location: str = 'cuda',
+        allow_partial: bool = False,
+        remap: Optional[Dict[str, str]] = None,
+    ) -> None:
+        """
+        Load weights into self.model.
+
+        Args:
+            fpath: Path to checkpoint file on disk.
+            strict: Passed to load_state_dict.
+            map_location: torch.load map_location (e.g. 'cpu' or 'cuda').
+            allow_partial: If True, drop keys not present in target before loading.
+            remap: Optional explicit prefix remap {old_prefix: new_prefix}.
+        """
+        if not fpath:
+            raise ValueError('load_model: fpath is required')
+
+        if not os.path.isfile(fpath):
+            raise FileNotFoundError(f'Checkpoint not found: {fpath}')
+
+        ckpt = torch.load(fpath, map_location=map_location)
+
+        # extract a plausible state_dict
+        state = None
+        if isinstance(ckpt, dict):
+            for key in ('state_dict', 'model_state_dict', 'model', 'net', 'weights'):
+                v = ckpt.get(key)
+                if isinstance(v, dict):
+                    state = v
+                    break
+
+            if state is None:
+                # maybe it's already a raw state_dict
+                state = {k: v for k, v in ckpt.items() if torch.is_tensor(v) or hasattr(v, 'shape')}
+                if not state:
+                    raise ValueError(f'No state_dict found in checkpoint: {fpath}')
+        else:
+            raise TypeError(f'Unexpected checkpoint type: {type(ckpt)}')
+
+        def strip_prefix(sd: Dict[str, torch.Tensor], prefix: str) -> Dict[str, torch.Tensor]:
+            p = f'{prefix}.'
+            return {(k[len(p) :] if k.startswith(p) else k): v for k, v in sd.items()}
+
+        def add_prefix(sd: Dict[str, torch.Tensor], prefix: str) -> Dict[str, torch.Tensor]:
+            return {f'{prefix}.{k}': v for k, v in sd.items()}
+
+        # always remove DDP wrapper if present
+        state = strip_prefix(state, 'module')
+
+        # optional explicit remap first (highest precedence)
+        if remap:
+            for old, new in remap.items():
+                state = {
+                    (k.replace(old + '.', new + '.') if k.startswith(old + '.') else k): v
+                    for k, v in state.items()
+                }
+
+        target = self.model  # load into the the wrapper model
+        tgt_keys = set(target.state_dict().keys())
+
+        # build candidates and pick the one with max overlap
+        roots = ['model', 'net', 'backbone', 'encoder']
+        candidates: Dict[str, Dict[str, torch.Tensor]] = {'identity': state}
+
+        for r in roots:
+            candidates[f'add:{r}'] = add_prefix(state, r)
+
+        for r in roots:
+            candidates[f'remove:{r}'] = strip_prefix(state, r)
+
+        def overlap(sd: Dict[str, torch.Tensor]) -> Tuple[int, int]:
+            ks = set(sd.keys())
+            return (len(ks & tgt_keys), len(ks))
+
+        best_name, best_sd, best_match = None, None, (-1, 1)
+        for name, cand in candidates.items():
+            m = overlap(cand)
+            if m[0] > best_match[0] or (m[0] == best_match[0] and m[1] < best_match[1]):
+                best_name, best_sd, best_match = name, cand, m
+
+        state = best_sd
+        matched, total = best_match
+        if matched == 0:
+            log.warning(
+                'load_model: no key overlap with target; will rely on strict=%s/allow_partial=%s',
+                strict,
+                allow_partial,
+            )
+
+        # load the weights
+        result = target.load_state_dict(OrderedDict(state), strict=strict)
+
+        # diagnostics
+        missing = getattr(result, 'missing_keys', [])
+        unexpected = getattr(result, 'unexpected_keys', [])
+        loaded_keys = matched if not allow_partial else len(state)
+        pct = (loaded_keys / max(1, len(tgt_keys))) * 100.0
+
+        if missing:
+            log.warning(f'load_model: missing keys ({len(missing)}): {missing[:20]}')
+        if unexpected:
+            log.warning(f'load_model: unexpected keys ({len(unexpected)}): {unexpected[:20]}')
+
+        log.info(
+            f'Loaded weights from {fpath} using candidate={best_name} '
+            f'(match {matched}/{len(tgt_keys)}, ~{pct:.1f}% of target).'
+        )

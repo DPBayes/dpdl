@@ -7,11 +7,12 @@ import shutil
 import subprocess
 
 import optuna
+import pandas as pd
 import torch
 
 from .configurationmanager import ConfigurationManager
 from .trainer import Trainer
-from .utils import tensor_to_python_type, safe_open
+from .utils import safe_open, tensor_to_python_type
 
 log = logging.getLogger(__name__)
 
@@ -183,6 +184,69 @@ def log_test_metrics(config_manager, metrics, loss):
 
 def log_train_metrics(config_manager, metrics, loss):
     _log_metrics(config_manager, metrics, loss, 'train')
+
+def save_predictions(config_manager, *, labels, preds, probs, split: str) -> None:
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+    full_log_dir.mkdir(parents=True, exist_ok=True)
+
+    # Normalize to Python types
+    labels_py = tensor_to_python_type(labels)
+    preds_py  = tensor_to_python_type(preds)
+    probs_py  = [tensor_to_python_type(p) for p in probs]
+
+    df = pd.DataFrame({
+        'label': labels_py,
+        'prediction': preds_py,
+        'confidence': probs_py,
+    })
+
+    out_path = full_log_dir / f'predictions_{split}.json'
+    with safe_open(out_path, 'w') as fh:
+        fh.write(df.to_json(orient='records'))
+
+
+def save_gradient_diagnostics(
+    config_manager,
+    records,
+    *,
+    split: str,
+    filename: str | None = None,
+) -> None:
+    """
+    Writes per-example gradient diagnostics as CSV.
+    Each record should have: label, pred, norm, angle (more fields allowed).
+    Accepts values that may be torch tensors; converts via tensor_to_python_type.
+    """
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+    full_log_dir.mkdir(parents=True, exist_ok=True)
+
+    # Normalize each record
+    normed = [tensor_to_python_type(r) for r in records]
+    df = pd.DataFrame.from_records(normed)
+
+    name = filename or f'gradient_diagnostics_{split}.csv'
+    out_path = full_log_dir / name
+    with safe_open(out_path, 'w') as fh:
+        fh.write(df.to_csv(index=False))
+
+def save_predict_metrics(config_manager, metrics: dict) -> None:
+    """
+    Saves predict_metrics.json under the experiment directory, converting tensors to Python.
+    """
+    log_dir = config_manager.configuration.log_dir
+    experiment_name = config_manager.configuration.experiment_name
+    full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+    full_log_dir.mkdir(parents=True, exist_ok=True)
+
+    metrics_py = tensor_to_python_type(metrics)
+    out_path = full_log_dir / 'predict_metrics.json'
+    with safe_open(out_path, 'w') as fh:
+        json.dump(metrics_py, fh)
+
 
 def log_final_epsilon(config_manager, trainer):
     if not config_manager.configuration.privacy:

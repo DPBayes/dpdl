@@ -1,60 +1,60 @@
-import torch
 import logging
-
-import torch.nn.functional as F
-import pandas as pd
 import os
-import json
-from torch.nn.parallel import DistributedDataParallel as DDP
+from collections import OrderedDict
+from typing import Optional
 
+import torch
+from torch.func import grad, vmap
+
+from .callbacks.callback_factory import CallbackFactory, CallbackHandler
 from .datamodules import DataModule, DataModuleFactory
+from .experimentmanager import (
+    save_gradient_diagnostics,
+    save_predict_metrics,
+    save_predictions,
+)
 from .models.model_base import ModelBase
 from .models.model_factory import ModelFactory
-from .callbacks.callback_factory import CallbackHandler, CallbackFactory
+from .trainer import Trainer, TrainerFactory
 from .utils import tensor_to_python_type
+from .configurationmanager import ConfigurationManager
 
 log = logging.getLogger(__name__)
+
+
+def _all_gather_object_list(local_list):
+    world = torch.distributed.get_world_size()
+    gathered = [None] * world
+    torch.distributed.all_gather_object(gathered, list(local_list))
+
+    merged = []
+    for part in gathered:
+        merged.extend(part)
+
+    return merged
 
 
 class Predictor:
 
     def __init__(
         self,
-        model: ModelBase,
-        datamodule: DataModule,
+        trainer: Trainer,
         dataset_split: str,
-        callback_handler: CallbackHandler,
+        config_manager: ConfigurationManager,
+        save_gradient_data: Optional[bool] = False,
     ):
         """
         init Predictor
 
         args:
-            model (ModelBase): the model for prediction
-            datamodule: provide the class for data preprocessing and dataloader
+            trainer (Trainer): initialized Trainer object
             dataset_split (str): for a specific split of dataset, e.g., 'train', 'valid', 'test'
-            callback_handler (CallbackHandler): callback handler for prediction
-            seed (int): random seed for reproducibility
+            save_gradient_data (bool): boolean indicating if we should save also gradient data
         """
-        self.model = model
-        self.datamodule = datamodule
+        self.trainer = trainer
         self.dataset_split = dataset_split
-        self.callback_handler = callback_handler
-
-    def load_model(self, fpath: str):
-        """
-        load model from file
-
-        args:
-            fpath (optional, str): the path to the model file
-        """
-        raise NotImplementedError(
-            "load_model function is not implemented in the Predictor class, will be done later"
-        )
-
-    def _unwrap_model(self):
-        # the model is wrapped inside torch distributed,
-        # here we just return the vanilla model
-        return self.model
+        self.config_manager = config_manager
+        self.save_gradient_data = save_gradient_data
 
     def predict(self, configuration):
         """
@@ -66,80 +66,238 @@ class Predictor:
             configuration: A Configuration object that provides dataset_split and log path.
         """
 
-        model = self.model.cuda()
-        model = DDP(model)
+        # disable possible dropout, etc
+        model = self.trainer.model
         model.eval()
 
-        dataset_split = configuration.dataset_split
-        dataloader = self.datamodule.get_dataloader(dataset_split)
+        dataloader = self.trainer.get_dataloader(self.dataset_split)
 
         local_preds = []
         local_probs = []
         local_labels = []
 
-        self._unwrap_model().train_metrics.reset()
+        if self.save_gradient_data:
+            proto_unit, g_dim, has_bias = self._compute_class_prototypes()
 
-        with torch.no_grad():
+            # Hook for per-example grads
+            head = self.trainer._unwrap_model().get_classifier()
+            last = {'H': None}
+
+            def _hook(mod, inputs, output):
+                last['H'] = inputs[0].detach()
+
+            hnd = head.register_forward_hook(_hook)
+
+            grad_records = []  # collect here (label, pred, norm, angle)
+
+        self.trainer._unwrap_model().train_metrics.reset()
+
+        context = torch.enable_grad() if self.save_gradient_data else torch.no_grad()
+        with context:
             for i, (X, y) in enumerate(dataloader):
+
+                if torch.distributed_get_rank() == 0:
+                    log.info(f' - Predicting on batch {i}')
+
                 X = X.cuda(non_blocking=True)
                 y = y.cuda(non_blocking=True)
 
                 logits = model(X)
-                probs = F.softmax(logits, dim=1)
-                pred = torch.argmax(probs, dim=1)
+                probs = torch.nn.functional.softmax(logits, dim=1)
+                preds = torch.argmax(probs, dim=1)
 
-                self._unwrap_model().train_metrics.update(pred, y)
+                self.trainer._unwrap_model().train_metrics.update(preds, y)
 
-                local_preds.append(pred)
-                local_probs.append(probs)
-                local_labels.append(y)
+                local_preds.append(preds.cpu())
+                local_probs.append(probs.cpu())
+                local_labels.append(y.cpu())
 
-        metrics = self._unwrap_model().train_metrics.compute()
+                if self.save_gradient_data:
+                    H = last['H']  # [B, F] from hook
+                    g, _, _ = self._per_sample_head_grads(head, H, y)  # [B, g_dim]
 
-        local_preds = torch.cat(local_preds)
-        local_probs = torch.cat(local_probs)
-        local_labels = torch.cat(local_labels)
+                    norms = g.norm(dim=1).clamp_min(1e-12)
+                    pu = proto_unit.index_select(0, y)  # [B, g_dim]
+                    cos = (g * pu).sum(dim=1) / norms
+                    angles = torch.arccos(cos.clamp(-1 + 1e-6, 1 - 1e-6))
 
-        world_size = torch.distributed.get_world_size()
+                    for lbl, pred, norm, ang in zip(y.tolist(), preds.tolist(), norms.tolist(), angles.tolist()):
+                        record = {'label': lbl, 'pred': pred, 'norm': norm, 'angle': ang}
+                        grad_records.append(record)
 
-        def alloc_like(x):
-            return [torch.zeros_like(x) for _ in range(world_size)]
+        if self.save_gradient_data:
+            # remove the hook, just in case (e.g. we don't really do anything afterwards)
+            hnd.remove()
 
-        gathered_preds = alloc_like(local_preds)
-        gathered_probs = alloc_like(local_probs)
-        gathered_labels = alloc_like(local_labels)
+        metrics = self.trainer._unwrap_model().train_metrics.compute()
 
-        torch.distributed.all_gather(gathered_preds, local_preds)
-        torch.distributed.all_gather(gathered_probs, local_probs)
-        torch.distributed.all_gather(gathered_labels, local_labels)
+        torch.distributed.barrier()
+
+        gathered_preds = _all_gather_object_list(local_preds)
+        gathered_probs = _all_gather_object_list(local_probs)
+        gathered_labels = _all_gather_object_list(local_labels)
 
         if torch.distributed.get_rank() == 0:
-            # save prediction results
-            all_preds = torch.cat([t.cpu() for t in gathered_preds]).numpy()
-            all_probs = torch.cat([t.cpu() for t in gathered_probs]).numpy()
-            all_labels = torch.cat([t.cpu() for t in gathered_labels]).numpy()
+            all_preds = torch.cat([t.cpu() for t in gathered_preds])
+            all_probs = torch.cat([t.cpu() for t in gathered_probs])
+            all_labels = torch.cat([t.cpu() for t in gathered_labels])
 
-            df = (
-                pd.DataFrame({
-                    "label": all_labels,
-                    "prediction": all_preds,
-                    "confidence": [prob.tolist() for prob in all_probs],
-                })
+            save_predictions(
+                self.config_manager,
+                labels=all_labels,
+                preds=all_preds,
+                probs=all_probs,
+                split=self.dataset_split,
             )
 
-            save_dir = os.path.join(configuration.log_dir, configuration.experiment_name)
-            os.makedirs(save_dir, exist_ok=True)
+            save_predict_metrics(self.config_manager, metrics)
 
-            pred_path = os.path.join(save_dir, f"predictions_{dataset_split}.json")
-            df.to_json(pred_path)
-            log.info(f"Saved predictions to: {pred_path}")
+        torch.distributed.barrier()
 
-            # save prediction metrics
-            metrics_dict = {k: tensor_to_python_type(v) for k, v in metrics.items()}
-            metrics_path = os.path.join(save_dir, "predict_metrics.json")
-            with open(metrics_path, "w") as f:
-                json.dump(metrics_dict, f)
-            log.info(f"Saved predict_metrics to: {metrics_path}")
+        if self.save_gradient_data:
+            gathered_grad_recs = _all_gather_object_list(grad_records)
+            if torch.distributed.get_rank() == 0:
+                save_gradient_diagnostics(
+                    self.config_manager,
+                    gathered_grad_recs,
+                    split=self.dataset_split,
+                )
+
+    def load_model(
+        self,
+        fpath: Optional[str],
+    ) -> None:
+        """
+        Load weights into self.trainer.model.
+
+        Args:
+            fpath: Path to checkpoint file on disk.
+            strict: Passed to load_state_dict.
+            map_location: torch.load map_location (e.g. cpu/cuda).
+        """
+        model = self.trainer._unwrap_model()
+        model.load_model(fpath)
+
+        if torch.distributed.get_rank() == 0:
+            log.info(f'Loaded weights from: {fpath}')
+
+    def _per_sample_head_grads(self, head: torch.nn.Linear, H: torch.Tensor, y: torch.Tensor):
+        """
+        Compute per-sample gradients for the last Linear head using torch.func.
+        Args:
+            head: nn.Linear (W [C,F], b [C] or None)
+            H:   [B,F] head input features (detached)
+            y:   [B]   int64 labels
+        Returns:
+            g:   [B, gdim] where gdim = C*F (+ C if bias)
+        """
+        W = head.weight  # [C,F]
+        b = head.bias  # [C] or None
+        C, F = W.shape
+
+        w_dim = C * F
+        b_dim = C if b is not None else 0
+        g_dim = w_dim + b_dim
+
+        if b is not None:
+
+            def loss_one(w, b_, h, yi):
+                logits = h @ w.T + b_  # [C]
+                return torch.nn.functional.cross_entropy(
+                    logits.unsqueeze(0), yi.unsqueeze(0), reduction='sum'
+                )
+
+            gfun = grad(loss_one, argnums=(0, 1))
+            gw, gb = vmap(gfun, in_dims=(None, None, 0, 0))(W, b, H, y)  # gw [B,C,F], gb [B,C]
+            gw = gw.reshape(gw.size(0), w_dim)  # [B,w_dim]
+            g = torch.cat([gw, gb], dim=1)  # [B,g_dim]
+        else:
+
+            def loss_one(w, h, yi):
+                logits = h @ w.T
+                return torch.nn.functional.cross_entropy(
+                    logits.unsqueeze(0), yi.unsqueeze(0), reduction='sum'
+                )
+
+            gfun = grad(loss_one, argnums=0)
+            gw = vmap(gfun, in_dims=(None, 0, 0))(W, H, y)  # [B,C,F]
+            g = gw.reshape(gw.size(0), w_dim)  # [B,g_dim]
+
+        return g, g_dim, (b is not None)
+
+    def _compute_class_prototypes(self):
+        """
+        Forward-only + torch.func grads to build per-class prototype directions (unit vectors).
+        """
+
+        if troch.distributed.get_rank() == 0:
+            log.info('Computing class prorotypes for angle calculation.')
+
+        model = self.trainer.model
+        model.eval()
+
+        head = self.trainer._unwrap_model().get_classifier()
+        device = head.weight.device
+        C, F = head.weight.shape
+
+        b_dim = head.out_features if head.bias is not None else 0
+        g_dim = C * F + b_dim
+
+        K = self.trainer.datamodule.get_num_classes()
+        assert head.out_features == K, f'Head out_features={head.out_features} != num_classes={K}'
+
+        proto_sum = torch.zeros(K, g_dim, device=device)
+        counts = torch.zeros(K, dtype=torch.long, device=device)
+
+        # Hook to capture head input H
+        last = {'H': None}
+
+        def _hook(mod, inputs, output):
+            last['H'] = inputs[0].detach()
+
+        hnd = head.register_forward_hook(_hook)
+
+        dataloader = self.trainer.get_dataloader(self.dataset_split)
+
+        for i, (X, Y) in enumerate(dataloader):
+            if torch.distributed.get_rank() == 0:
+                log.info(f' - Processing batch {i}')
+
+            X, Y = X.to(device, non_blocking=True), Y.to(device, non_blocking=True)
+
+            # Forward only to populate last['H']
+            with torch.no_grad():
+                _ = model(X)
+
+            H = last['H']  # [B,F], captured by hook
+            if H is None:
+                raise RuntimeError('Classifier hook did not capture activations (H is None).')
+
+            # Compute per-sample head gradients
+            g, _, _ = self._per_sample_head_grads(head, H, Y)  # [B,g_dim]
+
+            # Accumulate class prototypes
+            for k in range(K):
+                m = Y == k
+                if m.any():
+                    proto_sum[k] += g[m].sum(0)
+                    counts[k] += int(m.sum())
+
+        hnd.remove()
+
+        if torch.distributed.is_initialized():
+            torch.distributed.all_reduce(proto_sum)
+            torch.distributed.all_reduce(counts)
+
+        proto_mean = torch.where(
+            counts.view(-1, 1) > 0,
+            proto_sum / counts.clamp_min(1).view(-1, 1),
+            torch.zeros_like(proto_sum),
+        )
+        proto_unit = proto_mean / proto_mean.norm(dim=1, keepdim=True).clamp_min(1e-12)
+        has_bias = head.bias is not None
+
+        return proto_unit, g_dim, has_bias
 
 
 class PredictorFactory:
@@ -160,20 +318,16 @@ class PredictorFactory:
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
         num_classes = datamodule.get_num_classes()
 
-        model, transforms = ModelFactory.get_model(
-            configuration, hyperparams, num_classes
-        )
-        datamodule.initialize(transforms)
-
-        callback_handler = CallbackHandler(
-            CallbackFactory.get_callbacks(configuration, hyperparams)
-        )
+        trainer = TrainerFactory.get_trainer(config_manager)
 
         predictor = Predictor(
-            model=model,
-            datamodule=datamodule,
+            trainer=trainer,
             dataset_split=configuration.dataset_split,
-            callback_handler=callback_handler,
+            config_manager=config_manager,
+            save_gradient_data=configuration.prediction_save_gradient_data,
         )
+
+        if fpath := getattr(configuration, 'model_weights_path', False):
+            predictor.load_model(configuration.model_weights_path)
 
         return predictor
