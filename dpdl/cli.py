@@ -6,6 +6,7 @@ from typing import List, Optional
 import torch
 import typer
 from typing_extensions import Annotated
+from pathlib import Path
 
 from .configurationmanager import ConfigurationManager
 from .experimentmanager import (
@@ -136,6 +137,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = None,
+        prediction_save_gradient_data: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Save also gradient information when predicting',
+                rich_help_panel='Prediction options',
+            )
+        ] = False,
         model_name: Annotated[
             str,
             typer.Option(
@@ -171,13 +179,20 @@ def cli(
                 rich_help_panel='Model options',
             )
         ] = 0,
-        model_save_fpath: Annotated[
+        model_weights_path: Annotated[
             Optional[str],
             typer.Option(
-                help='File path for saving of the trained model',
+                help='File path to loading or saving model weights',
                 rich_help_panel='Model options',
             )
         ] = None,
+        save_model: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Save the resulting model under log directory',
+                rich_help_panel='Model options',
+            )
+        ] = False,
         dataset_name: Annotated[
             str,
             typer.Option(
@@ -559,9 +574,14 @@ def cli(
             if not config_manager.configuration.disable_epsilon_logging:
                 log_final_epsilon(config_manager, trainer)
 
-            if save_fpath := config_manager.configuration.model_save_fpath:
-                log.info(f'Saving model to: "{save_fpath}"')
-                trainer.save_model(save_fpath)
+            if save_model := config_manager.configuration.save_model:
+                if model_weights_path in config_manager.configuration:
+                    save_path = config_manager.configuration.model_weights_path
+                else:
+                    save_path = Path(config_manager.configuration.log_dir, config_manager.configuration.experiment_name, 'final_model.pt')
+
+                log.info(f'Saving model to "{save_path}"...')
+                trainer.save_model(save_path)
 
     elif config_manager.get_command() == 'optimize':
         if torch.distributed.get_rank() == 0:
@@ -580,7 +600,7 @@ def cli(
 
     elif config_manager.get_command() == 'predict':
         if torch.distributed.get_rank() == 0:
-            log.info('Starting inference.')
+            log.info('Starting prediction.')
             log.info(config_manager.configuration)
 
         seed_everything(config_manager.configuration.seed)

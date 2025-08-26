@@ -123,7 +123,8 @@ class Configuration(BaseModel):
     fairness_imbalance_class: Optional[int] = None
     validation_size: Optional[float] = 0.1
     test_size: Optional[float] = 0.1
-    model_save_fpath: Optional[str] = None
+    save_model: Optional[bool] = False
+    model_weights_path: Optional[str] = None
     record_clipping: Optional[bool] = False
     record_snr: Optional[bool] = False
     record_gradient_norms: Optional[bool] = False
@@ -139,6 +140,7 @@ class Configuration(BaseModel):
     disable_epsilon_logging: Optional[bool] = False
     split_seed: Optional[int] = 42
     dataset_split: Optional[str] = None
+    prediction_save_gradient_data: Optional[bool] = False
 
     class Config:
         # Fix Pydantic warning:
@@ -230,7 +232,8 @@ class Configuration(BaseModel):
             ('Use precomputed features', self.cache_features),
             ('Use steps instead of epochs', self.use_steps),
             ('Evaluation mode', self.evaluation_mode),
-            ('Model save file path', self.model_save_fpath),
+            ('Save final model', self.save_model),
+            ('Path for saving/loding model weights', self.model_weights_path),
             ('Record clipping stats (MSE)', self.record_clipping),
             ('Record signal-to-noise ratio', self.record_snr),
             ('Record gradient norms', self.record_gradient_norms),
@@ -271,6 +274,7 @@ class Configuration(BaseModel):
         elif self.command == 'predict':
             predict_attributes = [
                 ('Dataset split', self.dataset_split),
+                ('Save gradient information when predicting', self.prediction_save_gradient_data),
             ]
             attributes.extend(predict_attributes)
 
