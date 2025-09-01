@@ -96,7 +96,7 @@ class Predictor:
         with context:
             for i, (X, y) in enumerate(dataloader):
 
-                if torch.distributed_get_rank() == 0:
+                if torch.distributed.get_rank() == 0:
                     log.info(f' - Predicting on batch {i}')
 
                 X = X.cuda(non_blocking=True)
@@ -230,7 +230,7 @@ class Predictor:
         Forward-only + torch.func grads to build per-class prototype directions (unit vectors).
         """
 
-        if troch.distributed.get_rank() == 0:
+        if torch.distributed.get_rank() == 0:
             log.info('Computing class prorotypes for angle calculation.')
 
         model = self.trainer.model
