@@ -78,6 +78,9 @@ class Predictor:
 
         if self.save_gradient_data:
             proto_unit, g_dim, has_bias = self._compute_class_prototypes()
+            proto_unit_cpu = proto_unit.cpu()
+            del proto_unit
+            torch.cuda.empty_cache()
 
             # Hook for per-example grads
             head = self.trainer._unwrap_model().get_classifier()
@@ -92,8 +95,8 @@ class Predictor:
 
         self.trainer._unwrap_model().train_metrics.reset()
 
-        context = torch.enable_grad() if self.save_gradient_data else torch.no_grad()
-        with context:
+        # NB: We are using torch.func.grad which builds it's own graph
+        with torch.no_grad():
             for i, (X, y) in enumerate(dataloader):
 
                 if torch.distributed.get_rank() == 0:
@@ -117,7 +120,7 @@ class Predictor:
                     g, _, _ = self._per_sample_head_grads(head, H, y)  # [B, g_dim]
 
                     norms = g.norm(dim=1).clamp_min(1e-12)
-                    pu = proto_unit.index_select(0, y)  # [B, g_dim]
+                    pu = proto_unit_cpu.index_select(0, y.cpu()).to(y.device, non_blocking=True)  # [B, g_dim]
                     cos = (g * pu).sum(dim=1) / norms
                     angles = torch.arccos(cos.clamp(-1 + 1e-6, 1 - 1e-6))
 
@@ -282,6 +285,9 @@ class Predictor:
                 if m.any():
                     proto_sum[k] += g[m].sum(0)
                     counts[k] += int(m.sum())
+
+            del H, g
+            torch.cuda.empty_cache()
 
         hnd.remove()
 
