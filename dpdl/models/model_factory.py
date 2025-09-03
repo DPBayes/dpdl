@@ -2,9 +2,10 @@ import logging
 import timm
 import torch
 
-from .model_base import ModelBase
+from .model_base import ModelBase, ModelBaseLLM
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet
+from .hugging_face_models import download_generic_huggingface_model
 
 from dpdl.configurationmanager import Configuration, Hyperparameters
 from dpdl.peft import PeftFactory
@@ -40,6 +41,7 @@ class ModelFactory:
 
         transforms = {}  # No default transforms
         model_instance = None
+        tokenizer = None
 
         if configuration.model_name.startswith('wrn-'):
             # Parse depth and width from model_name, e.g., 'wrn-16-4'
@@ -50,6 +52,8 @@ class ModelFactory:
         elif configuration.model_name == 'koskela-net':
             model_instance = KoskelaNet()
             transforms = model_instance.get_transforms()
+        elif configuration.model_name == '':
+            model_instance, tokenizer = download_generic_huggingface_model(configuration.model_name, configuration.quantization_config)
         else:
             model_instance = timm.create_model(
                 configuration.model_name,
@@ -61,12 +65,19 @@ class ModelFactory:
             model_config = timm.data.resolve_data_config({}, model=model_instance)
             transforms = timm.data.transforms_factory.create_transform(**model_config)
 
-        # Wrap the instantiated model with ModelBase
-        model = ModelBase(
-            model_instance=model_instance,
-            num_classes=num_classes,
-            use_feature_cache=configuration.cache_features,
-        )
+        #If instead of tranforms we have tokenizer, we are dealing with a LM model
+        if tokenizer != None:
+            model = ModelBaseLLM(
+                model_instance=model_instance,
+                vocab_size=len(tokenizer)
+            )
+        else:
+            # Wrap the instantiated model with ModelBase
+            model = ModelBase(
+                model_instance=model_instance,
+                num_classes=num_classes,
+                use_feature_cache=configuration.cache_features,
+            )
 
         # Add noise to (pretrained) weights?
         if configuration.weight_perturbation_level > 0:

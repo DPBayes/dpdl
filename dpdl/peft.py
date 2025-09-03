@@ -148,8 +148,7 @@ class LoRA:
                 target_modules=r'patched_embed\.proj|.*\.attn\.qkv|.*\.attn_proj|.*\.mlp\.fc\d',
                 modules_to_save=['head'],
             )
-
-        if model_name.startswith('resnetv2_50x1_bit'):
+        elif model_name.startswith('resnetv2_50x1_bit'):
             return LoraConfig(
                 r=lora_rank,
                 lora_alpha=lora_alpha,
@@ -157,5 +156,14 @@ class LoRA:
                 target_modules=r'stem\.conv|.*\.downsample\.conv|.*\.conv\d',
                 modules_to_save=['head.fc'],
             )
+        else: # For the LLM experiments
+            return LoraConfig(
+                r=16,  # rank
+                lora_alpha=32,
+                target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+                lora_dropout=0.1,
+                bias="none",
+            )
+        
 
         raise RuntimeError(f'No known LoRA configuration for model: {model_name}')
