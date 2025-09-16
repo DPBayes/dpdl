@@ -291,9 +291,13 @@ class HyperparameterOptimizer:
             log_final_epsilon(config_manager, trainer)
 
             # save model if requested
-            if save_fpath := config_manager.configuration.model_save_fpath:
-                log.info(f'Saving model to: "{save_fpath}"')
-                trainer.save_model(save_fpath)
+            if save_model := config_manager.configuration.save_model:
+                if model_weights_path in config_manager.configuration:
+                    save_path = config_manager.configuration.model_weights_path
+                else:
+                    save_path = Path(config_manager.configuration.log_dir, config_manager.configuration.experiment_name, 'final_model.pt')
+                log.info(f'Saving final model after HPO to "{save_path}"...')
+                trainer.save_model(save_path)
 
         return metrics
 
