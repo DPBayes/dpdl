@@ -59,8 +59,9 @@ class Hyperparameters(BaseModel):
     @root_validator(pre=True)
     def check_epochs(cls, values):
         epochs = values.get('epochs')
+        total_steps = values.get('total_steps')
 
-        if not epochs:
+        if not any([epochs, total_steps]):
             raise ValueError('Epochs is not set! Hint: Add `--epochs X` parameter to CLI...')
 
         return values
