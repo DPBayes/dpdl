@@ -56,6 +56,15 @@ class Hyperparameters(BaseModel):
 
         return values
 
+    @root_validator(pre=True)
+    def check_epochs(cls, values):
+        epochs = values.get('epochs')
+
+        if not epochs:
+            raise ValueError('Epochs is not set! Hint: Add `--epochs X` parameter to CLI...')
+
+        return values
+
     def __str__(self):
         hypers = [
             ('Epochs', self.epochs),
