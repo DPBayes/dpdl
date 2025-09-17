@@ -45,7 +45,7 @@ def cli(
                 help='Number of epochs to train',
                 rich_help_panel='Training options',
             )
-        ] = None,
+        ] = 0,
         total_steps: Annotated[
             int,
             typer.Option(
@@ -66,7 +66,7 @@ def cli(
                 help='Batch size',
                 rich_help_panel='Training options',
             )
-        ] = None,
+        ] = 1024,
         sample_rate: Annotated[
             Optional[float],
             typer.Option(
@@ -94,7 +94,7 @@ def cli(
                 help='Number of workers for data loading (per GPU)',
                 rich_help_panel='Training options',
             )
-        ] = 8,
+        ] = 7,
         validation_frequency: Annotated[
             float,
             typer.Option(
@@ -206,7 +206,7 @@ def cli(
                 help='Only load subset of the dataset (0.1 indicate 10%)',
                 rich_help_panel='Dataset options',
             )
-        ] = None,
+        ] = 1.0,
         validation_size: Annotated[
             Optional[float],
             typer.Option(
@@ -241,7 +241,7 @@ def cli(
                 help='Name of the field that determines label for the dataset',
                 rich_help_panel='Dataset options',
             )
-        ] = None,
+        ] = 'label',
         imbalance_factor: Annotated[
             Optional[float],
             typer.Option(
@@ -423,7 +423,7 @@ def cli(
                 help='Target epsilon for the privacy accountant (implies delta = 1/N)',
                 rich_help_panel='Opacus options',
             )
-        ] = None,
+        ] = 8,
         noise_batch_ratio: Annotated[
             Optional[float],
             typer.Option(
