@@ -184,47 +184,47 @@ class Predictor:
         if torch.distributed.get_rank() == 0:
             log.info(f'Loaded weights from: {fpath}')
 
-    def _per_sample_head_grads(self, head: torch.nn.Linear, H: torch.Tensor, y: torch.Tensor):
-        """
-        Compute per-sample gradients for the last Linear head using torch.func.
-        Args:
-            head: nn.Linear (W [C,F], b [C] or None)
-            H:   [B,F] head input features (detached)
-            y:   [B]   int64 labels
-        Returns:
-            g:   [B, gdim] where gdim = C*F (+ C if bias)
-        """
-        W = head.weight  # [C,F]
-        b = head.bias  # [C] or None
-        C, F = W.shape
 
+    def _per_sample_head_grads(self, head: torch.nn.Module, H: torch.Tensor, y: torch.Tensor):
+        if isinstance(head, torch.nn.Linear):
+            W = head.weight              # [C,F]
+            b = head.bias                # [C] or None
+            H2 = H                       # [B,F]
+        elif isinstance(head, torch.nn.Conv2d):
+            kh, kw = head.kernel_size
+            if kh != 1 or kw != 1:
+                raise TypeError(f'Only Conv2d 1x1 heads are supported; got {head.kernel_size}')
+
+            # Flatten conv -> linear
+            W = head.weight.view(head.out_channels, -1)  # [C,F]
+            b = head.bias                                # [C] or None
+            if H.ndim != 4:
+                raise TypeError(f'Expected H with 4 dims for Conv2d; got {tuple(H.shape)}')
+
+            H2 = H.view(H.size(0), -1)                   # [B,F], handles [B,F,1,1] too
+        else:
+            raise TypeError(f'Unsupported classifier type: {type(head)}')
+
+        C, F = W.shape
         w_dim = C * F
         b_dim = C if b is not None else 0
         g_dim = w_dim + b_dim
 
         if b is not None:
-
             def loss_one(w, b_, h, yi):
-                logits = h @ w.T + b_  # [C]
-                return torch.nn.functional.cross_entropy(
-                    logits.unsqueeze(0), yi.unsqueeze(0), reduction='sum'
-                )
-
+                logits = h @ w.T + b_
+                return torch.nn.functional.cross_entropy(logits.unsqueeze(0), yi.unsqueeze(0), reduction='sum')
             gfun = grad(loss_one, argnums=(0, 1))
-            gw, gb = vmap(gfun, in_dims=(None, None, 0, 0))(W, b, H, y)  # gw [B,C,F], gb [B,C]
-            gw = gw.reshape(gw.size(0), w_dim)  # [B,w_dim]
-            g = torch.cat([gw, gb], dim=1)  # [B,g_dim]
+            gw, gb = vmap(gfun, in_dims=(None, None, 0, 0))(W, b, H2, y)  # gw [B,C,F], gb [B,C]
+            gw = gw.reshape(gw.size(0), w_dim)
+            g = torch.cat([gw, gb], dim=1)
         else:
-
             def loss_one(w, h, yi):
                 logits = h @ w.T
-                return torch.nn.functional.cross_entropy(
-                    logits.unsqueeze(0), yi.unsqueeze(0), reduction='sum'
-                )
-
+                return torch.nn.functional.cross_entropy(logits.unsqueeze(0), yi.unsqueeze(0), reduction='sum')
             gfun = grad(loss_one, argnums=0)
-            gw = vmap(gfun, in_dims=(None, 0, 0))(W, H, y)  # [B,C,F]
-            g = gw.reshape(gw.size(0), w_dim)  # [B,g_dim]
+            gw = vmap(gfun, in_dims=(None, 0, 0))(W, H2, y)  # [B,C,F]
+            g = gw.reshape(gw.size(0), w_dim)
 
         return g, g_dim, (b is not None)
 
@@ -240,14 +240,27 @@ class Predictor:
         model.eval()
 
         head = self.trainer._unwrap_model().get_classifier()
-        device = head.weight.device
-        C, F = head.weight.shape
 
-        b_dim = head.out_features if head.bias is not None else 0
+        if not isinstance(head, (torch.nn.Linear, torch.nn.Conv2d)):
+            raise TypeError(f'Predictor expects Linear or Conv2d(1x1) head; got {type(head)}')
+
+        if isinstance(head, torch.nn.Linear):
+            C, F = head.weight.shape
+        elif isinstance(head, torch.nn.Conv2d):
+            # kernel expected to be 1x1; we’ll guard later
+            C = head.out_channels
+            F = head.in_channels * head.kernel_size[0] * head.kernel_size[1]
+        else:
+            raise TypeError(f'Unsupported classifier type: {type(head)}')
+
+        C = head.weight.shape[0]
+        b_dim = C if head.bias is not None else 0
         g_dim = C * F + b_dim
 
+        device = head.weight.device
+
         K = self.trainer.datamodule.get_num_classes()
-        assert head.out_features == K, f'Head out_features={head.out_features} != num_classes={K}'
+        assert C == K, f'Head out_features={C} != num_classes={K}'
 
         proto_sum = torch.zeros(K, g_dim, device=device)
         counts = torch.zeros(K, dtype=torch.long, device=device)
