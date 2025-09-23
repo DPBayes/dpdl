@@ -137,6 +137,13 @@ def cli(
                 rich_help_panel='Model options',
             )
         ] = 'resnetv2_50x1_bit.goog_in21k',
+        loss_function: Annotated[
+            str,
+            typer.Option(
+                help='PyTorch Module Loss Function Name',
+                rich_help_panel='Loss Function options',
+            )
+        ] = 'CrossEntropyLoss',
         pretrained: Annotated[
             bool,
             typer.Option(
