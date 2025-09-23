@@ -77,21 +77,7 @@ class Predictor:
         local_labels = []
 
         if self.save_gradient_data:
-            proto_unit, g_dim, has_bias = self._compute_class_prototypes()
-            proto_unit_cpu = proto_unit.cpu()
-            del proto_unit
-            torch.cuda.empty_cache()
-
-            # Hook for per-example grads
-            head = self.trainer._unwrap_model().get_classifier()
-            last = {'H': None}
-
-            def _hook(mod, inputs, output):
-                last['H'] = inputs[0].detach()
-
-            hnd = head.register_forward_hook(_hook)
-
-            grad_records = []  # collect here (label, pred, norm, angle)
+            grad_records = []  # collect here (label, pred, norm, gradient)
 
         self.trainer._unwrap_model().train_metrics.reset()
 
@@ -116,21 +102,21 @@ class Predictor:
                 local_labels.append(y.cpu())
 
                 if self.save_gradient_data:
-                    H = last['H']  # [B, F] from hook
-                    g, _, _ = self._per_sample_head_grads(head, H, y)  # [B, g_dim]
-
-                    norms = g.norm(dim=1).clamp_min(1e-12)
-                    pu = proto_unit_cpu.index_select(0, y.cpu()).to(y.device, non_blocking=True)  # [B, g_dim]
-                    cos = (g * pu).sum(dim=1) / norms
-                    angles = torch.arccos(cos.clamp(-1 + 1e-6, 1 - 1e-6))
-
-                    for lbl, pred, norm, ang in zip(y.tolist(), preds.tolist(), norms.tolist(), angles.tolist()):
-                        record = {'label': lbl, 'pred': pred, 'norm': norm, 'angle': ang}
+                    # Compute full model gradients (body + head)
+                    full_grads = self._per_sample_full_grads(model, X, y)  # [B, full_g_dim]
+                    
+                    norms = full_grads.norm(dim=1).clamp_min(1e-12)
+                    
+                    # Store raw gradients and compute G_C and N_C for different clipping values
+                    for i, (lbl, pred, norm) in enumerate(zip(y.tolist(), preds.tolist(), norms.tolist())):
+                        grad_vector = full_grads[i].cpu().numpy()  # Raw gradient vector
+                        record = {
+                            'label': lbl, 
+                            'pred': pred, 
+                            'norm': norm,
+                            'gradient': grad_vector.tolist()  # Store raw gradient as list
+                        }
                         grad_records.append(record)
-
-        if self.save_gradient_data:
-            # remove the hook, just in case (e.g. we don't really do anything afterwards)
-            hnd.remove()
 
         metrics = self.trainer._unwrap_model().train_metrics.compute()
 
@@ -160,11 +146,16 @@ class Predictor:
         if self.save_gradient_data:
             gathered_grad_recs = _all_gather_object_list(grad_records)
             if torch.distributed.get_rank() == 0:
+                # Save raw gradient data
                 save_gradient_diagnostics(
                     self.config_manager,
                     gathered_grad_recs,
                     split=self.dataset_split,
+                    filename=f'raw_gradients_{self.dataset_split}.csv'
                 )
+                
+                # Compute and save G_C and N_C for different clipping thresholds
+                self._compute_and_save_clipping_analysis(gathered_grad_recs)
 
     def load_model(
         self,
@@ -227,6 +218,228 @@ class Predictor:
             g = gw.reshape(gw.size(0), w_dim)
 
         return g, g_dim, (b is not None)
+
+    def _per_sample_full_grads(self, model: torch.nn.Module, X: torch.Tensor, y: torch.Tensor):
+        """
+        Compute per-sample gradients for the full model (body + head) using torch.func.
+        This is a simplified implementation that computes gradients by example.
+        
+        Args:
+            model: The full model
+            X: Input batch [B, ...]
+            y: Target labels [B]
+            
+        Returns:
+            torch.Tensor: Per-sample gradients [B, total_grad_dim]
+        """
+        batch_size = X.size(0)
+        
+        # Get all trainable parameters and their shapes
+        param_list = []
+        param_shapes = []
+        total_params = 0
+        
+        for param in model.parameters():
+            if param.requires_grad:
+                param_list.append(param)
+                param_shapes.append(param.shape)
+                total_params += param.numel()
+        
+        # Function to compute loss for a single example
+        def single_example_loss(params_tuple, x_single, y_single):
+            # Temporarily assign parameters
+            param_idx = 0
+            for i, param in enumerate(model.parameters()):
+                if param.requires_grad:
+                    param.data = params_tuple[param_idx].data
+                    param_idx += 1
+            
+            # Forward pass
+            logits = model(x_single.unsqueeze(0))
+            loss = torch.nn.functional.cross_entropy(logits, y_single.unsqueeze(0), reduction='sum')
+            return loss
+        
+        # Create grad function
+        grad_fn = grad(single_example_loss, argnums=0)
+        
+        # Prepare parameters tuple
+        params_tuple = tuple(param_list)
+        
+        # Compute per-sample gradients using vmap
+        try:
+            per_sample_grad_tuples = vmap(grad_fn, in_dims=(None, 0, 0))(params_tuple, X, y)
+        except Exception as e:
+            log.warning(f"vmap approach failed: {e}. Falling back to loop-based computation.")
+            # Fallback: compute gradients one by one
+            per_sample_grads_list = []
+            
+            for i in range(batch_size):
+                x_single = X[i]
+                y_single = y[i]
+                
+                # Zero gradients
+                model.zero_grad()
+                
+                # Forward and backward for single example
+                logits = model(x_single.unsqueeze(0))
+                loss = torch.nn.functional.cross_entropy(logits, y_single.unsqueeze(0), reduction='sum')
+                loss.backward()
+                
+                # Collect gradients
+                grad_vec = []
+                for param in model.parameters():
+                    if param.requires_grad and param.grad is not None:
+                        grad_vec.append(param.grad.view(-1))
+                
+                if grad_vec:
+                    grad_vec = torch.cat(grad_vec)
+                else:
+                    grad_vec = torch.zeros(total_params, device=X.device)
+                
+                per_sample_grads_list.append(grad_vec)
+            
+            # Stack all gradients
+            flattened_grads = torch.stack(per_sample_grads_list, dim=0)
+            return flattened_grads
+        
+        # Flatten and concatenate all per-sample gradients from vmap
+        flattened_grads = torch.zeros(batch_size, total_params, device=X.device)
+        
+        start_idx = 0
+        for i, param_grad in enumerate(per_sample_grad_tuples):
+            param_size = param_grad.view(batch_size, -1).size(1)
+            flattened_grads[:, start_idx:start_idx + param_size] = param_grad.view(batch_size, -1)
+            start_idx += param_size
+        
+        return flattened_grads
+
+    def _compute_and_save_clipping_analysis(self, grad_records):
+        """
+        Compute G_C and N_C for different clipping thresholds C and save the results.
+        
+        Args:
+            grad_records: List of records with 'gradient' and 'norm' fields
+        """
+        import numpy as np
+        import pandas as pd
+        from .experimentmanager import safe_open
+        import pathlib
+        
+        # Extract gradients and norms
+        gradients = []
+        norms = []
+        
+        for record in grad_records:
+            grad_vec = np.array(record['gradient'])
+            gradients.append(grad_vec)
+            norms.append(record['norm'])
+        
+        gradients = np.array(gradients)  # [N, d] where N is number of samples, d is gradient dimension
+        norms = np.array(norms)  # [N]
+        
+        # Define clipping thresholds to analyze
+        # Use percentiles of the norm distribution and some fixed values
+        percentiles = [10, 25, 50, 75, 90, 95, 99]
+        C_values = [np.percentile(norms, p) for p in percentiles]
+        
+        # Add some fixed values that might be commonly used
+        fixed_values = [0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+        C_values.extend(fixed_values)
+        
+        # Remove duplicates and sort
+        C_values = sorted(list(set(C_values)))
+        
+        # Compute G_C and N_C for each clipping threshold
+        results = []
+        
+        for C in C_values:
+            # Find indices of clipped gradients: I_C = {i: ||g_i|| > C}
+            clipped_indices = norms > C
+            
+            if not np.any(clipped_indices):
+                # No gradients are clipped at this threshold
+                G_C = np.zeros_like(gradients[0])
+                N_C = np.zeros_like(gradients[0])
+                num_clipped = 0
+            else:
+                # G_C = sum of gradients that are clipped
+                clipped_gradients = gradients[clipped_indices]
+                G_C = np.sum(clipped_gradients, axis=0)
+                
+                # N_C = sum of normalized gradients that are clipped
+                clipped_norms = norms[clipped_indices]
+                normalized_clipped_grads = clipped_gradients / clipped_norms[:, np.newaxis]
+                N_C = np.sum(normalized_clipped_grads, axis=0)
+                
+                num_clipped = len(clipped_gradients)
+            
+            # Compute norms of G_C and N_C
+            G_C_norm = np.linalg.norm(G_C)
+            N_C_norm = np.linalg.norm(N_C)
+            
+            # Compute dot product N_C^T @ G_C
+            dot_product = np.dot(N_C, G_C)
+            
+            # Store results
+            result = {
+                'clipping_threshold_C': C,
+                'num_total_samples': len(gradients),
+                'num_clipped_samples': num_clipped,
+                'clipped_proportion': num_clipped / len(gradients),
+                'G_C_norm': G_C_norm,
+                'N_C_norm': N_C_norm,
+                'N_C_dot_G_C': dot_product,
+                'N_C_norm_squared': N_C_norm**2,
+            }
+            
+            results.append(result)
+        
+        # Save the analysis results
+        log_dir = self.config_manager.configuration.log_dir
+        experiment_name = self.config_manager.configuration.experiment_name
+        full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
+        full_log_dir.mkdir(parents=True, exist_ok=True)
+        
+        df = pd.DataFrame(results)
+        out_path = full_log_dir / f'clipping_analysis_{self.dataset_split}.csv'
+        
+        with safe_open(out_path, 'w') as fh:
+            fh.write(df.to_csv(index=False))
+        
+        log.info(f'Clipping analysis saved to {out_path}')
+        
+        # Also save the raw G_C and N_C vectors for further analysis if needed
+        detailed_results = []
+        
+        for i, C in enumerate(C_values):
+            clipped_indices = norms > C
+            
+            if np.any(clipped_indices):
+                clipped_gradients = gradients[clipped_indices]
+                G_C = np.sum(clipped_gradients, axis=0)
+                
+                clipped_norms = norms[clipped_indices]
+                normalized_clipped_grads = clipped_gradients / clipped_norms[:, np.newaxis]
+                N_C = np.sum(normalized_clipped_grads, axis=0)
+            else:
+                G_C = np.zeros_like(gradients[0])
+                N_C = np.zeros_like(gradients[0])
+            
+            detailed_result = {
+                'clipping_threshold_C': C,
+                'G_C': G_C.tolist(),
+                'N_C': N_C.tolist(),
+            }
+            detailed_results.append(detailed_result)
+        
+        # Save detailed results (G_C and N_C vectors)
+        detailed_out_path = full_log_dir / f'clipping_vectors_{self.dataset_split}.csv'
+        detailed_df = pd.DataFrame(detailed_results)
+        
+        with safe_open(detailed_out_path, 'w') as fh:
+            fh.write(detailed_df.to_csv(index=False))
+        
+        log.info(f'Detailed clipping vectors saved to {detailed_out_path}')
 
     def _compute_class_prototypes(self):
         """
