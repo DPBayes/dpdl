@@ -11,6 +11,7 @@ from .callbacks.callback_factory import CallbackHandler, CallbackFactory
 from .configurationmanager import ConfigurationManager, Configuration, Hyperparameters
 from .datamodules import DataModule, DataModuleFactory
 from .optimizers import OptimizerFactory
+from .loss_factory import LossFactory
 from .utils import seed_everything
 
 log = logging.getLogger(__name__)
@@ -626,7 +627,8 @@ class TrainerFactory:
         num_classes = datamodule.get_num_classes()
 
         # setup data, model, and optimizer
-        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes)
+        loss_fn = LossFactory.get_loss(configuration)
+        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         # Initialize the datamodule with the transformations

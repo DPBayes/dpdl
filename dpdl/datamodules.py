@@ -840,6 +840,206 @@ class ImageDataModule(DataModule):
 
         return features, labels
 
+
+class NLPDataModule(DataModule):
+    def __init__(
+        self,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+
+    def cache_features(self, model):
+        """Cache features for the train, validation, and test datasets using the provided model."""
+
+        if torch.distributed.get_rank() == 0:
+            log.info('Feature caching enabled, caching features.')
+
+        def _extract_features(model, image_field, examples):
+            inputs = examples[image_field]
+
+            with torch.no_grad():
+                features = model.forward_features(inputs)
+
+            examples['features'] = features.cpu()
+
+            return examples
+
+        model = model.cuda()
+        _extract_features_fn = partial(_extract_features, model, self._image_field)
+
+        if torch.distributed.get_rank() == 0:
+            log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
+
+        datasets_map_bs = 512
+
+        self.train_dataset = self.train_dataset.with_format('torch', device='cuda').map(
+            _extract_features_fn,
+            batched=True,
+            batch_size=datasets_map_bs,
+            remove_columns=self._image_field,
+            num_proc=self.num_workers,
+        )
+
+        if torch.distributed.get_rank() == 0:
+            log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
+
+        self.val_dataset = self.val_dataset.with_format('torch', device='cuda').map(
+            _extract_features_fn,
+            batched=True,
+            batch_size=datasets_map_bs,
+            remove_columns=self._image_field,
+            num_proc=self.num_workers,
+        )
+
+        if self.test_dataset:
+            if torch.distributed.get_rank() == 0:
+                log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
+
+            self.test_dataset = self.test_dataset.with_format('torch', device='cuda').map(
+                _extract_features_fn,
+                batched=True,
+                batch_size=datasets_map_bs,
+                remove_columns=self._image_field,
+            )
+
+        # Update the collation function to the one that uses cached features
+        self._collate_fn = self._collate_fn_with_cached_features
+
+        self._create_dataloaders()
+
+        if torch.distributed.get_rank() == 0:
+            log.info('Feature caching finished.')
+
+    def _apply_transforms_to_datasets(self):
+        if torch.distributed.get_rank() == 0:
+            log.info('Applying transformations to dataset.')
+
+        def _apply_transforms(transforms, label_field, image_field, examples):
+            log.info('.')
+            examples[image_field] = [transforms(image) for image in examples[image_field]]
+            return examples
+
+        if self.transforms:
+            transforms_func = partial(
+                _apply_transforms,
+                self.transforms,
+                self._label_field,
+                self._image_field,
+            )
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
+
+            self.train_dataset = self.train_dataset.map(
+                transforms_func,
+                num_proc=self.num_workers,
+                batched=True,
+                load_from_cache_file=True,
+            )
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
+
+            self.val_dataset = self.val_dataset.map(
+                transforms_func,
+                num_proc=self.num_workers,
+                batched=True,
+                load_from_cache_file=True,
+            )
+
+            if self.test_dataset:
+                if torch.distributed.get_rank() == 0:
+                    log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
+
+                self.test_dataset = self.test_dataset.map(
+                    transforms_func,
+                    num_proc=self.num_workers,
+                    batched=True,
+                    load_from_cache_file=True,
+                )
+
+    def _add_rgb_transform(self):
+        # Function for converting a PIL image to RGB
+        def to_rgb_pil(x):
+            if isinstance(x, Image.Image) and x.mode != 'RGB':
+                return x.convert('RGB')
+            return x
+
+        # Function for converting a torch.Tensor to RGB
+        def to_rgb_tensor(x):
+            if isinstance(x, torch.Tensor):
+                if len(x.shape) == 3 and x.shape[0] == 1:  # Grayscale tensor (C, H, W)
+                    return x.repeat(3, 1, 1)  # Convert 1-channel to 3-channel (RGB)
+                elif len(x.shape) == 3 and x.shape[0] == 3:
+                    return x  # Already RGB
+                else:
+                    raise ValueError('Input tensor is not a valid image tensor.')
+            return x
+
+        # Select the appropriate transformation based on the type of input
+        if self._cache_transforms:
+            toRGB = torchvision.transforms.Lambda(to_rgb_pil)
+        else:
+            toRGB = torchvision.transforms.Lambda(to_rgb_tensor)
+
+        # Update the transform pipeline
+        new_transforms = [toRGB] + self.transforms.transforms
+        self.transforms = torchvision.transforms.Compose(new_transforms)
+
+    def _replace_to_tensor_with_to_float(self):
+        # We need to convert the tensor to float and normalize to [0, 1]
+        to_float = torchvision.transforms.Lambda(lambda x: x.float() / 255.0)
+
+        # Filter out ToTensor and replace it with the new transformation
+        new_transforms = []
+        for t in self.transforms.transforms:
+            if isinstance(t, torchvision.transforms.ToTensor):
+                new_transforms.append(to_float)
+            else:
+                new_transforms.append(t)
+
+        self.transforms.transforms = new_transforms
+
+    @staticmethod
+    def _collate_fn(batch, label_field=None, image_field=None, transforms=None):
+        B = len(batch)
+
+        # Apply transformation to the first image to determine the size after transformation
+        if transforms:
+            first_image = transforms(batch[0][image_field])
+        else:
+            first_image = batch[0][image_field]
+
+        # Now that we know the transformed image size, we can initialize the `images` tensor
+        C, H, W = first_image.shape
+        images = torch.empty((B, C, H, W))
+        labels = torch.empty(B, dtype=torch.long)
+
+        # Now we are ready to process the batch
+        for i in range(B):
+            if transforms:
+                images[i] = transforms(batch[i][image_field])
+            else:
+                images[i] = batch[i][image_field]
+
+            labels[i] = batch[i][label_field]
+
+        return images, labels
+
+    @staticmethod
+    def _collate_fn_with_cached_features(batch, label_field=None, image_field=None):
+        features = torch.stack(
+            [item['features'] for item in batch]
+        )
+
+        labels = torch.tensor(
+            [item[label_field] for item in batch]
+        )
+
+        return features, labels
+
+
+
 class DataModuleFactory:
     @staticmethod
     def get_datamodule(

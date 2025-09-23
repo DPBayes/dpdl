@@ -83,6 +83,7 @@ class Configuration(BaseModel):
     command: Literal['train', 'optimize', 'predict', 'show-layers']
     privacy: bool = True
     model_name: str = 'resnet50'
+    loss_function: str = 'CrossEntropyLoss'
     optimizer: str = 'Adam'
     dataset_name: str = 'cifar10'
     physical_batch_size: int = 40

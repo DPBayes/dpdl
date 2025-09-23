@@ -86,3 +86,84 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
 
     return model, tokenizer
 
+
+class ModelBaseLLM(torch.nn.Module):
+    def __init__(
+        self,
+        model_name: str,
+        quantization: dict,
+        vocab_size: int = -1,
+        ignore_index: int = -100,
+        trust_remote_code: bool = False
+    ):
+
+        super().__init__()
+
+        self.model, self.tokenizer = download_generic_huggingface_model(model_name=model_name,quantization=quantization,trust_remote_code=trust_remote_code)
+        self.vocab_size = vocab_size
+        self.ignore_index = ignore_index
+
+    def criterion(self, logits, targets):
+
+        shift_logits = logits[..., :-1, :].contiguous()
+        shift_targets = targets[..., 1:].contiguous()
+
+        return self._criterion(
+            shift_logits.view(-1,self.vocab_size), 
+            shift_targets.view(-1),
+            self.ignore_index
+        )
+
+    def get_classifier(self):
+        return self.model.lm_head
+
+    def get_body(self):
+        return self.model.get_base_model().model
+
+    def get_transforms(self):
+        return self.tokenizer
+
+
+        # # let's track the training accuracy
+        # self.train_metrics = torchmetrics.MetricCollection(
+        #     {
+        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+        #             num_classes=self.vocab_size,
+        #             average="macro",
+        #         ).cuda(),
+        #         "Perplexity": torchmetrics.text.Perplexity().cuda()
+        #     }
+        # )
+
+        # # we only validate on rank 0, so there's no need to
+        # # synchronize when calculating the metrics.
+        # # NB: If `sync_on_compute` is enabled, this breaks
+        # # distributed training. If this needs to be enabled,
+        # # then we also need to actually run the validation on
+        # # all the GPUs.
+        # self.valid_metrics = torchmetrics.MetricCollection(
+        #     {
+        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+        #             num_classes=self.vocab_size,
+        #             average="macro",
+        #             sync_on_compute=False,
+        #         ).cuda(),
+        #         "Perplexity": torchmetrics.text.Perplexity().cuda(),
+        #     }
+        # )
+
+        # self.test_metrics = torchmetrics.MetricCollection(
+        #     {
+        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+        #             num_classes=self.vocab_size,
+        #             average="macro",
+        #             sync_on_compute=False,
+        #         ).cuda(),
+        #         "Perplexity": torchmetrics.text.Perplexity().cuda(),
+        #         "ConfusionMatrix": torchmetrics.ConfusionMatrix(
+        #             task="multiclass" if self.vocab_size > 2 else "binary",
+        #             num_classes=self.vocab_size,
+        #             sync_on_compute=False,
+        #         ).cuda(),
+        #     }
+        # )
