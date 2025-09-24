@@ -127,7 +127,7 @@ class HF_llm (torch.nn.Module):
         self.vocab_size = vocab_size
         self.ignore_index = ignore_index
 
-    ## use CrossEntropyLoss from torch.nn? 
+    # use CrossEntropyLoss from torch.nn? 
     # move to LLM_base?
     def criterion(self, logits, targets):
 
@@ -140,9 +140,14 @@ class HF_llm (torch.nn.Module):
             self.ignore_index
         )
 
-    # TO DO: fix 
+    # Encoder models (e.g., RoBERTa/BERT) commonly use classifier or score. Causal LMs use lm_head.
     def get_classifier(self):
-        return self.model.lm_head
+        for attr in ['classifier', 'score', 'lm_head']:
+            if hasattr(self.model, attr):
+                head = getattr(self.model, attr)
+                if isinstance(head, torch.nn.Module):
+                    return head
+        return None
 
     #def get_body(self):
     #    return self.model.get_base_model().model
