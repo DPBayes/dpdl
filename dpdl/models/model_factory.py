@@ -6,7 +6,9 @@ import torch
 from .model_base import ModelBase
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet
-from .hugging_face_models import ModelBaseLLM
+from .hugging_face_models import HF_llm
+
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from dpdl.configurationmanager import Configuration, Hyperparameters
 from dpdl.peft import PeftFactory
@@ -26,11 +28,14 @@ class ModelFactory:
         configuration: Configuration,
         hyperparams: Hyperparameters,
         num_classes: int,
-        loss_fn: torch.nn
+        loss_fn: torch.nn.Module
     ):
         
         HF_LLM_PATTERNS = [
             r'.*gpt.*',
+            r'.*roberta.*',
+            r'.*bert.*',
+            r'.*distilbert.*',
             r'.*llama.*',
             r'.*mistral.*',
             r'.*phi.*',
@@ -62,18 +67,31 @@ class ModelFactory:
         - A tuple of (ModelBase instance, Data Transforms).
         """
 
+        """
+        TO DO: need to create LLM_base class, similar to ModelBase, but for LLMs
+        """
+
         transforms = {}  # No default transforms
         model_instance = None
 
 
+        # Flag to skip image model creation if we load HF
+        loaded_hf = False
 
-        # Check HuggingFace LLM patterns
-        for pattern in HF_LLM_PATTERNS:
-            if re.match(pattern, configuration.model_name):
-                model_instance = ModelBaseLLM(configuration.model_name, configuration.quantization_config)
-                transforms = model_instance.get_transforms() 
+        # check if we want to experiment on LLMs
+        if configuration.llm:
+            model_instance = HF_llm(
+                        configuration.model_name,
+                        configuration.quantization_config,
+                        num_labels=num_classes
+                    )
 
-        if configuration.model_name.startswith('wrn-'):
+            transforms = model_instance.get_transforms()
+            loaded_hf = True
+
+        if loaded_hf:
+            pass  # model_instance & transforms already set
+        elif configuration.model_name.startswith('wrn-'):
             # Parse depth and width from model_name, e.g., 'wrn-16-4'
             parts = configuration.model_name.split('-')
             depth, width = int(parts[1]), int(parts[2])
@@ -98,7 +116,7 @@ class ModelFactory:
             model_instance=model_instance,
             num_classes=num_classes,
             use_feature_cache=configuration.cache_features,
-            loss_fn=loss_fn
+            criterion=loss_fn,
         )
 
         # Add noise to (pretrained) weights?

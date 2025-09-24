@@ -86,6 +86,7 @@ class Configuration(BaseModel):
     loss_function: str = 'CrossEntropyLoss'
     optimizer: str = 'Adam'
     dataset_name: str = 'cifar10'
+    llm: bool = False
     physical_batch_size: int = 40
     num_workers: int = 8
     validation_frequency: float = 1.0
