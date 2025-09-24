@@ -7,7 +7,7 @@ from huggingface_hub import snapshot_download
 import torch
 from safetensors.torch import load_file as safe_load_file
 
-from transformers import AutoModel, AutoModelForCausalLM,AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModel, AutoModelForCausalLM,AutoTokenizer, BitsAndBytesConfig, AutoModelForSequenceClassification
 
 SAFE_WEIGHTS_INDEX_NAME = "model.safetensors.index.json"
 SAFE_WEIGHTS_NAME = "model.safetensors"
@@ -62,8 +62,15 @@ trust_remote_code: bool
 We should:
     - Create a method that is for other tasks
 """
-def download_generic_huggingface_model(model_name, quantization, trust_remote_code = False):
+def download_generic_huggingface_model(
+    model_name,
+    quantization,
+    trust_remote_code=False,
+    num_labels: int | None = None,
+):
     
+    quantization_config = None
+
     if quantization:
         quantization_config = BitsAndBytesConfig(
             **quantization
@@ -78,31 +85,50 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
     if quantization_config is not None:
         load_kwargs["quantization_config"] = quantization_config
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        **load_kwargs
-    )
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    # For encoder/sequence classification models (roberta/bert), they are under AutoModelForSequenceClassification.
+    is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
+    if is_seq_classification:
+        if num_labels is not None:
+            load_kwargs["num_labels"] = num_labels
+        model = AutoModelForSequenceClassification.from_pretrained(
+            model_name,
+            **load_kwargs
+        )
+    else: 
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            **load_kwargs
+        )
+    
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
     return model, tokenizer
 
 
-class ModelBaseLLM(torch.nn.Module):
+class HF_llm (torch.nn.Module):
     def __init__(
         self,
         model_name: str,
         quantization: dict,
         vocab_size: int = -1,
         ignore_index: int = -100,
-        trust_remote_code: bool = False
+        trust_remote_code: bool = False,
+        num_labels: int | None = None,
     ):
 
         super().__init__()
 
-        self.model, self.tokenizer = download_generic_huggingface_model(model_name=model_name,quantization=quantization,trust_remote_code=trust_remote_code)
+        self.model, self.tokenizer = download_generic_huggingface_model(
+            model_name=model_name,
+            quantization=quantization,
+            trust_remote_code=trust_remote_code,
+            num_labels=num_labels,
+        )
         self.vocab_size = vocab_size
         self.ignore_index = ignore_index
 
+    ## use CrossEntropyLoss from torch.nn? 
+    # move to LLM_base?
     def criterion(self, logits, targets):
 
         shift_logits = logits[..., :-1, :].contiguous()
@@ -114,56 +140,12 @@ class ModelBaseLLM(torch.nn.Module):
             self.ignore_index
         )
 
+    # TO DO: fix 
     def get_classifier(self):
         return self.model.lm_head
 
-    def get_body(self):
-        return self.model.get_base_model().model
+    #def get_body(self):
+    #    return self.model.get_base_model().model
 
     def get_transforms(self):
         return self.tokenizer
-
-
-        # # let's track the training accuracy
-        # self.train_metrics = torchmetrics.MetricCollection(
-        #     {
-        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.vocab_size,
-        #             average="macro",
-        #         ).cuda(),
-        #         "Perplexity": torchmetrics.text.Perplexity().cuda()
-        #     }
-        # )
-
-        # # we only validate on rank 0, so there's no need to
-        # # synchronize when calculating the metrics.
-        # # NB: If `sync_on_compute` is enabled, this breaks
-        # # distributed training. If this needs to be enabled,
-        # # then we also need to actually run the validation on
-        # # all the GPUs.
-        # self.valid_metrics = torchmetrics.MetricCollection(
-        #     {
-        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.vocab_size,
-        #             average="macro",
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #         "Perplexity": torchmetrics.text.Perplexity().cuda(),
-        #     }
-        # )
-
-        # self.test_metrics = torchmetrics.MetricCollection(
-        #     {
-        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.vocab_size,
-        #             average="macro",
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #         "Perplexity": torchmetrics.text.Perplexity().cuda(),
-        #         "ConfusionMatrix": torchmetrics.ConfusionMatrix(
-        #             task="multiclass" if self.vocab_size > 2 else "binary",
-        #             num_classes=self.vocab_size,
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #     }
-        # )

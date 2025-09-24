@@ -137,6 +137,13 @@ def cli(
                 rich_help_panel='Model options',
             )
         ] = 'resnetv2_50x1_bit.goog_in21k',
+        llm: Annotated[
+            bool,
+            typer.Option(
+                help='Enable LLM model mode (use HuggingFace models and tokenization)',
+                rich_help_panel='Model options',
+            )
+        ] = False,
         loss_function: Annotated[
             str,
             typer.Option(
