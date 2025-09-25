@@ -103,7 +103,9 @@ class ModelBase(torch.nn.Module):
 
     def forward(self, x):
         if self.use_feature_cache:
-            return self.model.forward_head(x)
+            # self.model.forward_head(x) calls its classification head, x here are feature tensor not raw inputs
+            # it take those features, possibly apply pooling/dropout, and then run the final linear (classifier) layer to produce logits.
+            return self.model.forward_head(x) 
         else:
             return self.model(x)
 

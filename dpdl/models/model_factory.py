@@ -68,7 +68,8 @@ class ModelFactory:
         """
 
         """
-        TO DO: need to create LLM_base class, similar to ModelBase, but for LLMs
+        TO DO: create LLM_base class, similar to ModelBase, but for LLMs?
+        or just use ModelBase directly?
         """
 
         transforms = {}  # No default transforms

@@ -126,6 +126,20 @@ class HF_llm (torch.nn.Module):
         )
         self.vocab_size = vocab_size
         self.ignore_index = ignore_index
+        self.is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
+
+    def forward(self, x):
+        """
+        Return logits given tokenized batch or tensor input.
+        """
+        if isinstance(x, dict):
+            out = self.model(**x)
+        else:
+            out = self.model(x)
+        if hasattr(out, 'logits'):
+            return out.logits
+        return out
+
 
     # use CrossEntropyLoss from torch.nn? 
     # move to LLM_base?
