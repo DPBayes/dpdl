@@ -4,58 +4,185 @@ from .configurationmanager import Configuration, Hyperparameters
 
 class MetricsFactory:
 
-    METRIC_MODULES = [
-        torchmetrics,
-        torchmetrics.classification,
-        torchmetrics.regression,
-        torchmetrics.text,
-        torchmetrics.image,
-        torchmetrics.audio,
-    ]
-
-            
-
-    @classmethod
-    def create_metric(self, metric_name, **kwargs):
-        metric_class = None
-        for module in self.METRIC_MODULES:
-            try:
-                self.get_metric(module, metric_name)
-                break
-            except AttributeError:
-                continue
-        return metric_class(**kwargs)
-
     @staticmethod
-    def get_metric(module, metric_name):
-        metric_cls = getattr(module, metric_name)
-        return metric_cls
-    
+    def get_metrics(configuration: Configuration):
 
-    """
-    The configuration must come with a metrics parameter like:
-    configuration.metrics = {
-            'train': 
+        metrics = {'train_metrics':None,'valid_metrics':None,'test_metrics':None}
+
+
+        if configuration.task == 'ImageClassification':
+            metrics['train_metrics'] = torchmetrics.MetricCollection(
                 {
-                 'MulticlassAccuracy':
-                    {'average':'macro'},
-                 'MulticlassAccuracyWithMicro':
-                    {'average':'micro'}
-                },
-            'eval':{},
-            'val':{}
-            }
-    The structure is {pipeline step: {metric: {parameter: value}}}
-    """
-    def create_metrics_collection(self,configuration: Configuration, hyperparameters: Hyperparameters):
+                    "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="macro",
+                    ).cuda(),
+                    "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="micro",
+                    ).cuda(),
+                    "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="none",
+                    ).cuda(),
+                }
+            )
+
+            # we only validate on rank 0, so there's no need to
+            # synchronize when calculating the metrics.
+            # NB: If `sync_on_compute` is enabled, this breaks
+            # distributed training. If this needs to be enabled,
+            # then we also need to actually run the validation on
+            # all the GPUs.
+            metrics['valid_metrics'] = torchmetrics.MetricCollection(
+                {
+                    "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="macro",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="micro",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="none",
+                        sync_on_compute=False,
+                    ).cuda(),
+                }
+            )
+
+            metrics['test_metrics'] = torchmetrics.MetricCollection(
+                {
+                    "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="macro",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="micro",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="none",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "ConfusionMatrix": torchmetrics.ConfusionMatrix(
+                        task="multiclass" if configuration.num_classes > 2 else "binary",
+                        num_classes=configuration.num_classes,
+                        sync_on_compute=False,
+                    ).cuda(),
+                }
+            )
+        elif configuration.task == 'TextClassification':
+            metrics['train_metrics'] = torchmetrics.MetricCollection(
+                {
+                    "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="macro",
+                    ).cuda(),
+                    "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="micro",
+                    ).cuda(),
+                    "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="none",
+                    ).cuda(),
+                }
+            )
+
+            # we only validate on rank 0, so there's no need to
+            # synchronize when calculating the metrics.
+            # NB: If `sync_on_compute` is enabled, this breaks
+            # distributed training. If this needs to be enabled,
+            # then we also need to actually run the validation on
+            # all the GPUs.
+            metrics['valid_metrics'] = torchmetrics.MetricCollection(
+                {
+                    "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="macro",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="micro",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="none",
+                        sync_on_compute=False,
+                    ).cuda(),
+                }
+            )
+
+            metrics['test_metrics'] = torchmetrics.MetricCollection(
+                {
+                    "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="macro",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="micro",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.num_classes,
+                        average="none",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "ConfusionMatrix": torchmetrics.ConfusionMatrix(
+                        task="multiclass" if configuration.num_classes > 2 else "binary",
+                        num_classes=configuration.num_classes,
+                        sync_on_compute=False,
+                    ).cuda(),
+                }
+            )
+        elif configuration.task == 'LLM':
+            metrics['train_metrics'] = torchmetrics.MetricCollection(
+                {
+                    "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.vocab_size,
+                        average="macro",
+                    ).cuda(),
+                    "Perplexity": torchmetrics.text.Perplexity().cuda()
+                }
+            )
+
+            # we only validate on rank 0, so there's no need to
+            # synchronize when calculating the metrics.
+            # NB: If `sync_on_compute` is enabled, this breaks
+            # distributed training. If this needs to be enabled,
+            # then we also need to actually run the validation on
+            # all the GPUs.
+            metrics['valid_metrics'] = torchmetrics.MetricCollection(
+                {
+                    "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.vocab_size,
+                        average="macro",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "Perplexity": torchmetrics.text.Perplexity().cuda(),
+                }
+            )
+
+            metrics['test_metrics'] = torchmetrics.MetricCollection(
+                {
+                    "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=configuration.vocab_size,
+                        average="macro",
+                        sync_on_compute=False,
+                    ).cuda(),
+                    "Perplexity": torchmetrics.text.Perplexity().cuda()
+                }
+            )
         
-        metrics_collection = {}
-
-        for i,v in configuration.metrics.items():
-            parameters = v.values()
-            if hyperparameters.num_classes is not None:
-                parameters['num_classes'] = hyperparameters.num_classes
-            metric = self.create_metric(v.keys(),parameters)
-            metrics_collection[i] = metric
-
-        return metrics_collection
+        return metrics
