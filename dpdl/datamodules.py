@@ -958,34 +958,6 @@ class NLPDataModule(DataModule):
                     load_from_cache_file=True,
                 )
 
-    def _add_rgb_transform(self):
-        # Function for converting a PIL image to RGB
-        def to_rgb_pil(x):
-            if isinstance(x, Image.Image) and x.mode != 'RGB':
-                return x.convert('RGB')
-            return x
-
-        # Function for converting a torch.Tensor to RGB
-        def to_rgb_tensor(x):
-            if isinstance(x, torch.Tensor):
-                if len(x.shape) == 3 and x.shape[0] == 1:  # Grayscale tensor (C, H, W)
-                    return x.repeat(3, 1, 1)  # Convert 1-channel to 3-channel (RGB)
-                elif len(x.shape) == 3 and x.shape[0] == 3:
-                    return x  # Already RGB
-                else:
-                    raise ValueError('Input tensor is not a valid image tensor.')
-            return x
-
-        # Select the appropriate transformation based on the type of input
-        if self._cache_transforms:
-            toRGB = torchvision.transforms.Lambda(to_rgb_pil)
-        else:
-            toRGB = torchvision.transforms.Lambda(to_rgb_tensor)
-
-        # Update the transform pipeline
-        new_transforms = [toRGB] + self.transforms.transforms
-        self.transforms = torchvision.transforms.Compose(new_transforms)
-
     def _replace_to_tensor_with_to_float(self):
         # We need to convert the tensor to float and normalize to [0, 1]
         to_float = torchvision.transforms.Lambda(lambda x: x.float() / 255.0)

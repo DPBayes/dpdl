@@ -26,7 +26,8 @@ class ModelFactory:
         configuration: Configuration,
         hyperparams: Hyperparameters,
         num_classes: int,
-        loss_fn: torch.nn
+        loss_fn: torch.nn,
+        metrics: dict
     ):
         
         HF_LLM_PATTERNS = [
@@ -98,7 +99,8 @@ class ModelFactory:
             model_instance=model_instance,
             num_classes=num_classes,
             use_feature_cache=configuration.cache_features,
-            loss_fn=loss_fn
+            loss_fn=loss_fn,
+            metrics=metrics
         )
 
         # Add noise to (pretrained) weights?
