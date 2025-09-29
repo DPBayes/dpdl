@@ -71,10 +71,10 @@ class ModelFactory:
         # Check HuggingFace LLM patterns
         for pattern in HF_LLM_PATTERNS:
             if re.match(pattern, configuration.model_name):
-                model_instance = ModelBaseLLM(configuration.model_name, configuration.quantization_config, num_classes, configuration.peft)
+                model_instance = ModelBaseLLM(configuration.model_name, configuration.quantization_config, num_classes, configuration.peft, configuration.checkpoint_dir)
                 transforms = model_instance.get_transforms() 
                 hf_model = True
-                
+
         if not hf_model:
             if configuration.model_name.startswith('wrn-'):
                 # Parse depth and width from model_name, e.g., 'wrn-16-4'
