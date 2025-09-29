@@ -140,9 +140,41 @@ class HF_llm (torch.nn.Module):
             return out.logits
         return out
 
+    def forward_features(self, x):
+        """
+        Extract hidden features prior to classification/LM head.
+
+        - Sequence classification models:
+            * Prefer pooler_output, e.g., BERT.
+            * Otherwise fallback to CLS token of last_hidden_state.
+        - Causal LMs:
+            * Return last_hidden_state (sequence length, hidden_size).
+        """
+        if isinstance(x, dict):
+            out = self.model(**x, return_dict=True, output_hidden_states=True)
+        else:
+            out = self.model(x, return_dict=True, output_hidden_states=True)
+
+        if self.is_seq_classification:
+            # BERT-style: has pooler_output
+            if hasattr(out, "pooler_output") and out.pooler_output is not None:
+                return out.pooler_output  # (batch_size, hidden_size)
+
+            # Otherwise: fallback to CLS token of final hidden state
+            return out.last_hidden_state[:, 0, :]  # (batch_size, hidden_size)
+
+        # Causal LM: return final hidden states (all tokens)
+        return out.last_hidden_state  # (batch_size, seq_len, hidden_size)
+
+
+    def forward_head(self, features):
+        
+        head = self.get_classifier()
+        if head is None:
+            raise RuntimeError("No classifier/LM head found for this model")
+        return head(features)
 
     # use CrossEntropyLoss from torch.nn? 
-    # move to LLM_base?
     def criterion(self, logits, targets):
 
         shift_logits = logits[..., :-1, :].contiguous()
