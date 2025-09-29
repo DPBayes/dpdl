@@ -62,8 +62,10 @@ trust_remote_code: bool
 We should:
     - Create a method that is for other tasks
 """
-def download_generic_huggingface_model(model_name, quantization, trust_remote_code = False):
-    
+def download_generic_huggingface_model(model_name, quantization, trust_remote_code = False, peft = False, checkpoint_dir = None):
+
+    quantization_config = None
+
     if quantization:
         quantization_config = BitsAndBytesConfig(
             **quantization
@@ -78,13 +80,19 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
     if quantization_config is not None:
         load_kwargs["quantization_config"] = quantization_config
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        **load_kwargs
-    )
+    if checkpoint_dir is not None and not peft:
+        model = AutoModelForCausalLM.from_pretrained(
+            checkpoint_dir,
+            **load_kwargs
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            **load_kwargs
+        )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    return model, tokenizer
+    return model, tokenizer, quantization_config
 
 
 class ModelBaseLLM(torch.nn.Module):
@@ -94,14 +102,18 @@ class ModelBaseLLM(torch.nn.Module):
         quantization: dict,
         vocab_size: int = -1,
         ignore_index: int = -100,
-        trust_remote_code: bool = False
+        trust_remote_code: bool = False,
+        peft: bool = False,
+        checkpoint_dir: str = ''
     ):
 
         super().__init__()
 
-        self.model, self.tokenizer = download_generic_huggingface_model(model_name=model_name,quantization=quantization,trust_remote_code=trust_remote_code)
+        
         self.vocab_size = vocab_size
         self.ignore_index = ignore_index
+        self.peft = peft
+        self.model, self.tokenizer, self.quantization_config = download_generic_huggingface_model(model_name=model_name,quantization=quantization,trust_remote_code=trust_remote_code,peft=peft,log_dir=checkpoint_dir)
 
     def criterion(self, logits, targets):
 
@@ -122,6 +134,10 @@ class ModelBaseLLM(torch.nn.Module):
 
     def get_transforms(self):
         return self.tokenizer
+    
+    def save_model(self, path):
+        #This saves the model, whether it has peft or not. If it has peft, it will save only the trainable parameters 
+        self.model.save_pretrained(path)
 
 
         # # let's track the training accuracy
