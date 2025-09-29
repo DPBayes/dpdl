@@ -700,7 +700,9 @@ class TrainerFactory:
         num_classes = datamodule.get_num_classes()
 
         # Now, setup data, model, and optimizer
-        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes)
+        loss_fn = LossFactory.get_loss(configuration)
+        metrics = MetricsFactory.get_metrics(configuration)
+        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         # The datamodule needs to be aware of the transformations, now we can initialize it

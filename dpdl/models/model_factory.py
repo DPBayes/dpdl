@@ -66,33 +66,35 @@ class ModelFactory:
         transforms = {}  # No default transforms
         model_instance = None
 
-
+        hf_model = False
 
         # Check HuggingFace LLM patterns
         for pattern in HF_LLM_PATTERNS:
             if re.match(pattern, configuration.model_name):
-                model_instance = ModelBaseLLM(configuration.model_name, configuration.quantization_config)
+                model_instance = ModelBaseLLM(configuration.model_name, configuration.quantization_config, num_classes, configuration.peft)
                 transforms = model_instance.get_transforms() 
+                hf_model = True
+                
+        if not hf_model:
+            if configuration.model_name.startswith('wrn-'):
+                # Parse depth and width from model_name, e.g., 'wrn-16-4'
+                parts = configuration.model_name.split('-')
+                depth, width = int(parts[1]), int(parts[2])
+                model_instance = WideResNet(depth=depth, width=width, num_classes=num_classes)
+                transforms = model_instance.get_transforms()
+            elif configuration.model_name == 'koskela-net':
+                model_instance = KoskelaNet()
+                transforms = model_instance.get_transforms()
+            else:
+                model_instance = timm.create_model(
+                    configuration.model_name,
+                    pretrained=configuration.pretrained,
+                    num_classes=num_classes,
+                )
 
-        if configuration.model_name.startswith('wrn-'):
-            # Parse depth and width from model_name, e.g., 'wrn-16-4'
-            parts = configuration.model_name.split('-')
-            depth, width = int(parts[1]), int(parts[2])
-            model_instance = WideResNet(depth=depth, width=width, num_classes=num_classes)
-            transforms = model_instance.get_transforms()
-        elif configuration.model_name == 'koskela-net':
-            model_instance = KoskelaNet()
-            transforms = model_instance.get_transforms()
-        else:
-            model_instance = timm.create_model(
-                configuration.model_name,
-                pretrained=configuration.pretrained,
-                num_classes=num_classes,
-            )
-
-            # Resolve data config and create transforms
-            model_config = timm.data.resolve_data_config({}, model=model_instance)
-            transforms = timm.data.transforms_factory.create_transform(**model_config)
+                # Resolve data config and create transforms
+                model_config = timm.data.resolve_data_config({}, model=model_instance)
+                transforms = timm.data.transforms_factory.create_transform(**model_config)
 
         # Wrap the instantiated model with ModelBase
         model = ModelBase(

@@ -4,7 +4,7 @@ import torch
 
 from dataclasses import dataclass, field
 from typing import List
-from peft import get_peft_model, LoraConfig
+from peft import get_peft_model, LoraConfig, PeftFactory
 
 from .configurationmanager import Configuration, Hyperparameters
 
@@ -32,7 +32,10 @@ class PeftFactory:
     @staticmethod
     def get_peft_model(model: torch.nn.Module, configuration: Configuration):
         if configuration.peft == 'lora':
-            return LoRA.get_peft_model(model, configuration.model_name)
+            if configuration.checkpoint_dir is not None:
+                return LoRA.get_peft_model(model, configuration.model_name, configuration.checkpoint_dir, configuration.is_trainable)
+            else:
+                return LoRA.get_peft_model(model, configuration.model_name)
 
         if configuration.peft == 'film':
             return FiLM.get_peft_model(model, configuration.model_name)
@@ -120,9 +123,17 @@ class FiLM:
 
 class LoRA:
     @staticmethod
-    def get_peft_model(model: torch.nn.Module, model_name: str):
-        lora_config = LoRA._get_config(model_name)
-        lora_model = get_peft_model(model, lora_config)
+    def get_peft_model(model: torch.nn.Module, model_name: str, checkpoint_dir: str = None, is_trainable: bool = False):
+
+        if checkpoint_dir is not None:
+            lora_model =  PeftFactory.from_pretrained(
+                model,
+                checkpoint_dir,
+                is_trainable= is_trainable
+            )
+        else:
+            lora_config = LoRA._get_config(model_name)
+            lora_model = get_peft_model(model, lora_config)
 
         trainable_params, all_params = get_nb_trainable_parameters(lora_model)
 
