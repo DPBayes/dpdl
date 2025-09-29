@@ -71,7 +71,7 @@ class ModelFactory:
         # Check HuggingFace LLM patterns
         for pattern in HF_LLM_PATTERNS:
             if re.match(pattern, configuration.model_name):
-                model_instance = ModelBaseLLM(configuration.model_name, configuration.quantization_config, num_classes, configuration.peft, configuration.checkpoint_dir)
+                model_instance = ModelBaseLLM(configuration.model_name, configuration.quantization_config, num_classes, configuration.peft, configuration.checkpoints_dir)
                 transforms = model_instance.get_transforms() 
                 hf_model = True
 

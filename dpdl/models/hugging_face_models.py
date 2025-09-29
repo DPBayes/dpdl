@@ -104,7 +104,7 @@ class ModelBaseLLM(torch.nn.Module):
         ignore_index: int = -100,
         trust_remote_code: bool = False,
         peft: bool = False,
-        checkpoint_dir: str = ''
+        checkpoint_dir: str = None
     ):
 
         super().__init__()
@@ -113,7 +113,7 @@ class ModelBaseLLM(torch.nn.Module):
         self.vocab_size = vocab_size
         self.ignore_index = ignore_index
         self.peft = peft
-        self.model, self.tokenizer, self.quantization_config = download_generic_huggingface_model(model_name=model_name,quantization=quantization,trust_remote_code=trust_remote_code,peft=peft,log_dir=checkpoint_dir)
+        self.model, self.tokenizer, self.quantization_config = download_generic_huggingface_model(model_name=model_name,quantization=quantization,trust_remote_code=trust_remote_code,peft=peft,checkpoint_dir=checkpoint_dir)
 
     def criterion(self, logits, targets):
 
