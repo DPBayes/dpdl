@@ -32,8 +32,8 @@ class PeftFactory:
     @staticmethod
     def get_peft_model(model: torch.nn.Module, configuration: Configuration):
         if configuration.peft == 'lora':
-            if configuration.checkpoint_dir is not None:
-                return LoRA.get_peft_model(model, configuration.model_name, configuration.checkpoint_dir, configuration.is_trainable)
+            if configuration.checkpoints_dir is not None:
+                return LoRA.get_peft_model(model, configuration.model_name, configuration.checkpoints_dir, True)
             else:
                 return LoRA.get_peft_model(model, configuration.model_name)
 

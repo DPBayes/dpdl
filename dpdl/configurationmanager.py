@@ -91,6 +91,7 @@ class Configuration(BaseModel):
     validation_frequency: float = 1.0
     seed: int = 0
     log_dir: str = 'logs'
+    checkpoints_dir: str = None
     experiment_name: str = 'default-experiment'
     overwrite_experiment: bool = False
     clipping_mode: str = 'flat'
