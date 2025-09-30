@@ -6,7 +6,9 @@ import torch
 from .model_base import ModelBase
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet
-from .hugging_face_models import ModelBaseLLM
+from .hugging_face_models import HF_llm
+
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from dpdl.configurationmanager import Configuration, Hyperparameters
 from dpdl.peft import PeftFactory
@@ -26,12 +28,19 @@ class ModelFactory:
         configuration: Configuration,
         hyperparams: Hyperparameters,
         num_classes: int,
+<<<<<<< HEAD
         loss_fn: torch.nn,
         metrics: dict
+=======
+        loss_fn: torch.nn.Module
+>>>>>>> llm_test_branch
     ):
         
         HF_LLM_PATTERNS = [
             r'.*gpt.*',
+            r'.*roberta.*',
+            r'.*bert.*',
+            r'.*distilbert.*',
             r'.*llama.*',
             r'.*mistral.*',
             r'.*phi.*',
@@ -63,9 +72,15 @@ class ModelFactory:
         - A tuple of (ModelBase instance, Data Transforms).
         """
 
+        """
+        TO DO: create LLM_base class, similar to ModelBase, but for LLMs?
+        or just use ModelBase directly?
+        """
+
         transforms = {}  # No default transforms
         model_instance = None
 
+<<<<<<< HEAD
         hf_model = False
 
         # Check HuggingFace LLM patterns
@@ -91,6 +106,40 @@ class ModelFactory:
                     pretrained=configuration.pretrained,
                     num_classes=num_classes,
                 )
+=======
+
+        # Flag to skip image model creation if we load HF
+        loaded_hf = False
+
+        # check if we want to experiment on LLMs
+        if configuration.llm:
+            model_instance = HF_llm(
+                        configuration.model_name,
+                        configuration.quantization_config,
+                        num_labels=num_classes
+                    )
+
+            transforms = model_instance.get_transforms()
+            loaded_hf = True
+
+        if loaded_hf:
+            pass  # model_instance & transforms already set
+        elif configuration.model_name.startswith('wrn-'):
+            # Parse depth and width from model_name, e.g., 'wrn-16-4'
+            parts = configuration.model_name.split('-')
+            depth, width = int(parts[1]), int(parts[2])
+            model_instance = WideResNet(depth=depth, width=width, num_classes=num_classes)
+            transforms = model_instance.get_transforms()
+        elif configuration.model_name == 'koskela-net':
+            model_instance = KoskelaNet()
+            transforms = model_instance.get_transforms()
+        else:
+            model_instance = timm.create_model(
+                configuration.model_name,
+                pretrained=configuration.pretrained,
+                num_classes=num_classes,
+            )
+>>>>>>> llm_test_branch
 
                 # Resolve data config and create transforms
                 model_config = timm.data.resolve_data_config({}, model=model_instance)
@@ -101,8 +150,12 @@ class ModelFactory:
             model_instance=model_instance,
             num_classes=num_classes,
             use_feature_cache=configuration.cache_features,
+<<<<<<< HEAD
             loss_fn=loss_fn,
             metrics=metrics
+=======
+            criterion=loss_fn,
+>>>>>>> llm_test_branch
         )
 
         # Add noise to (pretrained) weights?

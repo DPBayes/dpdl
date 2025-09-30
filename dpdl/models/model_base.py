@@ -31,79 +31,12 @@ class ModelBase(torch.nn.Module):
             self.train_metrics = metrics['train_metrics']
             self.valid_metrics = metrics['valid_metrics']
             self.test_metrics = metrics['test_metrics']
-            
-            # let's track the training accuracy
-            # self.train_metrics = torchmetrics.MetricCollection(
-            #     {
-            #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-            #             num_classes=self.num_classes,
-            #             average="macro",
-            #         ).cuda(),
-            #         "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-            #             num_classes=self.num_classes,
-            #             average="micro",
-            #         ).cuda(),
-            #         "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-            #             num_classes=self.num_classes,
-            #             average="none",
-            #         ).cuda(),
-            #     }
-            # )
-
-        # we only validate on rank 0, so there's no need to
-        # synchronize when calculating the metrics.
-        # NB: If `sync_on_compute` is enabled, this breaks
-        # distributed training. If this needs to be enabled,
-        # then we also need to actually run the validation on
-        # all the GPUs.
-        # self.valid_metrics = torchmetrics.MetricCollection(
-        #     {
-        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.num_classes,
-        #             average="macro",
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #         "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.num_classes,
-        #             average="micro",
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #         "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.num_classes,
-        #             average="none",
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #     }
-        # )
-
-        # self.test_metrics = torchmetrics.MetricCollection(
-        #     {
-        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.num_classes,
-        #             average="macro",
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #         "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.num_classes,
-        #             average="micro",
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #         "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.num_classes,
-        #             average="none",
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #         "ConfusionMatrix": torchmetrics.ConfusionMatrix(
-        #             task="multiclass" if self.num_classes > 2 else "binary",
-        #             num_classes=self.num_classes,
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #     }
-        # )
 
     def forward(self, x):
         if self.use_feature_cache:
-            return self.model.forward_head(x)
+            # self.model.forward_head(x) calls its classification head, x here are feature tensor not raw inputs
+            # it take those features, possibly apply pooling/dropout, and then run the final linear (classifier) layer to produce logits.
+            return self.model.forward_head(x) 
         else:
             return self.model(x)
 
@@ -134,6 +67,7 @@ class ModelBase(torch.nn.Module):
     def get_body(self):
         return torch.nn.Sequential(*list(self.model.children())[:-1])
 
+    #TODO: Make this method empty and each model implements it
     def save_model(self, fpath):
         # Extract the directory from the path
         directory = os.path.dirname(fpath)
