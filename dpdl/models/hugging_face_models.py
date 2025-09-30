@@ -80,7 +80,7 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
     if quantization_config is not None:
         load_kwargs["quantization_config"] = quantization_config
 
-        # For encoder/sequence classification models (roberta/bert), they are under AutoModelForSequenceClassification.
+    # For encoder/sequence classification models (roberta/bert), they are under AutoModelForSequenceClassification.
     is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
     if is_seq_classification:
         if num_labels is not None:
