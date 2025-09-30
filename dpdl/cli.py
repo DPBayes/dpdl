@@ -144,6 +144,13 @@ def cli(
                 rich_help_panel='Model options',
             )
         ] = False,
+        task: Annotated[
+            str,
+            typer.Option(
+                help='Training task [ImageClassification, SequenceClassification, CausalLM]',
+                rich_help_panel='Training options',
+            )
+        ] = 'ImageClassification',
         loss_function: Annotated[
             str,
             typer.Option(

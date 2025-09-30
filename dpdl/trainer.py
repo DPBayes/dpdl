@@ -624,14 +624,16 @@ class TrainerFactory:
     @staticmethod
     def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
         # First create DataModule, it can figure out the number of classes
-        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
-        num_classes = datamodule.get_num_classes()
-
+        
+        num_classes = 2
         # setup data, model, and optimizer
         loss_fn = LossFactory.get_loss(configuration)
-        metrics = MetricsFactory.get_metrics(configuration)
+        metrics = MetricsFactory.get_metrics(configuration, num_classes)
         model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
+
+        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
+        num_classes = datamodule.get_num_classes()
 
         # Initialize the datamodule with the transformations
         datamodule.initialize(transforms)
