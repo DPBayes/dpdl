@@ -35,6 +35,7 @@ class Trainer:
         seed: int = 0,
         physical_batch_size: int = 40,
         callback_handler: CallbackHandler = None,
+        llm: bool = None
     ):
 
         self.model = model
@@ -45,6 +46,7 @@ class Trainer:
         self.validation_frequency = validation_frequency
         self.seed = seed
         self.physical_batch_size = physical_batch_size
+        self.llm = llm
 
         if not callback_handler:
             self.callback_handler = CallbackHandler()
@@ -142,7 +144,10 @@ class Trainer:
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
-            logical_batch_loss = self.fit_one_batch(batch_idx, batch)
+            if self.llm:
+                logical_batch_loss = self.fit_one_batch_nlp(batch_idx, batch)
+            else:
+                logical_batch_loss = self.fit_one_batch(batch_idx, batch)
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
 
         # compute the epoch metrics
@@ -153,7 +158,6 @@ class Trainer:
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
-        print('batch',batch, 'X',X, 'label',y, flush=True)
         X = X.to(device= self.device, non_blocking=True)
         y = y.to(device= self.device, non_blocking=True)
 
@@ -179,6 +183,51 @@ class Trainer:
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
             logits = self.model(X_splitted)
+            loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
+            loss.backward()
+
+            # keep track of the batch loss
+            logical_batch_loss += loss.item()
+
+            # update the metrics if there are any
+            preds = torch.argmax(logits, dim=1)
+            self._unwrap_model().train_metrics.update(preds, y_split[i])
+
+            # notify the callbacks of a physical batch end
+            self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
+
+        # after accumulating the gradients for all the sub batches we can finally update weights.
+        self.optimizer.step()
+
+        return logical_batch_loss
+
+    def fit_one_batch_nlp(self, batch_idx, batch):
+        X, y = batch
+        X = X.to(device= self.device, non_blocking=True)
+        y = y.to(device= self.device, non_blocking=True)
+
+        # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
+        # then process the sub batches one at a time and call backward.
+        # when all the sub batches have been processed we can finally step the optimizer.
+        X_split = X.split(self.physical_batch_size, dim=0)
+        y_split = y.split(self.physical_batch_size, dim=0)
+
+        # zero the grads as usually before doing anything
+        self.optimizer.zero_grad()
+
+        logical_batch_loss = 0
+        # process the sub batches one at a time
+        N = len(y_split)
+
+        for i in range(N):
+            # notify the callbacks of a physical batch start
+            X_splitted = X_split[i]
+            y_splitted = y_split[i]
+            physical_batch = (X_splitted, y_splitted)
+
+            self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
+
+            logits = self.model(input_ids=X_splitted[:,0,:], token_type_ids=X_splitted[:,1,:], attention_mask=X_splitted[:,2,:])
             loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
             loss.backward()
 
@@ -669,6 +718,7 @@ class TrainerFactory:
             total_steps=total_steps,
             seed=configuration.seed,
             validation_frequency=configuration.validation_frequency,
+            llm=configuration.llm
         )
 
         return trainer
