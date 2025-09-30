@@ -7,7 +7,7 @@ from huggingface_hub import snapshot_download
 import torch
 from safetensors.torch import load_file as safe_load_file
 
-from transformers import AutoModel, AutoModelForCausalLM,AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModel, AutoModelForCausalLM,AutoTokenizer, BitsAndBytesConfig, AutoModelForSequenceClassification
 
 SAFE_WEIGHTS_INDEX_NAME = "model.safetensors.index.json"
 SAFE_WEIGHTS_NAME = "model.safetensors"
@@ -62,7 +62,7 @@ trust_remote_code: bool
 We should:
     - Create a method that is for other tasks
 """
-def download_generic_huggingface_model(model_name, quantization, trust_remote_code = False, peft = False, checkpoint_dir = None):
+def download_generic_huggingface_model(model_name, quantization, trust_remote_code = False, num_labels: int | None = None, peft = False, checkpoint_dir = None):
 
     quantization_config = None
 
@@ -80,22 +80,32 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
     if quantization_config is not None:
         load_kwargs["quantization_config"] = quantization_config
 
-    if checkpoint_dir is not None and not peft:
+        # For encoder/sequence classification models (roberta/bert), they are under AutoModelForSequenceClassification.
+    is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
+    if is_seq_classification:
+        if num_labels is not None:
+            load_kwargs["num_labels"] = num_labels
+        model = AutoModelForSequenceClassification.from_pretrained(
+            model_name,
+            **load_kwargs
+        )
+    elif checkpoint_dir is not None and not peft:
         model = AutoModelForCausalLM.from_pretrained(
             checkpoint_dir,
             **load_kwargs
         )
-    else:
+    else: 
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             **load_kwargs
         )
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
     return model, tokenizer, quantization_config
 
 
-class ModelBaseLLM(torch.nn.Module):
+class HF_llm (torch.nn.Module):
     def __init__(
         self,
         model_name: str,
@@ -104,7 +114,8 @@ class ModelBaseLLM(torch.nn.Module):
         ignore_index: int = -100,
         trust_remote_code: bool = False,
         peft: bool = False,
-        checkpoint_dir: str = None
+        checkpoint_dir: str = None,
+        num_labels: int | None = None,
     ):
 
         super().__init__()
@@ -113,8 +124,65 @@ class ModelBaseLLM(torch.nn.Module):
         self.vocab_size = vocab_size
         self.ignore_index = ignore_index
         self.peft = peft
-        self.model, self.tokenizer, self.quantization_config = download_generic_huggingface_model(model_name=model_name,quantization=quantization,trust_remote_code=trust_remote_code,peft=peft,checkpoint_dir=checkpoint_dir)
+        self.model, self.tokenizer, self.quantization_config = download_generic_huggingface_model(
+            model_name=model_name,
+            quantization=quantization,
+            trust_remote_code=trust_remote_code,
+            num_labels=num_labels,
+            peft=peft,
+            checkpoint_dir=checkpoint_dir
+        )
+        
+        self.is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
 
+    def forward(self, x):
+        """
+        Return logits given tokenized batch or tensor input.
+        """
+        if isinstance(x, dict):
+            out = self.model(**x)
+        else:
+            out = self.model(x)
+        if hasattr(out, 'logits'):
+            return out.logits
+        return out
+
+    def forward_features(self, x):
+        """
+        Extract hidden features prior to classification/LM head.
+
+        - Sequence classification models:
+            * Prefer pooler_output, e.g., BERT.
+            * Otherwise fallback to CLS token of last_hidden_state.
+        - Causal LMs:
+            * Return last_hidden_state (sequence length, hidden_size).
+        """
+        if isinstance(x, dict):
+            out = self.model(**x, return_dict=True, output_hidden_states=True)
+        else:
+            out = self.model(x, return_dict=True, output_hidden_states=True)
+
+        if self.is_seq_classification:
+            # BERT-style: has pooler_output
+            if hasattr(out, "pooler_output") and out.pooler_output is not None:
+                return out.pooler_output  # (batch_size, hidden_size)
+
+            # Otherwise: fallback to CLS token of final hidden state
+            return out.last_hidden_state[:, 0, :]  # (batch_size, hidden_size)
+
+        # Causal LM: return final hidden states (all tokens)
+        return out.last_hidden_state  # (batch_size, seq_len, hidden_size)
+
+
+    def forward_head(self, features):
+        
+        head = self.get_classifier()
+        if head is None:
+            raise RuntimeError("No classifier/LM head found for this model")
+        return head(features)
+
+    # use CrossEntropyLoss from torch.nn? 
+    #TODO: For sentence classification
     def criterion(self, logits, targets):
 
         shift_logits = logits[..., :-1, :].contiguous()
@@ -126,11 +194,17 @@ class ModelBaseLLM(torch.nn.Module):
             self.ignore_index
         )
 
+    # Encoder models (e.g., RoBERTa/BERT) commonly use classifier or score. Causal LMs use lm_head.
     def get_classifier(self):
-        return self.model.lm_head
+        for attr in ['classifier', 'score', 'lm_head']:
+            if hasattr(self.model, attr):
+                head = getattr(self.model, attr)
+                if isinstance(head, torch.nn.Module):
+                    return head
+        return None
 
-    def get_body(self):
-        return self.model.get_base_model().model
+    #def get_body(self):
+    #    return self.model.get_base_model().model
 
     def get_transforms(self):
         return self.tokenizer
@@ -138,48 +212,3 @@ class ModelBaseLLM(torch.nn.Module):
     def save_model(self, path):
         #This saves the model, whether it has peft or not. If it has peft, it will save only the trainable parameters 
         self.model.save_pretrained(path)
-
-
-        # # let's track the training accuracy
-        # self.train_metrics = torchmetrics.MetricCollection(
-        #     {
-        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.vocab_size,
-        #             average="macro",
-        #         ).cuda(),
-        #         "Perplexity": torchmetrics.text.Perplexity().cuda()
-        #     }
-        # )
-
-        # # we only validate on rank 0, so there's no need to
-        # # synchronize when calculating the metrics.
-        # # NB: If `sync_on_compute` is enabled, this breaks
-        # # distributed training. If this needs to be enabled,
-        # # then we also need to actually run the validation on
-        # # all the GPUs.
-        # self.valid_metrics = torchmetrics.MetricCollection(
-        #     {
-        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.vocab_size,
-        #             average="macro",
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #         "Perplexity": torchmetrics.text.Perplexity().cuda(),
-        #     }
-        # )
-
-        # self.test_metrics = torchmetrics.MetricCollection(
-        #     {
-        #         "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-        #             num_classes=self.vocab_size,
-        #             average="macro",
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #         "Perplexity": torchmetrics.text.Perplexity().cuda(),
-        #         "ConfusionMatrix": torchmetrics.ConfusionMatrix(
-        #             task="multiclass" if self.vocab_size > 2 else "binary",
-        #             num_classes=self.vocab_size,
-        #             sync_on_compute=False,
-        #         ).cuda(),
-        #     }
-        # )
