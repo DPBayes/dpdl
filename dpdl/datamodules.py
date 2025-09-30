@@ -841,212 +841,38 @@ class ImageDataModule(DataModule):
         return features, labels
 
 
-class NLPDataModule(DataModule):
-    def __init__(
-        self,
-        **kwargs
-    ):
-        super().__init__(**kwargs)
-
-    def cache_features(self, model):
-        """Cache features for the train, validation, and test datasets using the provided model."""
-
-        if torch.distributed.get_rank() == 0:
-            log.info('Feature caching enabled, caching features.')
-
-        def _extract_features(model, image_field, examples):
-            inputs = examples[image_field]
-
-            with torch.no_grad():
-                features = model.forward_features(inputs)
-
-            examples['features'] = features.cpu()
-
-            return examples
-
-        model = model.cuda()
-        _extract_features_fn = partial(_extract_features, model, self._image_field)
-
-        if torch.distributed.get_rank() == 0:
-            log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
-
-        datasets_map_bs = 512
-
-        self.train_dataset = self.train_dataset.with_format('torch', device='cuda').map(
-            _extract_features_fn,
-            batched=True,
-            batch_size=datasets_map_bs,
-            remove_columns=self._image_field,
-            num_proc=self.num_workers,
-        )
-
-        if torch.distributed.get_rank() == 0:
-            log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
-
-        self.val_dataset = self.val_dataset.with_format('torch', device='cuda').map(
-            _extract_features_fn,
-            batched=True,
-            batch_size=datasets_map_bs,
-            remove_columns=self._image_field,
-            num_proc=self.num_workers,
-        )
-
-        if self.test_dataset:
-            if torch.distributed.get_rank() == 0:
-                log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
-
-            self.test_dataset = self.test_dataset.with_format('torch', device='cuda').map(
-                _extract_features_fn,
-                batched=True,
-                batch_size=datasets_map_bs,
-                remove_columns=self._image_field,
-            )
-
-        # Update the collation function to the one that uses cached features
-        self._collate_fn = self._collate_fn_with_cached_features
-
-        self._create_dataloaders()
-
-        if torch.distributed.get_rank() == 0:
-            log.info('Feature caching finished.')
-
-    def _apply_transforms_to_datasets(self):
-        if torch.distributed.get_rank() == 0:
-            log.info('Applying transformations to dataset.')
-
-        def _apply_transforms(transforms, label_field, image_field, examples):
-            log.info('.')
-            examples[image_field] = [transforms(image) for image in examples[image_field]]
-            return examples
-
-        if self.transforms:
-            transforms_func = partial(
-                _apply_transforms,
-                self.transforms,
-                self._label_field,
-                self._image_field,
-            )
-
-            if torch.distributed.get_rank() == 0:
-                log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
-
-            self.train_dataset = self.train_dataset.map(
-                transforms_func,
-                num_proc=self.num_workers,
-                batched=True,
-                load_from_cache_file=True,
-            )
-
-            if torch.distributed.get_rank() == 0:
-                log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
-
-            self.val_dataset = self.val_dataset.map(
-                transforms_func,
-                num_proc=self.num_workers,
-                batched=True,
-                load_from_cache_file=True,
-            )
-
-            if self.test_dataset:
-                if torch.distributed.get_rank() == 0:
-                    log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
-
-                self.test_dataset = self.test_dataset.map(
-                    transforms_func,
-                    num_proc=self.num_workers,
-                    batched=True,
-                    load_from_cache_file=True,
-                )
-
-    def _add_rgb_transform(self):
-        # Function for converting a PIL image to RGB
-        def to_rgb_pil(x):
-            if isinstance(x, Image.Image) and x.mode != 'RGB':
-                return x.convert('RGB')
-            return x
-
-        # Function for converting a torch.Tensor to RGB
-        def to_rgb_tensor(x):
-            if isinstance(x, torch.Tensor):
-                if len(x.shape) == 3 and x.shape[0] == 1:  # Grayscale tensor (C, H, W)
-                    return x.repeat(3, 1, 1)  # Convert 1-channel to 3-channel (RGB)
-                elif len(x.shape) == 3 and x.shape[0] == 3:
-                    return x  # Already RGB
-                else:
-                    raise ValueError('Input tensor is not a valid image tensor.')
-            return x
-
-        # Select the appropriate transformation based on the type of input
-        if self._cache_transforms:
-            toRGB = torchvision.transforms.Lambda(to_rgb_pil)
-        else:
-            toRGB = torchvision.transforms.Lambda(to_rgb_tensor)
-
-        # Update the transform pipeline
-        new_transforms = [toRGB] + self.transforms.transforms
-        self.transforms = torchvision.transforms.Compose(new_transforms)
-
-    def _replace_to_tensor_with_to_float(self):
-        # We need to convert the tensor to float and normalize to [0, 1]
-        to_float = torchvision.transforms.Lambda(lambda x: x.float() / 255.0)
-
-        # Filter out ToTensor and replace it with the new transformation
-        new_transforms = []
-        for t in self.transforms.transforms:
-            if isinstance(t, torchvision.transforms.ToTensor):
-                new_transforms.append(to_float)
-            else:
-                new_transforms.append(t)
-
-        self.transforms.transforms = new_transforms
-
-    @staticmethod
-    def _collate_fn(batch, label_field=None, image_field=None, transforms=None):
-        B = len(batch)
-
-        # Apply transformation to the first image to determine the size after transformation
-        if transforms:
-            first_image = transforms(batch[0][image_field])
-        else:
-            first_image = batch[0][image_field]
-
-        # Now that we know the transformed image size, we can initialize the `images` tensor
-        C, H, W = first_image.shape
-        images = torch.empty((B, C, H, W))
-        labels = torch.empty(B, dtype=torch.long)
-
-        # Now we are ready to process the batch
-        for i in range(B):
-            if transforms:
-                images[i] = transforms(batch[i][image_field])
-            else:
-                images[i] = batch[i][image_field]
-
-            labels[i] = batch[i][label_field]
-
-        return images, labels
-
-    @staticmethod
-    def _collate_fn_with_cached_features(batch, label_field=None, image_field=None):
-        features = torch.stack(
-            [item['features'] for item in batch]
-        )
-
-        labels = torch.tensor(
-            [item[label_field] for item in batch]
-        )
-
-        return features, labels
-
-
-
 class DataModuleFactory:
     @staticmethod
     def get_datamodule(
         configuration: Configuration,
         hyperparams: Hyperparameters,
     ) -> DataModule:
-        datamodule = ImageDataModule(
+
+        if getattr(configuration, 'llm', False):
+            # Use NLPDataModule for LLM tasks
+            return NLPDataModule(
+                dataset_name=configuration.dataset_name,
+                num_workers=configuration.num_workers,
+                physical_batch_size=configuration.physical_batch_size,
+                subset_size=configuration.subset_size,
+                validation_size=configuration.validation_size,
+                test_size=configuration.test_size,
+                shots=configuration.shots,
+                seed=configuration.seed,
+                batch_size=hyperparams.batch_size,
+                sample_rate=hyperparams.sample_rate,
+                privacy=configuration.privacy,
+                evaluation_mode=configuration.evaluation_mode,
+                label_field=configuration.dataset_label_field,
+                max_test_examples=configuration.max_test_examples,
+                imbalance_factor=configuration.imbalance_factor,
+                imbalance_reverse=configuration.imbalance_reverse,
+                fairness_imbalance_class=configuration.fairness_imbalance_class,
+                cache_transforms=False,  # no image transforms for text
+                split_seed=configuration.split_seed,
+            )
+
+        return ImageDataModule(
             dataset_name=configuration.dataset_name,
             num_workers=configuration.num_workers,
             physical_batch_size=configuration.physical_batch_size,
@@ -1068,4 +894,149 @@ class DataModuleFactory:
             split_seed=configuration.split_seed,
         )
 
-        return datamodule
+
+class NLPDataModule(DataModule):
+    """DataModule specialized for NLP tasks.
+    - Detect text fields (string features) automatically if they are not specified.
+    - Collate function returning (tokenized_batch_dict, labels_tensor). e.g., tokenized_batch_dict = {"input_ids": torch.Tensor(batch_size, seq_len),
+                                                                        "attention_mask": torch.Tensor(batch_size, seq_len)}
+    """
+
+    def __init__(self, text_fields=None, max_length: int = 64, **kwargs):
+        self._text_fields = text_fields  # list of text fields or None
+        self.max_length = max_length
+        super().__init__(**kwargs)
+
+    def _set_dataset_label_fields(self, dataset_splits):  
+        if torch.distributed.get_rank() == 0:
+            log.info('Setting dataset label field (LLM mode).')
+        self._set_label_field(dataset_splits['train']) # find the label column
+        self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
+
+    def _detect_text_fields(self, dataset):
+        if self._text_fields is not None:
+            if torch.distributed.get_rank() == 0:
+                log.info(f"Using manually provided text fields: {self._text_fields}")
+            return
+
+        # Otherwise detect text fields (string features)
+        candidates = []
+        for feature_name, feature in dataset.features.items():
+            # Skip label field
+            if feature_name == self._label_field:
+                continue
+            # The datasets library uses Value('string') for raw text columns
+            if getattr(feature, 'dtype', None) == 'string':
+                candidates.append(feature_name)
+
+        #if candidates:
+        #    self._text_fields = candidates
+        #    if len(candidates) > 1 and torch.distributed.get_rank() == 0:
+        #        log.warning(f"Multiple text fields detected, using all: {candidates}")
+        #else:
+        #    self._text_fields = []
+        
+        self._text_fields = candidates[:1] if candidates else []  # use only the first text field if multiple found
+
+        if torch.distributed.get_rank() == 0:
+            log.info(f"Detected text fields: {self._text_fields}")
+        if not self._text_fields:
+            raise ValueError('Could not determine any text field for NLP dataset.')
+
+    # skip image transforms and set custom dataloaders
+    def initialize(self, tokenizer):
+        self.tokenizer = tokenizer
+
+        if torch.distributed.get_rank() == 0:
+            log.info('Initializing NLPDataModule datasets...')
+        if torch.distributed.get_rank() == 0:
+            self._initialize_datasets()
+            torch.distributed.barrier()
+        else:
+            torch.distributed.barrier()
+            self._initialize_datasets()
+
+        # we use batch size of -1 to signal full batch
+        if self.batch_size == -1:
+            self.batch_size = len(self.train_dataset)
+
+        # if sample_rate is set, we set train batch size to int(sample_rate*N)
+        if self.sample_rate and self.sample_rate > 0:
+            batch_size = int(self.sample_rate * len(self.train_dataset))
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.')
+
+            self.batch_size = batch_size
+
+        self._initialize_text_dataloaders()
+
+
+    def _initialize_text_dataloaders(self):
+        self._set_generators_and_seed_worker()
+        self._set_samplers_and_batch_size()
+
+        collate_fn = self._make_text_collate()
+
+        self._dataloaders['train'] = torch.utils.data.DataLoader(
+            self.train_dataset,
+            sampler=self.train_sampler,
+            batch_size=self.local_batch_size,
+            collate_fn=collate_fn,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            generator=self.generator,
+            worker_init_fn=self.seed_worker,
+        )
+
+        self._dataloaders['valid'] = torch.utils.data.DataLoader(
+            self.val_dataset,
+            sampler=self.val_sampler,
+            batch_size=self.physical_batch_size,
+            collate_fn=collate_fn,
+            num_workers=self.num_workers,
+        )
+
+        if self.test_dataset:
+            self._dataloaders['test'] = torch.utils.data.DataLoader(
+                self.test_dataset,
+                sampler=self.test_sampler,
+                batch_size=self.physical_batch_size,
+                collate_fn=collate_fn,
+                num_workers=self.num_workers,
+            )
+
+    # use data collator from HF, e.g., DataCollatorWithPadding(tokenizer)?
+    # or use custom collate function?
+    def _make_text_collate(self):
+        tokenizer = self.tokenizer
+        text_fields = self._text_fields
+        label_field = self._label_field
+        max_len = self.max_length
+
+        def collate(batch):
+            texts = []
+            for sample in batch:
+                # Concatenate multiple text fields if present
+                parts = [str(sample[i]) for i in text_fields]
+                texts.append(' '.join(parts))
+            tokenized = tokenizer(
+                texts,
+                padding=True,
+                truncation=True,
+                max_length=max_len,
+                return_tensors='pt'
+            ) 
+
+            labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
+            return tokenized, labels
+
+        return collate
+
+
+    def _add_rgb_transform(self):  
+        return
+    def _replace_to_tensor_with_to_float(self):  
+        return
+    def _apply_transforms_to_datasets(self):  
+        return
