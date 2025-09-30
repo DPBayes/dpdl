@@ -67,13 +67,22 @@ class ModelBase(torch.nn.Module):
     def get_body(self):
         return torch.nn.Sequential(*list(self.model.children())[:-1])
 
-    #TODO: Make this method empty and each model implements it
-    def save_model(self, fpath):
-        # Extract the directory from the path
+    def save_model(self,fpath):
+        
         directory = os.path.dirname(fpath)
 
         # Create the directory if it doesn't exist
         if not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
 
-        torch.save(self.model.state_dict(), fpath)
+        self.model.save_model(fpath)
+
+    # def save_model(self, fpath):
+    #     # Extract the directory from the path
+    #     directory = os.path.dirname(fpath)
+
+    #     # Create the directory if it doesn't exist
+    #     if not os.path.exists(directory):
+    #         os.makedirs(directory, exist_ok=True)
+
+    #     torch.save(self.model.state_dict(), fpath)

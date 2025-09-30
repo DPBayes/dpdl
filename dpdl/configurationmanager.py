@@ -242,8 +242,8 @@ class Configuration(BaseModel):
             ('Enable callback debug logging', self.verbose_callback),
             ('Fairness-style subsampling class', self.fairness_imbalance_class),
             ('Random seed for creating dataset subsets', self.split_seed),
-            ('LLM use', self.llm)
-            ('Task', self.task)
+            ('LLM use', self.llm),
+            ('Task', self.task),
         ]
 
         if self.privacy:
