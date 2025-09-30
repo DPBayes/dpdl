@@ -5,7 +5,7 @@ from .configurationmanager import Configuration, Hyperparameters
 class MetricsFactory:
 
     @staticmethod
-    def get_metrics(configuration: Configuration):
+    def get_metrics(configuration: Configuration, num_classes: int | None = None):
 
         metrics = {'train_metrics':None,'valid_metrics':None,'test_metrics':None}
 
@@ -14,15 +14,15 @@ class MetricsFactory:
             metrics['train_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="macro",
                     ).cuda(),
                     "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="micro",
                     ).cuda(),
                     "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="none",
                     ).cuda(),
                 }
@@ -37,17 +37,17 @@ class MetricsFactory:
             metrics['valid_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="macro",
                         sync_on_compute=False,
                     ).cuda(),
                     "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="micro",
                         sync_on_compute=False,
                     ).cuda(),
                     "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="none",
                         sync_on_compute=False,
                     ).cuda(),
@@ -57,40 +57,40 @@ class MetricsFactory:
             metrics['test_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="macro",
                         sync_on_compute=False,
                     ).cuda(),
                     "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="micro",
                         sync_on_compute=False,
                     ).cuda(),
                     "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="none",
                         sync_on_compute=False,
                     ).cuda(),
                     "ConfusionMatrix": torchmetrics.ConfusionMatrix(
-                        task="multiclass" if configuration.num_classes > 2 else "binary",
-                        num_classes=configuration.num_classes,
+                        task="multiclass" if num_classes > 2 else "binary",
+                        num_classes=num_classes,
                         sync_on_compute=False,
                     ).cuda(),
                 }
             )
-        elif configuration.task == 'TextClassification':
+        elif configuration.task == 'SequenceClassification':
             metrics['train_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="macro",
                     ).cuda(),
                     "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="micro",
                     ).cuda(),
                     "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="none",
                     ).cuda(),
                 }
@@ -105,17 +105,17 @@ class MetricsFactory:
             metrics['valid_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="macro",
                         sync_on_compute=False,
                     ).cuda(),
                     "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="micro",
                         sync_on_compute=False,
                     ).cuda(),
                     "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="none",
                         sync_on_compute=False,
                     ).cuda(),
@@ -125,28 +125,28 @@ class MetricsFactory:
             metrics['test_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="macro",
                         sync_on_compute=False,
                     ).cuda(),
                     "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="micro",
                         sync_on_compute=False,
                     ).cuda(),
                     "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.num_classes,
+                        num_classes=num_classes,
                         average="none",
                         sync_on_compute=False,
                     ).cuda(),
                     "ConfusionMatrix": torchmetrics.ConfusionMatrix(
-                        task="multiclass" if configuration.num_classes > 2 else "binary",
-                        num_classes=configuration.num_classes,
+                        task="multiclass" if num_classes > 2 else "binary",
+                        num_classes=num_classes,
                         sync_on_compute=False,
                     ).cuda(),
                 }
             )
-        elif configuration.task == 'LLM':
+        elif configuration.task == 'CausalLM':
             metrics['train_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
