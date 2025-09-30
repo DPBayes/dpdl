@@ -152,6 +152,7 @@ class Trainer:
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
+        print('batch',batch, 'X',X, 'label',y, flush=True)
         X = X.cuda(non_blocking=True)
         y = y.cuda(non_blocking=True)
 
@@ -629,15 +630,13 @@ class TrainerFactory:
         configuration.checkpoints_dir = os.path.join(configuration.log_dir, 'checkpoints')
         # First create DataModule, it can figure out the number of classes
         
-        num_classes = 2
+        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
+        num_classes = datamodule.get_num_classes()
         # setup data, model, and optimizer
         loss_fn = LossFactory.get_loss(configuration)
         metrics = MetricsFactory.get_metrics(configuration, num_classes)
         model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
-
-        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
-        num_classes = datamodule.get_num_classes()
 
         # Initialize the datamodule with the transformations
         datamodule.initialize(transforms)
