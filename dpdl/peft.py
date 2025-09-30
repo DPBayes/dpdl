@@ -4,7 +4,7 @@ import torch
 
 from dataclasses import dataclass, field
 from typing import List
-from peft import get_peft_model, LoraConfig, PeftFactory
+from peft import get_peft_model, LoraConfig, PeftModel
 
 from .configurationmanager import Configuration, Hyperparameters
 
@@ -126,7 +126,7 @@ class LoRA:
     def get_peft_model(model: torch.nn.Module, model_name: str, checkpoint_dir: str = None, is_trainable: bool = False):
 
         if checkpoint_dir is not None:
-            lora_model =  PeftFactory.from_pretrained(
+            lora_model =  PeftModel.from_pretrained(
                 model,
                 checkpoint_dir,
                 is_trainable= is_trainable
