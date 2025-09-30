@@ -28,37 +28,9 @@ class ModelFactory:
         configuration: Configuration,
         hyperparams: Hyperparameters,
         num_classes: int,
-<<<<<<< HEAD
         loss_fn: torch.nn,
         metrics: dict
-=======
-        loss_fn: torch.nn.Module
->>>>>>> llm_test_branch
     ):
-        
-        HF_LLM_PATTERNS = [
-            r'.*gpt.*',
-            r'.*roberta.*',
-            r'.*bert.*',
-            r'.*distilbert.*',
-            r'.*llama.*',
-            r'.*mistral.*',
-            r'.*phi.*',
-            r'.*gemma.*',
-            r'.*opt.*',
-            r'.*t5.*',
-            r'.*flan.*',
-            r'.*mpt.*',
-            r'.*codellama.*',
-            r'.*llama2.*',
-            r'.*llama3.*',
-            r'microsoft/.*',
-            r'meta-llama/.*',
-            r'mistralai/.*',
-            r'huggingface/.*',
-            r'.*\-chat.*',
-            r'.*\-instruct.*',
-        ]
 
         """
         Create a model instance based on the configuration, with support for PEFT and zeroing head weights.
@@ -80,17 +52,24 @@ class ModelFactory:
         transforms = {}  # No default transforms
         model_instance = None
 
-<<<<<<< HEAD
-        hf_model = False
 
-        # Check HuggingFace LLM patterns
-        for pattern in HF_LLM_PATTERNS:
-            if re.match(pattern, configuration.model_name):
-                model_instance = ModelBaseLLM(configuration.model_name, configuration.quantization_config, num_classes, configuration.peft, configuration.checkpoints_dir)
-                transforms = model_instance.get_transforms() 
-                hf_model = True
+        # Flag to skip image model creation if we load HF
+        loaded_hf = False
 
-        if not hf_model:
+        # check if we want to experiment on LLMs
+        if configuration.llm:
+            model_instance = HF_llm(
+                        configuration.model_name,
+                        configuration.quantization_config,
+                        num_labels=num_classes,
+                        peft = configuration.peft, 
+                        checkpoint_dir = configuration.checkpoints_dir
+                    )
+
+            transforms = model_instance.get_transforms()
+            loaded_hf = True
+
+        if not loaded_hf:
             if configuration.model_name.startswith('wrn-'):
                 # Parse depth and width from model_name, e.g., 'wrn-16-4'
                 parts = configuration.model_name.split('-')
@@ -106,40 +85,6 @@ class ModelFactory:
                     pretrained=configuration.pretrained,
                     num_classes=num_classes,
                 )
-=======
-
-        # Flag to skip image model creation if we load HF
-        loaded_hf = False
-
-        # check if we want to experiment on LLMs
-        if configuration.llm:
-            model_instance = HF_llm(
-                        configuration.model_name,
-                        configuration.quantization_config,
-                        num_labels=num_classes
-                    )
-
-            transforms = model_instance.get_transforms()
-            loaded_hf = True
-
-        if loaded_hf:
-            pass  # model_instance & transforms already set
-        elif configuration.model_name.startswith('wrn-'):
-            # Parse depth and width from model_name, e.g., 'wrn-16-4'
-            parts = configuration.model_name.split('-')
-            depth, width = int(parts[1]), int(parts[2])
-            model_instance = WideResNet(depth=depth, width=width, num_classes=num_classes)
-            transforms = model_instance.get_transforms()
-        elif configuration.model_name == 'koskela-net':
-            model_instance = KoskelaNet()
-            transforms = model_instance.get_transforms()
-        else:
-            model_instance = timm.create_model(
-                configuration.model_name,
-                pretrained=configuration.pretrained,
-                num_classes=num_classes,
-            )
->>>>>>> llm_test_branch
 
                 # Resolve data config and create transforms
                 model_config = timm.data.resolve_data_config({}, model=model_instance)
@@ -150,12 +95,8 @@ class ModelFactory:
             model_instance=model_instance,
             num_classes=num_classes,
             use_feature_cache=configuration.cache_features,
-<<<<<<< HEAD
             loss_fn=loss_fn,
             metrics=metrics
-=======
-            criterion=loss_fn,
->>>>>>> llm_test_branch
         )
 
         # Add noise to (pretrained) weights?
