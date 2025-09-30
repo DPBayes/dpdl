@@ -1,3 +1,5 @@
+
+import os
 import logging
 import math
 import opacus
@@ -623,6 +625,8 @@ class TrainerFactory:
 
     @staticmethod
     def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
+
+        configuration.checkpoints_dir = os.path.join(configuration.log_dir, 'checkpoints')
         # First create DataModule, it can figure out the number of classes
         
         num_classes = 2

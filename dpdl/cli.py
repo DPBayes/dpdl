@@ -151,6 +151,14 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = 'ImageClassification',
+        load_in_4bit: Annotated[
+            bool,
+            typer.Option(
+                help='Quantization in 4 bit', 
+                rich_help_panel='Model options'
+            )
+
+        ] = False,
         loss_function: Annotated[
             str,
             typer.Option(
