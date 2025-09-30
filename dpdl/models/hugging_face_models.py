@@ -68,7 +68,7 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
 
     if quantization:
         quantization_config = BitsAndBytesConfig(
-            **quantization
+            load_in_4bit = quantization
         )
 
     load_kwargs = {

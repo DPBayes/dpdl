@@ -60,7 +60,7 @@ class ModelFactory:
         if configuration.llm:
             model_instance = HF_llm(
                         configuration.model_name,
-                        configuration.quantization_config,
+                        configuration.load_in_4bit,
                         num_labels=num_classes,
                         peft = configuration.peft, 
                         checkpoint_dir = configuration.checkpoints_dir

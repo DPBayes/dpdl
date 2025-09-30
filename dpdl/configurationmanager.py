@@ -140,6 +140,7 @@ class Configuration(BaseModel):
     disable_epsilon_logging: Optional[bool] = False
     split_seed: Optional[int] = 42
     dataset_split: Optional[str] = None
+    load_in_4bit: bool = False
 
     class Config:
         # Fix Pydantic warning:
@@ -241,6 +242,8 @@ class Configuration(BaseModel):
             ('Enable callback debug logging', self.verbose_callback),
             ('Fairness-style subsampling class', self.fairness_imbalance_class),
             ('Random seed for creating dataset subsets', self.split_seed),
+            ('LLM use', self.llm)
+            ('Task', self.task)
         ]
 
         if self.privacy:
