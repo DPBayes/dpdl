@@ -71,6 +71,7 @@ class Trainer:
         self.callback_handler.call('on_train_end', self)
 
     def _fit_epochs(self):
+        self.device = torch.cuda.current_device()
         for epoch in range(self.epochs):
             self.fit_one_epoch(epoch)
 
@@ -153,8 +154,8 @@ class Trainer:
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
         print('batch',batch, 'X',X, 'label',y, flush=True)
-        X = X.cuda(non_blocking=True)
-        y = y.cuda(non_blocking=True)
+        X = X.to(device= self.device, non_blocking=True)
+        y = y.to(device= self.device, non_blocking=True)
 
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
