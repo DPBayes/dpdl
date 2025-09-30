@@ -95,7 +95,7 @@ class ModelFactory:
             model_instance=model_instance,
             num_classes=num_classes,
             use_feature_cache=configuration.cache_features,
-            loss_fn=loss_fn,
+            criterion=loss_fn,
             metrics=metrics
         )
 
