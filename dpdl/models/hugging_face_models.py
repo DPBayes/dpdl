@@ -191,6 +191,10 @@ class HF_llm (torch.nn.Module):
         shift_logits = logits[..., :-1, :].contiguous()
         shift_targets = targets[..., 1:].contiguous()
 
+        print('are we here?', shift_logits.shape, shift_targets.shape)
+
+        print(self._criterion)
+
         return self._criterion(
             shift_logits.view(-1,self.vocab_size), 
             shift_targets.view(-1),
