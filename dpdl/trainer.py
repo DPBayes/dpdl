@@ -143,6 +143,7 @@ class Trainer:
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
+            print(batch)
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
             logical_batch_loss = self.fit_one_batch(batch_idx, batch)
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
@@ -171,7 +172,7 @@ class Trainer:
         # process the sub batches one at a time
         N = len(X_split)
 
-        print('model at ',batch_idx,self.model)
+        #print('model at ',batch_idx,self.model)
 
         for i in range(N):
             # notify the callbacks of a physical batch start
