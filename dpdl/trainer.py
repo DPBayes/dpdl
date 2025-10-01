@@ -650,8 +650,8 @@ class TrainerFactory:
         metrics = MetricsFactory.get_metrics(configuration, num_classes)
         model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
         print('model in trainer',model)
-        for param in model.parameters():
-            print(f"  param: {param}")
+        for name, param in model.named_parameters():
+            print(f"  param name: {name}")
             print(f"  Shape: {param.shape}")
             print(f"  Requires grad: {param.requires_grad}")
             print()
