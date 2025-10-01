@@ -227,7 +227,8 @@ class Trainer:
 
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
-            logits = self.model(input_ids=X_splitted[:,0,:], token_type_ids=X_splitted[:,1,:], attention_mask=X_splitted[:,2,:])
+            #logits = self.model(input_ids=X_splitted[:,0,:], token_type_ids=X_splitted[:,1,:], attention_mask=X_splitted[:,2,:])
+            logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
             loss.backward()
 
