@@ -191,13 +191,12 @@ class Trainer:
 
             logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
-            print(self._unwrap_model.criterion)
             print('one batch loss',loss)
             loss.backward()
 
             # keep track of the batch loss
             logical_batch_loss += loss.item()
-
+            print('logical batch loss',logical_batch_loss)
             # update the metrics if there are any
             preds = torch.argmax(logits, dim=1)
             self._unwrap_model().train_metrics.update(preds, y_split[i])
