@@ -144,8 +144,11 @@ class Trainer:
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
 
-            print(self.optimizer)
-            print(self.model)
+
+            print('for batch idx',batch_idx, 'we have batch:\n',batch)
+
+            
+
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
             logical_batch_loss = self.fit_one_batch(batch_idx, batch)
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
@@ -201,10 +204,10 @@ class Trainer:
             loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
             print('one batch loss',loss)
             loss.backward()
-            for name, param in self.model.named_parameters():
-                if param.grad is not None:
-                    if not torch.isfinite(param.grad).all():
-                        print(f":x: NaN/Inf gradient in {name}")
+            # for name, param in self.model.named_parameters():
+            #     if param.grad is not None:
+            #         if not torch.isfinite(param.grad).all():
+            #             print(f":x: NaN/Inf gradient in {name}")
             # keep track of the batch loss
             logical_batch_loss += loss.item()
             print('logical batch loss',logical_batch_loss)
