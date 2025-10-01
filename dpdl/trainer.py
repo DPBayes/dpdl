@@ -59,7 +59,8 @@ class Trainer:
         self.setup()
 
     def setup(self):
-        self.model = self.model.cuda()
+        if not self.llm:
+            self.model = self.model.cuda()
         self.model = torch.nn.parallel.DistributedDataParallel(self.model)
 
     def fit(self):
