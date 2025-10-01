@@ -950,7 +950,6 @@ class NLPDataModule(DataModule):
 
         if torch.distributed.get_rank() == 0:
             log.info('Initializing NLPDataModule datasets...')
-        if torch.distributed.get_rank() == 0:
             self._initialize_datasets()
             torch.distributed.barrier()
         else:
