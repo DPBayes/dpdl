@@ -166,7 +166,7 @@ class Trainer:
         X_split = X.split(self.physical_batch_size, dim=0)
         y_split = y.split(self.physical_batch_size, dim=0)
 
-        print(len(X_split), X_split[0].shape,X_split)
+        print(len(X_split), X_split[0].shape)
 
         # zero the grads as usually before doing anything
         self.optimizer.zero_grad()
@@ -188,6 +188,7 @@ class Trainer:
 
             logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
+            print(self._unwrap_model.criterion)
             print('one batch loss',loss)
             loss.backward()
 
