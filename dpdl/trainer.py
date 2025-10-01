@@ -143,11 +143,12 @@ class Trainer:
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
+
             print(self.optimizer)
             print(self.model)
-            #self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
+            self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
             logical_batch_loss = self.fit_one_batch(batch_idx, batch)
-            #self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
+            self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
             print('---------------------------------- end batch ------------------------')
 
         # compute the epoch metrics
@@ -159,7 +160,7 @@ class Trainer:
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
         X = X.to(device= self.device, non_blocking=True)
-        y = y.to(device= self.device, non_blocking=True).long()
+        y = y.to(device= self.device, non_blocking=True)
 
         print('are there any Nan\'s in the data',torch.any(X.isnan()))
 
@@ -194,9 +195,9 @@ class Trainer:
             #print(type(y_splitted))
             physical_batch = (X_splitted, y_splitted)
 
-            #self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
+            self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
-            logits = self.model(X_splitted)
+            logits = self.model(X_splitted) 
             loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
             print('one batch loss',loss)
             loss.backward()
@@ -212,7 +213,7 @@ class Trainer:
             self._unwrap_model().train_metrics.update(preds, y_split[i])
 
             # notify the callbacks of a physical batch end
-            #self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
+            self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
 
         # after accumulating the gradients for all the sub batches we can finally update weights.
         print('before step')
