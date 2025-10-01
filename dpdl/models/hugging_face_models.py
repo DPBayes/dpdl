@@ -136,13 +136,14 @@ class HF_llm (torch.nn.Module):
         self.is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
 
     def forward(self, x):
+        print('in hugging face forward')
         """
         Return logits given tokenized batch or tensor input.
         """
         if isinstance(x, dict):
             out = self.model(**x)
         else:
-            out = self.model(x)
+            out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
         if hasattr(out, 'logits'):
             return out.logits
         return out

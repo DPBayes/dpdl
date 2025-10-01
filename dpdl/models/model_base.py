@@ -33,6 +33,7 @@ class ModelBase(torch.nn.Module):
             self.test_metrics = metrics['test_metrics']
 
     def forward(self, x):
+        print('in model base forward')
         if self.use_feature_cache:
             # self.model.forward_head(x) calls its classification head, x here are feature tensor not raw inputs
             # it take those features, possibly apply pooling/dropout, and then run the final linear (classifier) layer to produce logits.
