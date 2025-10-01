@@ -158,8 +158,8 @@ class Trainer:
         X = X.to(device= self.device, non_blocking=True)
         y = y.to(device= self.device, non_blocking=True).long()
 
-        print(X.shape)
-        print(y.shape)
+        #print(X.shape)
+        #print(y.shape)
 
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
@@ -167,7 +167,7 @@ class Trainer:
         X_split = X.split(self.physical_batch_size, dim=0)
         y_split = y.split(self.physical_batch_size, dim=0)
 
-        print(len(X_split), X_split[0].shape)
+        #print(len(X_split), X_split[0].shape)
 
         # zero the grads as usually before doing anything
         self.optimizer.zero_grad()
@@ -181,10 +181,10 @@ class Trainer:
         for i in range(N):
             # notify the callbacks of a physical batch start
             X_splitted = X_split[i]
-            print(X_splitted.shape)
+            #print(X_splitted.shape)
             
             y_splitted = y_split[i]
-            print(type(y_splitted))
+            #print(type(y_splitted))
             physical_batch = (X_splitted, y_splitted)
 
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
@@ -205,7 +205,8 @@ class Trainer:
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
 
         # after accumulating the gradients for all the sub batches we can finally update weights.
-        self.optimizer.step()
+        #self.optimizer.step()
+        print('in theory here it goes the optimizer, but we are skipping it')
 
         return logical_batch_loss
 
