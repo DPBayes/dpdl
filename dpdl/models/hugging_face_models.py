@@ -104,8 +104,6 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
 
     print(model,flush=True)
 
-    print('Check if we are quantized', type(model.encoder.layer[0].intermediate.dense),flush=True)
-
     return model, tokenizer, quantization_config
 
 
