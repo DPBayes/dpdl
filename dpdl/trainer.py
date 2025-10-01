@@ -143,7 +143,6 @@ class Trainer:
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
-            print(batch)
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
             logical_batch_loss = self.fit_one_batch(batch_idx, batch)
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
@@ -159,11 +158,15 @@ class Trainer:
         X = X.to(device= self.device, non_blocking=True)
         y = y.to(device= self.device, non_blocking=True)
 
+        print(X.shape)
+
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
         # when all the sub batches have been processed we can finally step the optimizer.
         X_split = X.split(self.physical_batch_size, dim=0)
         y_split = y.split(self.physical_batch_size, dim=0)
+
+        print(len(X_split), X_split[0].shape,X_split)
 
         # zero the grads as usually before doing anything
         self.optimizer.zero_grad()
@@ -177,6 +180,7 @@ class Trainer:
         for i in range(N):
             # notify the callbacks of a physical batch start
             X_splitted = X_split[i]
+            print(X_splitted.shape)
             y_splitted = y_split[i]
             physical_batch = (X_splitted, y_splitted)
 
