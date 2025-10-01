@@ -67,6 +67,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = None,
+        max_length: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Max tokenizer length',
+                rich_help_panel='Training options'
+            )
+        ] = None,
         optimizer: Annotated[
             str,
             typer.Option(

@@ -19,6 +19,7 @@ class Hyperparameters(BaseModel):
     target_epsilon: Optional[float]
     noise_batch_ratio: Optional[float]
     privacy: bool = True # Only used in __str__
+    max_length: Optional[int] = None
 
     @root_validator(pre=True)
     def check_batch_size_or_sample_rate(cls, values):
@@ -62,6 +63,7 @@ class Hyperparameters(BaseModel):
             ('Total steps', self.total_steps),
             ('Learning rate', self.learning_rate),
             ('Batch size', self.batch_size),
+            ('Max length', self.max_length)
         ]
 
         if self.privacy:
