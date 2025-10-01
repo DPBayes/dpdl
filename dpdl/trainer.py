@@ -205,8 +205,8 @@ class Trainer:
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
 
         # after accumulating the gradients for all the sub batches we can finally update weights.
-        #self.optimizer.step()
-        print('in theory here it goes the optimizer, but we are skipping it')
+        self.optimizer.step()
+        #print('in theory here it goes the optimizer, but we are skipping it')
 
         return logical_batch_loss
 
@@ -650,13 +650,15 @@ class TrainerFactory:
         loss_fn = LossFactory.get_loss(configuration)
         metrics = MetricsFactory.get_metrics(configuration, num_classes)
         model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
-        print('model in trainer',model)
-        for name, param in model.named_parameters():
-            print(f"  param name: {name}")
-            print(f"  Shape: {param.shape}")
-            print(f"  Requires grad: {param.requires_grad}")
-            print()
+        # print('model in trainer',model)
+        # for name, param in model.named_parameters():
+        #     print(f"  param name: {name}")
+        #     print(f"  Shape: {param.shape}")
+        #     print(f"  Requires grad: {param.requires_grad}")
+        #     print()
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
+
+        print(optimizer)
 
         # Initialize the datamodule with the transformations
         datamodule.initialize(transforms)
