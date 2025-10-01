@@ -60,7 +60,9 @@ class Trainer:
 
     def setup(self):
         self.model = self.model.cuda()
+        print('setup model before parallel', self.model)
         self.model = torch.nn.parallel.DistributedDataParallel(self.model)
+        print('setup model after parallel', self.model)
 
     def fit(self):
         self.callback_handler.call('on_train_start', self)
@@ -147,7 +149,7 @@ class Trainer:
 
             print('for batch idx',batch_idx, 'we have batch:\n',batch)
 
-            
+
 
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
             logical_batch_loss = self.fit_one_batch(batch_idx, batch)
@@ -680,6 +682,8 @@ class TrainerFactory:
         #     print(f"  Shape: {param.shape}")
         #     print(f"  Requires grad: {param.requires_grad}")
         #     print()
+
+        print('Model before optimizer', model)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         print(optimizer)
