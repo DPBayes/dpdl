@@ -650,7 +650,11 @@ class TrainerFactory:
         metrics = MetricsFactory.get_metrics(configuration, num_classes)
         model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
         print('model in trainer',model)
-        print('model parameters',model.parameters())
+        for param in model.parameters():
+            print(f"  param: {param}")
+            print(f"  Shape: {param.shape}")
+            print(f"  Requires grad: {param.requires_grad}")
+            print()
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         # Initialize the datamodule with the transformations
