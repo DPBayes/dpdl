@@ -47,7 +47,7 @@ class ModelBase(torch.nn.Module):
         return self.model.forward_features(x)
 
     def criterion(self, logits, targets):
-        return self.model.criterion(logits, targets)
+        return self._criterion(logits, targets)
 
     def show_layers(self):
         log.info("Layers:")

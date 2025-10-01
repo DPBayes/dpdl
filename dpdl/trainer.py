@@ -156,9 +156,10 @@ class Trainer:
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
         X = X.to(device= self.device, non_blocking=True)
-        y = y.to(device= self.device, non_blocking=True)
+        y = y.to(device= self.device, non_blocking=True).long()
 
         print(X.shape)
+        print(y.shape)
 
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
@@ -181,7 +182,9 @@ class Trainer:
             # notify the callbacks of a physical batch start
             X_splitted = X_split[i]
             print(X_splitted.shape)
+            
             y_splitted = y_split[i]
+            print(type(y_splitted))
             physical_batch = (X_splitted, y_splitted)
 
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
