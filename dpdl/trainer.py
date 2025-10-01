@@ -56,7 +56,7 @@ class Trainer:
         if self.epochs and self.total_steps:
             raise ValueError('You should provide either "epochs" or "total_steps", not both.')
 
-        self.setup()
+        #self.setup()
 
     def setup(self):
         self.model = self.model.cuda()
@@ -682,6 +682,8 @@ class TrainerFactory:
         #     print(f"  Shape: {param.shape}")
         #     print(f"  Requires grad: {param.requires_grad}")
         #     print()
+        model = model.cuda()
+        model = torch.nn.parallel.DistributedDataParallel(model)
 
         print('Model before optimizer', model)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
