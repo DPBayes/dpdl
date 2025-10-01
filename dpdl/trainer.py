@@ -171,6 +171,8 @@ class Trainer:
         # process the sub batches one at a time
         N = len(X_split)
 
+        print('model at ',batch_idx,self.model)
+
         for i in range(N):
             # notify the callbacks of a physical batch start
             X_splitted = X_split[i]
@@ -181,6 +183,7 @@ class Trainer:
 
             logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
+            print('one batch loss',loss)
             loss.backward()
 
             # keep track of the batch loss
