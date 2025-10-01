@@ -198,7 +198,10 @@ class Trainer:
             loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
             print('one batch loss',loss)
             loss.backward()
-
+            for name, param in self.model.named_parameters():
+                if param.grad is not None:
+                    if not torch.isfinite(param.grad).all():
+                        print(f":x: NaN/Inf gradient in {name}")
             # keep track of the batch loss
             logical_batch_loss += loss.item()
             print('logical batch loss',logical_batch_loss)
@@ -210,7 +213,17 @@ class Trainer:
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
 
         # after accumulating the gradients for all the sub batches we can finally update weights.
+        print('before step')
+        for name, param in self.model.named_parameters():
+            if param.grad is not None:
+                if not torch.isfinite(param.grad).all():
+                    print(f":x: NaN/Inf gradient in {name}")
         self.optimizer.step()
+        print('after step')
+        for name, param in self.model.named_parameters():
+            if param.grad is not None:
+                if not torch.isfinite(param.grad).all():
+                    print(f":x: NaN/Inf gradient in {name}")
         #print('in theory here it goes the optimizer, but we are skipping it')
 
         return logical_batch_loss
