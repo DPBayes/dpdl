@@ -649,6 +649,8 @@ class TrainerFactory:
         loss_fn = LossFactory.get_loss(configuration)
         metrics = MetricsFactory.get_metrics(configuration, num_classes)
         model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
+        print('model in trainer',model)
+        print('model parameters',model.parameters())
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         # Initialize the datamodule with the transformations
