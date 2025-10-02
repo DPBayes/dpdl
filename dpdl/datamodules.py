@@ -1027,7 +1027,7 @@ class NLPDataModule(DataModule):
                 max_length=max_len,
                 return_tensors='pt'
             ) 
-            # Ensure all tensors are contiguous and proper type
+            
             labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
             return tokenized, labels
 

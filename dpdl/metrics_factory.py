@@ -147,12 +147,10 @@ class MetricsFactory:
                 }
             )
         elif configuration.task == 'CausalLM':
-            # Determine vocab size; fallback to num_classes if provided
-            vocab_size = getattr(configuration, 'vocab_size', None) or (num_classes if num_classes is not None else 0)
             metrics['train_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=vocab_size,
+                        num_classes=configuration.vocab_size,
                         average="macro",
                     ).cuda(),
                     "Perplexity": torchmetrics.text.Perplexity().cuda()
@@ -168,7 +166,7 @@ class MetricsFactory:
             metrics['valid_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=vocab_size,
+                        num_classes=configuration.vocab_size,
                         average="macro",
                         sync_on_compute=False,
                     ).cuda(),
@@ -179,7 +177,7 @@ class MetricsFactory:
             metrics['test_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=vocab_size,
+                        num_classes=configuration.vocab_size,
                         average="macro",
                         sync_on_compute=False,
                     ).cuda(),
