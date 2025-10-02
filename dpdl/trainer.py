@@ -172,7 +172,6 @@ class Trainer:
             X = X.to(device= self.device, non_blocking=True)
         y = y.to(device= self.device, non_blocking=True)
 
-        print('are there any Nan\'s in the data',torch.any(X.isnan()))
 
         #print(X.shape)
         #print(y.shape)
