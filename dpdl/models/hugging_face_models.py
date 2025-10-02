@@ -142,7 +142,8 @@ class HF_llm (torch.nn.Module):
         if isinstance(x, dict):
             out = self.model(**x)
         else:
-            out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
+            #out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
+            out = self.model(x)
         
         print('out', out)
 
