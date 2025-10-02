@@ -90,6 +90,8 @@ class Configuration(BaseModel):
     dataset_name: str = 'cifar10'
     llm: bool = False
     task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM' ]
+    # Vocabulary size (used for CausalLM metrics); will be set dynamically after tokenizer load
+    vocab_size: Optional[int] = None
     physical_batch_size: int = 40
     num_workers: int = 8
     validation_frequency: float = 1.0
