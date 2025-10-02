@@ -697,21 +697,7 @@ class TrainerFactory:
         #     print(f"  Requires grad: {param.requires_grad}")
         #     print()
 
-        print('model before DDP trainer',model)
-        for name, param in model.named_parameters():
-            print(f"  param name: {name}")
-            print(f"  Shape: {param.shape}")
-            print(f"  Requires grad: {param.requires_grad}")
-            print()
-        model = model.cuda()
-        model = torch.nn.parallel.DistributedDataParallel(model)
-        print('model after DDP trainer',model)
-        for name, param in model.named_parameters():
-            print(f"  param name: {name}")
-            print(f"  Shape: {param.shape}")
-            print(f"  Requires grad: {param.requires_grad}")
-            print()
-        print('Model before optimizer', model)
+        
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         print(optimizer)
