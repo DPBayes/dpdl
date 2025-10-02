@@ -1027,11 +1027,9 @@ class NLPDataModule(DataModule):
                 max_length=max_len,
                 return_tensors='pt'
             ) 
-
-            x = torch.stack([tokenized['input_ids'],tokenized['token_type_ids'],tokenized['attention_mask']],axis = 1)
-
+            # Ensure all tensors are contiguous and proper type
             labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
-            return x, labels
+            return tokenized, labels
 
         return collate
 
