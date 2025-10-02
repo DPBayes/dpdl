@@ -66,6 +66,15 @@ class ModelFactory:
                         checkpoint_dir = configuration.checkpoints_dir
                     )
 
+            # Set vocab size in configuration for downstream metrics (CausalLM)
+            try:
+                configuration.vocab_size = model_instance.tokenizer.vocab_size
+            except Exception:
+                # Fallback if vocab_size attr missing
+                if hasattr(model_instance.tokenizer, 'get_vocab'):
+                    configuration.vocab_size = len(model_instance.tokenizer.get_vocab())
+            log.info(f"LLM tokenizer vocab size set to: {configuration.vocab_size}")
+
             transforms = model_instance.get_transforms()
             loaded_hf = True
 

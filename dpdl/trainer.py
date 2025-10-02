@@ -164,7 +164,13 @@ class Trainer:
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
-        X = X.to(device= self.device, non_blocking=True)
+        # Support dict inputs (tokenized text batches) for LLM mode
+        if isinstance(X, dict):
+            # move each tensor to device
+            for k, v in X.items():
+                X[k] = v.to(device=self.device, non_blocking=True)
+        else:
+            X = X.to(device= self.device, non_blocking=True)
         y = y.to(device= self.device, non_blocking=True)
 
         print('are there any Nan\'s in the data',torch.any(X.isnan()))
@@ -175,8 +181,15 @@ class Trainer:
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
         # when all the sub batches have been processed we can finally step the optimizer.
-        X_split = X.split(self.physical_batch_size, dim=0)
-        y_split = y.split(self.physical_batch_size, dim=0)
+        if isinstance(X, dict):
+            # split each tensor in the dict
+            X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
+            y_split = y.split(self.physical_batch_size, dim=0)
+            N = len(y_split)
+        else:
+            X_split = X.split(self.physical_batch_size, dim=0)
+            y_split = y.split(self.physical_batch_size, dim=0)
+            N = len(X_split)
 
         #print(len(X_split), X_split[0].shape)
 
@@ -185,25 +198,24 @@ class Trainer:
 
         logical_batch_loss = 0
         # process the sub batches one at a time
-        N = len(X_split)
-
         print('Number of physical batches', N)
 
         #print('model at ',batch_idx,self.model)
 
         for i in range(N):
             # notify the callbacks of a physical batch start
-            X_splitted = X_split[i]
-            #print(X_splitted.shape)
-            
+            if isinstance(X, dict):
+                X_splitted = {k: X_split[k][i] for k in X_split}
+            else:
+                X_splitted = X_split[i]
+
             y_splitted = y_split[i]
-            #print(type(y_splitted))
             physical_batch = (X_splitted, y_splitted)
 
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
-            logits = self.model(X_splitted) 
-            loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
+            logits = self.model(X_splitted)
+            loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
             print('one batch loss',loss)
             loss.backward()
             # for name, param in self.model.named_parameters():
@@ -214,8 +226,16 @@ class Trainer:
             logical_batch_loss += loss.item()
             print('logical batch loss',logical_batch_loss)
             # update the metrics if there are any
-            preds = torch.argmax(logits, dim=1)
-            self._unwrap_model().train_metrics.update(preds, y_split[i])
+            # Update metrics only if logits are 2D (classification). For causal LM skip argmax across vocab for sequence axis.
+            try:
+                if logits.dim() == 2:
+                    preds = torch.argmax(logits, dim=1)
+                    self._unwrap_model().train_metrics.update(preds, y_splitted)
+                elif logits.dim() == 3 and logits.size(-1) > 1 and y_splitted.dim() == 1:
+                    preds = torch.argmax(logits[:, -1, :], dim=-1)
+                    self._unwrap_model().train_metrics.update(preds, y_splitted)
+            except Exception:
+                pass
 
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
@@ -293,16 +313,27 @@ class Trainer:
             self.callback_handler.call(f'on_{mode}_batch_start', self, batch_idx, batch)
 
         X, y = batch
-        X = X.cuda(non_blocking=True)
+        if isinstance(X, dict):
+            for k, v in X.items():
+                X[k] = v.cuda(non_blocking=True)
+        else:
+            X = X.cuda(non_blocking=True)
         y = y.cuda(non_blocking=True)
 
         logits = self.model(X)
         loss = self._unwrap_model().criterion(logits, y)
         loss = loss.item()
 
-        preds = torch.argmax(logits, dim=1)
-
-        metrics_evaluator.update(preds, y)
+        try:
+            if logits.dim() == 2:
+                preds = torch.argmax(logits, dim=1)
+                metrics_evaluator.update(preds, y)
+            elif logits.dim() == 3 and logits.size(-1) > 1:
+                preds = torch.argmax(logits[:, -1, :], dim=-1)
+                if y.dim() == 1:
+                    metrics_evaluator.update(preds, y)
+        except Exception:
+            pass
 
         if enable_callbacks:
             self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss)
