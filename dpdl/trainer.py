@@ -2,6 +2,7 @@
 import os
 import logging
 import math
+from collections.abc import Mapping
 import opacus
 import torch
 import torchmetrics
@@ -164,24 +165,28 @@ class Trainer:
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
-        print("if X is a dict (before split):", isinstance(X, dict))
-        if isinstance(X, dict):
-            # move each tensor to device
+
+        is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
+        print(f"[DEBUG] Batch {batch_idx} - X mapping-like: {is_mapping} | Type: {type(X)}")
+        if is_mapping:
             for k, v in X.items():
                 X[k] = v.to(device=self.device, non_blocking=True)
         else:
-            X = X.to(device= self.device, non_blocking=True)
-        y = y.to(device= self.device, non_blocking=True)
+            X = X.to(device=self.device, non_blocking=True)
+        y = y.to(device=self.device, non_blocking=True)
 
-
-        print("x: ", X)
-        print("y: ", y)
+        if not is_mapping and torch.is_tensor(X):
+            print(f"[DEBUG] X tensor shape: {tuple(X.shape)} dtype: {X.dtype}")
+        elif is_mapping:
+            shapes = {k: tuple(v.shape) for k, v in X.items() if torch.is_tensor(v)}
+            print(f"[DEBUG] X keys & shapes: {shapes}")
+        print(f"[DEBUG] y shape: {tuple(y.shape)}")
 
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
         # when all the sub batches have been processed we can finally step the optimizer.
-        print("if X is a dict:", isinstance(X, dict))
-        if isinstance(X, dict):
+        print("[DEBUG] Using mapping split:" if is_mapping else "[DEBUG] Using tensor split")
+        if is_mapping:
             # split each tensor in the dict
             X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
             y_split = y.split(self.physical_batch_size, dim=0)
@@ -204,7 +209,7 @@ class Trainer:
         #print('model at ',batch_idx,self.model)
 
         for i in range(N):
-            if isinstance(X, dict):
+            if is_mapping:
                 X_splitted = {k: X_split[k][i] for k in X_split}
             else:
                 X_splitted = X_split[i]
