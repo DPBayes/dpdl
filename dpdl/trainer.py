@@ -173,8 +173,8 @@ class Trainer:
         y = y.to(device= self.device, non_blocking=True)
 
 
-        #print(X.shape)
-        #print(y.shape)
+        print("x: ", X)
+        print("y: ", y)
 
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
@@ -183,6 +183,7 @@ class Trainer:
             # split each tensor in the dict
             X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
             y_split = y.split(self.physical_batch_size, dim=0)
+            print("are we here?")
         else:
             X_split = X.split(self.physical_batch_size, dim=0)
             y_split = y.split(self.physical_batch_size, dim=0)
