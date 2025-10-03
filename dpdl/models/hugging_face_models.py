@@ -72,11 +72,21 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             load_in_8bit = quantization
         )
 
+    # TEST
+    # When using DDP, letting HF/accelerate shard the model with device_map='auto' can
+    # produce DTensor objects that don't play nicely with standard DDP wrapping.
+    use_distributed = False
+    try:
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            use_distributed = torch.distributed.get_world_size() > 1
+    except Exception:
+        pass
+
     load_kwargs = {
-            "device_map": "auto",
-            "torch_dtype": torch.float16,
-            "trust_remote_code": trust_remote_code
-        }
+        "device_map": None if use_distributed else "auto",
+        "torch_dtype": torch.float16,
+        "trust_remote_code": trust_remote_code,
+    }
     
     if quantization_config is not None:
         load_kwargs["quantization_config"] = quantization_config
