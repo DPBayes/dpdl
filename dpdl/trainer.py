@@ -167,7 +167,6 @@ class Trainer:
         X, y = batch
 
         is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
-        print(f"[DEBUG] Batch {batch_idx} - X mapping-like: {is_mapping} | Type: {type(X)}")
         if is_mapping:
             for k, v in X.items():
                 X[k] = v.to(device=self.device, non_blocking=True)
@@ -303,7 +302,7 @@ class Trainer:
             self.callback_handler.call(f'on_{mode}_batch_start', self, batch_idx, batch)
 
         X, y = batch
-        if isinstance(X, dict):
+        if isinstance(X, Mapping):
             for k, v in X.items():
                 X[k] = v.to(device=self.device, non_blocking=True)
         else:
