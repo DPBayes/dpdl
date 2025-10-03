@@ -175,22 +175,14 @@ class Trainer:
             X = X.to(device=self.device, non_blocking=True)
         y = y.to(device=self.device, non_blocking=True)
 
-        if not is_mapping and torch.is_tensor(X):
-            print(f"[DEBUG] X tensor shape: {tuple(X.shape)} dtype: {X.dtype}")
-        elif is_mapping:
-            shapes = {k: tuple(v.shape) for k, v in X.items() if torch.is_tensor(v)}
-            print(f"[DEBUG] X keys & shapes: {shapes}")
-        print(f"[DEBUG] y shape: {tuple(y.shape)}")
 
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
         # when all the sub batches have been processed we can finally step the optimizer.
-        print("[DEBUG] Using mapping split:" if is_mapping else "[DEBUG] Using tensor split")
         if is_mapping:
             # split each tensor in the dict
             X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
             y_split = y.split(self.physical_batch_size, dim=0)
-            print("are we here?")
         else:
             X_split = X.split(self.physical_batch_size, dim=0)
             y_split = y.split(self.physical_batch_size, dim=0)
@@ -219,6 +211,7 @@ class Trainer:
 
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
+            print(f"[DEBUG] type of X_splitted: {type(X_splitted)}")
             logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
             print('one batch loss',loss)

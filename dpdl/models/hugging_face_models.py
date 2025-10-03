@@ -2,6 +2,7 @@ import os
 import json
 import re
 import typing as t
+from collections.abc import Mapping
 from huggingface_hub import snapshot_download
 
 import torch
@@ -139,7 +140,7 @@ class HF_llm (torch.nn.Module):
         """
         Return logits given tokenized batch or tensor input.
         """
-        if isinstance(x, dict):
+        if isinstance(x, Mapping):
             out = self.model(**x)
         else:
             #out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
@@ -161,7 +162,7 @@ class HF_llm (torch.nn.Module):
         - Causal LMs:
             * Return last_hidden_state (sequence length, hidden_size).
         """
-        if isinstance(x, dict):
+        if isinstance(x, Mapping):
             out = self.model(**x, return_dict=True, output_hidden_states=True)
         else:
             out = self.model(x, return_dict=True, output_hidden_states=True)
