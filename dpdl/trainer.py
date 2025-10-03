@@ -179,6 +179,7 @@ class Trainer:
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
         # when all the sub batches have been processed we can finally step the optimizer.
+        print("if X is a dict:", isinstance(X, dict))
         if isinstance(X, dict):
             # split each tensor in the dict
             X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
