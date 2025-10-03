@@ -164,6 +164,7 @@ class Trainer:
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
+        print("if X is a dict (before split):", isinstance(X, dict))
         if isinstance(X, dict):
             # move each tensor to device
             for k, v in X.items():
