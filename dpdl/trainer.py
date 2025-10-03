@@ -202,8 +202,10 @@ class Trainer:
         for i in range(N):
             if is_mapping:
                 X_splitted = {k: X_split[k][i] for k in X_split}
+                logits = self.model(**X_splitted)
             else:
                 X_splitted = X_split[i]
+                logits = self.model(X_splitted)
 
             y_splitted = y_split[i]
             physical_batch = (X_splitted, y_splitted)
@@ -211,7 +213,8 @@ class Trainer:
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
             print(f"[DEBUG] type of X_splitted: {type(X_splitted)}")
-            logits = self.model(X_splitted)
+
+            #logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
             print('one batch loss',loss)
             loss.backward()
