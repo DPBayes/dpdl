@@ -143,6 +143,8 @@ class Trainer:
 
     def fit_one_epoch(self, epoch):
         self.model.train()
+        print(self.model)
+
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
