@@ -137,42 +137,42 @@ class HF_llm (torch.nn.Module):
         
         self.is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
 
-    # def forward(self, x):
-    #     """
-    #     Return logits given tokenized batch or tensor input.
-    #     """
-    #     # if isinstance(x, Mapping):
-    #     #     out = self.model(**x)
-    #     # else:
-    #     #     #out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
-    #     #     out = self.model(x)
+    def forward(self, x):
+        """
+        Return logits given tokenized batch or tensor input.
+        """
+        # if isinstance(x, Mapping):
+        #     out = self.model(**x)
+        # else:
+        #     #out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
+        #     out = self.model(x)
         
-    #     # print('out', out)
+        # print('out', out)
 
-    #     # if hasattr(out, 'logits'):
-    #     #     return out.logits
-    #     # return out
+        # if hasattr(out, 'logits'):
+        #     return out.logits
+        # return out
 
-    #     return self.model(**x).logits
+        return self.model(**x).logits
 
-    def forward(self, *args, **kwargs):
-        """
-        Accept either:
-        - kwargs like input_ids=..., attention_mask=...
-        - a single positional arg x (tensor or mapping)
-        """
-        if kwargs:                        # HF-style call
-            out = self.model(**kwargs)
-        else:
-            if not args:
-                raise TypeError("HF_llm.forward expected inputs (tensor or mapping).")
-            x = args[0]
-            if isinstance(x, Mapping):    # dict-like
-                out = self.model(**x)
-            else:                         # tensor
-                out = self.model(x)
+    # def forward(self, *args, **kwargs):
+    #     """
+    #     Accept either:
+    #     - kwargs like input_ids=..., attention_mask=...
+    #     - a single positional arg x (tensor or mapping)
+    #     """
+    #     if kwargs:                        # HF-style call
+    #         out = self.model(**kwargs)
+    #     else:
+    #         if not args:
+    #             raise TypeError("HF_llm.forward expected inputs (tensor or mapping).")
+    #         x = args[0]
+    #         if isinstance(x, Mapping):    # dict-like
+    #             out = self.model(**x)
+    #         else:                         # tensor
+    #             out = self.model(x)
 
-        return out.logits if hasattr(out, "logits") else out
+    #     return out.logits if hasattr(out, "logits") else out
 
     def forward_features(self, x):
         """
