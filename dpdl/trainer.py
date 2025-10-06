@@ -209,6 +209,11 @@ class Trainer:
                 X_splitted = X_split[i]
                 logits = self.model(X_splitted)
 
+            if is_mapping:
+                for k, v in X_splitted.items():
+                    if torch.is_tensor(v):
+                        print(f"[DEBUG] {k}: {v.device} dtype={v.dtype}")
+            
             y_splitted = y_split[i]
             physical_batch = (X_splitted, y_splitted)
 
