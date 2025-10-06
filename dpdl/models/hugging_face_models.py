@@ -153,7 +153,7 @@ class HF_llm (torch.nn.Module):
         #     return out.logits
         # return out
 
-        return
+        return self.model(**x).logits
 
     def forward_features(self, x):
         """
