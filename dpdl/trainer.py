@@ -150,6 +150,7 @@ class Trainer:
         # if head is not None:
         #     head.to(self.device) 
 
+
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
@@ -225,6 +226,10 @@ class Trainer:
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
             print(f"[DEBUG] type of X_splitted: {type(X_splitted)}")
+
+
+            core = self._unwrap_model().model        # HF_llm.model inside ModelBase
+            print("[DEV] hf_device_map:", getattr(core, "hf_device_map", "None"))
 
             #logits = self.model(X_splitted)
             logits = self.model(**X_splitted)
