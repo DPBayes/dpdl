@@ -146,9 +146,6 @@ class Trainer:
         self.model.train()
         print(self.model)
 
-        param = next(self._unwrap_model().parameters(), None)
-        if param is not None:
-            print("[DEBUG] model device:", param.device)
         
         core = self._unwrap_model().model        # HF_llm.model inside ModelBase
         print("[DEV] hf_device_map:", getattr(core, "hf_device_map", "None"))
