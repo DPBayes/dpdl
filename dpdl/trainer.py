@@ -146,9 +146,9 @@ class Trainer:
         self.model.train()
         print(self.model)
 
-        # head = self.model.get_classifier()
-        # if head is not None:
-        #     head.to(self.device) 
+        head = self.model.get_classifier()
+        if head is not None:
+            head.to(self.device) 
 
 
         self.callback_handler.call('on_train_epoch_start', self, epoch)
@@ -214,11 +214,6 @@ class Trainer:
             else:
                 X_splitted = X_split[i]
                 #logits = self.model(X_splitted)
-            
-            if is_mapping:
-                for k, v in X_splitted.items():
-                    if torch.is_tensor(v):
-                        print(f"[DEBUG] {k}: {v.device} dtype={v.dtype}")
             
             y_splitted = y_split[i]
             physical_batch = (X_splitted, y_splitted)
