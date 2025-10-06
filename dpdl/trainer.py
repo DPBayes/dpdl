@@ -146,7 +146,20 @@ class Trainer:
         self.model.train()
         print(self.model)
 
-        head = self._unwrap_model().get_classifier()
+        core = self.model        # HF_llm.model inside ModelBase
+        print("[DEV] hf_device_map:", getattr(core, "hf_device_map", "None"))
+
+        seen = set()
+        for n, p in core.named_parameters():
+            seen.add(p.device)
+            if len(seen) > 1:
+                print("[MIXED DEVICES] first CPU-ish param:", n, p.device, p.shape)
+                break
+        else:
+            only = next(iter(seen)) if seen else "no-params"
+            print("[DEV] all params device:", only)
+        
+        head = self.model.get_classifier()
         if head is not None:
             head.to(self.device) 
 
