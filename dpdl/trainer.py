@@ -201,18 +201,18 @@ class Trainer:
 
         #print('model at ',batch_idx,self.model)
 
-        if is_mapping:
-                for k, v in X_splitted.items():
-                    if torch.is_tensor(v):
-                        print(f"[DEBUG] {k}: {v.device} dtype={v.dtype}")
-
         for i in range(N):
             if is_mapping:
                 X_splitted = {k: X_split[k][i] for k in X_split}
-                logits = self.model(**X_splitted)
+                #logits = self.model(**X_splitted)
             else:
                 X_splitted = X_split[i]
-                logits = self.model(X_splitted)
+                #logits = self.model(X_splitted)
+            
+            if is_mapping:
+                for k, v in X_splitted.items():
+                    if torch.is_tensor(v):
+                        print(f"[DEBUG] {k}: {v.device} dtype={v.dtype}")
             
             y_splitted = y_split[i]
             physical_batch = (X_splitted, y_splitted)
@@ -222,6 +222,7 @@ class Trainer:
             print(f"[DEBUG] type of X_splitted: {type(X_splitted)}")
 
             #logits = self.model(X_splitted)
+            logits = self.model(**X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
             print('one batch loss',loss)
             loss.backward()
