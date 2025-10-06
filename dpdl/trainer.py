@@ -58,8 +58,9 @@ class Trainer:
         if self.epochs and self.total_steps:
             raise ValueError('You should provide either "epochs" or "total_steps", not both.')
 
-        self.setup()
-
+        #self.setup()
+        self.model = self.model.cuda()
+    
     def setup(self):
         self.model = self.model.cuda()
         print('setup model before parallel', self.model)
@@ -220,7 +221,8 @@ class Trainer:
             print(f"[DEBUG] type of X_splitted: {type(X_splitted)}")
 
             #logits = self.model(X_splitted)
-            loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
+            #loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
+            loss = self.model.criterion(logits, y_splitted) / N  # NB: normalize loss
             print('one batch loss',loss)
             loss.backward()
             # for name, param in self.model.named_parameters():
