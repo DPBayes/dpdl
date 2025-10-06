@@ -216,7 +216,7 @@ class Trainer:
 
             #logits = self.model(X_splitted)
             if is_mapping:
-                logits = self.model(**X_splitted)
+                logits = self.model(**X_splitted).logits
             else:
                 logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
