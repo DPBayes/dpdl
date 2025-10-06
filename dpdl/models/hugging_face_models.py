@@ -147,12 +147,13 @@ class HF_llm (torch.nn.Module):
         #     #out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
         #     out = self.model(x)
         
-        out = self.model(x)
-        print('out', out)
+        # print('out', out)
 
-        if hasattr(out, 'logits'):
-            return out.logits
-        return out
+        # if hasattr(out, 'logits'):
+        #     return out.logits
+        # return out
+
+        return
 
     def forward_features(self, x):
         """
