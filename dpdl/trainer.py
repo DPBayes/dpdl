@@ -169,11 +169,11 @@ class Trainer:
         is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
         if is_mapping:
             for k, v in X.items():
-                X[k] = v.to(device=self.device, non_blocking=True)
+                if isinstance(v, torch.Tensor):
+                    X[k] = v.to(device=self.device, non_blocking=True)
         else:
             X = X.to(device=self.device, non_blocking=True)
         y = y.to(device=self.device, non_blocking=True)
-
 
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
@@ -214,7 +214,11 @@ class Trainer:
 
             print(f"[DEBUG] type of X_splitted: {type(X_splitted)}")
 
-            logits = self.model(X_splitted)
+            #logits = self.model(X_splitted)
+            if is_mapping:
+                logits = self.model(**X_splitted)
+            else:
+                logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
             print('one batch loss',loss)
             loss.backward()
