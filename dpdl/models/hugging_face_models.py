@@ -141,12 +141,13 @@ class HF_llm (torch.nn.Module):
         """
         Return logits given tokenized batch or tensor input.
         """
-        if isinstance(x, Mapping):
-            out = self.model(**x)
-        else:
-            #out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
-            out = self.model(x)
+        # if isinstance(x, Mapping):
+        #     out = self.model(**x)
+        # else:
+        #     #out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
+        #     out = self.model(x)
         
+        out = self.model(x)
         print('out', out)
 
         if hasattr(out, 'logits'):
