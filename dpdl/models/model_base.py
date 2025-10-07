@@ -46,6 +46,7 @@ class ModelBase(torch.nn.Module):
             return self.model.forward_head(x)
 
         if kwargs:
+            print("are we here?")
             return self.model(**kwargs)
         elif args:
             return self.model(*args)

@@ -163,6 +163,7 @@ class HF_llm (torch.nn.Module):
         """
         if kwargs:                        # HF-style call
             out = self.model(**kwargs)
+            print("are we here?")
         else:
             x = args[0]
             if isinstance(x, Mapping):    # dict-like
