@@ -161,9 +161,9 @@ class HF_llm (torch.nn.Module):
         - kwargs like input_ids=..., attention_mask=...
         - a single positional arg x (tensor or mapping)
         """
-        if kwargs:                        # HF-style call
+        if kwargs:  
+            print(kwargs)                      # HF-style call
             out = self.model(**kwargs)
-            print("are we here?")
         else:
             x = args[0]
             if isinstance(x, Mapping):    # dict-like
