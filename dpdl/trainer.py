@@ -231,6 +231,7 @@ class Trainer:
             loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
             #base = self.unwrap_llm_model(self.model, "base")       # ModelBase
             #loss = base.criterion(logits, y_splitted) / N
+            print("logits: ", logits)
             print('one batch loss',loss)
             loss.backward()
             logical_batch_loss += loss.item()
