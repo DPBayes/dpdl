@@ -195,7 +195,7 @@ class Trainer:
         N = len(y_split)
 
         print(X_split)
-        print(len(X_split))
+        print(X_split["input_ids"].shape)
         
 
         # zero the grads as usually before doing anything
