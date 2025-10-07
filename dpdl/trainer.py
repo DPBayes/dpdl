@@ -215,7 +215,7 @@ class Trainer:
         for i in range(N):
             if is_mapping:
                 X_splitted = {k: X_split[k][i] for k in X_split}
-                logits = self.model(**X_splitted)
+                logits = self.model(X_splitted)
             else:
                 X_splitted = X_split[i]
                 logits = self.model(X_splitted)
