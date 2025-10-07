@@ -171,6 +171,8 @@ class Trainer:
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
+        
+        print("X", X)
 
         is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
         if is_mapping:
