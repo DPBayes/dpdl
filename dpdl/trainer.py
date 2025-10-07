@@ -194,7 +194,7 @@ class Trainer:
         
         N = len(y_split)
 
-        #print(len(X_split), X_split[0].shape)
+        print(len(X_split), X_split[0].shape)
 
         # zero the grads as usually before doing anything
         self.optimizer.zero_grad()
