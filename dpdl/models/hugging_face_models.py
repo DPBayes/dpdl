@@ -142,6 +142,7 @@ class HF_llm (torch.nn.Module):
         Return logits given tokenized batch or tensor input.
         """
         if isinstance(x, Mapping):
+            print("x is a mapping")
             out = self.model(**x)
         else:
             #out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
@@ -216,7 +217,7 @@ class HF_llm (torch.nn.Module):
         shift_logits = logits[..., :-1, :].contiguous()
         shift_targets = targets[..., 1:].contiguous()
 
-        print('are we here?', shift_logits.shape, shift_targets.shape)
+        print('are we in criterion?', shift_logits.shape, shift_targets.shape)
 
         print(self._criterion)
 
