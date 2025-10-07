@@ -232,10 +232,16 @@ class Trainer:
             emb = core.bert.embeddings.word_embeddings.weight
             cls = core.classifier.weight
 
-            print("emb:", tuple(emb.shape))           # expect (30522, 768)
-            print("cls:", tuple(cls.shape))           # expect (2, 768)
-            print("emb is cls tensor?", emb.data_ptr() == cls.data_ptr())
+            # 1) Is there a hook?
+            print("[DBG] emb hooks:", emb._backward_hooks if hasattr(emb, "_backward_hooks") else "n/a")
 
+            # 2) Make sure you’re using the classification loss, not the LM one
+            base = self.unwrap_llm_model(self.model, "base")
+            print("[DBG] criterion type:", type(base._criterion))
+
+            # 3) Shapes to be safe
+            print("[DBG] logits:", tuple(logits.shape))       # (B, 2)
+            print("[DBG] targets:", tuple(y_splitted.shape), y_splitted.dtype)  # (B,), long
 
             loss.backward()
             logical_batch_loss += loss.item()

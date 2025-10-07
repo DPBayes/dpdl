@@ -43,11 +43,8 @@ class ModelBase(torch.nn.Module):
     def forward(self, *args, **kwargs):
         if self.use_feature_cache:
             x = args[0] if args else (kwargs.get("x") or kwargs.get("features"))
-            if x is None:
-                raise TypeError("When use_feature_cache=True, pass features as first arg or kw 'x'/'features'.")
             return self.model.forward_head(x)
 
-        # Normal path: pass through exactly as received
         if kwargs:
             return self.model(**kwargs)
         elif args:
