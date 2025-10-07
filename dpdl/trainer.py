@@ -253,7 +253,7 @@ class Trainer:
 
         return logical_batch_loss
 
-    def unwrap_llm_model(m, target="base"):
+    def unwrap_llm_model(self, m, target="base"):
         """
         Unwraps through DDP/DataParallel (.module) and wrappers (.model).
 
