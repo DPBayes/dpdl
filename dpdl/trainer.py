@@ -232,16 +232,16 @@ class Trainer:
             emb = core.bert.embeddings.word_embeddings.weight
             cls = core.classifier.weight
 
-            # 1) Is there a hook?
-            print("[DBG] emb hooks:", emb._backward_hooks if hasattr(emb, "_backward_hooks") else "n/a")
+            seen = {}
+            def rec_hook(mod, inp, out):
+                seen["weight_shape_at_forward"] = tuple(mod.weight.shape)
 
-            # 2) Make sure you’re using the classification loss, not the LM one
-            base = self.unwrap_llm_model(self.model, "base")
-            print("[DBG] criterion type:", type(base._criterion))
+            h = core.bert.embeddings.word_embeddings.register_forward_hook(rec_hook)
 
-            # 3) Shapes to be safe
-            print("[DBG] logits:", tuple(logits.shape))       # (B, 2)
-            print("[DBG] targets:", tuple(y_splitted.shape), y_splitted.dtype)  # (B,), long
+
+            print("[DBG] weight shape at forward:", seen.get("weight_shape_at_forward"))
+            h.remove()
+
 
             loss.backward()
             logical_batch_loss += loss.item()
