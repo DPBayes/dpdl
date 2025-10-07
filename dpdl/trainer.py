@@ -225,24 +225,6 @@ class Trainer:
             #base = self.unwrap_llm_model(self.model, "base")       # ModelBase
             #loss = base.criterion(logits, y_splitted) / N
             print('one batch loss',loss)
-
-            core = self.unwrap_llm_model(self.model, "hf_core")  # -> BertForSequenceClassification
-            print('BertforClassification:', core)
-
-            emb = core.bert.embeddings.word_embeddings.weight
-            cls = core.classifier.weight
-
-            seen = {}
-            def rec_hook(mod, inp, out):
-                seen["weight_shape_at_forward"] = tuple(mod.weight.shape)
-
-            h = core.bert.embeddings.word_embeddings.register_forward_hook(rec_hook)
-
-
-            print("[DBG] weight shape at forward:", seen.get("weight_shape_at_forward"))
-            h.remove()
-
-
             loss.backward()
             logical_batch_loss += loss.item()
             print('logical batch loss',logical_batch_loss)
