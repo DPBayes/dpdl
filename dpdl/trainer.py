@@ -221,9 +221,9 @@ class Trainer:
             print(f"[DEBUG] type of X_splitted: {type(X_splitted)}")
 
             #logits = self.model(X_splitted)
-            #loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
-            base = self.unwrap_llm_model(self.model, "base")       # ModelBase
-            loss = base.criterion(logits, y_splitted) / N
+            loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
+            #base = self.unwrap_llm_model(self.model, "base")       # ModelBase
+            #loss = base.criterion(logits, y_splitted) / N
             print('one batch loss',loss)
             loss.backward()
             logical_batch_loss += loss.item()
@@ -253,33 +253,33 @@ class Trainer:
 
         return logical_batch_loss
 
-    def unwrap_llm_model(self, m, target="base"):
-        """
-        Unwraps through DDP/DataParallel (.module) and wrappers (.model).
+    # def unwrap_llm_model(self, m, target="base"):
+    #     """
+    #     Unwraps through DDP/DataParallel (.module) and wrappers (.model).
 
-        target:
-        - "base"    -> ModelBase        (outermost wrapper)
-        - "hf_llm"  -> HF_llm           (HF wrapper)
-        - "hf_core" -> HF core model    (e.g., BertForSequenceClassification)
-        """
-        # remove DDP/DataParallel
-        while hasattr(m, "module"):
-            m = m.module
+    #     target:
+    #     - "base"    -> ModelBase        (outermost wrapper)
+    #     - "hf_llm"  -> HF_llm           (HF wrapper)
+    #     - "hf_core" -> HF core model    (e.g., BertForSequenceClassification)
+    #     """
+    #     # remove DDP/DataParallel
+    #     while hasattr(m, "module"):
+    #         m = m.module
 
-        # ModelBase
-        if target == "base":
-            return m  
+    #     # ModelBase
+    #     if target == "base":
+    #         return m  
 
-        # ModelBase -> HF_llm
-        if hasattr(m, "model"):
-            m = m.model
-        if target == "hf_llm":
-            return m  
+    #     # ModelBase -> HF_llm
+    #     if hasattr(m, "model"):
+    #         m = m.model
+    #     if target == "hf_llm":
+    #         return m  
 
-        # HF_llm -> HF core
-        if hasattr(m, "model"):
-            m = m.model
-        return m  
+    #     # HF_llm -> HF core
+    #     if hasattr(m, "model"):
+    #         m = m.model
+    #     return m  
     
     
     def validate(self, epoch=None, enable_callbacks=True):
@@ -362,7 +362,14 @@ class Trainer:
     def _unwrap_model(self):
         # the model is wrapped inside torch distributed,
         # here we just return the vanilla model
-        return self.model.module
+        #return self.model.module
+        
+        m = self.model
+        # remove DDP/DataParallel
+        while hasattr(m, "module"):
+            m = m.module
+
+        return m  #ModelBase
 
     def _calculate_steps_per_epoch(self):
         N = len(self.datamodule.get_dataloader('train').dataset)
