@@ -195,7 +195,10 @@ class Trainer:
         N = len(y_split)
 
         print(X_split)
-        print(X_split["input_ids"].shape)
+        print("length of the input_ids:", len(X_split["input_ids"]))
+        print("shape of the input_ids:", X_split["input_ids"][0].shape)
+      
+
         
 
         # zero the grads as usually before doing anything
