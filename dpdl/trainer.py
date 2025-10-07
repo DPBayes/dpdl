@@ -226,7 +226,8 @@ class Trainer:
             #loss = base.criterion(logits, y_splitted) / N
             print('one batch loss',loss)
 
-            core = self.unwrap_llm_model("hf_core")  # -> BertForSequenceClassification
+            core = self.unwrap_llm_model(self.model, "hf_core")  # -> BertForSequenceClassification
+            print('BertforClassification:', core)
 
             emb = core.bert.embeddings.word_embeddings.weight
             cls = core.classifier.weight
