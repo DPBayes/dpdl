@@ -164,8 +164,6 @@ class HF_llm (torch.nn.Module):
         if kwargs:                        # HF-style call
             out = self.model(**kwargs)
         else:
-            if not args:
-                raise TypeError("HF_llm.forward expected inputs (tensor or mapping).")
             x = args[0]
             if isinstance(x, Mapping):    # dict-like
                 out = self.model(**x)
