@@ -162,7 +162,9 @@ class HF_llm (torch.nn.Module):
         - a single positional arg x (tensor or mapping)
         """
         if kwargs:  
-            print(kwargs)                      # HF-style call
+            print(kwargs)                   # HF-style call
+            #check the shape of input_ids
+            print('input_ids shape:', kwargs['input_ids'].shape)
             out = self.model(**kwargs)
         else:
             x = args[0]
