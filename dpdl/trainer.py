@@ -204,15 +204,11 @@ class Trainer:
         # process the sub batches one at a time
         print('Number of physical batches', N)
 
-        #print('model at ',batch_idx,self.model)
-
         for i in range(N):
             if is_mapping:
                 X_splitted = {k: X_split[k][i] for k in X_split}
-                #logits = self.model(X_splitted)
             else:
                 X_splitted = X_split[i]
-                #logits = self.model(X_splitted)
             
             y_splitted = y_split[i]
             physical_batch = (X_splitted, y_splitted)
@@ -225,6 +221,19 @@ class Trainer:
             #loss = base.criterion(logits, y_splitted) / N
             print("logits: ", logits)
             print('one batch loss',loss)
+
+            print("[DEBUG] check model parameters and grads")
+            for name, param in self.model.named_parameters():
+                if param.requires_grad:
+                    print(f"param name: {name}")
+                    print(f"Shape: {param.shape}")
+                    print(f"Grad Norm: {param.grad.norm() if param.grad is not None else None}")
+                    print()
+            
+            for name, param in self.model.named_parameters():
+                if param.grad is None:
+                    print(name, "has no grad!")
+
             loss.backward()
             logical_batch_loss += loss.item()
             print('logical batch loss',logical_batch_loss)

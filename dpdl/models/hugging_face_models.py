@@ -145,16 +145,12 @@ class HF_llm (torch.nn.Module):
             print("x is a mapping")
             out = self.model(**x)
         else:
-            #out = self.model(input_ids=x[:,0,:], token_type_ids=x[:,1,:], attention_mask=x[:,2,:])
             out = self.model(x)
-        
-        print('out', out)
 
         if hasattr(out, 'logits'):
             return out.logits
+        
         return out
-
-        #return self.model(**x).logits
 
     def forward_features(self, x):
         """
@@ -198,8 +194,6 @@ class HF_llm (torch.nn.Module):
         shift_targets = targets[..., 1:].contiguous()
 
         print('are we in criterion?', shift_logits.shape, shift_targets.shape)
-
-        print(self._criterion)
 
         return self._criterion(
             shift_logits.view(-1,self.vocab_size), 
