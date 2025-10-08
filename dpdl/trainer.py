@@ -167,6 +167,8 @@ class Trainer:
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
+        X = X.to(device= self.device, non_blocking=True)
+        y = y.to(device= self.device, non_blocking=True)
 
         is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
         if is_mapping:
@@ -334,6 +336,9 @@ class Trainer:
             self.callback_handler.call(f'on_{mode}_batch_start', self, batch_idx, batch)
 
         X, y = batch
+        X = X.to(device = self.device, non_blocking=True)
+        y = y.to(device = self.device, non_blocking=True)
+        
         if isinstance(X, Mapping):
             for k, v in X.items():
                 X[k] = v.to(device=self.device, non_blocking=True)
