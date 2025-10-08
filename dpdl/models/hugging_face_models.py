@@ -74,10 +74,12 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
 
 
     load_kwargs = {
-        "device_map": "cuda:0",
+        #"device_map": "auto",
         "torch_dtype": torch.bfloat16,
         "trust_remote_code": trust_remote_code,
     }
+
+    print("load_kwargs:", load_kwargs)
     
     if quantization_config is not None:
         load_kwargs["quantization_config"] = quantization_config
@@ -87,6 +89,7 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
     if is_seq_classification:
         if num_labels is not None:
             load_kwargs["num_labels"] = num_labels
+        print('Loading sequence classification model')
         model = AutoModelForSequenceClassification.from_pretrained(
             model_name,
             **load_kwargs
