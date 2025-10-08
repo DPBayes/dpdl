@@ -146,22 +146,18 @@ class Trainer:
     def fit_one_epoch(self, epoch):
         self.model.train()
         print(self.model)
-        print("model device:", self.device)
-
 
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
 
-
-            #print('for batch idx',batch_idx, 'we have batch:\n',batch)
-
-
-
+            print('for batch idx',batch_idx, 'we have batch:\n',batch)
+            
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
             logical_batch_loss = self.fit_one_batch(batch_idx, batch)
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
-            #print('---------------------------------- end batch ------------------------')
+            
+            print('---------------------------------- end batch ------------------------')
 
         # compute the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
@@ -171,8 +167,6 @@ class Trainer:
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
-        
-        print("X", X)
 
         is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
         if is_mapping:
@@ -196,12 +190,12 @@ class Trainer:
         
         N = len(y_split)
 
-        print(X_split)
-        print("length of the input_ids:", len(X_split["input_ids"]))
-        print("shape of the input_ids:", X_split["input_ids"][0].shape)
-      
-
-        
+        # check the splits
+        print("[DEBUG] check the splits")
+        for k, v in X_split.items():
+            print(f"length of {k}:", len(v))
+            print(f"shape of {k}:", v[0].shape)
+        print("length of y_split:", len(y_split))
 
         # zero the grads as usually before doing anything
         self.optimizer.zero_grad()
@@ -215,19 +209,17 @@ class Trainer:
         for i in range(N):
             if is_mapping:
                 X_splitted = {k: X_split[k][i] for k in X_split}
-                logits = self.model(X_splitted)
+                #logits = self.model(X_splitted)
             else:
                 X_splitted = X_split[i]
-                logits = self.model(X_splitted)
+                #logits = self.model(X_splitted)
             
             y_splitted = y_split[i]
             physical_batch = (X_splitted, y_splitted)
 
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
-            print(f"[DEBUG] type of X_splitted: {type(X_splitted)}")
-
-            #logits = self.model(X_splitted)
+            logits = self.model(X_splitted)
             loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
             #base = self.unwrap_llm_model(self.model, "base")       # ModelBase
             #loss = base.criterion(logits, y_splitted) / N
@@ -244,20 +236,6 @@ class Trainer:
 
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
-
-        # after accumulating the gradients for all the sub batches we can finally update weights.
-        # print('before step')
-        # for name, param in self.model.named_parameters():
-        #     if param.grad is not None:
-        #         if not torch.isfinite(param.grad).all():
-        #             print(f":x: NaN/Inf gradient in {name}")
-        # self.optimizer.step()
-        # print('after step')
-        # for name, param in self.model.named_parameters():
-        #     if param.grad is not None:
-        #         if not torch.isfinite(param.grad).all():
-        #             print(f":x: NaN/Inf gradient in {name}")
-        #print('in theory here it goes the optimizer, but we are skipping it')
 
         return logical_batch_loss
 

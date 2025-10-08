@@ -39,19 +39,6 @@ class ModelBase(torch.nn.Module):
             return self.model.forward_head(x) 
         else:
             return self.model(x)
-    
-    # def forward(self, *args, **kwargs):
-    #     if self.use_feature_cache:
-    #         x = args[0] if args else (kwargs.get("x") or kwargs.get("features"))
-    #         return self.model.forward_head(x)
-
-    #     if kwargs:
-    #         print("are we here?")
-    #         return self.model(**kwargs)
-    #     elif args:
-    #         return self.model(*args)
-    #     else:
-    #         raise TypeError("forward received no inputs")
 
     def forward_head(self, x):
         return self.model.forward_head(x)
