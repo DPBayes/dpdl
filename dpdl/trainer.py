@@ -63,6 +63,7 @@ class Trainer:
     
     def setup(self):
         self.model = self.model.cuda()
+        print('setup model before parallel', self.model)
         self.model = torch.nn.parallel.DistributedDataParallel(self.model)
         print('setup model after parallel', self.model)
 
