@@ -154,27 +154,7 @@ class HF_llm (torch.nn.Module):
             return out.logits
         return out
 
-        #eturn self.model(**x).logits
-
-    # def forward(self, *args, **kwargs):
-    #     """
-    #     Accept either:
-    #     - kwargs like input_ids=..., attention_mask=...
-    #     - a single positional arg x (tensor or mapping)
-    #     """
-    #     if kwargs:  
-    #         #print(kwargs)                   # HF-style call
-    #         #check the shape of input_ids
-    #         #print('input_ids shape:', kwargs['input_ids'].shape)
-    #         out = self.model(**kwargs)
-    #     else:
-    #         x = args[0]
-    #         if isinstance(x, Mapping):    # dict-like
-    #             out = self.model(**x)
-    #         else:                         # tensor
-    #             out = self.model(x)
-
-    #     return out.logits if hasattr(out, "logits") else out
+        #return self.model(**x).logits
 
     def forward_features(self, x):
         """
