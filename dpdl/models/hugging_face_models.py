@@ -92,7 +92,7 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
         print('Loading sequence classification model')
         model = AutoModelForSequenceClassification.from_pretrained(
             model_name,
-            device_map = 'cuda:0'
+            device_map = 'cuda:0',
             **load_kwargs
         )
     elif checkpoint_dir is not None and not peft:
