@@ -63,7 +63,6 @@ class Trainer:
     
     def setup(self):
         self.model = self.model.cuda()
-        print('setup model before parallel', self.model)
         self.model = torch.nn.parallel.DistributedDataParallel(self.model)
         print('setup model after parallel', self.model)
 
@@ -222,17 +221,17 @@ class Trainer:
             print("logits: ", logits)
             print('one batch loss',loss)
 
-            print("[DEBUG] check model parameters and grads")
-            for name, param in self.model.named_parameters():
-                if param.requires_grad:
-                    print(f"param name: {name}")
-                    print(f"Shape: {param.shape}")
-                    print(f"Grad Norm: {param.grad.norm() if param.grad is not None else None}")
-                    print()
+            # print("[DEBUG] check model parameters and grads")
+            # for name, param in self.model.named_parameters():
+            #     if param.requires_grad:
+            #         print(f"param name: {name}")
+            #         print(f"Shape: {param.shape}")
+            #         print(f"Grad Norm: {param.grad.norm() if param.grad is not None else None}")
+            #         print()
             
-            for name, param in self.model.named_parameters():
-                if param.grad is None:
-                    print(name, "has no grad!")
+            # for name, param in self.model.named_parameters():
+            #     if param.grad is None:
+            #         print(name, "has no grad!")
 
             loss.backward()
             logical_batch_loss += loss.item()
