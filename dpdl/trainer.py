@@ -58,8 +58,8 @@ class Trainer:
         if self.epochs and self.total_steps:
             raise ValueError('You should provide either "epochs" or "total_steps", not both.')
 
-        #self.setup()
-        self.model = self.model.cuda()
+        self.setup()
+        #self.model = self.model.cuda()
     
     def setup(self):
         self.model = self.model.cuda()
