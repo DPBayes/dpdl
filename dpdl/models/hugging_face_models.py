@@ -82,7 +82,7 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
 
     load_kwargs = {
         #"device_map": "auto",
-        "torch_dtype": torch.bfloat16,
+        "torch_dtype": torch.float32,
         "trust_remote_code": trust_remote_code,
     }
 
