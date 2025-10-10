@@ -627,8 +627,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.optimizer.zero_grad()
 
         X, y = batch
-
-        print('in dp fit one batch X', X)
         
         is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
         if is_mapping:
@@ -641,6 +639,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         
         logits = self.model(X)
         loss = self._unwrap_model().criterion(logits, y)
+
+        print(f"Model dtype: {next(self.model.parameters()).dtype}")
+        print(f"Input dtype: {X['input_ids'].dtype}")
 
         loss.backward()
 
