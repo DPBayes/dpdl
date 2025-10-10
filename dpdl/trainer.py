@@ -627,9 +627,18 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.optimizer.zero_grad()
 
         X, y = batch
-        X = X.cuda(non_blocking=True)
-        y = y.cuda(non_blocking=True)
 
+        print('in dp fit one batch X', X)
+        
+        is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
+        if is_mapping:
+            for k, v in X.items():
+                if isinstance(v, torch.Tensor):
+                    X[k] = v.to(device=self.device, non_blocking=True)
+        else:
+            X = X.to(device=self.device, non_blocking=True)
+        y = y.to(device=self.device, non_blocking=True)
+        
         logits = self.model(X)
         loss = self._unwrap_model().criterion(logits, y)
 
@@ -732,18 +741,8 @@ class TrainerFactory:
         # setup data, model, and optimizer
         loss_fn = LossFactory.get_loss(configuration)
         metrics = MetricsFactory.get_metrics(configuration, num_classes)
-        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
-        # print('model in trainer',model)
-        # for name, param in model.named_parameters():
-        #     print(f"  param name: {name}")
-        #     print(f"  Shape: {param.shape}")
-        #     print(f"  Requires grad: {param.requires_grad}")
-        #     print()
-
-        
+        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)        
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
-
-        print(optimizer)
 
         # Initialize the datamodule with the transformations
         datamodule.initialize(transforms)
