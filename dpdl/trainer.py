@@ -454,9 +454,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         # let's be distributed by default and wrap the model for Opacus DDP.
         # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
         # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
-        #model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
+        model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
 
-        #print('The model after opacus DDP', model)
+        print('The model after opacus DDP', model)
 
         optimizer = self.optimizer
         train_dataloader = self.datamodule.get_dataloader('train')
@@ -627,10 +627,6 @@ class DifferentiallyPrivateTrainer(Trainer):
             log.warn(f'Was going to step for {self.total_steps}, but stepped only {step} steps.')
 
     def fit_one_batch(self, batch_idx, batch):
-
-        print("model: ", self.model)
-
-
         self.optimizer.zero_grad()
 
         X, y = batch
@@ -646,9 +642,16 @@ class DifferentiallyPrivateTrainer(Trainer):
         
         logits = self.model(X)
         
-        #loss = self._unwrap_model().criterion(logits, y)
-        loss = self.model._module.criterion(logits, y)
+        loss = self._unwrap_model().criterion(logits, y)
         loss.backward()
+
+        # check if the inputs are in the same length in one batch
+        print("[DEBUG] check the splits")
+        for k, v in X.items():
+            print(f"length of {k}:", len(v))
+            print(f"shape of {k}:", v[0].shape)
+        print("length of y_split:", len(y))
+
 
         self.optimizer.step()
 
@@ -656,8 +659,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # update metrics if there are any
         preds = torch.argmax(logits, dim=1)
-        #self._unwrap_model().train_metrics.update(preds, y)
-        self.model._module.train_metrics.update(preds, y)
+        self._unwrap_model().train_metrics.update(preds, y)
 
         return loss
 
