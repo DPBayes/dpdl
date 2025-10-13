@@ -148,6 +148,10 @@ class HF_llm (torch.nn.Module):
         
         self.is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
 
+    @property
+    def config(self):
+        return self.model.config
+
     def forward(self, x):
         """
         Return logits given tokenized batch or tensor input.
