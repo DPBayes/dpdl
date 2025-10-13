@@ -642,11 +642,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         y = y.to(device=self.device, non_blocking=True)
         
         logits = self.model(X)
+        
         loss = self._unwrap_model().criterion(logits, y)
-
-        print(f"Model dtype: {next(self.model.parameters()).dtype}")
-        print(f"Input dtype: {X['input_ids'].dtype}")
-
         loss.backward()
 
         self.optimizer.step()
@@ -738,7 +735,7 @@ class TrainerFactory:
     @staticmethod
     def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
 
-        configuration.checkpoints_dir = os.path.join(configuration.log_dir, 'checkpoints')
+        #configuration.checkpoints_dir = os.path.join(configuration.log_dir, 'checkpoints')
         # First create DataModule, it can figure out the number of classes
         
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
