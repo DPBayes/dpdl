@@ -646,7 +646,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         
         logits = self.model(X)
         
-        loss = self._unwrap_model().criterion(logits, y)
+        #loss = self._unwrap_model().criterion(logits, y)
+        loss = self.model._module.criterion(logits, y)
         loss.backward()
 
         self.optimizer.step()
@@ -655,7 +656,8 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # update metrics if there are any
         preds = torch.argmax(logits, dim=1)
-        self._unwrap_model().train_metrics.update(preds, y)
+        #self._unwrap_model().train_metrics.update(preds, y)
+        self.model._module.train_metrics.update(preds, y)
 
         return loss
 
