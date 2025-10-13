@@ -485,7 +485,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 self.noise_multiplier = self.noise_batch_ratio * self.datamodule.batch_size
 
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
-                module=self.model,
+                module=model,
                 optimizer=optimizer,
                 data_loader=train_dataloader,
                 noise_multiplier=self.noise_multiplier,
