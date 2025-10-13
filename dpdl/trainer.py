@@ -247,6 +247,9 @@ class Trainer:
 
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
+        
+        # after accumulating the gradients for all the sub batches we can finally update weights.
+        self.optimizer.step()
 
         return logical_batch_loss
 
@@ -643,10 +646,13 @@ class DifferentiallyPrivateTrainer(Trainer):
         y = y.to(device=self.device, non_blocking=True)
         
         logits = self.model(X)
+
+        print("logits: ", logits)
         
         loss = self._unwrap_model().criterion(logits, y)
         loss.backward()
-
+        print('one batch loss',loss)
+        
         # check if the inputs are in the same length in one batch
         print("[DEBUG] check the inputs in one batch")
         for k, v in X.items():
