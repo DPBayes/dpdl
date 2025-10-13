@@ -627,6 +627,10 @@ class DifferentiallyPrivateTrainer(Trainer):
             log.warn(f'Was going to step for {self.total_steps}, but stepped only {step} steps.')
 
     def fit_one_batch(self, batch_idx, batch):
+
+        print("model: ", self.model)
+
+
         self.optimizer.zero_grad()
 
         X, y = batch
