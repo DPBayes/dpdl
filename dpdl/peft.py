@@ -174,9 +174,20 @@ class LoRA:
                 r=16,  # rank
                 lora_alpha=32,
                 target_modules=["query", "value"],
+                lora_dropout=0.1,
+                bias="none",
+            )
+        elif '' in model_name:
+            # Configure LoRA for causal LM
+            return LoraConfig(
+                r=8,
+                lora_alpha=16,
+                target_modules=["c_attn"],  # For GPT-2, the attention layers are called "c_attn"
+                #This is more for LLAMA models
                 #target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
                 lora_dropout=0.1,
                 bias="none",
+                task_type="CAUSAL_LM"
             )
         
 

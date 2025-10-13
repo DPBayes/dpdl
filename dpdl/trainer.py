@@ -464,7 +464,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         # setup differential privacy for the model, optimize, and dataloader
         if self._has_target_privacy_params():
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private_with_epsilon(
-                module=model,
+                module=self.model,
                 optimizer=optimizer,
                 data_loader=train_dataloader,
                 max_grad_norm=self.max_grad_norm,
@@ -485,7 +485,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 self.noise_multiplier = self.noise_batch_ratio * self.datamodule.batch_size
 
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
-                module=model,
+                module=self.model,
                 optimizer=optimizer,
                 data_loader=train_dataloader,
                 noise_multiplier=self.noise_multiplier,
