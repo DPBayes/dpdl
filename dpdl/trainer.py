@@ -456,6 +456,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
         model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
 
+        print('The model after opacus DDP', model)
+
         optimizer = self.optimizer
         train_dataloader = self.datamodule.get_dataloader('train')
 
@@ -497,6 +499,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # now we can start using the DP'ifyed stuff
         self.model = dp_model
+        print("DP model: ", self.model)
         self.datamodule.set_dataloader('train', dp_dataloader)
         self.optimizer = dp_optimizer
 
@@ -627,6 +630,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.optimizer.zero_grad()
 
         X, y = batch
+        X = X.to(device= self.device, non_blocking=True)
         
         is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
         if is_mapping:
