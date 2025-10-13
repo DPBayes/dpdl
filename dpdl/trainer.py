@@ -627,6 +627,8 @@ class DifferentiallyPrivateTrainer(Trainer):
             log.warn(f'Was going to step for {self.total_steps}, but stepped only {step} steps.')
 
     def fit_one_batch(self, batch_idx, batch):
+        print("mode: ", self.model)
+
         self.optimizer.zero_grad()
 
         X, y = batch
@@ -646,11 +648,11 @@ class DifferentiallyPrivateTrainer(Trainer):
         loss.backward()
 
         # check if the inputs are in the same length in one batch
-        print("[DEBUG] check the splits")
+        print("[DEBUG] check the inputs in one batch")
         for k, v in X.items():
             print(f"length of {k}:", len(v))
             print(f"shape of {k}:", v[0].shape)
-        print("length of y_split:", len(y))
+        print("length of y:", len(y))
 
 
         self.optimizer.step()
