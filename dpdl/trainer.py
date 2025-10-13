@@ -454,7 +454,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         # let's be distributed by default and wrap the model for Opacus DDP.
         # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
         # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
-        model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
+        #model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
+
+        #print('The model after opacus DDP', model)
 
         optimizer = self.optimizer
         train_dataloader = self.datamodule.get_dataloader('train')
@@ -462,7 +464,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         # setup differential privacy for the model, optimize, and dataloader
         if self._has_target_privacy_params():
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private_with_epsilon(
-                module=model,
+                module=self.model,
                 optimizer=optimizer,
                 data_loader=train_dataloader,
                 max_grad_norm=self.max_grad_norm,
@@ -483,7 +485,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 self.noise_multiplier = self.noise_batch_ratio * self.datamodule.batch_size
 
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
-                module=model,
+                module=self.model,
                 optimizer=optimizer,
                 data_loader=train_dataloader,
                 noise_multiplier=self.noise_multiplier,
@@ -497,6 +499,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # now we can start using the DP'ifyed stuff
         self.model = dp_model
+        print("DP model: ", self.model)
         self.datamodule.set_dataloader('train', dp_dataloader)
         self.optimizer = dp_optimizer
 
@@ -624,9 +627,14 @@ class DifferentiallyPrivateTrainer(Trainer):
             log.warn(f'Was going to step for {self.total_steps}, but stepped only {step} steps.')
 
     def fit_one_batch(self, batch_idx, batch):
+
+        print("model: ", self.model)
+
+
         self.optimizer.zero_grad()
 
         X, y = batch
+        X = X.to(device= self.device, non_blocking=True)
         
         is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
         if is_mapping:
