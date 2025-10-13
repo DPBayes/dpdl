@@ -454,9 +454,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         # let's be distributed by default and wrap the model for Opacus DDP.
         # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
         # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
-        model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
+        #model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
 
-        print('The model after opacus DDP', model)
+        #print('The model after opacus DDP', model)
 
         optimizer = self.optimizer
         train_dataloader = self.datamodule.get_dataloader('train')
