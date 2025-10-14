@@ -977,10 +977,7 @@ class NLPDataModule(DataModule):
         self._set_generators_and_seed_worker()
         self._set_samplers_and_batch_size()
 
-        #collate_fn = self._make_text_collate()
-        tokenizer = self.tokenizer
-        tokenizer.pad_token = tokenizer.eos_token
-        collate_fn = DataCollatorWithPadding(tokenizer)
+        collate_fn = self._make_text_collate()
 
         self._dataloaders['train'] = torch.utils.data.DataLoader(
             self.train_dataset,
