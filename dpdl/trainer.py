@@ -672,15 +672,11 @@ class DifferentiallyPrivateTrainer(Trainer):
         for p in self.model.parameters():
             if p.grad is not None:
                 param_norm = p.grad.data.norm(2)
+                print(f"Param norm: {param_norm}")
                 total_norm += param_norm.item() ** 2
         total_norm = total_norm ** 0.5
+        print("Total grad norm: ", total_norm)
 
-        if not torch.isfinite(torch.tensor(total_norm)):
-            print(f"Gradient contains NaN or Inf: total_norm={total_norm}")
-        elif total_norm > self.max_grad_norm:
-            print(f"Gradient exploded: total_norm={total_norm:.2f}")
-        else:
-            print(f"Gradient norm OK: {total_norm:.2f}")
         
         self.optimizer.step()
 
