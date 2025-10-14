@@ -2,6 +2,7 @@ import logging
 import os
 
 from typing import Any, Dict, Optional
+from collections.abc import Mapping
 
 import torch
 import torchmetrics
@@ -35,11 +36,21 @@ class ModelBase(torch.nn.Module):
     @property
     def config(self):
         return self.model.config
+        
+    def forward(self, *args, **kwargs):
 
-    def forward(self, x):
+        # If PEFT calls with keyword arguments, convert them to a dict and pass as x
+        if kwargs and not args:
+            if isinstance(kwargs.get('input_ids'), Mapping):
+                x = kwargs['input_ids']
+            else:
+                x = kwargs
+        elif args:
+            x = args[0]
+        else:
+            x = None
+
         if self.use_feature_cache:
-            # self.model.forward_head(x) calls its classification head, x here are feature tensor not raw inputs
-            # it take those features, possibly apply pooling/dropout, and then run the final linear (classifier) layer to produce logits.
             return self.model.forward_head(x) 
         else:
             return self.model(x)
