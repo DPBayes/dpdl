@@ -222,7 +222,7 @@ class Configuration(BaseModel):
             ('Validation frequency', self.validation_frequency),
             ('Seed', self.seed),
             ('Log dir', self.log_dir),
-            ('Experiment dame', self.experiment_name),
+            ('Experiment name', self.experiment_name),
             ('Overwrite experiment', self.overwrite_experiment),
             ('Shots', self.shots),
             ('Use stratified sampling for few-shot dataset', self.stratify_shots),
