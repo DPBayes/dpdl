@@ -669,7 +669,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # see if the gradients are exloding or have NaNs
         total_norm = 0.0
-        for p in model.parameters():
+        for p in self.model.parameters():
             if p.grad is not None:
                 param_norm = p.grad.data.norm(2)
                 total_norm += param_norm.item() ** 2
