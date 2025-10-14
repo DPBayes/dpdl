@@ -572,6 +572,12 @@ class DifferentiallyPrivateTrainer(Trainer):
                 # notify the callbacks of a physical batch start
                 self.callback_handler.call('on_train_physical_batch_start', self, batch_idx, batch)
 
+                # check shapes and dtypes for every key in the batch
+                print("[DEBUG] check shapes and dtypes for every key in the batch")
+                for k, v in batch.items():
+                    print(f"key: {k}, dtype: {v.dtype}, shape: {v.shape}")
+
+
                 # let's fit this physical batch
                 batch_loss = self.fit_one_batch(batch_idx, batch)
 
