@@ -853,6 +853,7 @@ class DataModuleFactory:
         if getattr(configuration, 'llm', False):
             # Use NLPDataModule for LLM tasks
             return NLPDataModule(
+                max_length=hyperparams.max_length,
                 dataset_name=configuration.dataset_name,
                 num_workers=configuration.num_workers,
                 physical_batch_size=configuration.physical_batch_size,
