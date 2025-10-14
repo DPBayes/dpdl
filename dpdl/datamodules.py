@@ -16,9 +16,11 @@ from typing import Tuple
 from dpdl.utils import seed_everything
 from .configurationmanager import Configuration, Hyperparameters
 
+from transformers.data.data_collator import DataCollatorWithPadding
+
 log = logging.getLogger(__name__)
 
-#TODO: General, that it doesn't include any of the Computer Vision specifics 
+
 class DataModule:
 
     def __init__(
@@ -851,7 +853,6 @@ class DataModuleFactory:
         if getattr(configuration, 'llm', False):
             # Use NLPDataModule for LLM tasks
             return NLPDataModule(
-                max_length=hyperparams.max_length,
                 dataset_name=configuration.dataset_name,
                 num_workers=configuration.num_workers,
                 physical_batch_size=configuration.physical_batch_size,
@@ -976,7 +977,10 @@ class NLPDataModule(DataModule):
         self._set_generators_and_seed_worker()
         self._set_samplers_and_batch_size()
 
-        collate_fn = self._make_text_collate()
+        #collate_fn = self._make_text_collate()
+        tokenizer = self.tokenizer
+        tokenizer.pad_token = tokenizer.eos_token
+        collate_fn = DataCollatorWithPadding(tokenizer)
 
         self._dataloaders['train'] = torch.utils.data.DataLoader(
             self.train_dataset,
@@ -1027,7 +1031,7 @@ class NLPDataModule(DataModule):
                 max_length=max_len,
                 return_tensors='pt'
             ) 
-            
+
             labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
             return tokenized, labels
 
