@@ -666,17 +666,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         loss = self._unwrap_model().criterion(logits, y)
         loss.backward()
         print('one batch loss',loss)
-
-        # see if the gradients are exloding or have NaNs
-        total_norm = 0.0
-        for p in self.model.parameters():
-            if p.grad is not None:
-                param_norm = p.grad.data.norm(2)
-                print(f"Param norm: {param_norm}")
-                total_norm += param_norm.item() ** 2
-        total_norm = total_norm ** 0.5
-        print("Total grad norm: ", total_norm)
-
         
         self.optimizer.step()
 
