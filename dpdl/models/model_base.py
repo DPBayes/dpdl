@@ -90,4 +90,4 @@ class ModelBase(torch.nn.Module):
         if not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
 
-        torch.save(self.model.state_dict(), fpath)
+        self.model.save_model(fpath)

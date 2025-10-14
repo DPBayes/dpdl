@@ -133,7 +133,6 @@ class LoRA:
             )
         else:
             lora_config = LoRA._get_config(model_name)
-            print(lora_config)
             lora_model = get_peft_model(model, lora_config)
 
         trainable_params, all_params = get_nb_trainable_parameters(lora_model)
