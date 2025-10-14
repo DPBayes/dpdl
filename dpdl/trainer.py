@@ -705,10 +705,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                     'on_train_physical_batch_start', self, phys_idx, batch
                 )
 
-                # check shapes and dtypes for every key in the batch
-                print("[DEBUG] check shapes and dtypes for every key in the batch")
-                for k, v in batch.items():
-                    print(f"key: {k}, dtype: {v.dtype}, shape: {v.shape}")
+                print('for batch idx',phys_idx, 'we have batch:\n',batch)
 
                 loss = self.fit_one_batch(phys_idx, batch)
 
