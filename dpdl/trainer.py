@@ -247,6 +247,9 @@ class Trainer:
 
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
+        
+        # after accumulating the gradients for all the sub batches we can finally update weights.
+        self.optimizer.step()
 
         return logical_batch_loss
 
@@ -454,9 +457,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         # let's be distributed by default and wrap the model for Opacus DDP.
         # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
         # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
-        #model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
+        model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
 
-        #print('The model after opacus DDP', model)
+        print('The model after opacus DDP', model)
 
         optimizer = self.optimizer
         train_dataloader = self.datamodule.get_dataloader('train')
@@ -464,7 +467,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         # setup differential privacy for the model, optimize, and dataloader
         if self._has_target_privacy_params():
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private_with_epsilon(
-                module=self.model,
+                module=model,
                 optimizer=optimizer,
                 data_loader=train_dataloader,
                 max_grad_norm=self.max_grad_norm,
@@ -485,7 +488,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 self.noise_multiplier = self.noise_batch_ratio * self.datamodule.batch_size
 
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
-                module=self.model,
+                module=model,
                 optimizer=optimizer,
                 data_loader=train_dataloader,
                 noise_multiplier=self.noise_multiplier,
@@ -627,14 +630,11 @@ class DifferentiallyPrivateTrainer(Trainer):
             log.warn(f'Was going to step for {self.total_steps}, but stepped only {step} steps.')
 
     def fit_one_batch(self, batch_idx, batch):
-
         print("model: ", self.model)
-
 
         self.optimizer.zero_grad()
 
         X, y = batch
-        X = X.to(device= self.device, non_blocking=True)
         
         is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
         if is_mapping:
@@ -644,12 +644,28 @@ class DifferentiallyPrivateTrainer(Trainer):
         else:
             X = X.to(device=self.device, non_blocking=True)
         y = y.to(device=self.device, non_blocking=True)
+
+        # check if the inputs are in the same length in one batch
+        print("[DEBUG] check the inputs in one batch")
+        for k, v in X.items():
+            print(f"length of {k}:", len(v))
+            print(f"shape of {k}:", v[0].shape)
+        print("length of y:", len(y))
+
+        # check shapes and dtypes for every key in the batch
+        print("[DEBUG] check shapes and dtypes for every key in the batch")
+        for k, v in X.items():
+            print(f"key: {k}, dtype: {v.dtype}, shape: {v.shape}")
+        
         
         logits = self.model(X)
+
+        print("logits: ", logits)
         
         loss = self._unwrap_model().criterion(logits, y)
         loss.backward()
-
+        print('one batch loss',loss)
+        
         self.optimizer.step()
 
         loss = loss.item()
@@ -688,6 +704,8 @@ class DifferentiallyPrivateTrainer(Trainer):
                 self.callback_handler.call(
                     'on_train_physical_batch_start', self, phys_idx, batch
                 )
+
+                print('for batch idx',phys_idx, 'we have batch:\n',batch)
 
                 loss = self.fit_one_batch(phys_idx, batch)
 
