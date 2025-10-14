@@ -4,6 +4,7 @@ import os
 import logging
 import math
 from collections.abc import Mapping
+from xml.parsers.expat import model
 import opacus
 import torch
 import torchmetrics
@@ -665,6 +666,21 @@ class DifferentiallyPrivateTrainer(Trainer):
         loss = self._unwrap_model().criterion(logits, y)
         loss.backward()
         print('one batch loss',loss)
+
+        # see if the gradients are exloding or have NaNs
+        total_norm = 0.0
+        for p in model.parameters():
+            if p.grad is not None:
+                param_norm = p.grad.data.norm(2)
+                total_norm += param_norm.item() ** 2
+        total_norm = total_norm ** 0.5
+
+        if not torch.isfinite(torch.tensor(total_norm)):
+            print(f"Gradient contains NaN or Inf: total_norm={total_norm}")
+        elif total_norm > self.max_grad_norm:
+            print(f"Gradient exploded: total_norm={total_norm:.2f}")
+        else:
+            print(f"Gradient norm OK: {total_norm:.2f}")
         
         self.optimizer.step()
 
