@@ -380,7 +380,7 @@ class Trainer:
         return math.ceil(N / B)
 
     def save_model(self, fpath):
-        self.model.save_model(fpath)
+        self._unwrap_model().save_model(fpath)
 
 class DifferentiallyPrivateTrainer(Trainer):
     def __init__(
@@ -751,13 +751,16 @@ class TrainerFactory:
         # are we differentially private?
         if config_manager.configuration.privacy:
             return TrainerFactory._get_differentially_private_trainer(config_manager.configuration, config_manager.hyperparams)
+        
+        if config_manager.configuration.checkpoint:
+            config_manager.configuration.checkpoints_dir = os.path.join(config_manager.configuration.log_dir, 'checkpoints')
 
         return TrainerFactory._get_basic_trainer(config_manager.configuration, config_manager.hyperparams)
 
     @staticmethod
     def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
 
-        #configuration.checkpoints_dir = os.path.join(configuration.log_dir, 'checkpoints')
+        #
         # First create DataModule, it can figure out the number of classes
         
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
