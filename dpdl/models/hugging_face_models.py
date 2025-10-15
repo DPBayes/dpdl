@@ -111,21 +111,15 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             checkpoint_or_not(model_name,checkpoint_dir_latest,peft),
             **load_kwargs
         )
-
-    # elif checkpoint_dir_latest is not None and not peft:
-    #     print('Loading checkpoint')
-    #     model = AutoModelForCausalLM.from_pretrained(
-    #         checkpoint_dir,
-    #         **load_kwargs
-    #     )
     
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
     return model, tokenizer, quantization_config
 
 def checkpoint_or_not(model_name, checkpoint_dir_latest, peft):
-    
+
     if checkpoint_dir_latest is not None and not peft:
+        print('loading checkpoint')
         return checkpoint_dir_latest
     else:
         return model_name
