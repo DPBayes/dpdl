@@ -1023,7 +1023,7 @@ class NLPDataModule(DataModule):
             #     parts = [str(sample[i]) for i in text_fields]
             #     texts.append(' '.join(parts))
             tokenized = tokenizer(
-                batch[text_fields],
+                batch[text_fields[0]],
                 padding=True,
                 truncation=True,
                 max_length=max_len,
