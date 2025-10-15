@@ -1,6 +1,7 @@
 import logging
 import re
 import torch
+import os
 
 from dataclasses import dataclass, field
 from typing import List
@@ -123,9 +124,8 @@ class FiLM:
 
 class LoRA:
     @staticmethod
-    def get_peft_model(model: torch.nn.Module, model_name: str, checkpoint_dir: str = None, is_trainable: bool = False):
-
-        if checkpoint_dir is not None:
+    def get_peft_model(model: torch.nn.Module, model_name: str, checkpoint_dir: str = None, is_trainable: bool = False):    
+        if checkpoint_dir is not None and os.path.exists(checkpoint_dir):
             lora_model =  PeftModel.from_pretrained(
                 model,
                 checkpoint_dir,

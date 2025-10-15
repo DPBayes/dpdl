@@ -43,8 +43,6 @@ class CheckpointCallback(Callback):
         self.checkpoints_dir = os.path.join(self.log_dir, 'checkpoints')
         self.global_step = get_latest_checkpoint(self.checkpoints_dir)
 
-        print('init self global step',self.global_step)
-
         os.makedirs(self.checkpoints_dir, exist_ok=True)
 
         # Initialize mean metric for accumulating train loss over interval
@@ -57,8 +55,6 @@ class CheckpointCallback(Callback):
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, **kwargs):
 
-        print('on_train_batch_end triggered, self.global_step:',self.global_step)
-
         if not self._is_global_zero():
             return
 
@@ -70,8 +66,6 @@ class CheckpointCallback(Callback):
             checkpoint_path = os.path.join(
                 self.checkpoints_dir, f'checkpoint_step_{self.global_step}.pt'
             )
-
-            print('about to save the model',checkpoint_path)
 
             self.save_checkpoint(trainer, checkpoint_path)
 
