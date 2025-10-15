@@ -91,6 +91,9 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
     if quantization_config is not None:
         load_kwargs["quantization_config"] = quantization_config
 
+    #Does the checkpoint exists?
+    checkpoint_exist = os.path.exists(checkpoint_dir)
+
     # For encoder/sequence classification models (roberta/bert), they are under AutoModelForSequenceClassification.
     is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
     if is_seq_classification:
@@ -102,7 +105,7 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             device_map = 'cuda:0',
             **load_kwargs
         )
-    elif checkpoint_dir is not None and not peft:
+    elif checkpoint_exist and not peft:
         model = AutoModelForCausalLM.from_pretrained(
             checkpoint_dir,
             **load_kwargs
@@ -232,5 +235,8 @@ class HF_llm (torch.nn.Module):
         return self.tokenizer
     
     def save_model(self, path):
+        print('saving the model',path)
+        if str(path).endswith('.pt'):
+            path = str(path)[:-3]
         #This saves the model, whether it has peft or not. If it has peft, it will save only the trainable parameters 
         self.model.save_pretrained(path)
