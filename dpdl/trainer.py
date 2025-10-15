@@ -752,8 +752,8 @@ class TrainerFactory:
         if config_manager.configuration.privacy:
             return TrainerFactory._get_differentially_private_trainer(config_manager.configuration, config_manager.hyperparams)
         
-        if config_manager.configuration.checkpoint:
-            config_manager.configuration.checkpoints_dir = os.path.join(config_manager.configuration.log_dir, 'checkpoints')
+        if config_manager.configuration.checkpoint_step_interval is not None:
+            config_manager.configuration.checkpoints_dir = os.path.join(config_manager.configuration.log_dir,config_manager.configuration.experiment_name, 'checkpoints')
 
         return TrainerFactory._get_basic_trainer(config_manager.configuration, config_manager.hyperparams)
 
@@ -842,6 +842,9 @@ class TrainerFactory:
         loss_fn = LossFactory.get_loss(configuration)
         metrics = MetricsFactory.get_metrics(configuration, num_classes)
         model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
+        if not opacus.validators.ModuleValidator.is_valid(model):
+            print('a module is not valid')
+            model = opacus.validators.ModuleValidator.fix(model)
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         # The datamodule needs to be aware of the transformations, now we can initialize it
