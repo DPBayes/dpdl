@@ -91,9 +91,6 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
     if quantization_config is not None:
         load_kwargs["quantization_config"] = quantization_config
 
-    #Does the checkpoint exists?
-    checkpoint_dir_latest = get_latest_checkpoint(checkpoint_dir)
-    print('found checkpoint',checkpoint_dir_latest)
 
     # For encoder/sequence classification models (roberta/bert), they are under AutoModelForSequenceClassification.
     is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
@@ -102,13 +99,13 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             load_kwargs["num_labels"] = num_labels
         print('Loading sequence classification model')
         model = AutoModelForSequenceClassification.from_pretrained(
-            checkpoint_or_not(model_name,checkpoint_dir_latest,peft),
+            checkpoint_or_not(model_name,checkpoint_dir,peft),
             device_map = 'cuda:0',
             **load_kwargs
         )
     else: 
         model = AutoModelForCausalLM.from_pretrained(
-            checkpoint_or_not(model_name,checkpoint_dir_latest,peft),
+            checkpoint_or_not(model_name,checkpoint_dir,peft),
             **load_kwargs
         )
     
@@ -123,22 +120,7 @@ def checkpoint_or_not(model_name, checkpoint_dir_latest, peft):
         return checkpoint_dir_latest
     return model_name
     
-def get_latest_checkpoint(checkpoint_dir):
-    """Find the latest checkpoint by modification time"""
-    if not os.path.exists(checkpoint_dir):
-        return None
-    
-    checkpoints = [d for d in os.listdir(checkpoint_dir) 
-                   if d.startswith("checkpoint_step_") 
-                   and os.path.isdir(os.path.join(checkpoint_dir, d))]
-    
-    if not checkpoints:
-        return None
-    
-    # Sort by modification time
-    latest = max(checkpoints, 
-                key=lambda x: os.path.getmtime(os.path.join(checkpoint_dir, x)))
-    return os.path.join(checkpoint_dir, latest)
+
 
 
 class HF_llm (torch.nn.Module):
@@ -168,7 +150,8 @@ class HF_llm (torch.nn.Module):
             peft=peft,
             checkpoint_dir=checkpoint_dir
         )
-        
+
+
         self.is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
 
     @property
