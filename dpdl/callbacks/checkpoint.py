@@ -38,7 +38,7 @@ class CheckpointCallback(Callback):
         self.log_dir = log_dir
         self.checkpoint_step_interval = checkpoint_step_interval
         self.checkpoints_dir = os.path.join(self.log_dir, 'checkpoints')
-        self.global_step = get_latest_checkpoint(self.checkpoint_dir)
+        self.global_step = get_latest_checkpoint(self.checkpoints_dir)
 
         os.makedirs(self.checkpoints_dir, exist_ok=True)
 
