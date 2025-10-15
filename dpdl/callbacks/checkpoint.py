@@ -12,6 +12,9 @@ log = logging.getLogger(__name__)
 
 def get_latest_checkpoint(checkpoint_dir):
     """Find the latest checkpoint by modification time"""
+
+    print(checkpoint_dir)
+
     if not os.path.exists(checkpoint_dir):
         return 0
     
@@ -39,6 +42,8 @@ class CheckpointCallback(Callback):
         self.checkpoint_step_interval = checkpoint_step_interval
         self.checkpoints_dir = os.path.join(self.log_dir, 'checkpoints')
         self.global_step = get_latest_checkpoint(self.checkpoints_dir)
+
+        print(self.global_step)
 
         os.makedirs(self.checkpoints_dir, exist_ok=True)
 
