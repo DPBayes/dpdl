@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 def get_latest_checkpoint(checkpoint_dir):
     """Find the latest checkpoint by modification time"""
 
-    print(checkpoint_dir)
+    print('checkpoint_dir',checkpoint_dir)
 
     if not os.path.exists(checkpoint_dir):
         return 0
@@ -43,7 +43,7 @@ class CheckpointCallback(Callback):
         self.checkpoints_dir = os.path.join(self.log_dir, 'checkpoints')
         self.global_step = get_latest_checkpoint(self.checkpoints_dir)
 
-        print(self.global_step)
+        print('init self global step',self.global_step)
 
         os.makedirs(self.checkpoints_dir, exist_ok=True)
 
@@ -53,6 +53,9 @@ class CheckpointCallback(Callback):
 
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, **kwargs):
+
+        print('on_train_batch_end triggered, self.global_step:',self.global_step)
+
         if not self._is_global_zero():
             return
 
@@ -64,6 +67,9 @@ class CheckpointCallback(Callback):
             checkpoint_path = os.path.join(
                 self.checkpoints_dir, f'checkpoint_step_{self.global_step}.pt'
             )
+
+            print('about to save the model',checkpoint_path)
+
             self.save_checkpoint(trainer, checkpoint_path)
 
             trainer.validate(enable_callbacks=False)
