@@ -2,6 +2,7 @@ import logging
 import re
 import timm
 import torch
+import os
 
 from .model_base import ModelBase
 from .wide_resnet import WideResNet
@@ -20,6 +21,26 @@ def add_noise_to_weights(model, noise_level):
         if 'weight' in name:
             noise = torch.randn(param.size()) * noise_level
             param.data.add_(noise)
+
+def get_latest_checkpoint(checkpoint_dir):
+    """Find the latest checkpoint by modification time"""
+    if checkpoint_dir is None:
+        return None
+
+    if not os.path.exists(checkpoint_dir):
+        return None
+    
+    checkpoints = [d for d in os.listdir(checkpoint_dir) 
+                   if d.startswith("checkpoint_step_") 
+                   and os.path.isdir(os.path.join(checkpoint_dir, d))]
+    
+    if not checkpoints:
+        return None
+    
+    # Sort by modification time
+    latest = max(checkpoints, 
+                key=lambda x: os.path.getmtime(os.path.join(checkpoint_dir, x)))
+    return os.path.join(checkpoint_dir, latest)
 
 class ModelFactory:
 
@@ -56,14 +77,18 @@ class ModelFactory:
         # Flag to skip image model creation if we load HF
         loaded_hf = False
 
+        # Flag to see if we load a local model already fine tuned
+        checkpoints_dir_latest = False
+
         # check if we want to experiment on LLMs
         if configuration.llm:
+            checkpoints_dir_latest = get_latest_checkpoint(configuration.checkpoints_dir)
             model_instance = HF_llm(
                         configuration.model_name,
                         configuration.load_in_4bit,
                         num_labels=num_classes,
                         peft = configuration.peft, 
-                        checkpoint_dir = configuration.checkpoints_dir
+                        checkpoint_dir = checkpoints_dir_latest
                     )
 
             transforms = model_instance.get_transforms()
@@ -109,7 +134,7 @@ class ModelFactory:
 
         # should we do Parameter Efficient Fine-Tuning (PEFT)?
         if configuration.peft:
-            model = PeftFactory.get_peft_model(model, configuration)
+            model = PeftFactory.get_peft_model(model, configuration,checkpoints_dir_latest)
 
         return model, transforms
 
