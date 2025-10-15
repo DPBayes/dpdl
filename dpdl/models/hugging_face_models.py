@@ -121,8 +121,7 @@ def checkpoint_or_not(model_name, checkpoint_dir_latest, peft):
     if checkpoint_dir_latest is not None and not peft:
         print('loading checkpoint')
         return checkpoint_dir_latest
-    else:
-        return model_name
+    return model_name
     
 def get_latest_checkpoint(checkpoint_dir):
     """Find the latest checkpoint by modification time"""
