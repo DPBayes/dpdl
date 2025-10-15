@@ -107,6 +107,7 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             **load_kwargs
         )
     elif checkpoint_dir_latest is not None and not peft:
+        print('Loading checkpoint')
         model = AutoModelForCausalLM.from_pretrained(
             checkpoint_dir,
             **load_kwargs
@@ -127,7 +128,8 @@ def get_latest_checkpoint(checkpoint_dir):
         return None
     
     checkpoints = [d for d in os.listdir(checkpoint_dir) 
-                   if d.startswith("checkpoint_step_")]
+                   if d.startswith("checkpoint_step_") 
+                   and os.path.isdir(os.path.join(checkpoint_dir, d))]
     
     if not checkpoints:
         return None
