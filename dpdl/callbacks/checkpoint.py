@@ -50,6 +50,9 @@ class CheckpointCallback(Callback):
         # Initialize mean metric for accumulating train loss over interval
         self.interval_loss = torchmetrics.aggregation.MeanMetric(sync_on_compute=False).cuda()
 
+    def on_train_start(self, trainer):
+        # Don't reset global_step - we want to keep the loaded checkpoint step
+        print(f'on_train_start: self.global_step = {self.global_step}')
 
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, **kwargs):
