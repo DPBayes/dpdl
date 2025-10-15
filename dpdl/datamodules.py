@@ -1017,13 +1017,13 @@ class NLPDataModule(DataModule):
         max_len = self.max_length
 
         def collate(batch):
-            texts = []
-            for sample in batch:
-                # Concatenate multiple text fields if present
-                parts = [str(sample[i]) for i in text_fields]
-                texts.append(' '.join(parts))
+            # texts = []
+            # for sample in batch:
+            #     # Concatenate multiple text fields if present
+            #     parts = [str(sample[i]) for i in text_fields]
+            #     texts.append(' '.join(parts))
             tokenized = tokenizer(
-                texts,
+                batch[text_fields],
                 padding=True,
                 truncation=True,
                 max_length=max_len,
