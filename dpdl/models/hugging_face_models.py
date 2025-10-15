@@ -102,26 +102,34 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             load_kwargs["num_labels"] = num_labels
         print('Loading sequence classification model')
         model = AutoModelForSequenceClassification.from_pretrained(
-            model_name,
+            checkpoint_or_not(model_name,checkpoint_dir_latest,peft),
             device_map = 'cuda:0',
-            **load_kwargs
-        )
-    elif checkpoint_dir_latest is not None and not peft:
-        print('Loading checkpoint')
-        model = AutoModelForCausalLM.from_pretrained(
-            checkpoint_dir,
             **load_kwargs
         )
     else: 
         model = AutoModelForCausalLM.from_pretrained(
-            model_name,
+            checkpoint_or_not(model_name,checkpoint_dir_latest,peft),
             **load_kwargs
         )
+
+    # elif checkpoint_dir_latest is not None and not peft:
+    #     print('Loading checkpoint')
+    #     model = AutoModelForCausalLM.from_pretrained(
+    #         checkpoint_dir,
+    #         **load_kwargs
+    #     )
     
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
     return model, tokenizer, quantization_config
 
+def checkpoint_or_not(model_name, checkpoint_dir_latest, peft):
+    
+    if checkpoint_dir_latest is not None and not peft:
+        return checkpoint_dir_latest
+    else:
+        return model_name
+    
 def get_latest_checkpoint(checkpoint_dir):
     """Find the latest checkpoint by modification time"""
     if not os.path.exists(checkpoint_dir):
