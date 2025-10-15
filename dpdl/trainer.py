@@ -37,7 +37,8 @@ class Trainer:
         seed: int = 0,
         physical_batch_size: int = 40,
         callback_handler: CallbackHandler = None,
-        llm: bool = None
+        llm: bool = None,
+        peft: str = None
     ):
 
         self.model = model
@@ -49,6 +50,7 @@ class Trainer:
         self.seed = seed
         self.physical_batch_size = physical_batch_size
         self.llm = llm
+        self.peft = peft
 
         if not callback_handler:
             self.callback_handler = CallbackHandler()
@@ -380,7 +382,20 @@ class Trainer:
         return math.ceil(N / B)
 
     def save_model(self, fpath):
-        self._unwrap_model().save_model(fpath)
+
+        if self.peft is not None and self.peft == 'lora':
+            # Extract the directory from the path
+            directory = os.path.dirname(fpath)
+
+            # Create the directory if it doesn't exist
+            if not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+
+            self._unwrap_model().save_pretrained(fpath)
+
+        else:
+            self._unwrap_model().save_model(fpath)
+
 
 class DifferentiallyPrivateTrainer(Trainer):
     def __init__(
@@ -801,7 +816,8 @@ class TrainerFactory:
             total_steps=total_steps,
             seed=configuration.seed,
             validation_frequency=configuration.validation_frequency,
-            llm=configuration.llm
+            llm=configuration.llm,
+            peft=configuration.peft
         )
 
         return trainer
@@ -890,6 +906,8 @@ class TrainerFactory:
             seed=configuration.seed,
             callback_handler=callback_handler,
             validation_frequency=configuration.validation_frequency,
+            llm=configuration.llm,
+            peft=configuration.peft,
         )
 
         return trainer
