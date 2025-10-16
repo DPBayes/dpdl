@@ -1038,7 +1038,6 @@ class NLPDataModule(DataModule):
 
         return collate
 
-
     def _add_rgb_transform(self):  
         return
     def _replace_to_tensor_with_to_float(self):  
