@@ -103,6 +103,19 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             device_map = 'cuda:0',
             **load_kwargs
         )
+
+        trainable_layers = [model.bert.encoder.layer[-1], model.bert.pooler, model.classifier]
+        total_params = 0
+        trainable_params = 0
+
+        for p in model.parameters():
+                p.requires_grad = False
+                total_params += p.numel()
+
+        for layer in trainable_layers:
+            for p in layer.parameters():
+                p.requires_grad = True
+                trainable_params += p.numel()
     else: 
         model = AutoModelForCausalLM.from_pretrained(
             checkpoint_or_not(model_name,checkpoint_dir,peft),
