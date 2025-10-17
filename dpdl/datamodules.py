@@ -1022,8 +1022,6 @@ class NLPDataModule(DataModule):
                 # Concatenate multiple text fields if present
                 parts = [str(sample[i]) for i in text_fields]
                 texts.append(' '.join(parts))
-            print("texts:", texts)
-            print("shape of batch:", len(batch))
 
             tokenized = tokenizer(
                 texts,
