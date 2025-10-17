@@ -376,7 +376,7 @@ class DataModule:
                     log.info(f' - Determined label field: {self._label_field}')
             else:
                 features = dataset.features.keys()
-                raise ValueError('Could not determine label field for dataset. Available features: {features}')
+                raise ValueError(f'Could not determine label field for dataset. Available features: {features}')
 
     def _apply_transforms_to_datasets(self):
         return # no default transforms
@@ -854,6 +854,7 @@ class DataModuleFactory:
             # Use NLPDataModule for LLM tasks
             return NLPDataModule(
                 max_length=hyperparams.max_length,
+                task=configuration.task,
                 dataset_name=configuration.dataset_name,
                 num_workers=configuration.num_workers,
                 physical_batch_size=configuration.physical_batch_size,
@@ -905,16 +906,39 @@ class NLPDataModule(DataModule):
                                                                         "attention_mask": torch.Tensor(batch_size, seq_len)}
     """
 
-    def __init__(self, text_fields=None, max_length: int = 64, **kwargs):
+    def __init__(self, text_fields=None, max_length: int = 64, task: str = None, **kwargs):
         self._text_fields = text_fields  # list of text fields or None
         self.max_length = max_length
+        self.task = task
         super().__init__(**kwargs)
 
     def _set_dataset_label_fields(self, dataset_splits):  
         if torch.distributed.get_rank() == 0:
             log.info('Setting dataset label field (LLM mode).')
-        self._set_label_field(dataset_splits['train']) # find the label column
+
+        if self.task != 'CasualLM':
+            self._set_label_field(dataset_splits['train']) # find the label column
         self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
+        
+        
+
+    # def _set_label_field(self, dataset):
+
+    #     if self._label_field is None and self.task == 'CausalLM':
+    #         self._label_field = self._text_fields
+        
+    #     elif self._label_field is None and self.task != 'CausalLM':
+    #         for feature_name, feature in dataset.features.items():
+    #             if isinstance(feature, datasets.ClassLabel) or feature_name == 'label':
+    #                 self._label_field = feature_name
+    #                 break
+
+    #         if self._label_field:
+    #             if torch.distributed.get_rank() == 0:
+    #                 log.info(f' - Determined label field: {self._label_field}')
+    #         else:
+    #             features = dataset.features.keys()
+    #             raise ValueError(f'Could not determine label field for dataset. Available features: {features}')
 
     def _detect_text_fields(self, dataset):
         if self._text_fields is not None:
@@ -1015,6 +1039,7 @@ class NLPDataModule(DataModule):
         text_fields = self._text_fields
         label_field = self._label_field
         max_len = self.max_length
+        task = self.task
 
         def collate(batch):
             texts = []
@@ -1031,7 +1056,11 @@ class NLPDataModule(DataModule):
                 return_tensors='pt'
             ) 
 
-            labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
+            if task == 'CausalLM':
+                labels = tokenized['input_ids'].clone()
+                labels[labels == tokenizer.pad_token_id] = -100
+            elif task == 'SequenceClassification':
+                labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
             return tokenized, labels
 
         return collate
