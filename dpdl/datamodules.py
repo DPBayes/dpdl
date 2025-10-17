@@ -913,9 +913,10 @@ class NLPDataModule(DataModule):
         super().__init__(**kwargs)
 
     def _set_dataset_label_fields(self, dataset_splits):  
+        print('an I using this method?')
         if torch.distributed.get_rank() == 0:
             log.info('Setting dataset label field (LLM mode).')
-
+        print('self.task',self.task)
         if self.task != 'CasualLM':
             self._set_label_field(dataset_splits['train']) # find the label column
         self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
