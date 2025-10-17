@@ -176,7 +176,6 @@ class HF_llm (torch.nn.Module):
         Return logits given tokenized batch or tensor input.
         """
         if isinstance(x, Mapping):
-            print("x is a mapping")
             out = self.model(**x)
         else:
             out = self.model(x)
