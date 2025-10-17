@@ -36,6 +36,11 @@ class ModelBase(torch.nn.Module):
     @property
     def config(self):
         return self.model.config
+    
+    def set_metrics(self, metrics):
+        self.train_metrics = metrics['train_metrics']
+        self.valid_metrics = metrics['valid_metrics']
+        self.test_metrics = metrics['test_metrics']
         
     def forward(self, *args, **kwargs):
 
