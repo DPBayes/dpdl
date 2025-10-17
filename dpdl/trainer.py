@@ -17,7 +17,7 @@ from .datamodules import DataModule, DataModuleFactory
 from .optimizers import OptimizerFactory
 from .loss_factory import LossFactory
 from .metrics_factory import MetricsFactory
-from .utils import seed_everything
+from .utils import seed_everything, shift_and_flatten
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +38,8 @@ class Trainer:
         physical_batch_size: int = 40,
         callback_handler: CallbackHandler = None,
         llm: bool = None,
-        peft: str = None
+        peft: str = None,
+        task: str = None
     ):
 
         self.model = model
@@ -51,6 +52,7 @@ class Trainer:
         self.physical_batch_size = physical_batch_size
         self.llm = llm
         self.peft = peft
+        self.task = task
 
         if not callback_handler:
             self.callback_handler = CallbackHandler()
@@ -221,16 +223,25 @@ class Trainer:
 
             logits = self.model(X_splitted)
             print("logits: ", logits)
+
+            if self.task == 'CausalLM':
+                # Shift and flatten for causal LM
+                logits, y_splitted = shift_and_flatten(logits, y_splitted)
+                preds = logits
+            else:
+                preds = torch.argmax(logits, dim=1)
+
             loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
             print('one batch loss',loss)
-
             loss.backward()
             logical_batch_loss += loss.item()
             print('logical batch loss',logical_batch_loss)
             
             # update the metrics if there are any
-            preds = torch.argmax(logits, dim=1)
-            self._unwrap_model().train_metrics.update(preds, y_split[i])
+
+            #preds = torch.argmax(logits, dim=1)
+
+            self._unwrap_model().train_metrics.update(preds, y_splitted)
             #self.unwrap_llm_model().train_metrics.update(preds, y_split[i])
 
             # notify the callbacks of a physical batch end
@@ -796,7 +807,8 @@ class TrainerFactory:
             seed=configuration.seed,
             validation_frequency=configuration.validation_frequency,
             llm=configuration.llm,
-            peft=configuration.peft
+            peft=configuration.peft,
+            task=configuration.task
         )
 
         return trainer
@@ -887,6 +899,7 @@ class TrainerFactory:
             validation_frequency=configuration.validation_frequency,
             llm=configuration.llm,
             peft=configuration.peft,
+            task=configuration.task
         )
 
         return trainer
