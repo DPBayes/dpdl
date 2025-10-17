@@ -912,6 +912,28 @@ class NLPDataModule(DataModule):
         self.task = task
         super().__init__(**kwargs)
 
+    def _load_datasets(self):
+        """Load the datasets to memory."""
+        if torch.distributed.get_rank() == 0:
+            log.info(f'Loading dataset "{self.dataset_name}" from Huggingface datasets.')
+
+        dataset_splits = datasets.load_dataset(self.dataset_name)
+
+        if self.task != 'CausalLM':
+
+            # Set dataset label fields based on the training split
+            self._set_dataset_label_fields(dataset_splits)
+
+            # Make sure the dataset label field is of type ClassLabel
+            self._dataset_splits = self._enforce_label_field_type(dataset_splits)
+
+            # Automatically determine the number of classes
+            # NB: This can be done if the label is of type ClassLabel
+            self.num_classes = dataset_splits['train'].features[self._label_field].num_classes
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Determined the number of classes to be {self.num_classes}.')
+    
     def _set_dataset_label_fields(self, dataset_splits):  
         
         if torch.distributed.get_rank() == 0:
@@ -919,24 +941,6 @@ class NLPDataModule(DataModule):
         if self.task != 'CausalLM':
             self._set_label_field(dataset_splits['train']) # find the label column
         self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
-        
-    def _enforce_label_field_type(self, dataset_splits):
-
-        #There is no label field
-        if self.task == 'CausalLM':
-            return dataset_splits
-
-        # Iterate through all dataset splits, and make the label field ClassLabel
-        for key in dataset_splits.keys():
-            dataset = dataset_splits[key]
-
-            # If it already is a ClassLabel, HF dataset will throw an error, so check first
-            if not isinstance(dataset.features[self._label_field], datasets.ClassLabel):
-                dataset = dataset.class_encode_column(self._label_field)
-
-            dataset_splits[key] = dataset
-
-        return dataset_splits
 
     # def _set_label_field(self, dataset):
 
