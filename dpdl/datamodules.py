@@ -1083,6 +1083,7 @@ class NLPDataModule(DataModule):
 
             if task == 'CausalLM':
                 labels = tokenized['input_ids'].clone()
+                tokenized['labels'] = labels
                 labels[labels == tokenizer.pad_token_id] = -100
             elif task == 'SequenceClassification':
                 labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)

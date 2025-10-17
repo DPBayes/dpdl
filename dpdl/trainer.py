@@ -220,23 +220,9 @@ class Trainer:
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
             logits = self.model(X_splitted)
-            loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
-            #base = self.unwrap_llm_model(self.model, "base")       # ModelBase
-            #loss = base.criterion(logits, y_splitted) / N
             print("logits: ", logits)
+            loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
             print('one batch loss',loss)
-
-            # print("[DEBUG] check model parameters and grads")
-            # for name, param in self.model.named_parameters():
-            #     if param.requires_grad:
-            #         print(f"param name: {name}")
-            #         print(f"Shape: {param.shape}")
-            #         print(f"Grad Norm: {param.grad.norm() if param.grad is not None else None}")
-            #         print()
-            
-            # for name, param in self.model.named_parameters():
-            #     if param.grad is None:
-            #         print(name, "has no grad!")
 
             loss.backward()
             logical_batch_loss += loss.item()
@@ -658,19 +644,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         else:
             X = X.to(device=self.device, non_blocking=True)
         y = y.to(device=self.device, non_blocking=True)
-
-        # check if the inputs are in the same length in one batch
-        # print("[DEBUG] check the inputs in one batch")
-        # for k, v in X.items():
-        #     print(f"length of {k}:", len(v))
-        #     print(f"shape of {k}:", v[0].shape)
-        # print("length of y:", len(y))
-
-        # # check shapes and dtypes for every key in the batch
-        # print("[DEBUG] check shapes and dtypes for every key in the batch")
-        # for k, v in X.items():
-        #     print(f"key: {k}, dtype: {v.dtype}, shape: {v.shape}")
-        
         
         logits = self.model(X)
 
