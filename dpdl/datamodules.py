@@ -985,9 +985,9 @@ class NLPDataModule(DataModule):
         #        log.warning(f"Multiple text fields detected, using all: {candidates}")
         #else:
         #    self._text_fields = []
-        
+        print('candidates',candidates)
         self._text_fields = candidates[:1] if candidates else []  # use only the first text field if multiple found
-
+        print('self._text_fields',self._text_fields)
         if torch.distributed.get_rank() == 0:
             log.info(f"Detected text fields: {self._text_fields}")
         if not self._text_fields:
