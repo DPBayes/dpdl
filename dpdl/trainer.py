@@ -758,6 +758,7 @@ class TrainerFactory:
             model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, None)        
             num_classes = model.config.vocab_size
             metrics = MetricsFactory.get_metrics(configuration, num_classes)
+            model.set_metrics(metrics)
         else:
             metrics = MetricsFactory.get_metrics(configuration, num_classes)
             model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)        
