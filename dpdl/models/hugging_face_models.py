@@ -111,7 +111,7 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             base_model = getattr(model, model_type)
             for param in base_model.embeddings.parameters():
                 param.requires_grad = False
-                
+
     else: 
         model = AutoModelForCausalLM.from_pretrained(
             checkpoint_or_not(model_name,checkpoint_dir,peft),
@@ -119,6 +119,10 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
         )
     
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+    if not is_seq_classification:
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+            model.config.pad_token_id = model.config.eos_token_id
 
     return model, tokenizer, quantization_config
 
