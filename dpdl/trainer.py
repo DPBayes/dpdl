@@ -781,8 +781,14 @@ class TrainerFactory:
         num_classes = datamodule.get_num_classes()
         # setup data, model, and optimizer
         loss_fn = LossFactory.get_loss(configuration)
-        metrics = MetricsFactory.get_metrics(configuration, num_classes)
-        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)        
+        if num_classes is None:
+            model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)        
+            num_classes = model.config.vocab_size
+            metrics = MetricsFactory.get_metrics(configuration, num_classes)
+        else:
+            metrics = MetricsFactory.get_metrics(configuration, num_classes)
+            model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)        
+
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         # Initialize the datamodule with the transformations

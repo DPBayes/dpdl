@@ -150,7 +150,7 @@ class MetricsFactory:
             metrics['train_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.vocab_size,
+                        num_classes=num_classes, #Num classes will be already vocab_size
                         average="macro",
                     ).cuda(),
                     "Perplexity": torchmetrics.text.Perplexity().cuda()
@@ -166,7 +166,7 @@ class MetricsFactory:
             metrics['valid_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.vocab_size,
+                        num_classes=num_classes,
                         average="macro",
                         sync_on_compute=False,
                     ).cuda(),
@@ -177,7 +177,7 @@ class MetricsFactory:
             metrics['test_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=configuration.vocab_size,
+                        num_classes=num_classes,
                         average="macro",
                         sync_on_compute=False,
                     ).cuda(),
