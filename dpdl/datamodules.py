@@ -920,7 +920,23 @@ class NLPDataModule(DataModule):
             self._set_label_field(dataset_splits['train']) # find the label column
         self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
         
-        
+    def _enforce_label_field_type(self, dataset_splits):
+
+        #There is no label field
+        if self.task == 'CausalLM':
+            return dataset_splits
+
+        # Iterate through all dataset splits, and make the label field ClassLabel
+        for key in dataset_splits.keys():
+            dataset = dataset_splits[key]
+
+            # If it already is a ClassLabel, HF dataset will throw an error, so check first
+            if not isinstance(dataset.features[self._label_field], datasets.ClassLabel):
+                dataset = dataset.class_encode_column(self._label_field)
+
+            dataset_splits[key] = dataset
+
+        return dataset_splits
 
     # def _set_label_field(self, dataset):
 
