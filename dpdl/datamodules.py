@@ -934,6 +934,9 @@ class NLPDataModule(DataModule):
             if torch.distributed.get_rank() == 0:
                 log.info(f'Determined the number of classes to be {self.num_classes}.')
     
+        else:
+            self._dataset_splits = dataset_splits
+
     def _set_dataset_label_fields(self, dataset_splits):  
         
         if torch.distributed.get_rank() == 0:
