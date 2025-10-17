@@ -924,6 +924,8 @@ class NLPDataModule(DataModule):
             # Set dataset label fields based on the training split
             self._set_dataset_label_fields(dataset_splits)
 
+            self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
+
             # Make sure the dataset label field is of type ClassLabel
             self._dataset_splits = self._enforce_label_field_type(dataset_splits)
 
@@ -935,15 +937,15 @@ class NLPDataModule(DataModule):
                 log.info(f'Determined the number of classes to be {self.num_classes}.')
     
         else:
+            self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
             self._dataset_splits = dataset_splits
 
     def _set_dataset_label_fields(self, dataset_splits):  
         
         if torch.distributed.get_rank() == 0:
             log.info('Setting dataset label field (LLM mode).')
-        if self.task != 'CausalLM':
-            self._set_label_field(dataset_splits['train']) # find the label column
-        self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
+        self._set_label_field(dataset_splits['train']) # find the label column
+        
 
     # def _set_label_field(self, dataset):
 
