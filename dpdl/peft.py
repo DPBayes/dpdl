@@ -188,7 +188,7 @@ class LoRA:
                 lora_dropout=0.1,
                 inference_mode=False,
                 bias="none",
-                task_type="CAUSAL_LM"
+                task_type='CAUSAL_LM'
             )
         
 
