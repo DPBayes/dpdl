@@ -151,9 +151,18 @@ class MetricsFactory:
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
                         num_classes=num_classes, #Num classes will be already vocab_size
-                        average="macro",
+                        average="micro",
+                        ignore_index=-100
                     ).cuda(),
-                    "Perplexity": torchmetrics.text.Perplexity().cuda()
+                    "Top5Accuracy": torchmetrics.classification.MulticlassAccuracy(
+                        num_classes=num_classes,
+                        top_k=5,
+                        average="micro",
+                        ignore_index=-100
+                    ).cuda(),
+                    "Perplexity": torchmetrics.text.Perplexity(
+                        ignore_index=-100
+                    ).cuda()
                 }
             )
 
