@@ -223,11 +223,13 @@ class Trainer:
 
             logits = self.model(X_splitted)
             print("logits: ", logits)
+            print('logits shape',logits.shape)
 
             if self.task == 'CausalLM':
                 # Shift and flatten for causal LM
                 logits, y_splitted = shift_and_flatten(logits, y_splitted)
                 preds = logits
+                print('preds shape',preds.shape)
             else:
                 preds = torch.argmax(logits, dim=1)
 
