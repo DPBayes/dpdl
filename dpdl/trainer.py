@@ -199,13 +199,6 @@ class Trainer:
         
         N = len(y_split)
 
-        # check the splits
-        # print("[DEBUG] check the splits")
-        # for k, v in X_split.items():
-        #     print(f"length of {k}:", len(v))
-        #     print(f"shape of {k}:", v[0].shape)
-        # print("length of y_split:", len(y_split))
-
         # zero the grads as usually before doing anything
         self.optimizer.zero_grad()
 
@@ -747,6 +740,39 @@ class DifferentiallyPrivateTrainer(Trainer):
         self._unwrap_model().train_metrics.update(preds, y)
 
         return loss
+    
+    def fit_one_batch_causal(self, batch_idx, batch):
+        self.optimizer.zero_grad()
+
+        X, y = batch
+        
+        is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
+        if is_mapping:
+            for k, v in X.items():
+                if isinstance(v, torch.Tensor):
+                    X[k] = v.to(device=self.device, non_blocking=True)
+        else:
+            X = X.to(device=self.device, non_blocking=True)
+        y = y.to(device=self.device, non_blocking=True)
+
+        logits = self.model(X)
+
+        preds, y_flatten = shift_and_flatten(logits, y)
+        preds_flat = torch.argmax(preds, dim=-1)
+
+        #Loss needs the logits flatten
+        loss = self._unwrap_model().criterion(preds, y_flatten)
+        loss.backward()
+
+        self.optimizer.step()
+
+        loss = loss.item()
+
+        self._unwrap_model().train_metrics['Perplexity'].update(logits, y)
+
+        self._unwrap_model().train_metrics['MulticlassAccuracy'].update(preds_flat, y_flatten)
+
+        return loss
 
     def fit_one_epoch(self, epoch):
         self.model.train()
@@ -779,7 +805,12 @@ class DifferentiallyPrivateTrainer(Trainer):
 
                 print('for batch idx',phys_idx, 'we have batch:\n',batch)
 
-                loss = self.fit_one_batch(phys_idx, batch)
+                if self.task == 'CausalLM':
+                    loss = self.fit_one_batch_causal(phys_idx, batch)
+                else:
+                    loss = self.fit_one_batch(phys_idx, batch)
+
+                #loss = self.fit_one_batch(phys_idx, batch)
 
                 self.callback_handler.call(
                     'on_train_physical_batch_end', self, phys_idx, batch, loss

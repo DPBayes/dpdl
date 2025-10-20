@@ -141,7 +141,6 @@ class HF_llm (torch.nn.Module):
         self,
         model_name: str,
         quantization: dict,
-        vocab_size: int = -1,
         ignore_index: int = -100,
         trust_remote_code: bool = False,
         peft: bool = False,
@@ -151,8 +150,6 @@ class HF_llm (torch.nn.Module):
 
         super().__init__()
 
-        
-        self.vocab_size = vocab_size
         self.ignore_index = ignore_index
         self.peft = peft
         self.model, self.tokenizer, self.quantization_config = download_generic_huggingface_model(
@@ -164,6 +161,7 @@ class HF_llm (torch.nn.Module):
             checkpoint_dir=checkpoint_dir
         )
 
+        self.vocab_size = self.model.config.vocab_size
 
         self.is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
 
