@@ -423,10 +423,8 @@ class Trainer:
             loss = self._unwrap_model().criterion(logits, y)
         loss = loss.item()
 
-        
-
         if self.task == 'CausalLM':
-            
+
             preds_flat = torch.argmax(preds, dim=1)
 
             metrics_evaluator['Perplexity'].update(logits, y)

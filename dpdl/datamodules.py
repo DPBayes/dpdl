@@ -918,7 +918,7 @@ class NLPDataModule(DataModule):
             log.info(f'Loading dataset "{self.dataset_name}" from Huggingface datasets.')
 
         if self.dataset_name == 'wikitext':
-            dataset_splits = datasets.load_dataset(self.dataset_name,'"wikitext-2-raw-v1"')
+            dataset_splits = datasets.load_dataset(self.dataset_name,'wikitext-2-raw-v1')
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
