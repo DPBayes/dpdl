@@ -37,6 +37,11 @@ class ModelBase(torch.nn.Module):
     def config(self):
         return self.model.config
     
+    @property
+    def prepare_inputs_for_generation(self):
+        """Expose the underlying model's method."""
+        return self.model.prepare_inputs_for_generation
+    
     def set_metrics(self, metrics):
         self.train_metrics = metrics['train_metrics']
         self.valid_metrics = metrics['valid_metrics']
