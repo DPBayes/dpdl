@@ -133,6 +133,7 @@ class LoRA:
             )
         else:
             lora_config = LoRA._get_config(model_name)
+            print(lora_config)
             lora_model = get_peft_model(model, lora_config)
 
         trainable_params, all_params = get_nb_trainable_parameters(lora_model)
@@ -181,10 +182,11 @@ class LoRA:
             return LoraConfig(
                 r=8,
                 lora_alpha=16,
-                target_modules=["c_attn"],  # For GPT-2, the attention layers are called "c_attn"
+                target_modules=["c_attn", "c_proj"],  # For GPT-2, the attention layers are called "c_attn"
                 #This is more for LLAMA models
                 #target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
                 lora_dropout=0.1,
+                inference_mode=False,
                 bias="none",
                 task_type="CAUSAL_LM"
             )
