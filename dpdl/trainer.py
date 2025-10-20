@@ -158,7 +158,10 @@ class Trainer:
             print('for batch idx',batch_idx, 'we have batch:\n',batch)
             
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
-            logical_batch_loss = self.fit_one_batch(batch_idx, batch)
+            if self.task == 'CausalLM':
+                logical_batch_loss = self.fit_one_batch_causal(batch_idx, batch)
+            else:
+                logical_batch_loss = self.fit_one_batch(batch_idx, batch)
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
             
             print('---------------------------------- end batch ------------------------')
@@ -168,6 +171,81 @@ class Trainer:
         self._unwrap_model().train_metrics.reset()
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
+
+
+    def fit_one_batch_causal(self, batch_idx, batch):
+        X, y = batch
+        X = X.to(device= self.device, non_blocking=True)
+        y = y.to(device= self.device, non_blocking=True)
+
+        is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
+        if is_mapping:
+            for k, v in X.items():
+                if isinstance(v, torch.Tensor):
+                    X[k] = v.to(device=self.device, non_blocking=True)
+        else:
+            X = X.to(device=self.device, non_blocking=True)
+        y = y.to(device=self.device, non_blocking=True)
+
+        # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
+        # then process the sub batches one at a time and call backward.
+        # when all the sub batches have been processed we can finally step the optimizer.
+        if is_mapping:
+            # split each tensor in the dict
+            X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
+            y_split = y.split(self.physical_batch_size, dim=0)
+        else:
+            X_split = X.split(self.physical_batch_size, dim=0)
+            y_split = y.split(self.physical_batch_size, dim=0)
+        
+        N = len(y_split)
+
+        # check the splits
+        print("[DEBUG] check the splits")
+        for k, v in X_split.items():
+            print(f"length of {k}:", len(v))
+            print(f"shape of {k}:", v[0].shape)
+        print("length of y_split:", len(y_split))
+
+        # zero the grads as usually before doing anything
+        self.optimizer.zero_grad()
+
+        logical_batch_loss = 0
+        # process the sub batches one at a time
+        print('Number of physical batches', N)
+
+        for i in range(N):
+            if is_mapping:
+                X_splitted = {k: X_split[k][i] for k in X_split}
+            else:
+                X_splitted = X_split[i]
+            
+            y_splitted = y_split[i]
+            physical_batch = (X_splitted, y_splitted)
+
+            self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
+
+            logits = self.model(X_splitted)
+
+            preds, y_splitted = shift_and_flatten(logits, y_splitted)
+
+            #Loss needs the logits flatten
+            loss = self._unwrap_model().criterion(preds, y_splitted) / N  # NB: normalize loss
+            print('one batch loss',loss)
+            loss.backward()
+            logical_batch_loss += loss.item()
+            print('logical batch loss',logical_batch_loss)
+
+            #Perplexity needs the normal logits [batch_size, seq_len, vocab_size]
+            self._unwrap_model().train_metrics.update(logits, y_splitted)
+
+            # notify the callbacks of a physical batch end
+            self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
+        
+        # after accumulating the gradients for all the sub batches we can finally update weights.
+        self.optimizer.step()
+
+        return logical_batch_loss
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
@@ -224,14 +302,7 @@ class Trainer:
             logits = self.model(X_splitted)
             print("logits: ", logits)
             print('logits shape',logits.shape)
-
-            if self.task == 'CausalLM':
-                # Shift and flatten for causal LM
-                logits, y_splitted = shift_and_flatten(logits, y_splitted)
-                preds = logits
-                print('preds shape',preds.shape)
-            else:
-                preds = torch.argmax(logits, dim=1)
+            preds = torch.argmax(logits, dim=1)
 
             loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
             print('one batch loss',loss)
