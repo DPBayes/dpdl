@@ -227,14 +227,15 @@ class Trainer:
 
             logits = self.model(X_splitted)
 
-            preds, y_splitted = shift_and_flatten(logits, y_splitted)
+            preds, y_splitted_flatten = shift_and_flatten(logits, y_splitted)
 
             print(logits.shape)
             print(preds.shape)
             print(y_splitted.shape)
+            print(y_splitted_flatten.shape)
 
             #Loss needs the logits flatten
-            loss = self._unwrap_model().criterion(preds, y_splitted) / N  # NB: normalize loss
+            loss = self._unwrap_model().criterion(preds, y_splitted_flatten) / N  # NB: normalize loss
             print('one batch loss',loss)
             loss.backward()
             logical_batch_loss += loss.item()
