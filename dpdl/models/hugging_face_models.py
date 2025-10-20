@@ -168,6 +168,11 @@ class HF_llm (torch.nn.Module):
     @property
     def config(self):
         return self.model.config
+    
+    @property
+    def prepare_inputs_for_generation(self):
+        """Expose the underlying model's method."""
+        return self.model.prepare_inputs_for_generation
 
     def forward(self, x):
         """
