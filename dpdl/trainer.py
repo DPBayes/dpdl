@@ -229,6 +229,10 @@ class Trainer:
 
             preds, y_splitted = shift_and_flatten(logits, y_splitted)
 
+            print(logits.shape)
+            print(preds.shape)
+            print(y_splitted.shape)
+
             #Loss needs the logits flatten
             loss = self._unwrap_model().criterion(preds, y_splitted) / N  # NB: normalize loss
             print('one batch loss',loss)
@@ -237,8 +241,11 @@ class Trainer:
             print('logical batch loss',logical_batch_loss)
 
             #Perplexity needs the normal logits [batch_size, seq_len, vocab_size]
-            self._unwrap_model().train_metrics.update(logits, y_splitted)
+            print(self._unwrap_model().train_metrics)
+            self._unwrap_model().train_metrics['Perplexity'].update(logits, y_splitted)
 
+            self._unwrap_model().train_metrics['MulticlassAccuracy'].update(preds, y_splitted)
+            
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
         
