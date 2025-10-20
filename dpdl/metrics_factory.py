@@ -170,7 +170,7 @@ class MetricsFactory:
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
                         num_classes=num_classes,
-                        average="macro",
+                        average="micro",
                         sync_on_compute=False,
                     ).cuda(),
                     "Perplexity": torchmetrics.text.Perplexity().cuda(),
@@ -181,7 +181,7 @@ class MetricsFactory:
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
                         num_classes=num_classes,
-                        average="macro",
+                        average="micro",
                         sync_on_compute=False,
                     ).cuda(),
                     "Perplexity": torchmetrics.text.Perplexity().cuda()

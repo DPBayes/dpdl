@@ -416,12 +416,26 @@ class Trainer:
         y = y.to(device=self.device, non_blocking=True)
 
         logits = self.model(X)
-        loss = self._unwrap_model().criterion(logits, y)
+        if self.task == 'CausalLM':
+            preds, y_flatten = shift_and_flatten(logits, y)
+            loss = self._unwrap_model().criterion(preds, y_flatten)
+        else:
+            loss = self._unwrap_model().criterion(logits, y)
         loss = loss.item()
 
-        preds = torch.argmax(logits, dim=1)
+        
 
-        metrics_evaluator.update(preds, y)
+        if self.task == 'CausalLM':
+            
+            preds_flat = torch.argmax(preds, dim=1)
+
+            metrics_evaluator['Perplexity'].update(logits, y)
+
+            metrics_evaluator['MulticlassAccuracy'].update(preds_flat, y_flatten)
+
+        else:
+            preds = torch.argmax(logits, dim=1)
+            metrics_evaluator.update(preds, y)
 
         if enable_callbacks:
             self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss)
