@@ -225,14 +225,17 @@ class Trainer:
 
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
+            print('X splitted:',X_splitted)
+            print('y splitted',y_splitted)
+
             logits = self.model(X_splitted)
 
             preds, y_splitted_flatten = shift_and_flatten(logits, y_splitted)
 
-            print(logits.shape)
-            print(preds.shape)
-            print(y_splitted.shape)
-            print(y_splitted_flatten.shape)
+            print('logits',logits.shape)
+            print('preds',preds.shape)
+            print('y_splitted',y_splitted.shape)
+            print('y_splitted_flatten',y_splitted_flatten.shape)
 
             #Loss needs the logits flatten
             loss = self._unwrap_model().criterion(preds, y_splitted_flatten) / N  # NB: normalize loss
