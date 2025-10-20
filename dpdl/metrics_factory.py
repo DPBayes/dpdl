@@ -154,12 +154,6 @@ class MetricsFactory:
                         average="micro",
                         ignore_index=-100
                     ).cuda(),
-                    "Top5Accuracy": torchmetrics.classification.MulticlassAccuracy(
-                        num_classes=num_classes,
-                        top_k=5,
-                        average="micro",
-                        ignore_index=-100
-                    ).cuda(),
                     "Perplexity": torchmetrics.text.Perplexity(
                         ignore_index=-100
                     ).cuda()
