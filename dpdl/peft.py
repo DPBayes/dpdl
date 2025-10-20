@@ -176,7 +176,7 @@ class LoRA:
                 lora_dropout=0.1,
                 bias="none",
             )
-        elif '' in model_name:
+        elif 'gpt' in model_name:
             # Configure LoRA for causal LM
             return LoraConfig(
                 r=8,
