@@ -149,8 +149,7 @@ class Trainer:
 
     def fit_one_epoch(self, epoch):
         self.model.train()
-        print(self.model)
-
+        
         self.callback_handler.call('on_train_epoch_start', self, epoch)
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
@@ -201,11 +200,11 @@ class Trainer:
         N = len(y_split)
 
         # check the splits
-        print("[DEBUG] check the splits")
-        for k, v in X_split.items():
-            print(f"length of {k}:", len(v))
-            print(f"shape of {k}:", v[0].shape)
-        print("length of y_split:", len(y_split))
+        # print("[DEBUG] check the splits")
+        # for k, v in X_split.items():
+        #     print(f"length of {k}:", len(v))
+        #     print(f"shape of {k}:", v[0].shape)
+        # print("length of y_split:", len(y_split))
 
         # zero the grads as usually before doing anything
         self.optimizer.zero_grad()
@@ -225,18 +224,10 @@ class Trainer:
 
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
-            print('X splitted:',X_splitted)
-            print('y splitted',y_splitted)
-
             logits = self.model(X_splitted)
 
             preds, y_splitted_flatten = shift_and_flatten(logits, y_splitted)
             preds_flat = torch.argmax(preds, dim=-1)
-            print('logits',logits.shape)
-            print('preds',preds.shape)
-            print('preds flat',preds_flat.shape)
-            print('y_splitted',y_splitted.shape)
-            print('y_splitted_flatten',y_splitted_flatten.shape)
 
             #Loss needs the logits flatten
             loss = self._unwrap_model().criterion(preds, y_splitted_flatten) / N  # NB: normalize loss
@@ -246,11 +237,11 @@ class Trainer:
             print('logical batch loss',logical_batch_loss)
 
             #Perplexity needs the normal logits [batch_size, seq_len, vocab_size]
-            print(self._unwrap_model().train_metrics)
             self._unwrap_model().train_metrics['Perplexity'].update(logits, y_splitted)
 
             self._unwrap_model().train_metrics['MulticlassAccuracy'].update(preds_flat, y_splitted_flatten)
-            
+            self._unwrap_model().train_metrics['Top5Accuracy'].update(preds_flat, y_splitted_flatten)
+
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
         
