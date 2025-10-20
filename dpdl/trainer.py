@@ -231,9 +231,10 @@ class Trainer:
             logits = self.model(X_splitted)
 
             preds, y_splitted_flatten = shift_and_flatten(logits, y_splitted)
-
+            preds_flat = torch.argmax(preds, dim=-1)
             print('logits',logits.shape)
             print('preds',preds.shape)
+            print('preds flat',preds_flat.shape)
             print('y_splitted',y_splitted.shape)
             print('y_splitted_flatten',y_splitted_flatten.shape)
 
@@ -248,7 +249,7 @@ class Trainer:
             print(self._unwrap_model().train_metrics)
             self._unwrap_model().train_metrics['Perplexity'].update(logits, y_splitted)
 
-            self._unwrap_model().train_metrics['MulticlassAccuracy'].update(preds, y_splitted)
+            self._unwrap_model().train_metrics['MulticlassAccuracy'].update(preds_flat, y_splitted_flatten)
             
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
