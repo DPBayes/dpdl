@@ -240,8 +240,6 @@ class Trainer:
             self._unwrap_model().train_metrics['Perplexity'].update(logits, y_splitted)
 
             self._unwrap_model().train_metrics['MulticlassAccuracy'].update(preds_flat, y_splitted_flatten)
-            self._unwrap_model().train_metrics['Top5Accuracy'].update(preds_flat, y_splitted_flatten)
-
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
         
