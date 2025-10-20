@@ -652,7 +652,13 @@ class DifferentiallyPrivateTrainer(Trainer):
                 self.callback_handler.call('on_train_physical_batch_start', self, batch_idx, batch)
 
                 # let's fit this physical batch
-                batch_loss = self.fit_one_batch(batch_idx, batch)
+
+
+                if self.task == 'CausalLM':
+                    batch_loss = self.fit_one_batch_causal(batch_idx, batch)
+                else:
+                    batch_loss = self.fit_one_batch(batch_idx, batch)
+                #batch_loss = self.fit_one_batch(batch_idx, batch)
 
                 # notify the callbacks of a physical batch end
                 self.callback_handler.call('on_train_physical_batch_end', self, batch_idx, batch, batch_loss)
