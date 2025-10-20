@@ -103,8 +103,7 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             device_map = 'cuda:0',
             **load_kwargs
         )
-
-        #Freeze embedding layer that doesn't work for Opacus
+                #Freeze embedding layer that doesn't work for Opacus
         model_type = model.config.model_type  # e.g., 'bert', 'roberta', 'distilbert'
 
         if hasattr(model, model_type):
@@ -117,6 +116,15 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             checkpoint_or_not(model_name,checkpoint_dir,peft),
             **load_kwargs
         )
+
+        if hasattr(model,'transformer'):
+            for name, module in model.transformer.named_modules():
+                if isinstance(module, torch.nn.Embedding):
+                    #print(f"Freezing embedding layer: {name}")
+                    for param in module.parameters():
+                        param.requires_grad = False
+
+
     
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
     if not is_seq_classification:
