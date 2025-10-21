@@ -1087,7 +1087,7 @@ class NLPDataModule(DataModule):
             if task == 'CausalLM':
                 labels = tokenized['input_ids'].clone()
                 tokenized['labels'] = labels
-                labels[labels == tokenizer.pad_token_id] = -100
+                labels[labels == tokenizer.pad_token_id] = -100 #Padding tokens are ignored in loss computation.
             elif task == 'SequenceClassification':
                 labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
             return tokenized, labels
