@@ -157,7 +157,7 @@ class Trainer:
             print('for batch idx',batch_idx, 'we have batch:\n',batch)
             
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
-            if self.task == 'CausalLM':
+            if self.task in ['CausalLM','InstructLM']:
                 logical_batch_loss = self.fit_one_batch_causal(batch_idx, batch)
             else:
                 logical_batch_loss = self.fit_one_batch(batch_idx, batch)
@@ -416,14 +416,14 @@ class Trainer:
         y = y.to(device=self.device, non_blocking=True)
 
         logits = self.model(X)
-        if self.task == 'CausalLM':
+        if self.task in ['CausalLM','InstructLM']:
             preds, y_flatten = shift_and_flatten(logits, y)
             loss = self._unwrap_model().criterion(preds, y_flatten)
         else:
             loss = self._unwrap_model().criterion(logits, y)
         loss = loss.item()
 
-        if self.task == 'CausalLM':
+        if self.task in ['CausalLM','InstructLM']:
 
             preds_flat = torch.argmax(preds, dim=1)
 
@@ -666,7 +666,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 # let's fit this physical batch
 
 
-                if self.task == 'CausalLM':
+                if self.task in ['CausalLM','InstructLM']:
                     batch_loss = self.fit_one_batch_causal(batch_idx, batch)
                 else:
                     batch_loss = self.fit_one_batch(batch_idx, batch)
@@ -823,7 +823,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
                 print('for batch idx',phys_idx, 'we have batch:\n',batch)
 
-                if self.task == 'CausalLM':
+                if self.task in ['CausalLM','InstructLM']:
                     loss = self.fit_one_batch_causal(phys_idx, batch)
                 else:
                     loss = self.fit_one_batch(phys_idx, batch)

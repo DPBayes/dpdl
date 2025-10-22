@@ -949,25 +949,6 @@ class NLPDataModule(DataModule):
             log.info('Setting dataset label field (LLM mode).')
         self._set_label_field(dataset_splits['train']) # find the label column
         
-
-    # def _set_label_field(self, dataset):
-
-    #     if self._label_field is None and self.task == 'CausalLM':
-    #         self._label_field = self._text_fields
-        
-    #     elif self._label_field is None and self.task != 'CausalLM':
-    #         for feature_name, feature in dataset.features.items():
-    #             if isinstance(feature, datasets.ClassLabel) or feature_name == 'label':
-    #                 self._label_field = feature_name
-    #                 break
-
-    #         if self._label_field:
-    #             if torch.distributed.get_rank() == 0:
-    #                 log.info(f' - Determined label field: {self._label_field}')
-    #         else:
-    #             features = dataset.features.keys()
-    #             raise ValueError(f'Could not determine label field for dataset. Available features: {features}')
-
     def _detect_text_fields(self, dataset):
         if self._text_fields is not None:
             if torch.distributed.get_rank() == 0:
@@ -1070,11 +1051,10 @@ class NLPDataModule(DataModule):
         task = self.task
 
         def collate(batch):
-            texts = []
-            for sample in batch:
-                # Concatenate multiple text fields if present
-                parts = [str(sample[i]) for i in text_fields]
-                texts.append(' '.join(parts))
+            texts = [
+                ' '.join(str(sample[field]) for field in text_fields)
+                for sample in batch
+            ]
 
             tokenized = tokenizer(
                 texts,
@@ -1086,13 +1066,73 @@ class NLPDataModule(DataModule):
 
             if task == 'CausalLM':
                 labels = tokenized['input_ids'].clone()
+                labels[labels == tokenizer.pad_token_id] = -100  #Padding tokens are ignored in loss computation.
                 tokenized['labels'] = labels
-                labels[labels == tokenizer.pad_token_id] = -100 #Padding tokens are ignored in loss computation.
             elif task == 'SequenceClassification':
                 labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
             return tokenized, labels
 
-        return collate
+    
+        def collate_instruct_function(batch):
+
+            print('batch in collate',batch)
+
+            conversations = [
+                    tokenizer.apply_chat_template(
+                        [
+                            {"role": "user", "content": sample['question']},
+                            {"role": "assistant", "content": sample['answer']}
+                        ],
+                        tokenize=False,
+                        add_generation_prompt=False
+                    )
+                    for sample in batch
+                ]
+            
+            #Tokenize the text already in chat format
+            tokenized = tokenizer(
+                conversations,
+                padding=True,
+                truncation=True,
+                max_length=max_len,
+                return_tensors='pt'
+            ) 
+
+            #We need the user tokens, only that part, so we can remove that from the 
+            #loss function
+
+            # Create labels with list comprehension
+            user_texts = [
+                tokenizer.apply_chat_template(
+                    [{"role": "user", "content": q["question"]}],
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
+                for q in batch
+            ]
+            
+            user_tokenized = tokenizer(
+                user_texts, 
+                add_special_tokens=False, 
+                padding=False
+            )
+            
+            # Mask user parts
+            labels = tokenized["input_ids"].copy()
+
+            user_token_limit = len(user_tokenized['input_ids'])
+            
+            labels[:user_token_limit] = [-100] * user_token_limit
+
+            labels[labels == tokenizer.pad_token_id] = -100  #Padding tokens are ignored in loss computation.
+
+            tokenized["labels"] = labels
+
+            return tokenized, labels
+
+        return collate_instruct_function if task == 'InstructLM' else collate
+    
+
 
     def _add_rgb_transform(self):  
         return
