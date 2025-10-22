@@ -1119,10 +1119,10 @@ class NLPDataModule(DataModule):
             
             # Mask user parts
             labels = tokenized["input_ids"].clone()
-
-            user_token_limit = len(user_tokenized['input_ids'])
             
-            labels[:user_token_limit] = [-100] * user_token_limit
+            for i, user_ids in enumerate(user_tokenized["input_ids"]):
+                user_len = len(user_ids)
+                labels[i, :user_len] = -100
 
             labels[labels == tokenizer.pad_token_id] = -100  #Padding tokens are ignored in loss computation.
 
