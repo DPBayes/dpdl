@@ -89,7 +89,7 @@ class Configuration(BaseModel):
     optimizer: str = 'Adam'
     dataset_name: str = 'cifar10'
     llm: bool = False
-    task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM' ]
+    task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM', 'InstructLM' ]
     physical_batch_size: int = 40
     num_workers: int = 8
     validation_frequency: float = 1.0
