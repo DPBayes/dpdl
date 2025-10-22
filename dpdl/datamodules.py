@@ -1118,7 +1118,7 @@ class NLPDataModule(DataModule):
             )
             
             # Mask user parts
-            labels = tokenized["input_ids"].copy()
+            labels = tokenized["input_ids"].clone()
 
             user_token_limit = len(user_tokenized['input_ids'])
             
