@@ -88,7 +88,8 @@ class ModelFactory:
                         configuration.load_in_4bit,
                         num_labels=num_classes,
                         peft = configuration.peft, 
-                        checkpoint_dir = checkpoints_dir_latest
+                        checkpoint_dir = checkpoints_dir_latest,
+                        task=configuration.task
                     )
 
             transforms = model_instance.get_transforms()

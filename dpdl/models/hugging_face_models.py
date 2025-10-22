@@ -63,7 +63,7 @@ trust_remote_code: bool
 We should:
     - Create a method that is for other tasks
 """
-def download_generic_huggingface_model(model_name, quantization, trust_remote_code = False, num_labels: int | None = None, peft = False, checkpoint_dir = None):
+def download_generic_huggingface_model(model_name, quantization, trust_remote_code = False, num_labels: int | None = None, peft = False, checkpoint_dir = None, task: str = None):
 
     quantization_config = None
 
@@ -93,7 +93,9 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
 
 
     # For encoder/sequence classification models (roberta/bert), they are under AutoModelForSequenceClassification.
-    is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
+    
+    #is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
+    is_seq_classification = task == 'SequenceClassification'
     if is_seq_classification:
         if num_labels is not None:
             load_kwargs["num_labels"] = num_labels
@@ -131,6 +133,26 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
             model.config.pad_token_id = model.config.eos_token_id
+            model.resize_token_embeddings(len(tokenizer))
+    
+    if task == 'InstructLM' and tokenizer.chat_template is None:
+
+        special_tokens = {
+            "additional_special_tokens": ["<|im_start|>", "<|im_end|>"]
+        }
+
+        tokenizer.add_special_tokens(special_tokens)
+
+        tokenizer.chat_template = (
+            "{% for message in messages %}"
+            "{{ '<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>\n' }}"
+            "{% endfor %}"
+            "{% if add_generation_prompt %}"
+            "{{ '<|im_start|>assistant\n' }}"
+            "{% endif %}"
+        )
+
+        model.resize_token_embeddings(len(tokenizer))
 
     return model, tokenizer, quantization_config
 
@@ -154,24 +176,28 @@ class HF_llm (torch.nn.Module):
         peft: bool = False,
         checkpoint_dir: str = None,
         num_labels: int | None = None,
+        task: str = None
     ):
 
         super().__init__()
 
         self.ignore_index = ignore_index
         self.peft = peft
+        self.task = task
         self.model, self.tokenizer, self.quantization_config = download_generic_huggingface_model(
             model_name=model_name,
             quantization=quantization,
             trust_remote_code=trust_remote_code,
             num_labels=num_labels,
             peft=peft,
-            checkpoint_dir=checkpoint_dir
+            checkpoint_dir=checkpoint_dir,
+            task=task
         )
 
-        self.vocab_size = self.model.config.vocab_size
 
-        self.is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
+        self.vocab_size = self.model.config.vocab_size
+        self.is_seq_classification = self.task == 'SequenceClassification'
+        #self.is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
 
     @property
     def config(self):
