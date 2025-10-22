@@ -922,7 +922,7 @@ class NLPDataModule(DataModule):
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
-        if self.task != 'CausalLM':
+        if self.task not in ['CausalLM', 'InstructLM']:
 
             # Set dataset label fields based on the training split
             self._set_dataset_label_fields(dataset_splits)
