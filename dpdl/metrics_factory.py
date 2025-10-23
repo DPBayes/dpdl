@@ -146,7 +146,7 @@ class MetricsFactory:
                     ).cuda(),
                 }
             )
-        elif configuration.task == 'CausalLM':
+        elif configuration.task in ['CausalLM', 'InstructLM']:
             metrics['train_metrics'] = torchmetrics.MetricCollection(
                 {
                     "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
