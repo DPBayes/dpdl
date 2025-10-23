@@ -1075,8 +1075,6 @@ class NLPDataModule(DataModule):
     
         def collate_instruct_function(batch):
 
-            print('batch in collate',batch)
-
             conversations = [
                     tokenizer.apply_chat_template(
                         [
