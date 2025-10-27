@@ -485,9 +485,8 @@ class Trainer:
                 
                 print('sample',batch)
 
-                X, y = batch
+                X = batch
                 X = X.to(device= self.device, non_blocking=True)
-                y = y.to(device= self.device, non_blocking=True)
 
                 is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
                 if is_mapping:
@@ -496,7 +495,6 @@ class Trainer:
                             X[k] = v.to(device=self.device, non_blocking=True)
                 else:
                     X = X.to(device=self.device, non_blocking=True)
-                y = y.to(device=self.device, non_blocking=True)
 
                 # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
                 # then process the sub batches one at a time and call backward.
@@ -504,12 +502,10 @@ class Trainer:
                 if is_mapping:
                     # split each tensor in the dict
                     X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
-                    y_split = y.split(self.physical_batch_size, dim=0)
                 else:
                     X_split = X.split(self.physical_batch_size, dim=0)
-                    y_split = y.split(self.physical_batch_size, dim=0)
-                
-                N = len(y_split)
+                  
+                N = len(X_split)
 
                 # process the sub batches one at a time
                 print('Number of physical batches', N)
@@ -520,10 +516,8 @@ class Trainer:
                     else:
                         X_splitted = X_split[i]
                     
-                    y_splitted = y_split[i]
-                    physical_batch = (X_splitted, y_splitted)
                     generated_ids = self.model.generate(X_splitted, max_new_tokens=128, temperature=0.7, do_sample=True)
-                    print(self.datamodule.decode(generated_ids[0]))
+                    print('sampled text decoded',self.datamodule.decode(generated_ids[0]))
 
 
 class DifferentiallyPrivateTrainer(Trainer):
