@@ -272,8 +272,6 @@ class HF_llm (torch.nn.Module):
         )
 
     def generate(self, *args, **kwargs):
-        print('args',args[0])
-        print('kwargs',kwargs)
         return self.model.generate(**args[0], **kwargs)
 
     # Encoder models (e.g., RoBERTa/BERT) commonly use classifier or score. Causal LMs use lm_head.

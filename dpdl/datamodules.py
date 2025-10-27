@@ -1152,6 +1152,8 @@ class NLPDataModule(DataModule):
                     )
                     for sample in batch
                 ]
+        
+        print(conversations)
             
         #Tokenize the text already in chat format
         tokenized = self.tokenizer(
