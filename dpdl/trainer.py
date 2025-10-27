@@ -482,6 +482,8 @@ class Trainer:
         with torch.no_grad():
 
             for batch_idx, batch in enumerate(self.datamodule.get_dataloader('sample')):
+                
+                print('sample',batch)
 
                 X, y = batch
                 X = X.to(device= self.device, non_blocking=True)
