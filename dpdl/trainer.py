@@ -504,19 +504,19 @@ class Trainer:
                     X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
                 else:
                     X_split = X.split(self.physical_batch_size, dim=0)
-                  
-                N = len(X_split)
+                
+                N = len(X_split['input_ids'])
 
                 # process the sub batches one at a time
                 print('Number of physical batches', N)
 
                 for i in range(N):
+                    print('X_split', X_split)
                     if is_mapping:
                         X_splitted = {k: X_split[k][i] for k in X_split}
                     else:
                         X_splitted = X_split[i]
-                    print(X_splitted)
-                    generated_ids = self._unwrap_model().generate(X_splitted, max_new_tokens=128, temperature=0.7, do_sample=True)
+                    generated_ids = self._unwrap_model().generate(X_splitted, max_new_tokens=50, temperature=0.5, do_sample=True)
                     print('sampled text decoded',self.datamodule.decode(generated_ids[0]))
 
 
