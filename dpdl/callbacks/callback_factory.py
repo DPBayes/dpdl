@@ -123,9 +123,9 @@ class CallbackFactory:
                     checkpoint_step_interval=configuration.checkpoint_step_interval,
                 )
             )
-        
+
         if configuration.enable_wandb:
-            
+
             callbacks.append(
                 WandbCallback(
                     project=configuration.wandb_project,
