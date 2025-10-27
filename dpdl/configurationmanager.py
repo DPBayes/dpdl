@@ -151,6 +151,8 @@ class Configuration(BaseModel):
     split_seed: Optional[int] = 42
     dataset_split: Optional[str] = None
     prediction_save_gradient_data: Optional[bool] = False
+    enable_wandb: Optional[bool] = False
+    wandb_project: Optional[str] = 'dpdl_experiments'
 
     class Config:
         # Fix Pydantic warning:
@@ -256,6 +258,7 @@ class Configuration(BaseModel):
             ('Enable callback debug logging', self.verbose_callback),
             ('Fairness-style subsampling class', self.fairness_imbalance_class),
             ('Random seed for creating dataset subsets', self.split_seed),
+            ('Enable wandb logging', self.enable_wandb),
         ]
 
         if self.privacy:
@@ -287,6 +290,12 @@ class Configuration(BaseModel):
                 ('Save gradient information when predicting', self.prediction_save_gradient_data),
             ]
             attributes.extend(predict_attributes)
+
+        if self.enable_wandb:
+            wandb_attributes = [
+                ('Wandb project name', self.wandb_project),
+            ]
+            attributes.extend(wandb_attributes)
 
         max_key_length = max(len(attr[0]) for attr in attributes)
         attribute_str = [f'{attr[0]:<{max_key_length}}: {attr[1]}' for attr in attributes]

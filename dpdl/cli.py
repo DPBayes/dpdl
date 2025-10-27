@@ -515,6 +515,20 @@ def cli(
                 rich_help_panel='Inference options',
             )
         ] = 'test',
+        enable_wandb: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Enable Weights & Biases logging',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
+        wandb_project: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Weights & Biases project name',
+                rich_help_panel='Logging options',
+            )
+        ] = 'dpdl_experiments',
     ):
 
     config_manager = ConfigurationManager(ctx.params)

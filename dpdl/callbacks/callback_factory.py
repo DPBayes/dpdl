@@ -20,6 +20,7 @@ from .per_class_accuracy import RecordPerClassAccuracyCallback
 from .record_losses import RecordLossesByEpochCallback, RecordTrainLossByStepCallback
 from .record_accuracy import RecordAccuracyByEpochCallback
 from .record_snr import RecordSNRCallback
+from .wandb_callback import WandbCallback
 
 log = logging.getLogger(__name__)
 
@@ -120,6 +121,16 @@ class CallbackFactory:
                 CheckpointCallback(
                     log_dir=full_log_dir,
                     checkpoint_step_interval=configuration.checkpoint_step_interval,
+                )
+            )
+        
+        if configuration.enable_wandb:
+            
+            callbacks.append(
+                WandbCallback(
+                    project=configuration.wandb_project,
+                    run_name=experiment_name,
+                    log_dir=full_log_dir,
                 )
             )
 

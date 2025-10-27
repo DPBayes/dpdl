@@ -435,3 +435,4 @@ yacs==0.1.8
 yarl==1.11.1
 zict==3.0.0
 zipp==3.17.0
+wandb
