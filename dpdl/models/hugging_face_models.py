@@ -272,7 +272,7 @@ class HF_llm (torch.nn.Module):
         )
 
     def generate(self, *args, **kwargs):
-        print('args',**args)
+        print('args',args)
         print('kwargs',kwargs)
         return self.model.generate(**args, **kwargs)
 
