@@ -519,8 +519,7 @@ class Trainer:
                     generated_ids = self._unwrap_model().generate(X_splitted, 
                                                                   max_new_tokens=120, 
                                                                   temperature=0.5, 
-                                                                  do_sample=True,
-                                                                  skip_special_tokens=True)
+                                                                  do_sample=True)
                     
                     print('sampled text decoded',self.datamodule.decode(generated_ids))
 
