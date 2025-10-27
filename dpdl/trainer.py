@@ -516,7 +516,7 @@ class Trainer:
                     else:
                         X_splitted = X_split[i]
                     
-                    generated_ids = self.model.generate(X_splitted, max_new_tokens=128, temperature=0.7, do_sample=True)
+                    generated_ids = self._unwrap_model().generate(X_splitted, max_new_tokens=128, temperature=0.7, do_sample=True)
                     print('sampled text decoded',self.datamodule.decode(generated_ids[0]))
 
 

@@ -73,6 +73,9 @@ class ModelBase(torch.nn.Module):
 
     def criterion(self, logits, targets):
         return self._criterion(logits, targets)
+    
+    def generate(self, *args, **kwargs):
+        return self.model.generate(*args, **kwargs)
 
     def show_layers(self):
         log.info("Layers:")
