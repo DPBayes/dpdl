@@ -136,7 +136,8 @@ def download_generic_huggingface_model(model_name, quantization, trust_remote_co
             model.resize_token_embeddings(len(tokenizer))
     
     if task == 'InstructLM' and tokenizer.chat_template is None:
-
+        tokenizer.padding_side = 'left'
+        
         special_tokens = {
             "additional_special_tokens": ["<|im_start|>", "<|im_end|>"]
         }
