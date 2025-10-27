@@ -169,6 +169,9 @@ class Trainer:
         metrics = self._unwrap_model().train_metrics.compute()
         self._unwrap_model().train_metrics.reset()
 
+        if self.task == 'InstructLM':
+            self.sample()
+
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
 
@@ -471,6 +474,54 @@ class Trainer:
 
         else:
             self._unwrap_model().save_model(fpath)
+
+    def sample(self):
+
+        self.model.eval()
+
+        with torch.no_grad():
+
+            for batch_idx, batch in enumerate(self.datamodule.get_dataloader('sample')):
+
+                X, y = batch
+                X = X.to(device= self.device, non_blocking=True)
+                y = y.to(device= self.device, non_blocking=True)
+
+                is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
+                if is_mapping:
+                    for k, v in X.items():
+                        if isinstance(v, torch.Tensor):
+                            X[k] = v.to(device=self.device, non_blocking=True)
+                else:
+                    X = X.to(device=self.device, non_blocking=True)
+                y = y.to(device=self.device, non_blocking=True)
+
+                # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
+                # then process the sub batches one at a time and call backward.
+                # when all the sub batches have been processed we can finally step the optimizer.
+                if is_mapping:
+                    # split each tensor in the dict
+                    X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
+                    y_split = y.split(self.physical_batch_size, dim=0)
+                else:
+                    X_split = X.split(self.physical_batch_size, dim=0)
+                    y_split = y.split(self.physical_batch_size, dim=0)
+                
+                N = len(y_split)
+
+                # process the sub batches one at a time
+                print('Number of physical batches', N)
+
+                for i in range(N):
+                    if is_mapping:
+                        X_splitted = {k: X_split[k][i] for k in X_split}
+                    else:
+                        X_splitted = X_split[i]
+                    
+                    y_splitted = y_split[i]
+                    physical_batch = (X_splitted, y_splitted)
+                    generated_ids = self.model.generate(X_splitted, max_new_tokens=128, temperature=0.7, do_sample=True)
+                    print(self.datamodule.decode(generated_ids[0]))
 
 
 class DifferentiallyPrivateTrainer(Trainer):

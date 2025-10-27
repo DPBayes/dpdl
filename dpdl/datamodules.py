@@ -74,6 +74,7 @@ class DataModule:
             'train': None,
             'valid': None,
             'test': None,
+            'sample': None
         }
 
         # The _load_datasets method will fill this
@@ -1004,10 +1005,6 @@ class NLPDataModule(DataModule):
 
             self.batch_size = batch_size
 
-        print(self.train_dataset)
-        print(self.test_dataset)
-        print(self.val_dataset)
-
         self._initialize_text_dataloaders()
 
 
@@ -1044,6 +1041,14 @@ class NLPDataModule(DataModule):
                 collate_fn=collate_fn,
                 num_workers=self.num_workers,
             )
+            if self.task == 'InstructLM':
+                self._dataloaders['sample'] = torch.utils.data.DataLoader(
+                    self.test_dataset,
+                    sampler=self.test_sampler,
+                    batch_size=self.physical_batch_size,
+                    collate_fn=self.tokenize_for_sample,
+                    num_workers=self.num_workers,
+                )
 
     # use data collator from HF, e.g., DataCollatorWithPadding(tokenizer)?
     # or use custom collate function?
@@ -1134,6 +1139,33 @@ class NLPDataModule(DataModule):
 
         return collate_instruct_function if task == 'InstructLM' else collate
 
+    def tokenize_for_sample(self,batch):
+
+        conversations = [
+                    self.tokenizer.apply_chat_template(
+                        [
+                            {"role": "user", "content": sample['question']},
+                            {"role": "assistant", "content": sample['answer']}
+                        ],
+                        tokenize=False,
+                        add_generation_prompt=True
+                    )
+                    for sample in batch
+                ]
+            
+        #Tokenize the text already in chat format
+        tokenized = self.tokenizer(
+            conversations,
+            padding=True,
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors='pt'
+        )
+
+        return tokenized
+
+    def decode(self, generated_ids):
+        return self.tokenizer.batch_decode(generated_ids)
 
     def _add_rgb_transform(self):  
         return
