@@ -162,9 +162,6 @@ def checkpoint_or_not(model_name, checkpoint_dir_latest, peft):
         print('loading checkpoint')
         return checkpoint_dir_latest
     return model_name
-    
-
-
 
 class HF_llm (torch.nn.Module):
     def __init__(

@@ -1144,16 +1144,13 @@ class NLPDataModule(DataModule):
         conversations = [
                     self.tokenizer.apply_chat_template(
                         [
-                            {"role": "user", "content": sample['question']},
-                            {"role": "assistant", "content": sample['answer']}
+                            {"role": "user", "content": sample['question']}
                         ],
                         tokenize=False,
                         add_generation_prompt=True
                     )
                     for sample in batch
                 ]
-        
-        print(conversations)
             
         #Tokenize the text already in chat format
         tokenized = self.tokenizer(
