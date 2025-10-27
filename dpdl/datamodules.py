@@ -1004,6 +1004,10 @@ class NLPDataModule(DataModule):
 
             self.batch_size = batch_size
 
+        print(self.train_dataset)
+        print(self.test_dataset)
+        print(self.val_dataset)
+
         self._initialize_text_dataloaders()
 
 
@@ -1129,7 +1133,6 @@ class NLPDataModule(DataModule):
             return tokenized, labels
 
         return collate_instruct_function if task == 'InstructLM' else collate
-    
 
 
     def _add_rgb_transform(self):  
