@@ -515,7 +515,7 @@ class Trainer:
                         X_splitted = {k: X_split[k][i] for k in X_split}
                     else:
                         X_splitted = X_split[i]
-                    
+                    print(X_splitted)
                     generated_ids = self._unwrap_model().generate(X_splitted, max_new_tokens=128, temperature=0.7, do_sample=True)
                     print('sampled text decoded',self.datamodule.decode(generated_ids[0]))
 
