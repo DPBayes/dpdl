@@ -1120,7 +1120,7 @@ class NLPDataModule(DataModule):
             
             user_tokenized = tokenizer(
                 user_texts, 
-                add_special_tokens=False, 
+                add_special_tokens=True, 
                 padding=False
             )
             
