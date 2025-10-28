@@ -909,6 +909,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         self._unwrap_model().train_metrics.reset()
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
+        if self.task == 'InstructLM':
+            self.sample()
+
     def save_model(self, fpath):
         self.model.module.save_model(fpath)
 
