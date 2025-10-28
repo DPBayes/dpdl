@@ -257,6 +257,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        dataset_group_field: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Name of the field that determines the label for few-shot grouping',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
         imbalance_factor: Annotated[
             Optional[float],
             typer.Option(
