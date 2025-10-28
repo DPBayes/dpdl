@@ -1181,10 +1181,6 @@ class NLPDataModule(DataModule):
             
         return collate_instruct_function
 
-
-
-
-
     # use data collator from HF, e.g., DataCollatorWithPadding(tokenizer)?
     # or use custom collate function?
     def _make_text_collate(self):
@@ -1241,7 +1237,7 @@ class NLPDataModule(DataModule):
                 add_special_tokens=True
             ) 
 
-            print("tokenized chat: ", tokenizer.decode(tokenized[0]))
+            #print("tokenized chat: ", tokenizer.decode(tokenized[0]))
 
             #We need the user tokens, only that part, so we can remove that from the 
             #loss function
