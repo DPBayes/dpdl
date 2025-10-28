@@ -920,6 +920,9 @@ class NLPDataModule(DataModule):
 
         if self.dataset_name == 'wikitext':
             dataset_splits = datasets.load_dataset(self.dataset_name,'wikitext-2-raw-v1')
+        #delete later
+        if self.dataset_name == 'dmis-lab/meerkat-instructions':
+            dataset_splits = datasets.load_dataset(self.dataset_name,'medqa_cot')
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
@@ -1012,7 +1015,12 @@ class NLPDataModule(DataModule):
         self._set_generators_and_seed_worker()
         self._set_samplers_and_batch_size()
 
-        collate_fn = self._make_text_collate()
+        #collate_fn = self._make_text_collate()
+
+        if self.dataset_name == 'dmis-lab/meerkat-instructions':
+            collate_fn = self._make_text_collate_test()
+        else:
+            collate_fn = self._make_text_collate()
 
         self._dataloaders['train'] = torch.utils.data.DataLoader(
             self.train_dataset,
@@ -1049,6 +1057,79 @@ class NLPDataModule(DataModule):
                     collate_fn=self.tokenize_for_sample,
                     num_workers=self.num_workers,
                 )
+
+    def _make_text_collate_test(self):
+        tokenizer = self.tokenizer
+        text_fields = self._text_fields
+        label_field = self._label_field
+        max_len = self.max_length
+        task = self.task
+    
+        def collate_instruct_function(batch):
+
+            # for benchmark dataset MedQA-IoT
+            print("sample:", batch[0])
+            conversations = [
+                tokenizer.apply_chat_template(
+                    [
+                            {"role": "system", "content": sample['content']},
+                            {"role": "user", "content": sample['content']},
+                            {"role": "assistant", "content": sample['content']}
+                    ],
+                    tokenize=False,
+                    add_generation_prompt=False
+                )
+                for sample in batch
+            ]
+
+            #Tokenize the text already in chat format
+            tokenized = tokenizer(
+                    conversations,
+                    padding=True,
+                    truncation=True,
+                    max_length=max_len,
+                    return_tensors='pt'
+            ) 
+
+            print("tokenized chat: ", tokenizer.decode(tokenized[0]))
+
+            #We need the user tokens, only that part, so we can remove that from the 
+            #loss function
+
+            # Create labels with list comprehension
+            user_texts = [
+                tokenizer.apply_chat_template(
+                    [{"role": "user", "content": q["content"]}],
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
+                for q in batch
+            ]
+            
+            user_tokenized = tokenizer(
+                    user_texts, 
+                    add_special_tokens=True, 
+                    padding=False
+            )
+            
+            # Mask user parts
+            labels = tokenized["input_ids"].clone()
+            
+            for i, user_ids in enumerate(user_tokenized["id"]):
+                user_len = len(user_ids)
+                labels[i, :user_len] = -100
+
+            labels[labels == tokenizer.pad_token_id] = -100  #Padding tokens are ignored in loss computation.
+
+            tokenized["labels"] = labels
+
+            return tokenized, labels
+            
+        return collate_instruct_function
+
+
+
+
 
     # use data collator from HF, e.g., DataCollatorWithPadding(tokenizer)?
     # or use custom collate function?
@@ -1095,7 +1176,7 @@ class NLPDataModule(DataModule):
                     )
                     for sample in batch
                 ]
-            
+             
             #Tokenize the text already in chat format
             tokenized = tokenizer(
                 conversations,
@@ -1104,6 +1185,8 @@ class NLPDataModule(DataModule):
                 max_length=max_len,
                 return_tensors='pt'
             ) 
+
+            print("tokenized chat: ", tokenizer.decode(tokenized[0]))
 
             #We need the user tokens, only that part, so we can remove that from the 
             #loss function
@@ -1150,8 +1233,7 @@ class NLPDataModule(DataModule):
                         add_generation_prompt=True
                     )
                     for sample in batch
-                ]
-            
+                ]            
         #Tokenize the text already in chat format
         tokenized = self.tokenizer(
             conversations,
