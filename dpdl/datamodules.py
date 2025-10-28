@@ -1130,8 +1130,8 @@ class NLPDataModule(DataModule):
             conversations = [
                 tokenizer.apply_chat_template(
                     [
-                            {"role": "system", "content": sample['messages'][0]},
-                            {"role": "user", "content": sample['messages'][1]}
+                            {"role": "system", "content": sample['messages'][0]['content']},
+                            {"role": "user", "content": sample['messages'][1]['content']}
                     ],
                     tokenize=False,
                     add_generation_prompt=False
