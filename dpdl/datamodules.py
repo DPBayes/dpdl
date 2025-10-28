@@ -1102,7 +1102,8 @@ class NLPDataModule(DataModule):
                 padding=True,
                 truncation=True,
                 max_length=max_len,
-                return_tensors='pt'
+                return_tensors='pt',
+                add_special_tokens=True
             ) 
 
             #We need the user tokens, only that part, so we can remove that from the 
@@ -1158,13 +1159,14 @@ class NLPDataModule(DataModule):
             padding=True,
             truncation=True,
             max_length=self.max_length,
-            return_tensors='pt'
+            return_tensors='pt',
+            add_special_tokens=True
         )
 
         return tokenized
 
     def decode(self, generated_ids):
-        return self.tokenizer.batch_decode(generated_ids)
+        return self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
     def _add_rgb_transform(self):  
         return
