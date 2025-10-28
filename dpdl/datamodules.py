@@ -1234,7 +1234,8 @@ class NLPDataModule(DataModule):
                 padding=True,
                 truncation=True,
                 max_length=max_len,
-                return_tensors='pt'
+                return_tensors='pt',
+                add_special_tokens=True
             ) 
 
             print("tokenized chat: ", tokenizer.decode(tokenized[0]))
@@ -1291,13 +1292,14 @@ class NLPDataModule(DataModule):
             padding=True,
             truncation=True,
             max_length=self.max_length,
-            return_tensors='pt'
+            return_tensors='pt',
+            add_special_tokens=True
         )
 
         return tokenized
 
     def decode(self, generated_ids):
-        return self.tokenizer.batch_decode(generated_ids)
+        return self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
     def _add_rgb_transform(self):  
         return
