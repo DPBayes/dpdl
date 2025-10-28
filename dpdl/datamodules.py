@@ -1072,9 +1072,9 @@ class NLPDataModule(DataModule):
             conversations = [
                 tokenizer.apply_chat_template(
                     [
-                            {"role": "system", "content": sample['messages']['content']},
-                            {"role": "user", "content": sample['messages']['content']},
-                            {"role": "assistant", "content": sample['messages']['content']}
+                            {"role": "system", "content": sample['messages'][0]['content']},
+                            {"role": "user", "content": sample['messages'][1]['content']},
+                            {"role": "assistant", "content": sample['messages'][2]['content']}
                     ],
                     tokenize=False,
                     add_generation_prompt=False
@@ -1099,7 +1099,7 @@ class NLPDataModule(DataModule):
             # Create labels with list comprehension
             user_texts = [
                 tokenizer.apply_chat_template(
-                    [{"role": "user", "content": q['messages']['content']}],
+                    [{"role": "user", "content": q['messages'][1]['content']}],
                     tokenize=False,
                     add_generation_prompt=True
                 )
