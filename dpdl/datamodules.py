@@ -565,13 +565,9 @@ class DataModule:
         value_indices = {}
         for idx, sample in enumerate(dataset):
             key = sample[self._label_field]
-            value_indices.setdefault(key, []).append(idx)
-            # convert non-hashable types, but usually strings or ints
-            # try:
-            #     value_indices.setdefault(key, []).append(idx)
-            # except Exception:
-            #     # fallback to string representation
-            #     value_indices.setdefault(str(key), []).append(idx)
+            if key not in value_indices:
+                value_indices[key] = []
+            value_indices[key].append(idx)
 
         sampled_indices = []
         for key, indices in value_indices.items():
@@ -580,7 +576,8 @@ class DataModule:
             if n <= 0:
                 continue
             indices_tensor = torch.tensor(indices)
-            perm = torch.randperm(len(indices_tensor), generator=g)
+            # Generates a random permutation of integers from 0 to n - 1
+            perm = torch.randperm(len(indices_tensor), generator=g) # a tensor of shuffled indices
             selected = indices_tensor[perm[:n]]
             sampled_indices.extend(selected.tolist())
 
