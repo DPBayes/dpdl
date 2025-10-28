@@ -46,6 +46,7 @@ class DataModule:
         imbalance_reverse: bool = False,
         fairness_imbalance_class: int = None,
         cache_transforms: bool = False,
+        group_field: str = None,
     ):
 
         self.dataset_name = dataset_name
@@ -69,6 +70,7 @@ class DataModule:
         self._imbalance_reverse = imbalance_reverse
         self._fairness_imbalance_class = fairness_imbalance_class
         self._cache_transforms = cache_transforms
+        self._group_field = group_field
 
         self._dataloaders = {
             'train': None,
@@ -551,12 +553,14 @@ class DataModule:
 
             return subset
 
-        # when no num_classes is available (autoregressive model). We require
-        # self._label_field and use it to limit how many examples per distinct value (e.g., disease) are kept.
-        # treat shots as the maximum number of examples to keep per distinct value in self._label_field (e.g., disease name). 
-        # The method samples up to shots indices for each distinct value and returns the selected dataset.
-        if self._label_field is None:
-            raise ValueError('Number of classes unknown and no label field provided; cannot create few-shot dataset for LLM. Set label_field in configuration.')
+        # when no num_classes is available (autoregressive model). Determine
+        # which field to group by: prefer an explicit group_field (self._group_field)
+        # if provided, otherwise fall back to self._label_field. This allows
+        # grouping by a separate column such as 'Disease'.
+        grouping_field = self._group_field or self._label_field
+
+        if grouping_field is None:
+            raise ValueError('Number of classes unknown and no grouping/label field provided; cannot create few-shot dataset for LLM. Set dataset_group_field or dataset_label_field in configuration.')
 
         # Build mapping value -> list of indices
         g = torch.Generator()
@@ -564,7 +568,7 @@ class DataModule:
 
         value_indices = {}
         for idx, sample in enumerate(dataset):
-            key = sample[self._label_field]
+            key = sample[grouping_field]
             if key not in value_indices:
                 value_indices[key] = []
             value_indices[key].append(idx)
@@ -588,7 +592,7 @@ class DataModule:
         sampled_dataset = dataset.select(sampled_indices)
 
         if torch.distributed.get_rank() == 0:
-            distribution = Counter(sampled_dataset[self._label_field])
+            distribution = Counter(sampled_dataset[grouping_field])
             n_examples = sum(distribution.values())
             log.info(f'Collected few shot dataset with {n_examples} examples: {sorted(distribution.items())}')
 
@@ -921,6 +925,7 @@ class DataModuleFactory:
                 privacy=configuration.privacy,
                 evaluation_mode=configuration.evaluation_mode,
                 label_field=configuration.dataset_label_field,
+                group_field=configuration.dataset_group_field,
                 max_test_examples=configuration.max_test_examples,
                 imbalance_factor=configuration.imbalance_factor,
                 imbalance_reverse=configuration.imbalance_reverse,
@@ -943,6 +948,7 @@ class DataModuleFactory:
             privacy=configuration.privacy,
             evaluation_mode=configuration.evaluation_mode,
             label_field=configuration.dataset_label_field,
+            group_field=configuration.dataset_group_field,
             max_test_examples=configuration.max_test_examples,
             imbalance_factor=configuration.imbalance_factor,
             imbalance_reverse=configuration.imbalance_reverse,
