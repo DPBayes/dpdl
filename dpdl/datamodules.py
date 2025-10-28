@@ -1184,10 +1184,6 @@ class NLPDataModule(DataModule):
             
         return collate_instruct_function
 
-
-
-
-
     # use data collator from HF, e.g., DataCollatorWithPadding(tokenizer)?
     # or use custom collate function?
     def _make_text_collate(self):
@@ -1244,7 +1240,7 @@ class NLPDataModule(DataModule):
                 add_special_tokens=True
             ) 
 
-            print("tokenized chat: ", tokenizer.decode(tokenized[0]))
+            #print("tokenized chat: ", tokenizer.decode(tokenized[0]))
 
             #We need the user tokens, only that part, so we can remove that from the 
             #loss function
@@ -1267,9 +1263,11 @@ class NLPDataModule(DataModule):
             
             # Mask user parts
             labels = tokenized["input_ids"].clone()
-            
+
             for i, user_ids in enumerate(user_tokenized["input_ids"]):
                 user_len = len(user_ids)
+                print('len of user ',user_len)
+                print('len of labels',len(labels[i]))
                 labels[i, :user_len] = -100
 
             labels[labels == tokenizer.pad_token_id] = -100  #Padding tokens are ignored in loss computation.
