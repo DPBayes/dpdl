@@ -1064,6 +1064,8 @@ class NLPDataModule(DataModule):
         label_field = self._label_field
         max_len = self.max_length
         task = self.task
+
+        print("are we here?")
     
         def collate_instruct_function(batch):
 
