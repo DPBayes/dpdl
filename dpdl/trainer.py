@@ -517,9 +517,12 @@ class Trainer:
                     else:
                         X_splitted = X_split[i]
                     generated_ids = self._unwrap_model().generate(X_splitted, 
-                                                                  max_new_tokens=120, 
+                                                                  max_new_tokens=250, 
                                                                   temperature=0.5, 
-                                                                  do_sample=True)
+                                                                  do_sample=True,
+                                                                  top_p=0.9,
+                                                                  pad_token_id=self.datamodule.tokenizer.pad_token_id,
+                                                                  eos_token_id=self.datamodule.tokenizer.eos_token_id)
                     
                     print('sampled text decoded',self.datamodule.decode(generated_ids))
 
