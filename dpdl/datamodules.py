@@ -519,14 +519,12 @@ class DataModule:
 
     # TO DO: test
     def _get_few_shot_subset(self, dataset):
-        # Two modes supported:
-        # 1) Classic: num_classes is known (classification datasets). Keep
-        #    existing behavior: take `shots` examples per class using
-        #    `train_test_split` stratified by label.
+        # Two modes
+        # 1) Classification: num_classes is known. Keep
+        #    existing behavior: take 'shots' examples per class using 'train_test_split' stratified by label.
         # 2) Autoregressive LLM / no ClassLabel: num_classes unknown. In this case, treat
-        #    `shots` as the maximum number of examples per distinct value in
-        #    `self._label_field` (e.g., how many times a disease may
-        #    appear). Sample up to `shots` examples per distinct value.
+        #    'shots' as the maximum number of examples per distinct value in
+        #    'self._group_field' (e.g., how many times a disease may appear). Sample up to 'shots' examples per distinct value.
 
         # If we still have class information, use the old code.
         if self.num_classes:
@@ -554,15 +552,13 @@ class DataModule:
             return subset
 
         # when no num_classes is available (autoregressive model). Determine
-        # which field to group by: prefer an explicit group_field (self._group_field)
-        # if provided, otherwise fall back to self._label_field. This allows
-        # grouping by a separate column such as 'Disease'.
+        # which field to group by: self._group_field if provided, otherwise fall back to self._label_field.
         grouping_field = self._group_field or self._label_field
 
         if grouping_field is None:
             raise ValueError('Number of classes unknown and no grouping/label field provided; cannot create few-shot dataset for LLM. Set dataset_group_field or dataset_label_field in configuration.')
 
-        # Build mapping value -> list of indices
+        # create a list of indices
         g = torch.Generator()
         g.manual_seed(self.split_seed)
 
@@ -573,9 +569,11 @@ class DataModule:
                 value_indices[key] = []
             value_indices[key].append(idx)
 
+        print("value_indices:", value_indices)
+
         sampled_indices = []
         for key, indices in value_indices.items():
-            # choose up to `self.shots` examples for this key
+            # choose up to 'self.shots' examples for this key
             n = min(self.shots, len(indices))
             if n <= 0:
                 continue
@@ -584,6 +582,8 @@ class DataModule:
             perm = torch.randperm(len(indices_tensor), generator=g) # a tensor of shuffled indices
             selected = indices_tensor[perm[:n]]
             sampled_indices.extend(selected.tolist())
+        
+        print("sampled_indices:", sampled_indices)
 
         # If user requested more samples than dataset size, return full dataset
         if len(sampled_indices) >= len(dataset):
