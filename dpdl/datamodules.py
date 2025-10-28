@@ -922,7 +922,7 @@ class NLPDataModule(DataModule):
             dataset_splits = datasets.load_dataset(self.dataset_name,'wikitext-2-raw-v1')
         #delete later
         if self.dataset_name == 'dmis-lab/meerkat-instructions':
-            dataset_splits = datasets.load_dataset(self.dataset_name,'medqa_cot')
+            dataset_splits = datasets.load_dataset(self.dataset_name,'MedQA-CoT')
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
