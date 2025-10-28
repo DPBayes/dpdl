@@ -515,32 +515,87 @@ class DataModule:
         # Return the selected subset of the dataset
         return dataset.select(sampled_indices)
 
+    # TO DO: test
     def _get_few_shot_subset(self, dataset):
-        if not self.num_classes:
-            raise ValueError('Number of classes unknown, can not create few shot dataset.')
+        # Two modes supported:
+        # 1) Classic: num_classes is known (classification datasets). Keep
+        #    existing behavior: take `shots` examples per class using
+        #    `train_test_split` stratified by label.
+        # 2) Autoregressive LLM / no ClassLabel: num_classes unknown. In this case, treat
+        #    `shots` as the maximum number of examples per distinct value in
+        #    `self._label_field` (e.g., how many times a disease may
+        #    appear). Sample up to `shots` examples per distinct value.
 
-        test_size = self.shots * self.num_classes
+        # If we still have class information, use the old code.
+        if self.num_classes:
+            test_size = self.shots * self.num_classes
 
-        # Special case: `train_test_split` is unable to "split" if
-        # the requested split size equals the dataset size. Also,
-        # for small datasets we request more samples than exist.
-        if test_size >= len(dataset):
+            # Special case: `train_test_split` is unable to "split" if
+            # the requested split size equals the dataset size. Also,
+            # for small datasets we request more samples than exist.
+            if test_size >= len(dataset):
+                return dataset
+
+            split_dataset = dataset.train_test_split(
+                test_size=test_size,
+                seed=self.split_seed,
+                stratify_by_column=self._label_field if self._stratify_shots else None,
+            )
+
+            subset = split_dataset['test']
+
+            if torch.distributed.get_rank() == 0:
+                c = Counter(subset[self._label_field])
+                n_examples = sum(c.values())
+                log.info(f'Collected few shot dataset with {n_examples} examples: {c}')
+
+            return subset
+
+        # when no num_classes is available (autoregressive model). We require
+        # self._label_field and use it to limit how many examples per distinct value (e.g., disease) are kept.
+        # treat shots as the maximum number of examples to keep per distinct value in self._label_field (e.g., disease name). 
+        # The method samples up to shots indices for each distinct value and returns the selected dataset.
+        if self._label_field is None:
+            raise ValueError('Number of classes unknown and no label field provided; cannot create few-shot dataset for LLM. Set label_field in configuration.')
+
+        # Build mapping value -> list of indices
+        g = torch.Generator()
+        g.manual_seed(self.split_seed)
+
+        value_indices = {}
+        for idx, sample in enumerate(dataset):
+            key = sample[self._label_field]
+            value_indices.setdefault(key, []).append(idx)
+            # convert non-hashable types, but usually strings or ints
+            # try:
+            #     value_indices.setdefault(key, []).append(idx)
+            # except Exception:
+            #     # fallback to string representation
+            #     value_indices.setdefault(str(key), []).append(idx)
+
+        sampled_indices = []
+        for key, indices in value_indices.items():
+            # choose up to `self.shots` examples for this key
+            n = min(self.shots, len(indices))
+            if n <= 0:
+                continue
+            indices_tensor = torch.tensor(indices)
+            perm = torch.randperm(len(indices_tensor), generator=g)
+            selected = indices_tensor[perm[:n]]
+            sampled_indices.extend(selected.tolist())
+
+        # If user requested more samples than dataset size, return full dataset
+        if len(sampled_indices) >= len(dataset):
             return dataset
 
-        split_dataset = dataset.train_test_split(
-            test_size=test_size,
-            seed=self.split_seed,
-            stratify_by_column=self._label_field if self._stratify_shots else None,
-        )
-
-        subset = split_dataset['test']
+        sampled_dataset = dataset.select(sampled_indices)
 
         if torch.distributed.get_rank() == 0:
-            c = Counter(subset[self._label_field])
-            n_examples = sum(c.values())
-            log.info(f'Collected few shot dataset with {n_examples} examples: {c}')
+            distribution = Counter(sampled_dataset[self._label_field])
+            n_examples = sum(distribution.values())
+            log.info(f'Collected few shot dataset with {n_examples} examples: {sorted(distribution.items())}')
 
-        return subset
+        return sampled_dataset
 
     def _get_imbalanced_subset(self, dataset, reverse=False):
         """
@@ -1064,8 +1119,6 @@ class NLPDataModule(DataModule):
         label_field = self._label_field
         max_len = self.max_length
         task = self.task
-
-        print("are we here?")
     
         def collate_instruct_function(batch):
 
@@ -1074,8 +1127,8 @@ class NLPDataModule(DataModule):
             conversations = [
                 tokenizer.apply_chat_template(
                     [
-                            {"role": "system", "content": sample['messages']},
-                            {"role": "user", "content": sample['messages']}
+                            {"role": "system", "content": sample['messages'][0]},
+                            {"role": "user", "content": sample['messages'][1]}
                     ],
                     tokenize=False,
                     add_generation_prompt=False
