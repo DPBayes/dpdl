@@ -123,7 +123,6 @@ class Configuration(BaseModel):
     use_steps: Optional[bool] = False
     evaluation_mode: Optional[bool] = False
     dataset_label_field: Optional[str] = None
-    dataset_group_field: Optional[str] = None
     max_test_examples: Optional[int] = None
     imbalance_factor: Optional[float] = None
     imbalance_reverse: Optional[bool] = False
@@ -247,7 +246,6 @@ class Configuration(BaseModel):
             ('Random seed for creating dataset subsets', self.split_seed),
             ('LLM use', self.llm),
             ('Task', self.task),
-            ('Dataset group field (few-shot grouping)', self.dataset_group_field),
         ]
 
         if self.privacy:

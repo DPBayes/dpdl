@@ -517,86 +517,32 @@ class DataModule:
         # Return the selected subset of the dataset
         return dataset.select(sampled_indices)
 
-    # TO DO: test
     def _get_few_shot_subset(self, dataset):
-        # Two modes
-        # 1) Classification: num_classes is known. Keep
-        #    existing behavior: take 'shots' examples per class using 'train_test_split' stratified by label.
-        # 2) Autoregressive LLM / no ClassLabel: num_classes unknown. In this case, treat
-        #    'shots' as the maximum number of examples per distinct value in
-        #    'self._group_field' (e.g., how many times a disease may appear). Sample up to 'shots' examples per distinct value.
+        if not self.num_classes:
+            raise ValueError('Number of classes unknown, can not create few shot dataset.')
 
-        # If we still have class information, use the old code.
-        if self.num_classes:
-            test_size = self.shots * self.num_classes
+        test_size = self.shots * self.num_classes
 
-            # Special case: `train_test_split` is unable to "split" if
-            # the requested split size equals the dataset size. Also,
-            # for small datasets we request more samples than exist.
-            if test_size >= len(dataset):
-                return dataset
-
-            split_dataset = dataset.train_test_split(
-                test_size=test_size,
-                seed=self.split_seed,
-                stratify_by_column=self._label_field if self._stratify_shots else None,
-            )
-
-            subset = split_dataset['test']
-
-            if torch.distributed.get_rank() == 0:
-                c = Counter(subset[self._label_field])
-                n_examples = sum(c.values())
-                log.info(f'Collected few shot dataset with {n_examples} examples: {c}')
-
-            return subset
-
-        # when no num_classes is available (autoregressive model). Determine
-        # which field to group by: self._group_field if provided, otherwise fall back to self._label_field.
-        grouping_field = self._group_field or self._label_field
-
-        if grouping_field is None:
-            raise ValueError('Number of classes unknown and no grouping/label field provided; cannot create few-shot dataset for LLM. Set dataset_group_field or dataset_label_field in configuration.')
-
-        # create a list of indices
-        g = torch.Generator()
-        g.manual_seed(self.split_seed)
-
-        value_indices = {}
-        for idx, sample in enumerate(dataset):
-            key = sample[grouping_field]
-            if key not in value_indices:
-                value_indices[key] = []
-            value_indices[key].append(idx)
-
-        print("value_indices:", value_indices)
-
-        sampled_indices = []
-        for key, indices in value_indices.items():
-            # choose up to 'self.shots' examples for this key
-            n = min(self.shots, len(indices))
-            if n <= 0:
-                continue
-            indices_tensor = torch.tensor(indices)
-            # Generates a random permutation of integers from 0 to n - 1
-            perm = torch.randperm(len(indices_tensor), generator=g) # a tensor of shuffled indices
-            selected = indices_tensor[perm[:n]]
-            sampled_indices.extend(selected.tolist())
-        
-        print("sampled_indices:", sampled_indices)
-
-        # If user requested more samples than dataset size, return full dataset
-        if len(sampled_indices) >= len(dataset):
+        # Special case: `train_test_split` is unable to "split" if
+        # the requested split size equals the dataset size. Also,
+        # for small datasets we request more samples than exist.
+        if test_size >= len(dataset):
             return dataset
 
-        sampled_dataset = dataset.select(sampled_indices)
+        split_dataset = dataset.train_test_split(
+            test_size=test_size,
+            seed=self.split_seed,
+            stratify_by_column=self._label_field if self._stratify_shots else None,
+        )
+
+        subset = split_dataset['test']
 
         if torch.distributed.get_rank() == 0:
-            distribution = Counter(sampled_dataset[grouping_field])
-            n_examples = sum(distribution.values())
-            log.info(f'Collected few shot dataset with {n_examples} examples: {sorted(distribution.items())}')
+            c = Counter(subset[self._label_field])
+            n_examples = sum(c.values())
+            log.info(f'Collected few shot dataset with {n_examples} examples: {c}')
 
-        return sampled_dataset
+        return subset
 
     def _get_imbalanced_subset(self, dataset, reverse=False):
         """
@@ -978,9 +924,6 @@ class NLPDataModule(DataModule):
 
         if self.dataset_name == 'wikitext':
             dataset_splits = datasets.load_dataset(self.dataset_name,'wikitext-2-raw-v1')
-        #delete later
-        if self.dataset_name == 'dmis-lab/meerkat-instructions':
-            dataset_splits = datasets.load_dataset(self.dataset_name,'MedQA-CoT')
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
@@ -1073,12 +1016,7 @@ class NLPDataModule(DataModule):
         self._set_generators_and_seed_worker()
         self._set_samplers_and_batch_size()
 
-        #collate_fn = self._make_text_collate()
-
-        if self.dataset_name == 'dmis-lab/meerkat-instructions':
-            collate_fn = self._make_text_collate_test()
-        else:
-            collate_fn = self._make_text_collate()
+        collate_fn = self._make_text_collate()
 
         self._dataloaders['train'] = torch.utils.data.DataLoader(
             self.train_dataset,
@@ -1115,74 +1053,6 @@ class NLPDataModule(DataModule):
                     collate_fn=self.tokenize_for_sample,
                     num_workers=self.num_workers,
                 )
-
-    def _make_text_collate_test(self):
-        tokenizer = self.tokenizer
-        text_fields = self._text_fields
-        label_field = self._label_field
-        max_len = self.max_length
-        task = self.task
-    
-        def collate_instruct_function(batch):
-
-            # for benchmark dataset MedQA-IoT
-            print("sample:", batch[0])
-            conversations = [
-                tokenizer.apply_chat_template(
-                    [
-                            {"role": "system", "content": sample['messages'][0]['content']},
-                            {"role": "user", "content": sample['messages'][1]['content']}
-                    ],
-                    tokenize=False,
-                    add_generation_prompt=False
-                )
-                for sample in batch
-            ]
-
-            #Tokenize the text already in chat format
-            tokenized = tokenizer(
-                    conversations,
-                    padding=True,
-                    truncation=True,
-                    max_length=max_len,
-                    return_tensors='pt'
-            ) 
-
-            print("tokenized chat: ", tokenizer.decode(tokenized[0]))
-
-            #We need the user tokens, only that part, so we can remove that from the 
-            #loss function
-
-            # Create labels with list comprehension
-            user_texts = [
-                tokenizer.apply_chat_template(
-                    [{"role": "user", "content": q['messages'][1]['content']}],
-                    tokenize=False,
-                    add_generation_prompt=True
-                )
-                for q in batch
-            ]
-            
-            user_tokenized = tokenizer(
-                    user_texts, 
-                    add_special_tokens=True, 
-                    padding=False
-            )
-            
-            # Mask user parts
-            labels = tokenized["input_ids"].clone()
-            
-            for i, user_ids in enumerate(user_tokenized["id"]):
-                user_len = len(user_ids)
-                labels[i, :user_len] = -100
-
-            labels[labels == tokenizer.pad_token_id] = -100  #Padding tokens are ignored in loss computation.
-
-            tokenized["labels"] = labels
-
-            return tokenized, labels
-            
-        return collate_instruct_function
 
     # use data collator from HF, e.g., DataCollatorWithPadding(tokenizer)?
     # or use custom collate function?
