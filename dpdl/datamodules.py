@@ -871,7 +871,6 @@ class DataModuleFactory:
                 privacy=configuration.privacy,
                 evaluation_mode=configuration.evaluation_mode,
                 label_field=configuration.dataset_label_field,
-                group_field=configuration.dataset_group_field,
                 max_test_examples=configuration.max_test_examples,
                 imbalance_factor=configuration.imbalance_factor,
                 imbalance_reverse=configuration.imbalance_reverse,
