@@ -16,16 +16,25 @@ class WandbCallback(Callback):
     - Log train loss at each logical step to wandb (with `step` and optional `epoch` fields).
     - Log epoch-level train/validation metrics.
     - Compute and log differences (train - val) for a list of metric keys when both are available.
+    - Log hyperparameters and configuration to wandb.config at training start.
 
     Usage:
-        cb = WandbCallback(project='myproj', run_name='exp1', log_dir='runs')
+        cb = WandbCallback(
+            project='myproj', 
+            run_name='exp1', 
+            log_dir='runs',
+            configuration=config,
+            hyperparameters=hyperparams
+        )
 
     Parameters:
     - project, run_name, log_dir: passed to `wandb.init`.
-        - log_train_loss_per_step: whether to log per-step train loss.
-        - The callback will automatically compute differences for any metric keys
-            present in both train and validation/test metric dicts passed by the
-            trainer (no need to pass `metric_keys`).
+    - log_train_loss_per_step: whether to log per-step train loss.
+    - configuration: Configuration object (or dict) containing experiment settings.
+    - hyperparameters: Hyperparameters object (or dict) containing training hyperparameters.
+    - The callback will automatically compute differences for any metric keys
+      present in both train and validation/test metric dicts passed by the
+      trainer (no need to pass `metric_keys`).
     - Note: `step` and a numeric `epoch` field are always recorded for batch-level logs.
     """
 
@@ -35,6 +44,8 @@ class WandbCallback(Callback):
         run_name: Optional[str] = None,
         log_dir: Optional[str] = None,
         log_train_loss_per_step: bool = True,
+        configuration: Optional[Dict] = None,
+        hyperparameters: Optional[Dict] = None,
     ) -> None:
         super().__init__()
 
@@ -42,6 +53,8 @@ class WandbCallback(Callback):
         self.run_name = run_name
         self.log_dir = log_dir
         self.log_train_loss_per_step = log_train_loss_per_step
+        self.configuration = configuration
+        self.hyperparameters = hyperparameters
 
         self._initialized = False
         self._wandb_run = None
@@ -99,6 +112,38 @@ class WandbCallback(Callback):
 
     def on_train_start(self, trainer):
         self._ensure_initialized()
+        
+        # Log hyperparameters to wandb config
+        if not self._is_global_zero() or wandb is None:
+            return
+            
+        if self._wandb_run is None:
+            return
+        
+        try:
+            config_dict = {}
+            
+            # Add hyperparameters if provided
+            if self.hyperparameters is not None:
+                if hasattr(self.hyperparameters, 'dict'):
+                    # Pydantic model
+                    config_dict.update(self.hyperparameters.dict())
+                elif isinstance(self.hyperparameters, dict):
+                    config_dict.update(self.hyperparameters)
+            
+            # Add configuration if provided
+            if self.configuration is not None:
+                if hasattr(self.configuration, 'dict'):
+                    # Pydantic model
+                    config_dict.update(self.configuration.dict())
+                elif isinstance(self.configuration, dict):
+                    config_dict.update(self.configuration)
+            
+            if config_dict:
+                wandb.config.update(config_dict, allow_val_change=True)
+                log.info(f"Logged {len(config_dict)} hyperparameters to wandb")
+        except Exception:
+            log.exception("Failed to log hyperparameters to wandb")
 
     def on_train_epoch_start(self, trainer, epoch):
         """

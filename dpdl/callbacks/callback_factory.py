@@ -131,6 +131,8 @@ class CallbackFactory:
                     project=configuration.wandb_project,
                     run_name=experiment_name,
                     log_dir=full_log_dir,
+                    configuration=configuration,
+                    hyperparameters=hyperparams,
                 )
             )
 
