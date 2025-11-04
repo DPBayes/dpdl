@@ -46,9 +46,7 @@ download_safetensors
 def download_safetensors(model_name):
 
     # folder = snapshot_download("microsoft/Phi-3-mini-128k-instruct", allow_patterns=["*.json", "*model*.safetensors"])
-    folder = snapshot_download(
-        model_name, allow_patterns=["*.json", "*model*.safetensors"]
-    )
+    folder = snapshot_download(model_name, allow_patterns=["*.json", "*model*.safetensors"])
 
     print(folder)
 
@@ -120,9 +118,7 @@ def download_generic_huggingface_model(
             load_kwargs["num_labels"] = num_labels
         print("Loading sequence classification model")
         model = AutoModelForSequenceClassification.from_pretrained(
-            checkpoint_or_not(model_name, checkpoint_dir, peft),
-            device_map="cuda:0",
-            **load_kwargs
+            checkpoint_or_not(model_name, checkpoint_dir, peft), device_map="cuda:0", **load_kwargs
         )
         # Freeze embedding layer that doesn't work for Opacus
         model_type = model.config.model_type  # e.g., 'bert', 'roberta', 'distilbert'
@@ -198,16 +194,14 @@ class HF_llm(torch.nn.Module):
         self.ignore_index = ignore_index
         self.peft = peft
         self.task = task
-        self.model, self.tokenizer, self.quantization_config = (
-            download_generic_huggingface_model(
-                model_name=model_name,
-                quantization=quantization,
-                trust_remote_code=trust_remote_code,
-                num_labels=num_labels,
-                peft=peft,
-                checkpoint_dir=checkpoint_dir,
-                task=task,
-            )
+        self.model, self.tokenizer, self.quantization_config = download_generic_huggingface_model(
+            model_name=model_name,
+            quantization=quantization,
+            trust_remote_code=trust_remote_code,
+            num_labels=num_labels,
+            peft=peft,
+            checkpoint_dir=checkpoint_dir,
+            task=task,
         )
 
         self.vocab_size = self.model.config.vocab_size
