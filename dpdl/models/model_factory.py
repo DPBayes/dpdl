@@ -16,11 +16,13 @@ from dpdl.peft import PeftFactory
 
 log = logging.getLogger(__name__)
 
+
 def add_noise_to_weights(model, noise_level):
     for name, param in model.named_parameters():
-        if 'weight' in name:
+        if "weight" in name:
             noise = torch.randn(param.size()) * noise_level
             param.data.add_(noise)
+
 
 def get_latest_checkpoint(checkpoint_dir):
     """Find the latest checkpoint by modification time"""
@@ -43,6 +45,7 @@ def get_latest_checkpoint(checkpoint_dir):
     latest = max(checkpoints, key=lambda x: os.path.getmtime(os.path.join(checkpoint_dir, x)))
     return os.path.join(checkpoint_dir, latest)
 
+
 class ModelFactory:
 
     @staticmethod
@@ -51,9 +54,8 @@ class ModelFactory:
         hyperparams: Hyperparameters,
         num_classes: int,
         loss_fn: torch.nn,
-        metrics: dict
+        metrics: dict,
     ):
-
         """
         Create a model instance based on the configuration, with support for PEFT and zeroing head weights.
 
@@ -73,7 +75,6 @@ class ModelFactory:
 
         transforms = {}  # No default transforms
         model_instance = None
-
 
         # Flag to skip image model creation if we load HF
         loaded_hf = False
@@ -99,13 +100,13 @@ class ModelFactory:
             loaded_hf = True
 
         if not loaded_hf:
-            if configuration.model_name.startswith('wrn-'):
+            if configuration.model_name.startswith("wrn-"):
                 # Parse depth and width from model_name, e.g., 'wrn-16-4'
-                parts = configuration.model_name.split('-')
+                parts = configuration.model_name.split("-")
                 depth, width = int(parts[1]), int(parts[2])
                 model_instance = WideResNet(depth=depth, width=width, num_classes=num_classes)
                 transforms = model_instance.get_transforms()
-            elif configuration.model_name == 'koskela-net':
+            elif configuration.model_name == "koskela-net":
                 model_instance = KoskelaNet()
                 transforms = model_instance.get_transforms()
             else:
@@ -135,7 +136,7 @@ class ModelFactory:
             num_classes=num_classes,
             use_feature_cache=configuration.cache_features,
             criterion=loss_fn,
-            metrics=metrics
+            metrics=metrics,
         )
 
         # Add noise to (pretrained) weights?
@@ -149,7 +150,7 @@ class ModelFactory:
         # should we do Parameter Efficient Fine-Tuning (PEFT)?
         if configuration.peft:
             print(model)
-            model = PeftFactory.get_peft_model(model, configuration,checkpoints_dir_latest)
+            model = PeftFactory.get_peft_model(model, configuration, checkpoints_dir_latest)
 
         return model, transforms, num_classes
 
