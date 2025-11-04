@@ -1,23 +1,21 @@
 from __future__ import annotations
 
-from distutils import core
-import os
 import logging
 import math
+import os
 from collections.abc import Mapping
+
 import opacus
 import torch
-import torchmetrics
-
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
-from .models.model_factory import ModelFactory
-from .callbacks.callback_factory import CallbackHandler, CallbackFactory
-from .configurationmanager import ConfigurationManager, Configuration, Hyperparameters
+from .callbacks.callback_factory import CallbackFactory, CallbackHandler
+from .configurationmanager import Configuration, ConfigurationManager, Hyperparameters
 from .datamodules import DataModule, DataModuleFactory
-from .optimizers import OptimizerFactory
 from .loss_factory import LossFactory
 from .metrics_factory import MetricsFactory
+from .models.model_factory import ModelFactory
+from .optimizers import OptimizerFactory
 from .utils import seed_everything, shift_and_flatten
 
 log = logging.getLogger(__name__)
@@ -35,14 +33,13 @@ class Trainer:
 
         # generic params
         epochs: int = 10,
-        total_steps: int = None,
+        total_steps: int = 0,
         validation_frequency: int = 1,
         seed: int = 0,
         physical_batch_size: int = 40,
-        callback_handler: CallbackHandler = None,
-        llm: bool = None,
-        peft: str = None,
-        task: str = None,
+        callback_handler: CallbackHandler | None = None,
+        peft: str | None = None,
+        task: str | None = None,
     ):
 
         self.model = model
@@ -53,7 +50,6 @@ class Trainer:
         self.validation_frequency = validation_frequency
         self.seed = seed
         self.physical_batch_size = physical_batch_size
-        self.llm = llm
         self.peft = peft
         self.task = task
         self.adapter = adapter
@@ -155,10 +151,7 @@ class Trainer:
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
 
-            if self.task in ['CausalLM','InstructLM']:
-                logical_batch_loss = self.fit_one_batch_causal(batch_idx, batch)
-            else:
-                logical_batch_loss = self.fit_one_batch(batch_idx, batch)
+            logical_batch_loss = self.fit_one_batch(batch_idx, batch)
 
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
 
@@ -169,132 +162,37 @@ class Trainer:
         self._unwrap_model().train_metrics.reset()
 
         # log sample of generated text if asked for
-        self.adapter().sample()
+        self.adapter.sample(self)
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
-
-
-    def fit_one_batch_causal(self, batch_idx, batch):
-        X, y = batch
-        X, y = self.adapter.move_to_device(X, y)
-
-        is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
-
-        # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
-        # then process the sub batches one at a time and call backward.
-        # when all the sub batches have been processed we can finally step the optimizer.
-        if is_mapping:
-            # split each tensor in the dict
-            X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
-            y_split = y.split(self.physical_batch_size, dim=0)
-        else:
-            X_split = X.split(self.physical_batch_size, dim=0)
-            y_split = y.split(self.physical_batch_size, dim=0)
-        
-        N = len(y_split)
-
-        # zero the grads as usually before doing anything
-        self.optimizer.zero_grad()
-
-        logical_batch_loss = 0
-        # process the sub batches one at a time
-        print('Number of physical batches', N)
-
-        for i in range(N):
-            if is_mapping:
-                X_splitted = {k: X_split[k][i] for k in X_split}
-            else:
-                X_splitted = X_split[i]
-            
-            y_splitted = y_split[i]
-            physical_batch = (X_splitted, y_splitted)
-
-            self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
-
-            logits = self.model(X_splitted)
-
-            preds, y_splitted_flatten = shift_and_flatten(logits, y_splitted)
-            preds_flat = torch.argmax(preds, dim=-1)
-
-            #Loss needs the logits flatten
-            loss = self._unwrap_model().criterion(preds, y_splitted_flatten) / N  # NB: normalize loss
-            print('one batch loss',loss)
-            loss.backward()
-            logical_batch_loss += loss.item()
-            print('logical batch loss',logical_batch_loss)
-
-            #Perplexity needs the normal logits [batch_size, seq_len, vocab_size]
-            self._unwrap_model().train_metrics['Perplexity'].update(logits, y_splitted)
-
-            self._unwrap_model().train_metrics['MulticlassAccuracy'].update(preds_flat, y_splitted_flatten)
-            # notify the callbacks of a physical batch end
-            self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
-        
-        # after accumulating the gradients for all the sub batches we can finally update weights.
-        self.optimizer.step()
-
-        return logical_batch_loss
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
         X, y = self.adapter.move_to_device(X, y)
 
-        is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
-
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
         # when all the sub batches have been processed we can finally step the optimizer.
-        if is_mapping:
-            # split each tensor in the dict
-            X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
-            y_split = y.split(self.physical_batch_size, dim=0)
-        else:
-            X_split = X.split(self.physical_batch_size, dim=0)
-            y_split = y.split(self.physical_batch_size, dim=0)
-        
-        N = len(y_split)
 
-        # check the splits
-        print("[DEBUG] check the splits")
-        for k, v in X_split.items():
-            print(f"length of {k}:", len(v))
-            print(f"shape of {k}:", v[0].shape)
-        print("length of y_split:", len(y_split))
+        # the adapter handles the physical batches, as it's a different operation depending on the task.
+        physical_batches = list(self.adapter.iterate_physical_batches((X, y), self.physical_batch_size))
+        N = len(physical_batches)
+
+        self.optimizer.zero_grad(set_to_none=True)
+        logical_batch_loss = 0.0
 
         # zero the grads as usually before doing anything
         self.optimizer.zero_grad()
 
         logical_batch_loss = 0
-        # process the sub batches one at a time
-        print('Number of physical batches', N)
-
-        for i in range(N):
-            if is_mapping:
-                X_splitted = {k: X_split[k][i] for k in X_split}
-            else:
-                X_splitted = X_split[i]
-            
-            y_splitted = y_split[i]
-            physical_batch = (X_splitted, y_splitted)
-
+        for i, physical_batch in enumerate(physical_batches):
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
-            logits = self.model(X_splitted)
-            print("logits: ", logits)
-            print('logits shape',logits.shape)
-            preds = torch.argmax(logits, dim=1)
-
-            loss = self._unwrap_model().criterion(logits, y_splitted) / N  # NB: normalize loss
-            print('one batch loss',loss)
+            loss = self.adapter.forward_loss_and_update_metrics(self._unwrap_model(), physical_batch, normalize_by=N)
             loss.backward()
+
             logical_batch_loss += loss.item()
-            print('logical batch loss',logical_batch_loss)
-            
-            # update the metrics if there are any
-
-            #preds = torch.argmax(logits, dim=1)
-
-            self._unwrap_model().train_metrics.update(preds, y_splitted)
+            print(f'LOSS: {loss.item()}')
 
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
@@ -363,30 +261,16 @@ class Trainer:
         X, y = batch
         X, y = self.adapter.move_to_device(X, y)
 
-        logits = self.model(X)
-        if self.task in ['CausalLM','InstructLM']:
-            preds, y_flatten = shift_and_flatten(logits, y)
-            loss = self._unwrap_model().criterion(preds, y_flatten)
-        else:
-            loss = self._unwrap_model().criterion(logits, y)
-        loss = loss.item()
-
-        if self.task in ['CausalLM','InstructLM']:
-
-            preds_flat = torch.argmax(preds, dim=1)
-
-            metrics_evaluator['Perplexity'].update(logits, y)
-
-            metrics_evaluator['MulticlassAccuracy'].update(preds_flat, y_flatten)
-
-        else:
-            preds = torch.argmax(logits, dim=1)
-            metrics_evaluator.update(preds, y)
+        loss =  self.adapter.forward_loss_and_update_metrics(
+            self._unwrap_model(),
+            (X, y),
+            metrics=metrics_evaluator,  # record into the provided evaluator
+        )
 
         if enable_callbacks:
-            self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss)
+            self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss.item())
 
-        return loss
+        return loss.item()
 
     def _unwrap_model(self):
         # the model is wrapped inside torch distributed,
@@ -480,9 +364,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         poisson_sampling: bool = True,
         normalize_clipping: bool = False,
         secure_mode: bool = False,
-        target_epsilon: float = None,
-        target_delta: float = None,
-        noise_batch_ratio: float = None,
+        target_epsilon: float | None = None,
+        target_delta: float | None = None,
+        noise_batch_ratio: float | None = None,
         seed: int = 0,
         **kwargs,
     ):
@@ -545,8 +429,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         # let's wrap anyway in case of future api changes. https://opacus.ai/tutorials/ddp_tutorial
         model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
 
-        print('The model after opacus DDP', model)
-
         optimizer = self.optimizer
         train_dataloader = self.datamodule.get_dataloader('train')
 
@@ -588,7 +470,6 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # now we can start using the DP'ifyed stuff
         self.model = dp_model
-        print("DP model: ", self.model)
         self.datamodule.set_dataloader('train', dp_dataloader)
         self.optimizer = dp_optimizer
 
@@ -659,13 +540,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 self.callback_handler.call('on_train_physical_batch_start', self, batch_idx, batch)
 
                 # let's fit this physical batch
-
-
-                if self.task in ['CausalLM','InstructLM']:
-                    batch_loss = self.fit_one_batch_causal(batch_idx, batch)
-                else:
-                    batch_loss = self.fit_one_batch(batch_idx, batch)
-                #batch_loss = self.fit_one_batch(batch_idx, batch)
+                batch_loss = self.fit_one_batch(batch_idx, batch)
 
                 # notify the callbacks of a physical batch end
                 self.callback_handler.call('on_train_physical_batch_end', self, batch_idx, batch, batch_loss)
@@ -727,44 +602,12 @@ class DifferentiallyPrivateTrainer(Trainer):
         X, y = batch
         X, y = self.adapter.move_to_device(X, y)
 
-        logits = self.model(X)
-
-        loss = self._unwrap_model().criterion(logits, y)
+        loss = self.adapter.forward_loss_and_update_metrics(self._unwrap_model(), (X, y), normalize_by=None)
         loss.backward()
 
         self.optimizer.step()
 
         loss = loss.item()
-
-        # update metrics if there are any
-        preds = torch.argmax(logits, dim=1)
-        self._unwrap_model().train_metrics.update(preds, y)
-
-        return loss
-
-    def fit_one_batch_causal(self, batch_idx, batch):
-        self.optimizer.zero_grad()
-
-        X, y = batch
-
-        X, y = self.adapter.move_to_device(X, y)
-
-        logits = self.model(X)
-
-        preds, y_flatten = shift_and_flatten(logits, y)
-        preds_flat = torch.argmax(preds, dim=-1)
-
-        #Loss needs the logits flatten
-        loss = self._unwrap_model().criterion(preds, y_flatten)
-        loss.backward()
-
-        self.optimizer.step()
-
-        loss = loss.item()
-
-        self._unwrap_model().train_metrics['Perplexity'].update(logits, y)
-
-        self._unwrap_model().train_metrics['MulticlassAccuracy'].update(preds_flat, y_flatten)
 
         return loss
 
@@ -797,14 +640,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                     'on_train_physical_batch_start', self, phys_idx, batch
                 )
 
-                print('for batch idx',phys_idx, 'we have batch:\n',batch)
-
-                if self.task in ['CausalLM','InstructLM']:
-                    loss = self.fit_one_batch_causal(phys_idx, batch)
-                else:
-                    loss = self.fit_one_batch(phys_idx, batch)
-
-                #loss = self.fit_one_batch(phys_idx, batch)
+                loss = self.fit_one_batch(phys_idx, batch)
 
                 self.callback_handler.call(
                     'on_train_physical_batch_end', self, phys_idx, batch, loss
@@ -834,11 +670,12 @@ class DifferentiallyPrivateTrainer(Trainer):
         self._unwrap_model().train_metrics.reset()
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
-        if self.task == 'InstructLM':
-            self.sample()
+        # log a sample if defined in the adapter
+        self.adapter.sample()
 
     def save_model(self, fpath):
         self.model.module.save_model(fpath)
+
 
 class TaskAdapter:
     """
@@ -867,14 +704,15 @@ class TaskAdapter:
 
         return (X, y) if y is not None else X
 
-    def iterate_physical_batches(self, batch, micro_bs):
-        """Yield (X_micro, y_micro) slices. For causal LM that does not split, yield the full batch once."""
+    def iterate_physical_batches(self, batch, physical_batch_size):
+        """
+        Return an iterator over physical batches.
+        """
         ...
 
-    def forward_loss_and_update_metrics(self, model, batch):
+    def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
         """
-        Returns: loss_tensor (no .item()), optional_debug (dict|None)
-        Must call metrics updates internally (train or eval metrics chosen by caller via model state).
+        Updates metrics and return loss tensor (for backward).
         """
         ...
 
@@ -883,19 +721,12 @@ class TaskAdapter:
 
 
 class ClassificationAdapter(TaskAdapter):
-    def iterate_physical_batches(self, batch, micro_bs):
+    def iterate_physical_batches(self, batch, physical_batch_size):
         X, y = batch
-        is_mapping = isinstance(X, Mapping)
-        if is_mapping:
-            splits = {k: v.split(micro_bs, dim=0) for k, v in X.items()}
-            y_splits = y.split(micro_bs, dim=0)
-            for i in range(len(y_splits)):
-                yield ({k: splits[k][i] for k in splits}, y_splits[i])
-        else:
-            for Xs, ys in zip(X.split(micro_bs, 0), y.split(micro_bs, 0)):
-                yield (Xs, ys)
+        for Xs, ys in zip(X.split(physical_batch_size, 0), y.split(physical_batch_size, 0)):
+            yield (Xs, ys)
 
-    def forward_loss_and_update_metrics(self, model, batch, normalize_by: int | None = None):
+    def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
         X, y = batch
 
         logits = model(X)
@@ -904,19 +735,27 @@ class ClassificationAdapter(TaskAdapter):
         if normalize_by:
             loss = loss / normalize_by
 
-        preds = torch.argmax(logits, dim=1)
+        if metrics is not None:
+            metrics_to_update = metrics
+        else:
+            metrics_to_update = model.train_metrics if model.training else model.valid_metrics
 
-        model.train_metrics.update(preds, y) if model.training else model.valid_metrics.update(preds, y)
+        preds = torch.argmax(logits, dim=1)
+        metrics_to_update.update(preds, y)
 
         return loss
 
 
 class LanguageModelAdapter(TaskAdapter):
-    def iterate_physical_batches(self, batch, micro_bs):
-        # Intentionally no splitting — yield the full batch once
-        yield batch
+    def iterate_physical_batches(self, batch, physical_batch_size):
+        X, y = batch
+        splits = {k: v.split(physical_batch_size, dim=0) for k, v in X.items()}
+        y_splits = y.split(physical_batch_size, dim=0)
 
-    def forward_loss_and_update_metrics(self, model, batch, normalize_by: int | None = None):
+        for i in range(len(y_splits)):
+            yield ({k: splits[k][i] for k in splits}, y_splits[i])
+
+    def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
         X, y = batch
         logits = model(X)
         preds, y_flat = shift_and_flatten(logits, y)
@@ -926,22 +765,24 @@ class LanguageModelAdapter(TaskAdapter):
         if normalize_by:
             loss = loss / normalize_by
 
-        if model.training:
-            model.train_metrics['Perplexity'].update(logits, y)
-            model.train_metrics['MulticlassAccuracy'].update(preds.argmax(dim=-1), y_flat)
+        if metrics is not None:
+            metrics_to_update = metrics
         else:
-            model.valid_metrics['Perplexity'].update(logits, y)
-            model.valid_metrics['MulticlassAccuracy'].update(preds.argmax(dim=-1), y_flat)
+            metrics_to_update = model.train_metrics if model.training else model.valid_metrics
+
+        with torch.no_grad():
+            metrics_to_update['Perplexity'].update(logits, y)
+            metrics_to_update['MulticlassAccuracy'].update(preds.argmax(dim=-1), y_flat)
 
         return loss
 
 class CausalLMAdapter(LanguageModelAdapter):
     def sample(self, trainer):
-        trainer._sample_impl()
+        return
 
 class InstructLMAdapter(LanguageModelAdapter):
     def sample(self, trainer):
-        return
+        trainer._sample_impl()
 
 # Define task specific adapters
 _ADAPTERS = {
@@ -1034,7 +875,6 @@ class TrainerFactory:
             total_steps=total_steps,
             seed=configuration.seed,
             validation_frequency=configuration.validation_frequency,
-            llm=configuration.llm,
             peft=configuration.peft,
             task=configuration.task
         )
@@ -1085,10 +925,6 @@ class TrainerFactory:
             metrics = MetricsFactory.get_metrics(configuration, num_classes)
             model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
 
-        if not opacus.validators.ModuleValidator.is_valid(model):
-            print('a module is not valid')
-            model = opacus.validators.ModuleValidator.fix(model)
-
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         # The datamodule needs to be aware of the transformations, now we can initialize it
@@ -1137,7 +973,6 @@ class TrainerFactory:
             seed=configuration.seed,
             callback_handler=callback_handler,
             validation_frequency=configuration.validation_frequency,
-            llm=configuration.llm,
             peft=configuration.peft,
             task=configuration.task
         )
