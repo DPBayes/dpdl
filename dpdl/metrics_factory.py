@@ -77,7 +77,7 @@ class MetricsFactory:
         train_sync, eval_sync = True, False
 
         if task in ('ImageClassification', 'SequenceClassification'):
-            log.info('Task is "{configuration.task}", initializing classification metrics.')
+            log.info(f'Task is "{configuration.task}", initializing classification metrics.')
 
             if not num_classes or num_classes < 1:
                 raise ValueError('num_classes required for classification tasks')
