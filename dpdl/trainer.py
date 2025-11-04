@@ -178,7 +178,6 @@ class Trainer:
         physical_batches = list(self.adapter.iterate_physical_batches((X, y), self.physical_batch_size))
         N = len(physical_batches)
 
-        self.optimizer.zero_grad(set_to_none=True)
         logical_batch_loss = 0.0
 
         # zero the grads as usually before doing anything
