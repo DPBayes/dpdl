@@ -1,9 +1,0 @@
-Hyperparameters:
-  Epochs          : 40
-  Total steps     : None
-  Learning rate   : None
-  Batch size      : None
-  Sample rate     : None
-  Noise multiplier: None
-  Max grad norn   : 100.0
-  Target epsilon  : 1.0

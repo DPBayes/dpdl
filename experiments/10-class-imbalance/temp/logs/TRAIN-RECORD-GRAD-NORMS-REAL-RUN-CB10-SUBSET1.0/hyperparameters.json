@@ -1,1 +1,0 @@
-{"learning_rate":0.004462886549682879,"epochs":40,"total_steps":null,"batch_size":2128,"sample_rate":null,"noise_multiplier":null,"max_grad_norm":10.0,"target_epsilon":1.0,"privacy":true}
