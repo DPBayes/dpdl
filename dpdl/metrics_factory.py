@@ -57,7 +57,10 @@ def _get_language_model_metrics(
             ignore_index=ignore_index,
             sync_on_compute=sync,
         ),
-        'Perplexity': Perplexity(ignore_index=ignore_index),
+        'Perplexity': Perplexity(
+            ignore_index=ignore_index,
+            sync_on_compute=sync,
+        ),
     }
 
     return torchmetrics.MetricCollection(metrics).cuda()
@@ -77,7 +80,8 @@ class MetricsFactory:
         train_sync, eval_sync = True, False
 
         if task in ('ImageClassification', 'SequenceClassification'):
-            log.info(f'Task is "{configuration.task}", initializing classification metrics.')
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Task is "{configuration.task}", initializing classification metrics.')
 
             if not num_classes or num_classes < 1:
                 raise ValueError('num_classes required for classification tasks')
@@ -99,7 +103,8 @@ class MetricsFactory:
             )
 
         elif task in ('CausalLM', 'InstructLM'):
-            log.info('Task is "{configuration.task}", initializing language model metrics.')
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Task is "{configuration.task}", initializing language model metrics.')
 
             vocab_size = int(num_classes)
             ignore_index = -100
