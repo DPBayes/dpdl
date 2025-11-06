@@ -25,7 +25,7 @@ class DataModule:
 
     def __init__(
         self,
-        dataset_name: str = "default-dataset",
+        dataset_name: str = 'default-dataset',
         batch_size: int = 64,
         max_test_examples: int = 0,
         sample_rate: float = 0,
@@ -70,7 +70,12 @@ class DataModule:
         self._fairness_imbalance_class = fairness_imbalance_class
         self._cache_transforms = cache_transforms
 
-        self._dataloaders = {"train": None, "valid": None, "test": None, "sample": None}
+        self._dataloaders = {
+            'train': None,
+            'valid': None,
+            'test': None,
+            'sample': None
+        }
 
         # The _load_datasets method will fill this
         self.num_classes = None
@@ -124,7 +129,7 @@ class DataModule:
             batch_size = int(self.sample_rate * len(self.train_dataset))
 
             if torch.distributed.get_rank() == 0:
-                log.info(f"Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.")
+                log.info(f'Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.')
 
             self.batch_size = batch_size
 
@@ -136,7 +141,7 @@ class DataModule:
     def get_dataloader(self, name):
         return self._dataloaders.get(name)
 
-    def get_dataset_size(self, which="train_dataset"):
+    def get_dataset_size(self, which='train_dataset'):
         dataset = getattr(self, which)
         return len(dataset)
 
@@ -152,46 +157,44 @@ class DataModule:
         self._create_dataset_splits()
 
         if self.subset_size and self.shots:
-            raise ValueError("Subset size and shots are exlusive.")
+            raise ValueError('Subset size and shots are exlusive.')
 
         # Imbalance before subsetting. If done in other order, we can get into
         # trouble with e.g. classes with zero examples
         # exponential distribution, not Fairness-style imbalance
         if self._imbalance_factor and not self._fairness_imbalance_class:
             if torch.distributed.get_rank() == 0:
-                log.info("Creating imbalanced train set..")
+                log.info('Creating imbalanced train set..')
 
-            self.train_dataset = self._get_imbalanced_subset(
-                self.train_dataset, self._imbalance_reverse
-            )
+            self.train_dataset = self._get_imbalanced_subset(self.train_dataset, self._imbalance_reverse)
 
             if torch.distributed.get_rank() == 0:
-                log.info("Creating imbalanced validation set..")
+                log.info('Creating imbalanced validation set..')
 
-            self.val_dataset = self._get_imbalanced_subset(
-                self.val_dataset, self._imbalance_reverse
-            )
+            self.val_dataset = self._get_imbalanced_subset(self.val_dataset, self._imbalance_reverse)
 
             if torch.distributed.get_rank() == 0:
-                log.info("Creating imbalanced test set..")
+                log.info('Creating imbalanced test set..')
 
-            self.test_dataset = self._get_imbalanced_subset(
-                self.test_dataset, self._imbalance_reverse
-            )
+            self.test_dataset = self._get_imbalanced_subset(self.test_dataset, self._imbalance_reverse)
 
         # NOTE: we use full data for validation and test, but scale the metrics accordingly.
         if self._fairness_imbalance_class:
 
             if self._imbalance_reverse:
-                raise ValueError("Cannot reverse imbalance for fairness style imbalanced dataset.")
+                raise ValueError('Cannot reverse imbalance for fairness style imbalanced dataset.')
 
             if torch.distributed.get_rank() == 0:
                 log.info("Creating fairness imbalanced train set..")
-                self.train_dataset = self._get_fairness_imbalanced_subset(self.train_dataset)
+                self.train_dataset = self._get_fairness_imbalanced_subset(
+                    self.train_dataset
+                )
 
             if torch.distributed.get_rank() == 0:
                 log.info("Creating fairness imbalanced validation set..")
-                self.val_dataset = self._get_fairness_imbalanced_subset(self.val_dataset)
+                self.val_dataset = self._get_fairness_imbalanced_subset(
+                    self.val_dataset
+                )
 
             if torch.distributed.get_rank() == 0:
                 log.info(
@@ -204,17 +207,13 @@ class DataModule:
 
             if torch.distributed.get_rank() == 0:
                 train_distribution = Counter(self.train_dataset[self._label_field])
-                log.info(
-                    f"Training set (size: {len(self.train_dataset)}) class distribution after taking subset of size {self.subset_size}: {sorted(train_distribution.items())}"
-                )
+                log.info(f'Training set (size: {len(self.train_dataset)}) class distribution after taking subset of size {self.subset_size}: {sorted(train_distribution.items())}')
 
             self.val_dataset = self._get_stratified_subset(self.val_dataset)
 
             if torch.distributed.get_rank() == 0:
                 val_distribution = Counter(self.val_dataset[self._label_field])
-                log.info(
-                    f"Validation set (size: {len(self.val_dataset)}) class distribution after taking subset of size {self.subset_size}: {sorted(val_distribution.items())}"
-                )
+                log.info(f'Validation set (size: {len(self.val_dataset)}) class distribution after taking subset of size {self.subset_size}: {sorted(val_distribution.items())}')
 
         if self.shots is not None:
             self.train_dataset = self._get_few_shot_subset(self.train_dataset)
@@ -222,9 +221,7 @@ class DataModule:
         if self.max_test_examples:
             if len(self.val_dataset) > self.max_test_examples:
                 if torch.distributed.get_rank() == 0:
-                    log.info(
-                        f"Validation dataset has {len(self.val_dataset)} examples which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size."
-                    )
+                    log.info(f'Validation dataset has {len(self.val_dataset)} examples which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size.')
 
                 _, self.val_dataset = self.val_dataset.train_test_split(
                     test_size=self.max_test_examples,
@@ -235,9 +232,7 @@ class DataModule:
 
             if len(self.test_dataset) > self.max_test_examples:
                 if torch.distributed.get_rank() == 0:
-                    log.info(
-                        f"Test dataset has {len(self.test_dataset)} examples which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size."
-                    )
+                    log.info(f'Test dataset has {len(self.test_dataset)} examples which is more than the configured maximum ({self.max_test_examples}). Limiting dataset size.')
 
                 _, self.test_dataset = self.test_dataset.train_test_split(
                     test_size=self.max_test_examples,
@@ -267,36 +262,32 @@ class DataModule:
 
         # Automatically determine the number of classes
         # NB: This can be done if the label is of type ClassLabel
-        self.num_classes = dataset_splits["train"].features[self._label_field].num_classes
+        self.num_classes = dataset_splits['train'].features[self._label_field].num_classes
 
         if torch.distributed.get_rank() == 0:
-            log.info(f"Determined the number of classes to be {self.num_classes}.")
+            log.info(f'Determined the number of classes to be {self.num_classes}.')
 
     def _create_dataset_splits(self):
         # Check if there's a validation split available
-        has_validation_split = "validation" in self._dataset_splits
-        has_test_split = "test" in self._dataset_splits
+        has_validation_split = 'validation' in self._dataset_splits
+        has_test_split = 'test' in self._dataset_splits
 
         # We have all the splits, just use them as they are
         if has_validation_split and has_test_split:
             # Use separate validation set if it exists
-            self.train_dataset = self._dataset_splits["train"]
-            self.val_dataset = self._dataset_splits["validation"]
-            self.test_dataset = self._dataset_splits["test"]
+            self.train_dataset = self._dataset_splits['train']
+            self.val_dataset = self._dataset_splits['validation']
+            self.test_dataset = self._dataset_splits['test']
 
         # No validation or test splist, create both
         if not has_validation_split and not has_test_split:
             # Split the training dataset into training and validation
-            self.train_dataset, val_and_test_split = (
-                self._dataset_splits["train"]
-                .train_test_split(
-                    test_size=(self.test_size + self.val_size),
-                    seed=self.seed,
-                    shuffle=True,
-                    stratify_by_column=self._label_field,
-                )
-                .values()
-            )
+            self.train_dataset, val_and_test_split = self._dataset_splits['train'].train_test_split(
+                test_size=(self.test_size + self.val_size),
+                seed=self.seed,
+                shuffle=True,
+                stratify_by_column=self._label_field,
+            ).values()
 
             self.val_dataset, self.test_dataset = val_and_test_split.train_test_split(
                 test_size=0.5,
@@ -308,43 +299,33 @@ class DataModule:
         # We have only test split, create validation split from train
         if not has_validation_split and has_test_split:
             # Split the training dataset into training and validation
-            self.train_dataset, self.val_dataset = (
-                self._dataset_splits["train"]
-                .train_test_split(
-                    test_size=self.test_size,
-                    seed=self.seed,
-                    shuffle=True,
-                    stratify_by_column=self._label_field,
-                )
-                .values()
-            )
+            self.train_dataset, self.val_dataset = self._dataset_splits['train'].train_test_split(
+                test_size=self.test_size,
+                seed=self.seed,
+                shuffle=True,
+                stratify_by_column=self._label_field,
+            ).values()
 
-            self.test_dataset = self._dataset_splits["test"]
+            self.test_dataset = self._dataset_splits['test']
 
         if has_validation_split and not has_test_split:
             # Keep the original train split
-            self.train_dataset = self._dataset_splits["train"]
+            self.train_dataset = self._dataset_splits['train']
 
             # Split the validation into validation and test (50/50)
-            self.val_dataset, self.test_dataset = (
-                self._dataset_splits["validation"]
-                .train_test_split(
-                    test_size=0.5,
-                    seed=self.seed,
-                    shuffle=True,
-                    stratify_by_column=self._label_field,
-                )
-                .values()
-            )
+            self.val_dataset, self.test_dataset = self._dataset_splits['validation'].train_test_split(
+                test_size=0.5,
+                seed=self.seed,
+                shuffle=True,
+                stratify_by_column=self._label_field,
+            ).values()
 
         if self.evaluation_mode:
             # Combine training and validation sets if we have a separate validation set
-            self.train_dataset = datasets.concatenate_datasets(
-                [
-                    self.train_dataset,
-                    self.val_dataset,
-                ]
-            )
+            self.train_dataset = datasets.concatenate_datasets([
+                self.train_dataset,
+                self.val_dataset,
+            ])
 
             # In evaluation mode, we validate on the test dataset
             self.val_dataset = self.test_dataset
@@ -365,10 +346,10 @@ class DataModule:
     def _set_dataset_label_fields(self, dataset_splits):
         # extract the keys that contain the labels and images
         if torch.distributed.get_rank() == 0:
-            log.info("Setting dataset fields.")
+            log.info('Setting dataset fields.')
 
-        self._set_image_field(dataset_splits["train"])
-        self._set_label_field(dataset_splits["train"])
+        self._set_image_field(dataset_splits['train'])
+        self._set_label_field(dataset_splits['train'])
 
     def _set_image_field(self, dataset):
         if self._image_field is None:
@@ -379,29 +360,27 @@ class DataModule:
 
             if self._image_field:
                 if torch.distributed.get_rank() == 0:
-                    log.info(f" - Determined image field: {self._image_field}")
+                    log.info(f' - Determined image field: {self._image_field}')
             else:
                 features = dataset.features.keys()
-                raise ValueError("Could not determine image field for dataset.")
+                raise ValueError('Could not determine image field for dataset.')
 
     def _set_label_field(self, dataset):
         if self._label_field is None:
             for feature_name, feature in dataset.features.items():
-                if isinstance(feature, datasets.ClassLabel) or feature_name == "label":
+                if isinstance(feature, datasets.ClassLabel) or feature_name == 'label':
                     self._label_field = feature_name
                     break
 
             if self._label_field:
                 if torch.distributed.get_rank() == 0:
-                    log.info(f" - Determined label field: {self._label_field}")
+                    log.info(f' - Determined label field: {self._label_field}')
             else:
                 features = dataset.features.keys()
-                raise ValueError(
-                    f"Could not determine label field for dataset. Available features: {features}"
-                )
+                raise ValueError(f'Could not determine label field for dataset. Available features: {features}')
 
     def _apply_transforms_to_datasets(self):
-        return  # no default transforms
+        return # no default transforms
 
     def _initialize_dataloaders(self):
         self._set_generators_and_seed_worker()
@@ -425,7 +404,7 @@ class DataModule:
         # from the dataset length.
         if not self.batch_size:
             if torch.distributed.get_rank() == 0:
-                log.info("Batch size not yet initialized, skipping dataloader creation.")
+                log.info('Batch size not yet initialized, skipping dataloader creation.')
             return
 
         self._set_samplers_and_batch_size()
@@ -452,32 +431,32 @@ class DataModule:
         else:
             collate_fn = self._default_collate_fn
 
-        self._dataloaders["train"] = torch.utils.data.DataLoader(
-            self.train_dataset.with_format("torch"),
+        self._dataloaders['train'] = torch.utils.data.DataLoader(
+            self.train_dataset.with_format('torch'),
             sampler=self.train_sampler,
             batch_size=self.local_batch_size,
             collate_fn=collate_fn,
             num_workers=self.num_workers,
             pin_memory=True,
             generator=self.generator,
-            worker_init_fn=self.seed_worker,
+            worker_init_fn=self.seed_worker
         )
 
-        self._dataloaders["valid"] = torch.utils.data.DataLoader(
-            self.val_dataset.with_format("torch"),
+        self._dataloaders['valid'] = torch.utils.data.DataLoader(
+            self.val_dataset.with_format('torch'),
             sampler=self.val_sampler,
             batch_size=self.physical_batch_size,
             collate_fn=collate_fn,
-            num_workers=self.num_workers,
+            num_workers=self.num_workers
         )
 
         if self.test_dataset:
-            self._dataloaders["test"] = torch.utils.data.DataLoader(
-                self.test_dataset.with_format("torch"),
+            self._dataloaders['test'] = torch.utils.data.DataLoader(
+                self.test_dataset.with_format('torch'),
                 sampler=self.test_sampler,
                 batch_size=self.physical_batch_size,
                 collate_fn=collate_fn,
-                num_workers=self.num_workers,
+                num_workers=self.num_workers
             )
 
     def _set_samplers_and_batch_size(self):
@@ -485,7 +464,7 @@ class DataModule:
         # to use distributedsampler and divide the batch size by number of replicas
         if not self.privacy:
             self.train_sampler = torch.utils.data.distributed.DistributedSampler(
-                self.train_dataset.with_format("torch")
+                self.train_dataset.with_format('torch')
             )
 
             # For distributed without Opacus, we need to divide the batch size
@@ -531,16 +510,14 @@ class DataModule:
             sampled_indices.extend(label_indices[chosen_indices].tolist())
 
         # Shuffle the sampled indices for randomization
-        sampled_indices = torch.tensor(sampled_indices)[
-            torch.randperm(len(sampled_indices), generator=g)
-        ].tolist()
+        sampled_indices = torch.tensor(sampled_indices)[torch.randperm(len(sampled_indices), generator=g)].tolist()
 
         # Return the selected subset of the dataset
         return dataset.select(sampled_indices)
 
     def _get_few_shot_subset(self, dataset):
         if not self.num_classes:
-            raise ValueError("Number of classes unknown, can not create few shot dataset.")
+            raise ValueError('Number of classes unknown, can not create few shot dataset.')
 
         test_size = self.shots * self.num_classes
 
@@ -556,12 +533,12 @@ class DataModule:
             stratify_by_column=self._label_field if self._stratify_shots else None,
         )
 
-        subset = split_dataset["test"]
+        subset = split_dataset['test']
 
         if torch.distributed.get_rank() == 0:
             c = Counter(subset[self._label_field])
             n_examples = sum(c.values())
-            log.info(f"Collected few shot dataset with {n_examples} examples: {c}")
+            log.info(f'Collected few shot dataset with {n_examples} examples: {c}')
 
         return subset
 
@@ -576,9 +553,7 @@ class DataModule:
           - And vice versa.
         """
         if not self._imbalance_factor:
-            raise ValueError(
-                "Imbalance factor must be provided for creating an imbalanced dataset."
-            )
+            raise ValueError('Imbalance factor must be provided for creating an imbalanced dataset.')
 
         # Get the label counts and basic statistics.
         label_counts = Counter(dataset[self._label_field])
@@ -610,16 +585,14 @@ class DataModule:
         for cls, indices in class_indices.items():
             indices_tensor = torch.tensor(indices)
             perm = torch.randperm(len(indices_tensor), generator=g)
-            selected = indices_tensor[perm[: img_num_per_cls[cls]]]
+            selected = indices_tensor[perm[:img_num_per_cls[cls]]]
             sampled_indices.extend(selected.tolist())
 
         sampled_dataset = dataset.select(sampled_indices)
 
         if torch.distributed.get_rank() == 0:
             distribution = Counter(sampled_dataset[self._label_field])
-            log.info(
-                f"Created imbalanced dataset (size: {len(sampled_dataset)}) with class distribution: {sorted(distribution.items())}"
-            )
+            log.info(f'Created imbalanced dataset (size: {len(sampled_dataset)}) with class distribution: {sorted(distribution.items())}')
 
         return sampled_dataset
 
@@ -628,14 +601,10 @@ class DataModule:
         Creates an imbalanced subset with one class having less examples than the others.
         """
         if not self._fairness_imbalance_class:
-            raise ValueError(
-                "Fairness imbalance class must be provided for creating an imbalanced dataset."
-            )
+            raise ValueError('Fairness imbalance class must be provided for creating an imbalanced dataset.')
 
         if self._imbalance_factor == 1.0:
-            raise ValueError(
-                "Imbalance factor must be less than 1.0 for creating an imbalanced dataset."
-            )
+            raise ValueError('Imbalance factor must be less than 1.0 for creating an imbalanced dataset.')
 
         # Get label counts as a list of counts
         label_counts = list(Counter(dataset[self._label_field]).values())
@@ -643,11 +612,7 @@ class DataModule:
 
         # Determine number of samples per class: for the fairness-imbalanced class, reduce the count
         img_num_per_cls = [
-            (
-                label_counts[i]
-                if i != self._fairness_imbalance_class
-                else int(label_counts[i] * self._imbalance_factor)
-            )
+            label_counts[i] if i != self._fairness_imbalance_class else int(label_counts[i] * self._imbalance_factor)
             for i in range(num_classes)
         ]
 
@@ -665,9 +630,7 @@ class DataModule:
         for cls, indices in class_indices.items():
             num_samples = img_num_per_cls[cls]
             if num_samples > len(indices):
-                log.warning(
-                    f"Requested {num_samples} samples for class {cls}, but only {len(indices)} available. Adjusting to {len(indices)}."
-                )
+                log.warning(f'Requested {num_samples} samples for class {cls}, but only {len(indices)} available. Adjusting to {len(indices)}.')
                 num_samples = len(indices)
             indices_tensor = torch.tensor(indices)
             perm = torch.randperm(len(indices_tensor), generator=g)
@@ -678,22 +641,23 @@ class DataModule:
 
         if torch.distributed.get_rank() == 0:
             distribution = Counter(sampled_dataset[self._label_field])
-            log.info(
-                f"Created fairness imbalanced dataset (size: {len(sampled_dataset)}) with class distribution: {sorted(distribution.items())}"
-            )
+            log.info(f'Created fairness imbalanced dataset (size: {len(sampled_dataset)}) with class distribution: {sorted(distribution.items())}')
 
         return sampled_dataset
 
 
 class ImageDataModule(DataModule):
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        **kwargs
+    ):
         super().__init__(**kwargs)
 
     def cache_features(self, model):
         """Cache features for the train, validation, and test datasets using the provided model."""
 
         if torch.distributed.get_rank() == 0:
-            log.info("Feature caching enabled, caching features.")
+            log.info('Feature caching enabled, caching features.')
 
         def _extract_features(model, image_field, examples):
             inputs = examples[image_field]
@@ -701,7 +665,7 @@ class ImageDataModule(DataModule):
             with torch.no_grad():
                 features = model.forward_features(inputs)
 
-            examples["features"] = features.cpu()
+            examples['features'] = features.cpu()
 
             return examples
 
@@ -709,11 +673,11 @@ class ImageDataModule(DataModule):
         _extract_features_fn = partial(_extract_features, model, self._image_field)
 
         if torch.distributed.get_rank() == 0:
-            log.info(f" - Processing {len(self.train_dataset)} examples in the train dataset.")
+            log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
 
         datasets_map_bs = 512
 
-        self.train_dataset = self.train_dataset.with_format("torch", device="cuda").map(
+        self.train_dataset = self.train_dataset.with_format('torch', device='cuda').map(
             _extract_features_fn,
             batched=True,
             batch_size=datasets_map_bs,
@@ -722,9 +686,9 @@ class ImageDataModule(DataModule):
         )
 
         if torch.distributed.get_rank() == 0:
-            log.info(f" - Processing {len(self.val_dataset)} examples in the validation dataset.")
+            log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
 
-        self.val_dataset = self.val_dataset.with_format("torch", device="cuda").map(
+        self.val_dataset = self.val_dataset.with_format('torch', device='cuda').map(
             _extract_features_fn,
             batched=True,
             batch_size=datasets_map_bs,
@@ -734,9 +698,9 @@ class ImageDataModule(DataModule):
 
         if self.test_dataset:
             if torch.distributed.get_rank() == 0:
-                log.info(f" - Processing {len(self.test_dataset)} examples in the test dataset.")
+                log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
 
-            self.test_dataset = self.test_dataset.with_format("torch", device="cuda").map(
+            self.test_dataset = self.test_dataset.with_format('torch', device='cuda').map(
                 _extract_features_fn,
                 batched=True,
                 batch_size=datasets_map_bs,
@@ -749,14 +713,14 @@ class ImageDataModule(DataModule):
         self._create_dataloaders()
 
         if torch.distributed.get_rank() == 0:
-            log.info("Feature caching finished.")
+            log.info('Feature caching finished.')
 
     def _apply_transforms_to_datasets(self):
         if torch.distributed.get_rank() == 0:
-            log.info("Applying transformations to dataset.")
+            log.info('Applying transformations to dataset.')
 
         def _apply_transforms(transforms, label_field, image_field, examples):
-            log.info(".")
+            log.info('.')
             examples[image_field] = [transforms(image) for image in examples[image_field]]
             return examples
 
@@ -769,7 +733,7 @@ class ImageDataModule(DataModule):
             )
 
             if torch.distributed.get_rank() == 0:
-                log.info(f" - Processing {len(self.train_dataset)} examples in the train dataset.")
+                log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
 
             self.train_dataset = self.train_dataset.map(
                 transforms_func,
@@ -779,9 +743,7 @@ class ImageDataModule(DataModule):
             )
 
             if torch.distributed.get_rank() == 0:
-                log.info(
-                    f" - Processing {len(self.val_dataset)} examples in the validation dataset."
-                )
+                log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
 
             self.val_dataset = self.val_dataset.map(
                 transforms_func,
@@ -792,9 +754,7 @@ class ImageDataModule(DataModule):
 
             if self.test_dataset:
                 if torch.distributed.get_rank() == 0:
-                    log.info(
-                        f" - Processing {len(self.test_dataset)} examples in the test dataset."
-                    )
+                    log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
 
                 self.test_dataset = self.test_dataset.map(
                     transforms_func,
@@ -806,8 +766,8 @@ class ImageDataModule(DataModule):
     def _add_rgb_transform(self):
         # Function for converting a PIL image to RGB
         def to_rgb_pil(x):
-            if isinstance(x, Image.Image) and x.mode != "RGB":
-                return x.convert("RGB")
+            if isinstance(x, Image.Image) and x.mode != 'RGB':
+                return x.convert('RGB')
             return x
 
         # Function for converting a torch.Tensor to RGB
@@ -818,7 +778,7 @@ class ImageDataModule(DataModule):
                 elif len(x.shape) == 3 and x.shape[0] == 3:
                     return x  # Already RGB
                 else:
-                    raise ValueError("Input tensor is not a valid image tensor.")
+                    raise ValueError('Input tensor is not a valid image tensor.')
             return x
 
         # Select the appropriate transformation based on the type of input
@@ -873,9 +833,13 @@ class ImageDataModule(DataModule):
 
     @staticmethod
     def _collate_fn_with_cached_features(batch, label_field=None, image_field=None):
-        features = torch.stack([item["features"] for item in batch])
+        features = torch.stack(
+            [item['features'] for item in batch]
+        )
 
-        labels = torch.tensor([item[label_field] for item in batch])
+        labels = torch.tensor(
+            [item[label_field] for item in batch]
+        )
 
         return features, labels
 
@@ -887,7 +851,7 @@ class DataModuleFactory:
         hyperparams: Hyperparameters,
     ) -> DataModule:
 
-        if getattr(configuration, "llm", False):
+        if getattr(configuration, 'llm', False):
             # Use NLPDataModule for LLM tasks
             return NLPDataModule(
                 max_length=hyperparams.max_length,
@@ -954,38 +918,38 @@ class NLPDataModule(DataModule):
         if torch.distributed.get_rank() == 0:
             log.info(f'Loading dataset "{self.dataset_name}" from Huggingface datasets.')
 
-        if self.dataset_name == "wikitext":
-            dataset_splits = datasets.load_dataset(self.dataset_name, "wikitext-2-raw-v1")
+        if self.dataset_name == 'wikitext':
+            dataset_splits = datasets.load_dataset(self.dataset_name,'wikitext-2-raw-v1')
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
-        if self.task not in ["CausalLM", "InstructLM"]:
+        if self.task not in ['CausalLM', 'InstructLM']:
 
             # Set dataset label fields based on the training split
             self._set_dataset_label_fields(dataset_splits)
 
-            self._detect_text_fields(dataset_splits["train"])  # decide which text column(s) to use
+            self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
 
             # Make sure the dataset label field is of type ClassLabel
             self._dataset_splits = self._enforce_label_field_type(dataset_splits)
 
             # Automatically determine the number of classes
             # NB: This can be done if the label is of type ClassLabel
-            self.num_classes = dataset_splits["train"].features[self._label_field].num_classes
+            self.num_classes = dataset_splits['train'].features[self._label_field].num_classes
 
             if torch.distributed.get_rank() == 0:
-                log.info(f"Determined the number of classes to be {self.num_classes}.")
-
+                log.info(f'Determined the number of classes to be {self.num_classes}.')
+    
         else:
-            self._detect_text_fields(dataset_splits["train"])  # decide which text column(s) to use
+            self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
             self._dataset_splits = dataset_splits
 
-    def _set_dataset_label_fields(self, dataset_splits):
-
+    def _set_dataset_label_fields(self, dataset_splits):  
+        
         if torch.distributed.get_rank() == 0:
-            log.info("Setting dataset label field (LLM mode).")
-        self._set_label_field(dataset_splits["train"])  # find the label column
-
+            log.info('Setting dataset label field (LLM mode).')
+        self._set_label_field(dataset_splits['train']) # find the label column
+        
     def _detect_text_fields(self, dataset):
         if self._text_fields is not None:
             if torch.distributed.get_rank() == 0:
@@ -999,31 +963,29 @@ class NLPDataModule(DataModule):
             if feature_name == self._label_field:
                 continue
             # The datasets library uses Value('string') for raw text columns
-            if getattr(feature, "dtype", None) == "string":
+            if getattr(feature, 'dtype', None) == 'string':
                 candidates.append(feature_name)
 
-        # if candidates:
+        #if candidates:
         #    self._text_fields = candidates
         #    if len(candidates) > 1 and torch.distributed.get_rank() == 0:
         #        log.warning(f"Multiple text fields detected, using all: {candidates}")
-        # else:
+        #else:
         #    self._text_fields = []
-        print("candidates", candidates)
-        self._text_fields = (
-            candidates[:1] if candidates else []
-        )  # use only the first text field if multiple found
-        print("self._text_fields", self._text_fields)
+        print('candidates',candidates)
+        self._text_fields = candidates[:1] if candidates else []  # use only the first text field if multiple found
+        print('self._text_fields',self._text_fields)
         if torch.distributed.get_rank() == 0:
             log.info(f"Detected text fields: {self._text_fields}")
         if not self._text_fields:
-            raise ValueError("Could not determine any text field for NLP dataset.")
+            raise ValueError('Could not determine any text field for NLP dataset.')
 
     # skip image transforms and set custom dataloaders
     def initialize(self, tokenizer):
         self.tokenizer = tokenizer
 
         if torch.distributed.get_rank() == 0:
-            log.info("Initializing NLPDataModule datasets...")
+            log.info('Initializing NLPDataModule datasets...')
             self._initialize_datasets()
             torch.distributed.barrier()
         else:
@@ -1039,11 +1001,12 @@ class NLPDataModule(DataModule):
             batch_size = int(self.sample_rate * len(self.train_dataset))
 
             if torch.distributed.get_rank() == 0:
-                log.info(f"Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.")
+                log.info(f'Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.')
 
             self.batch_size = batch_size
 
         self._initialize_text_dataloaders()
+
 
     def _initialize_text_dataloaders(self):
         self._set_generators_and_seed_worker()
@@ -1051,7 +1014,7 @@ class NLPDataModule(DataModule):
 
         collate_fn = self._make_text_collate()
 
-        self._dataloaders["train"] = torch.utils.data.DataLoader(
+        self._dataloaders['train'] = torch.utils.data.DataLoader(
             self.train_dataset,
             sampler=self.train_sampler,
             batch_size=self.local_batch_size,
@@ -1062,7 +1025,7 @@ class NLPDataModule(DataModule):
             worker_init_fn=self.seed_worker,
         )
 
-        self._dataloaders["valid"] = torch.utils.data.DataLoader(
+        self._dataloaders['valid'] = torch.utils.data.DataLoader(
             self.val_dataset,
             sampler=self.val_sampler,
             batch_size=self.physical_batch_size,
@@ -1071,15 +1034,15 @@ class NLPDataModule(DataModule):
         )
 
         if self.test_dataset:
-            self._dataloaders["test"] = torch.utils.data.DataLoader(
+            self._dataloaders['test'] = torch.utils.data.DataLoader(
                 self.test_dataset,
                 sampler=self.test_sampler,
                 batch_size=self.physical_batch_size,
                 collate_fn=collate_fn,
                 num_workers=self.num_workers,
             )
-            if self.task == "InstructLM":
-                self._dataloaders["sample"] = torch.utils.data.DataLoader(
+            if self.task == 'InstructLM':
+                self._dataloaders['sample'] = torch.utils.data.DataLoader(
                     self.test_dataset,
                     sampler=self.test_sampler,
                     batch_size=self.physical_batch_size,
@@ -1097,98 +1060,110 @@ class NLPDataModule(DataModule):
         task = self.task
 
         def collate(batch):
-            texts = [" ".join(str(sample[field]) for field in text_fields) for sample in batch]
-
-            tokenized = tokenizer(
-                texts, padding=True, truncation=True, max_length=max_len, return_tensors="pt"
-            )
-
-            if task == "CausalLM":
-                labels = tokenized["input_ids"].clone()
-                labels[labels == tokenizer.pad_token_id] = (
-                    -100
-                )  # Padding tokens are ignored in loss computation.
-                tokenized["labels"] = labels
-            elif task == "SequenceClassification":
-                labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
-            return tokenized, labels
-
-        def collate_instruct_function(batch):
-
-            conversations = [
-                tokenizer.apply_chat_template(
-                    [
-                        {"role": "user", "content": sample["question"]},
-                        {"role": "assistant", "content": sample["answer"]},
-                    ],
-                    tokenize=False,
-                    add_generation_prompt=False,
-                )
+            texts = [
+                ' '.join(str(sample[field]) for field in text_fields)
                 for sample in batch
             ]
 
-            # Tokenize the text already in chat format
+            tokenized = tokenizer(
+                texts,
+                padding=True,
+                truncation=True,
+                max_length=max_len,
+                return_tensors='pt'
+            ) 
+
+            if task == 'CausalLM':
+                labels = tokenized['input_ids'].clone()
+                labels[labels == tokenizer.pad_token_id] = -100  #Padding tokens are ignored in loss computation.
+                tokenized['labels'] = labels
+            elif task == 'SequenceClassification':
+                labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
+            return tokenized, labels
+
+    
+        def collate_instruct_function(batch):
+
+            conversations = [
+                    tokenizer.apply_chat_template(
+                        [
+                            {"role": "user", "content": sample['question']},
+                            {"role": "assistant", "content": sample['answer']}
+                        ],
+                        tokenize=False,
+                        add_generation_prompt=False
+                    )
+                    for sample in batch
+                ]
+             
+            #Tokenize the text already in chat format
             tokenized = tokenizer(
                 conversations,
                 padding=True,
                 truncation=True,
                 max_length=max_len,
-                return_tensors="pt",
-                add_special_tokens=True,
-            )
+                return_tensors='pt',
+                add_special_tokens=True
+            ) 
 
-            # print("tokenized chat: ", tokenizer.decode(tokenized[0]))
+            #print("tokenized chat: ", tokenizer.decode(tokenized[0]))
 
-            # We need the user tokens, only that part, so we can remove that from the
-            # loss function
+            #We need the user tokens, only that part, so we can remove that from the 
+            #loss function
 
             # Create labels with list comprehension
             user_texts = [
                 tokenizer.apply_chat_template(
                     [{"role": "user", "content": q["question"]}],
                     tokenize=False,
-                    add_generation_prompt=True,
+                    add_generation_prompt=True
                 )
                 for q in batch
             ]
-
-            user_tokenized = tokenizer(user_texts, add_special_tokens=True, padding=False)
-
+            
+            user_tokenized = tokenizer(
+                user_texts, 
+                add_special_tokens=True, 
+                padding=False
+            )
+            
             # Mask user parts
             labels = tokenized["input_ids"].clone()
 
             for i, user_ids in enumerate(user_tokenized["input_ids"]):
                 user_len = len(user_ids)
+                print('len of user ',user_len)
+                print('len of labels',len(labels[i]))
                 labels[i, :user_len] = -100
 
-            labels[labels == tokenizer.pad_token_id] = (
-                -100
-            )  # Padding tokens are ignored in loss computation.
+            labels[labels == tokenizer.pad_token_id] = -100  #Padding tokens are ignored in loss computation.
 
             tokenized["labels"] = labels
 
             return tokenized, labels
 
-        return collate_instruct_function if task == "InstructLM" else collate
+        return collate_instruct_function if task == 'InstructLM' else collate
 
-    def tokenize_for_sample(self, batch):
+    def tokenize_for_sample(self,batch):
 
         conversations = [
-            self.tokenizer.apply_chat_template(
-                [{"role": "user", "content": sample["question"]}],
-                tokenize=False,
-                add_generation_prompt=True,
-            )
-            for sample in batch
-        ]
-        # Tokenize the text already in chat format
+                    self.tokenizer.apply_chat_template(
+                        [
+                            {"role": "user", "content": sample['question']}
+                        ],
+                        tokenize=False,
+                        add_generation_prompt=True
+                    )
+                    for sample in batch
+                ]            
+        #Tokenize the text already in chat format
         tokenized = self.tokenizer(
             conversations,
             padding=True,
             truncation=True,
             max_length=self.max_length,
-            return_tensors="pt",
-            add_special_tokens=True,
+            return_tensors='pt',
+            add_special_tokens=True
         )
 
         return tokenized
@@ -1196,11 +1171,9 @@ class NLPDataModule(DataModule):
     def decode(self, generated_ids):
         return self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
-    def _add_rgb_transform(self):
+    def _add_rgb_transform(self):  
         return
-
-    def _replace_to_tensor_with_to_float(self):
+    def _replace_to_tensor_with_to_float(self):  
         return
-
-    def _apply_transforms_to_datasets(self):
+    def _apply_transforms_to_datasets(self):  
         return
