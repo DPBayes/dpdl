@@ -2,7 +2,8 @@ import logging
 import os
 
 from collections import OrderedDict
-from typing import Optional, Dict, Tuple
+from collections.abc import Mapping
+from typing import Dict, Tuple, Any, Optional
 
 import torch
 import torchmetrics
@@ -16,6 +17,8 @@ class ModelBase(torch.nn.Module):
         model_instance: torch.nn.Module = None,
         num_classes: int = 10,
         use_feature_cache: bool = False,
+        criterion: torch.nn.Module = None,
+        metrics: Optional[Dict[str, Any]] = None
     ):
 
         super().__init__()
@@ -24,78 +27,45 @@ class ModelBase(torch.nn.Module):
         self.num_classes = num_classes
         self.use_feature_cache = use_feature_cache
 
-        self._criterion = torch.nn.CrossEntropyLoss().cuda()
+        if not criterion:
+            raise ValueError('Criterion not passed to ModelBase.')
 
-        # let's track the training accuracy
-        self.train_metrics = torchmetrics.MetricCollection(
-            {
-                "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                    num_classes=self.num_classes,
-                    average="macro",
-                ).cuda(),
-                "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-                    num_classes=self.num_classes,
-                    average="micro",
-                ).cuda(),
-                "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-                    num_classes=self.num_classes,
-                    average="none",
-                ).cuda(),
-            }
-        )
+        self._criterion = criterion.cuda()
 
-        # we only validate on rank 0, so there's no need to
-        # synchronize when calculating the metrics.
-        # NB: If `sync_on_compute` is enabled, this breaks
-        # distributed training. If this needs to be enabled,
-        # then we also need to actually run the validation on
-        # all the GPUs.
-        self.valid_metrics = torchmetrics.MetricCollection(
-            {
-                "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                    num_classes=self.num_classes,
-                    average="macro",
-                    sync_on_compute=False,
-                ).cuda(),
-                "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-                    num_classes=self.num_classes,
-                    average="micro",
-                    sync_on_compute=False,
-                ).cuda(),
-                "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-                    num_classes=self.num_classes,
-                    average="none",
-                    sync_on_compute=False,
-                ).cuda(),
-            }
-        )
+        if metrics is not None:
+            self.train_metrics = metrics['train_metrics']
+            self.valid_metrics = metrics['valid_metrics']
+            self.test_metrics = metrics['test_metrics']
 
-        self.test_metrics = torchmetrics.MetricCollection(
-            {
-                "MulticlassAccuracy": torchmetrics.classification.MulticlassAccuracy(
-                    num_classes=self.num_classes,
-                    average="macro",
-                    sync_on_compute=False,
-                ).cuda(),
-                "MulticlassAccuracyWithMicro": torchmetrics.classification.MulticlassAccuracy(
-                    num_classes=self.num_classes,
-                    average="micro",
-                    sync_on_compute=False,
-                ).cuda(),
-                "MulticlassAccuracyPerClass": torchmetrics.classification.MulticlassAccuracy(
-                    num_classes=self.num_classes,
-                    average="none",
-                    sync_on_compute=False,
-                ).cuda(),
-                "ConfusionMatrix": torchmetrics.ConfusionMatrix(
-                    task="multiclass" if self.num_classes > 2 else "binary",
-                    num_classes=self.num_classes,
-                    sync_on_compute=False,
-                ).cuda(),
-            }
-        )
+    @property
+    def config(self):
+        return self.model.config
 
-    def forward(self, x):
+    @property
+    def prepare_inputs_for_generation(self):
+        """Expose the underlying model's method."""
+
+        # NB: This is used when calling `model.generate()`
+        return self.model.prepare_inputs_for_generation
+
+    def set_metrics(self, metrics):
+        self.train_metrics = metrics["train_metrics"]
+        self.valid_metrics = metrics["valid_metrics"]
+        self.test_metrics = metrics["test_metrics"]
+
+    def forward(self, *args, **kwargs):
+
+        # If PEFT calls with keyword arguments, convert them to a dict and pass as x
+        if kwargs and not args:
+            if isinstance(kwargs.get('input_ids'), Mapping):
+                x = kwargs['input_ids']
+            else:
+                x = kwargs
+        elif args:
+            x = args[0]
+        else:
+            x = None
+
         if self.use_feature_cache:
             return self.model.forward_head(x)
         else:
@@ -109,6 +79,9 @@ class ModelBase(torch.nn.Module):
 
     def criterion(self, logits, targets):
         return self._criterion(logits, targets)
+
+    def generate(self, *args, **kwargs):
+        return self.model.generate(*args, **kwargs)
 
     def show_layers(self):
         log.info("Layers:")
@@ -136,7 +109,7 @@ class ModelBase(torch.nn.Module):
         if not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
 
-        torch.save(self.model.state_dict(), fpath)
+        self.model.save_model(fpath)
 
     def load_model(
         self,

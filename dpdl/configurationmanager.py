@@ -19,6 +19,7 @@ class Hyperparameters(BaseModel):
     target_epsilon: Optional[float]
     noise_batch_ratio: Optional[float]
     privacy: bool = True # Only used in __str__
+    max_length: Optional[int] = None
 
     @root_validator(pre=True)
     def check_batch_size_or_sample_rate(cls, values):
@@ -72,6 +73,7 @@ class Hyperparameters(BaseModel):
             ('Total steps', self.total_steps),
             ('Learning rate', self.learning_rate),
             ('Batch size', self.batch_size),
+            ('Max length', self.max_length)
         ]
 
         if self.privacy:
@@ -93,13 +95,17 @@ class Configuration(BaseModel):
     command: Literal['train', 'optimize', 'predict', 'show-layers']
     privacy: bool = True
     model_name: str = 'resnet50'
+    loss_function: str = 'CrossEntropyLoss'
     optimizer: str = 'Adam'
     dataset_name: str = 'cifar10'
+    llm: bool = False
+    task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM', 'InstructLM' ]
     physical_batch_size: int = 40
     num_workers: int = 8
     validation_frequency: float = 1.0
     seed: int = 0
     log_dir: str = 'logs'
+    checkpoints_dir: str = None
     experiment_name: str = 'default-experiment'
     overwrite_experiment: bool = False
     clipping_mode: str = 'flat'
@@ -127,6 +133,7 @@ class Configuration(BaseModel):
     use_steps: Optional[bool] = False
     evaluation_mode: Optional[bool] = False
     dataset_label_field: Optional[str] = None
+    dataset_text_fields: Optional[List[str]] = None
     max_test_examples: Optional[int] = None
     imbalance_factor: Optional[float] = None
     imbalance_reverse: Optional[bool] = False
@@ -151,6 +158,7 @@ class Configuration(BaseModel):
     split_seed: Optional[int] = 42
     dataset_split: Optional[str] = None
     prediction_save_gradient_data: Optional[bool] = False
+    load_in_4bit: bool = False
 
     class Config:
         # Fix Pydantic warning:
@@ -220,6 +228,7 @@ class Configuration(BaseModel):
             ('Optimizer', self.optimizer),
             ('Dataset name', self.dataset_name),
             ('Dataset label field', self.dataset_label_field),
+            ('Dataset text field(s) for LLM tasks', self.dataset_text_fields),
             ('Dataset imbalance factor', self.imbalance_factor),
             ('Dataset imbalance reverse', self.imbalance_reverse),
             ('Cache dataset transforms', self.cache_dataset_transforms),
@@ -230,7 +239,7 @@ class Configuration(BaseModel):
             ('Validation frequency', self.validation_frequency),
             ('Seed', self.seed),
             ('Log dir', self.log_dir),
-            ('Experiment dame', self.experiment_name),
+            ('Experiment name', self.experiment_name),
             ('Overwrite experiment', self.overwrite_experiment),
             ('Shots', self.shots),
             ('Use stratified sampling for few-shot dataset', self.stratify_shots),
@@ -256,6 +265,8 @@ class Configuration(BaseModel):
             ('Enable callback debug logging', self.verbose_callback),
             ('Fairness-style subsampling class', self.fairness_imbalance_class),
             ('Random seed for creating dataset subsets', self.split_seed),
+            ('LLM use', self.llm),
+            ('Task', self.task),
         ]
 
         if self.privacy:

@@ -52,3 +52,12 @@ def safe_open(path: pathlib.Path, mode: str = 'w', **kwargs):
         raise
     finally:
         fh.close()
+
+def shift_and_flatten(logits, labels):
+    shift_logits = logits[:, :-1, :].contiguous()
+    shift_labels = labels[:, 1:].contiguous()
+
+    shift_logits_flat = shift_logits.view(-1, shift_logits.size(-1))
+    shift_labels_flat = shift_labels.view(-1)
+
+    return shift_logits_flat, shift_labels_flat

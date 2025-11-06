@@ -1,19 +1,25 @@
+from __future__ import annotations
+
 import logging
 import math
+import os
+from collections.abc import Mapping
+
 import opacus
 import torch
-import torchmetrics
-
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
-from .models.model_factory import ModelFactory
-from .callbacks.callback_factory import CallbackHandler, CallbackFactory
-from .configurationmanager import ConfigurationManager, Configuration, Hyperparameters
+from .callbacks.callback_factory import CallbackFactory, CallbackHandler
+from .configurationmanager import Configuration, ConfigurationManager, Hyperparameters
 from .datamodules import DataModule, DataModuleFactory
+from .loss_factory import LossFactory
+from .metrics_factory import MetricsFactory
+from .models.model_factory import ModelFactory
 from .optimizers import OptimizerFactory
-from .utils import seed_everything
+from .utils import seed_everything, shift_and_flatten
 
 log = logging.getLogger(__name__)
+
 
 class Trainer:
     def __init__(
@@ -23,14 +29,17 @@ class Trainer:
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         datamodule: DataModule,
+        adapter: TaskAdapter,
 
         # generic params
         epochs: int = 10,
-        total_steps: int = None,
+        total_steps: int = 0,
         validation_frequency: int = 1,
         seed: int = 0,
         physical_batch_size: int = 40,
-        callback_handler: CallbackHandler = None,
+        callback_handler: CallbackHandler | None = None,
+        peft: str | None = None,
+        task: str | None = None,
     ):
 
         self.model = model
@@ -41,6 +50,9 @@ class Trainer:
         self.validation_frequency = validation_frequency
         self.seed = seed
         self.physical_batch_size = physical_batch_size
+        self.peft = peft
+        self.task = task
+        self.adapter = adapter
 
         if not callback_handler:
             self.callback_handler = CallbackHandler()
@@ -67,6 +79,7 @@ class Trainer:
         self.callback_handler.call('on_train_end', self)
 
     def _fit_epochs(self):
+        self.device = torch.cuda.current_device()
         for epoch in range(self.epochs):
             self.fit_one_epoch(epoch)
 
@@ -137,51 +150,49 @@ class Trainer:
 
         for batch_idx, batch in enumerate(self.datamodule.get_dataloader('train')):
             self.callback_handler.call('on_train_batch_start', self, batch_idx, batch)
+
             logical_batch_loss = self.fit_one_batch(batch_idx, batch)
+
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
 
         # compute the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
         self._unwrap_model().train_metrics.reset()
 
+        # log sample of generated text if asked for
+        if torch.distributed.get_rank() == 0:
+            self.adapter.sample(self)
+
+        # wait for rank 0 to possilby sample
+        torch.distributed.barrier()
+
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
     def fit_one_batch(self, batch_idx, batch):
         X, y = batch
-        X = X.cuda(non_blocking=True)
-        y = y.cuda(non_blocking=True)
+        X, y = self.adapter.move_to_device(X, y)
 
         # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
         # then process the sub batches one at a time and call backward.
         # when all the sub batches have been processed we can finally step the optimizer.
-        X_split = X.split(self.physical_batch_size, dim=0)
-        y_split = y.split(self.physical_batch_size, dim=0)
+
+        # the adapter handles the physical batches, as it's a different operation depending on the task.
+        physical_batches = list(self.adapter.iterate_physical_batches((X, y), self.physical_batch_size))
+        N = len(physical_batches)
+
+        logical_batch_loss = 0.0
 
         # zero the grads as usually before doing anything
         self.optimizer.zero_grad()
 
         logical_batch_loss = 0
-        # process the sub batches one at a time
-        N = len(X_split)
-
-        for i in range(N):
-            # notify the callbacks of a physical batch start
-            X_splitted = X_split[i]
-            y_splitted = y_split[i]
-            physical_batch = (X_splitted, y_splitted)
-
+        for i, physical_batch in enumerate(physical_batches):
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
-            logits = self.model(X_splitted)
-            loss = self._unwrap_model().criterion(logits, y_splitted) / N # NB: normalize loss
+            loss = self.adapter.forward_loss_and_update_metrics(self._unwrap_model(), physical_batch, normalize_by=N)
             loss.backward()
 
-            # keep track of the batch loss
             logical_batch_loss += loss.item()
-
-            # update the metrics if there are any
-            preds = torch.argmax(logits, dim=1)
-            self._unwrap_model().train_metrics.update(preds, y_split[i])
 
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
@@ -251,26 +262,30 @@ class Trainer:
             self.callback_handler.call(f'on_{mode}_batch_start', self, batch_idx, batch)
 
         X, y = batch
-        X = X.cuda(non_blocking=True)
-        y = y.cuda(non_blocking=True)
+        X, y = self.adapter.move_to_device(X, y)
 
-        logits = self.model(X)
-        loss = self._unwrap_model().criterion(logits, y)
-        loss = loss.item()
-
-        preds = torch.argmax(logits, dim=1)
-
-        metrics_evaluator.update(preds, y)
+        loss =  self.adapter.forward_loss_and_update_metrics(
+            self._unwrap_model(),
+            (X, y),
+            metrics=metrics_evaluator,  # record into the provided evaluator
+        )
 
         if enable_callbacks:
-            self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss)
+            self.callback_handler.call(f'on_{mode}_batch_end', self, batch_idx, batch, loss.item())
 
-        return loss
+        return loss.item()
 
     def _unwrap_model(self):
         # the model is wrapped inside torch distributed,
         # here we just return the vanilla model
-        return self.model.module
+        #return self.model.module
+
+        m = self.model
+        # remove DDP/DataParallel
+        while hasattr(m, "module"):
+            m = m.module
+
+        return m  #ModelBase
 
     def _calculate_steps_per_epoch(self):
         N = len(self.datamodule.get_dataloader('train').dataset)
@@ -278,7 +293,60 @@ class Trainer:
         return math.ceil(N / B)
 
     def save_model(self, fpath):
-        self.model.save_model(fpath)
+
+        if self.peft is not None and self.peft == 'lora':
+            # Extract the directory from the path
+            directory = os.path.dirname(fpath)
+
+            # Create the directory if it doesn't exist
+            if not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+
+            self._unwrap_model().save_pretrained(fpath)
+
+        else:
+            self._unwrap_model().save_model(fpath)
+
+    def _sample_impl(self):
+        self.model.eval()
+
+        with torch.no_grad():
+            for batch_idx, batch in enumerate(self.datamodule.get_dataloader('sample')):
+                X = batch
+                X = self.adapter.move_to_device(X)
+
+                is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
+                # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
+                # then process the sub batches one at a time and call backward.
+                # when all the sub batches have been processed we can finally step the optimizer.
+                if is_mapping:
+                    # split each tensor in the dict
+                    X_split = {k: v.split(self.physical_batch_size, dim=0) for k, v in X.items()}
+                else:
+                    X_split = X.split(self.physical_batch_size, dim=0)
+
+                N = len(X_split['input_ids'])
+
+                for i in range(N):
+                    if is_mapping:
+                        X_splitted = {k: X_split[k][i] for k in X_split}
+                    else:
+                        X_splitted = X_split[i]
+
+                    generated_ids = self._unwrap_model().generate(
+                        X_splitted,
+                        max_new_tokens=250,
+                        temperature=0.5,
+                        do_sample=True,
+                        top_p=0.9,
+                        pad_token_id=self.datamodule.tokenizer.pad_token_id,
+                        eos_token_id=self.datamodule.tokenizer.eos_token_id,
+                    )
+
+                    log.info('Sampled text decoded', self.datamodule.decode(generated_ids))
+
+        self.model.train()
+
 
 class DifferentiallyPrivateTrainer(Trainer):
     def __init__(
@@ -292,9 +360,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         poisson_sampling: bool = True,
         normalize_clipping: bool = False,
         secure_mode: bool = False,
-        target_epsilon: float = None,
-        target_delta: float = None,
-        noise_batch_ratio: float = None,
+        target_epsilon: float | None = None,
+        target_delta: float | None = None,
+        noise_batch_ratio: float | None = None,
         seed: int = 0,
         **kwargs,
     ):
@@ -528,21 +596,14 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.optimizer.zero_grad()
 
         X, y = batch
-        X = X.cuda(non_blocking=True)
-        y = y.cuda(non_blocking=True)
+        X, y = self.adapter.move_to_device(X, y)
 
-        logits = self.model(X)
-        loss = self._unwrap_model().criterion(logits, y)
-
+        loss = self.adapter.forward_loss_and_update_metrics(self._unwrap_model(), (X, y), normalize_by=None)
         loss.backward()
 
         self.optimizer.step()
 
         loss = loss.item()
-
-        # update metrics if there are any
-        preds = torch.argmax(logits, dim=1)
-        self._unwrap_model().train_metrics.update(preds, y)
 
         return loss
 
@@ -605,28 +666,183 @@ class DifferentiallyPrivateTrainer(Trainer):
         self._unwrap_model().train_metrics.reset()
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
+        # log a sample if defined in the adapter
+        if torch.distributed.get_rank == 0:
+            self.adapter.sample(self)
+
+        # wait for rank 0 to possilby sample
+        torch.distributed.barrier()
+
     def save_model(self, fpath):
         self.model.module.save_model(fpath)
 
 
+class TaskAdapter:
+    """
+        Adapter class for different Tasks.
+
+        One adapter per task family: classification, Causal-LM, ..
+
+        These are to follow the open/close principle: instead of changing
+        the Trainer(s), we can just create a new adapter for a new task.
+
+        Handles per-task splitting, moving to device, forward/loss/metrics calls.
+    """
+    def move_to_device(self, X, y=None):
+        device = torch.cuda.current_device()
+
+        def move(obj):
+            if isinstance(obj, Mapping):
+                return {k: move(v) for k, v in obj.items()}
+            elif isinstance(obj, torch.Tensor):
+                return obj.to(device=device, non_blocking=True)
+            else:
+                return obj
+
+        X = move(X)
+        y = move(y) if y is not None else None
+
+        return (X, y) if y is not None else X
+
+    def iterate_physical_batches(self, batch, physical_batch_size):
+        """
+        Return an iterator over physical batches.
+        """
+        ...
+
+    def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
+        """
+        Updates metrics and return loss tensor (for backward).
+        """
+        ...
+
+    def sample(self, trainer):
+        pass
+
+
+class ClassificationAdapter(TaskAdapter):
+    def iterate_physical_batches(self, batch, physical_batch_size):
+        X, y = batch
+        for Xs, ys in zip(X.split(physical_batch_size, 0), y.split(physical_batch_size, 0)):
+            yield (Xs, ys)
+
+    def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
+        X, y = batch
+
+        logits = model(X)
+        loss = model.criterion(logits, y)
+
+        if normalize_by:
+            loss = loss / normalize_by
+
+        if metrics is not None:
+            metrics_to_update = metrics
+        else:
+            metrics_to_update = model.train_metrics if model.training else model.valid_metrics
+
+        preds = torch.argmax(logits, dim=1)
+        metrics_to_update.update(preds, y)
+
+        return loss
+
+
+class LanguageModelAdapter(TaskAdapter):
+    def iterate_physical_batches(self, batch, physical_batch_size):
+        X, y = batch
+        splits = {k: v.split(physical_batch_size, dim=0) for k, v in X.items()}
+        y_splits = y.split(physical_batch_size, dim=0)
+
+        for i in range(len(y_splits)):
+            yield ({k: splits[k][i] for k in splits}, y_splits[i])
+
+    def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
+        X, y = batch
+        logits = model(X)
+        preds, y_flat = shift_and_flatten(logits, y)
+
+        loss = model.criterion(preds, y_flat)
+
+        if normalize_by:
+            loss = loss / normalize_by
+
+        if metrics is not None:
+            metrics_to_update = metrics
+        else:
+            metrics_to_update = model.train_metrics if model.training else model.valid_metrics
+
+        with torch.no_grad():
+            metrics_to_update['Perplexity'].update(logits, y)
+            metrics_to_update['MulticlassAccuracy'].update(preds.argmax(dim=-1), y_flat)
+
+        return loss
+
+class CausalLMAdapter(LanguageModelAdapter):
+    def sample(self, trainer):
+        return
+
+class InstructLMAdapter(LanguageModelAdapter):
+    def sample(self, trainer):
+        trainer._sample_impl()
+
+# Define task specific adapters
+_ADAPTERS = {
+    'ImageClassification': ClassificationAdapter,
+    'SequenceClassification': ClassificationAdapter,
+    'CausalLM': CausalLMAdapter,
+    'InstructLM': InstructLMAdapter,
+}
+
 class TrainerFactory:
+
+    @staticmethod
+    def _make_adapter(configuration):
+        task = configuration.task or 'classification'
+
+        if task not in _ADAPTERS:
+            raise ValueError(f'No adapter for task "{task}"')
+
+        return _ADAPTERS[task]()
+
     @staticmethod
     def get_trainer(config_manager: ConfigurationManager) -> Trainer:
         # are we differentially private?
         if config_manager.configuration.privacy:
             return TrainerFactory._get_differentially_private_trainer(config_manager.configuration, config_manager.hyperparams)
 
+        # XXX: checkpoint dir??? We should have this from the new save model implementation?
+        if config_manager.configuration.checkpoint_step_interval is not None:
+            config_manager.configuration.checkpoints_dir = os.path.join(
+                config_manager.configuration.log_dir,
+                config_manager.configuration.experiment_name,
+                'checkpoints',
+        )
+
         return TrainerFactory._get_basic_trainer(config_manager.configuration, config_manager.hyperparams)
 
     @staticmethod
     def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
+
         # First create DataModule, it can figure out the number of classes
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
         num_classes = datamodule.get_num_classes()
 
-        # setup data, model, and optimizer
-        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes)
+        # Now, setup data, model, and optimizer
+        loss_fn = LossFactory.get_loss(configuration)
+
+        # This also return effective number of classes, as for LM tasks
+        # it is vocabulary size and for classification tasksk it's number
+        # of classes as usually.
+        model, transforms, num_classes_eff = ModelFactory.get_model(
+            configuration,
+            hyperparams,
+            num_classes,
+            loss_fn,
+            None
+        )
+
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
+        metrics = MetricsFactory.get_metrics(configuration, num_classes_eff)
+        model.set_metrics(metrics)
 
         # Initialize the datamodule with the transformations
         datamodule.initialize(transforms)
@@ -647,17 +863,22 @@ class TrainerFactory:
 
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
+        adapter = TrainerFactory._make_adapter(configuration)
+
         # instantiate a trainer without dp
         trainer = Trainer(
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
+            adapter=adapter,
             callback_handler=callback_handler,
             physical_batch_size=configuration.physical_batch_size,
             epochs=epochs,
             total_steps=total_steps,
             seed=configuration.seed,
             validation_frequency=configuration.validation_frequency,
+            peft=configuration.peft,
+            task=configuration.task
         )
 
         return trainer
@@ -695,11 +916,24 @@ class TrainerFactory:
         num_classes = datamodule.get_num_classes()
 
         # Now, setup data, model, and optimizer
-        model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes)
+        loss_fn = LossFactory.get_loss(configuration)
+
+        model, transforms, num_classes_eff = ModelFactory.get_model(
+            configuration,
+            hyperparams,
+            num_classes,
+            loss_fn,
+            None
+        )
+
+        metrics = MetricsFactory.get_metrics(configuration, num_classes_eff)
+        model.set_metrics(metrics)
+
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         # The datamodule needs to be aware of the transformations, now we can initialize it
         datamodule.initialize(transforms)
+        dataloader = datamodule.get_dataloader('train')
 
         # Are we caching the outputs of the feature extractor
         if configuration.cache_features:
@@ -718,11 +952,14 @@ class TrainerFactory:
         target_delta, target_epsilon = _get_target_privacy_params(hyperparams)
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
+        adapter = TrainerFactory._make_adapter(configuration)
+
         # instantiate a differentialy private trained
         trainer = DifferentiallyPrivateTrainer(
             model=model,
             optimizer=optimizer,
             datamodule=datamodule,
+            adapter=adapter,
             # hypers
             epochs=epochs,
             total_steps=total_steps,
@@ -741,6 +978,8 @@ class TrainerFactory:
             seed=configuration.seed,
             callback_handler=callback_handler,
             validation_frequency=configuration.validation_frequency,
+            peft=configuration.peft,
+            task=configuration.task
         )
 
         return trainer
