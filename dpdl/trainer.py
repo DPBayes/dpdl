@@ -344,8 +344,6 @@ class Trainer:
 
         self.model.train()
 
-        self.model.train()
-
 
 class DifferentiallyPrivateTrainer(Trainer):
     def __init__(

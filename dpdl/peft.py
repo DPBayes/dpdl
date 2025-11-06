@@ -148,7 +148,9 @@ class LoRA:
 
         if torch.distributed.get_rank() == 0:
             print_trainable_modules(model)
-            log.info(f'Finetuning head only - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
+            log.info(
+                f'LoRA setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}'
+            )
 
         return lora_model
 
