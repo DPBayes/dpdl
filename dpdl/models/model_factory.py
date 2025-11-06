@@ -116,6 +116,16 @@ class ModelFactory:
                 model_config = timm.data.resolve_data_config({}, model=model_instance)
                 transforms = timm.data.transforms_factory.create_transform(**model_config)
 
+        # resolve num_classes if needed
+        if num_classes is None:
+            if hasattr(model_instance, 'config') and getattr(model_instance.config, 'vocab_size', None):
+                num_classes = int(model_instance.config.vocab_size)
+            elif getattr(model_instance, 'num_classes', None):
+                num_classes = int(model_instance.num_classes)
+            else:
+                raise ValueError('Num classes not given and unable to infer it.')
+
+
         # Wrap the instantiated model with ModelBase
         model = ModelBase(
             model_instance=model_instance,
@@ -138,5 +148,5 @@ class ModelFactory:
             print(model)
             model = PeftFactory.get_peft_model(model, configuration,checkpoints_dir_latest)
 
-        return model, transforms
+        return model, transforms, num_classes
 

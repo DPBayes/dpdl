@@ -162,7 +162,11 @@ class Trainer:
         self._unwrap_model().train_metrics.reset()
 
         # log sample of generated text if asked for
-        self.adapter.sample(self)
+        if torch.distributed.get_rank() == 0:
+            self.adapter.sample(self)
+
+        # wait for rank 0 to possilby sample
+        torch.distributed.barrier()
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
@@ -349,6 +353,8 @@ class Trainer:
                     )
 
                     print('sampled text decoded',self.datamodule.decode(generated_ids))
+
+        self.model.train()
 
 
 class DifferentiallyPrivateTrainer(Trainer):
@@ -670,7 +676,11 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
         # log a sample if defined in the adapter
-        self.adapter.sample()
+        if torch.distributed.get_rank == 0:
+            self.adapter.sample(self)
+
+        # wait for rank 0 to possilby sample
+        torch.distributed.barrier()
 
     def save_model(self, fpath):
         self.model.module.save_model(fpath)
@@ -785,7 +795,8 @@ class InstructLMAdapter(LanguageModelAdapter):
 
 # Define task specific adapters
 _ADAPTERS = {
-    'classification': ClassificationAdapter,
+    'ImageClassification': ClassificationAdapter,
+    'SequenceClassification': ClassificationAdapter,
     'CausalLM': CausalLMAdapter,
     'InstructLM': InstructLMAdapter,
 }
@@ -803,9 +814,6 @@ class TrainerFactory:
 
     @staticmethod
     def get_trainer(config_manager: ConfigurationManager) -> Trainer:
-
-        if seed := config_manager.configuration.privacy:
-            seed_everything(seed)
 
         # are we differentially private?
         if config_manager.configuration.privacy:
@@ -828,18 +836,23 @@ class TrainerFactory:
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
         num_classes = datamodule.get_num_classes()
 
-        # setup data, model, and optimizer
+        # Now, setup data, model, and optimizer
         loss_fn = LossFactory.get_loss(configuration)
-        if num_classes is None:
-            model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, None)
-            num_classes = model.config.vocab_size
-            metrics = MetricsFactory.get_metrics(configuration, num_classes)
-            model.set_metrics(metrics)
-        else:
-            metrics = MetricsFactory.get_metrics(configuration, num_classes)
-            model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
+
+        # This also return effective number of classes, as for LM tasks
+        # it is vocabulary size and for classification tasksk it's number
+        # of classes as usually.
+        model, transforms, num_classes_eff = ModelFactory.get_model(
+            configuration,
+            hyperparams,
+            num_classes,
+            loss_fn,
+            None
+        )
 
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
+        metrics = MetricsFactory.get_metrics(configuration, num_classes_eff)
+        model.set_metrics(metrics)
 
         # Initialize the datamodule with the transformations
         datamodule.initialize(transforms)
@@ -915,19 +928,22 @@ class TrainerFactory:
         # Now, setup data, model, and optimizer
         loss_fn = LossFactory.get_loss(configuration)
 
-        if num_classes is None:
-            model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, None)
-            num_classes = model.config.vocab_size
-            metrics = MetricsFactory.get_metrics(configuration, num_classes)
-            model.set_metrics(metrics)
-        else:
-            metrics = MetricsFactory.get_metrics(configuration, num_classes)
-            model, transforms = ModelFactory.get_model(configuration, hyperparams, num_classes, loss_fn, metrics)
+        model, transforms, num_classes_eff = ModelFactory.get_model(
+            configuration,
+            hyperparams,
+            num_classes,
+            loss_fn,
+            None
+        )
+
+        metrics = MetricsFactory.get_metrics(configuration, num_classes_eff)
+        model.set_metrics(metrics)
 
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
 
         # The datamodule needs to be aware of the transformations, now we can initialize it
         datamodule.initialize(transforms)
+        dataloader = datamodule.get_dataloader('train')
 
         # Are we caching the outputs of the feature extractor
         if configuration.cache_features:
