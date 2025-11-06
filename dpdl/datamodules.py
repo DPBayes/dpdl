@@ -1,22 +1,13 @@
-import datasets
 import logging
-import math
-import os
-import pathlib
-import torch
-import torchvision
-import numpy as np
-import random
-
 from collections import Counter
 from functools import partial
+
+import datasets
+import torch
+import torchvision
 from PIL import Image
-from typing import Tuple
 
-from dpdl.utils import seed_everything
 from .configurationmanager import Configuration, Hyperparameters
-
-from transformers.data.data_collator import DataCollatorWithPadding
 
 log = logging.getLogger(__name__)
 
@@ -977,19 +968,13 @@ class NLPDataModule(DataModule):
             if getattr(feature, "dtype", None) == "string":
                 candidates.append(feature_name)
 
-        # if candidates:
-        #    self._text_fields = candidates
-        #    if len(candidates) > 1 and torch.distributed.get_rank() == 0:
-        #        log.warning(f"Multiple text fields detected, using all: {candidates}")
-        # else:
-        #    self._text_fields = []
-        print("candidates", candidates)
         self._text_fields = (
             candidates[:1] if candidates else []
         )  # use only the first text field if multiple found
-        print("self._text_fields", self._text_fields)
+
         if torch.distributed.get_rank() == 0:
             log.info(f"Detected text fields: {self._text_fields}")
+
         if not self._text_fields:
             raise ValueError("Could not determine any text field for NLP dataset.")
 
@@ -1122,8 +1107,6 @@ class NLPDataModule(DataModule):
                 add_special_tokens=True,
             )
 
-            # print("tokenized chat: ", tokenizer.decode(tokenized[0]))
-
             # We need the user tokens, only that part, so we can remove that from the
             # loss function
 
@@ -1146,8 +1129,6 @@ class NLPDataModule(DataModule):
 
             for i, user_ids in enumerate(user_tokenized["input_ids"]):
                 user_len = len(user_ids)
-                print("len of user ", user_len)
-                print("len of labels", len(labels[i]))
                 labels[i, :user_len] = -100
 
             labels[
