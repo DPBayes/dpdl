@@ -135,22 +135,20 @@ class LoRA:
         checkpoint_dir: str = None,
         is_trainable: bool = False,
     ):
-        if checkpoint_dir is not None and os.path.exists(checkpoint_dir):
-            lora_model = PeftModel.from_pretrained(
-                model, checkpoint_dir, is_trainable=is_trainable
-            )
+        if checkpoint_dir is not None:
+            if not os.path.exists(checkpoint_dir):
+                raise FileNotFoundError(f'Checkpoint directory not found: {checkpoint_dir}')
+
+            lora_model = PeftModel.from_pretrained(model, checkpoint_dir, is_trainable=is_trainable)
         else:
             lora_config = LoRA._get_config(model_name)
-            print(lora_config)
             lora_model = get_peft_model(model, lora_config)
 
         trainable_params, all_params = get_nb_trainable_parameters(lora_model)
 
         if torch.distributed.get_rank() == 0:
             print_trainable_modules(model)
-            log.info(
-                f"LoRA setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}"
-            )
+            log.info(f'Finetuning head only - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
 
         return lora_model
 
