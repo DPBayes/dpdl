@@ -74,6 +74,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = None,
+        max_length: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Max tokenizer length',
+                rich_help_panel='Training options'
+            )
+        ] = None,
         optimizer: Annotated[
             str,
             typer.Option(
@@ -151,6 +158,34 @@ def cli(
                 rich_help_panel='Model options',
             )
         ] = 'resnetv2_50x1_bit.goog_in21k',
+        llm: Annotated[
+            bool,
+            typer.Option(
+                help='Enable LLM model mode (use HuggingFace models and tokenization)',
+                rich_help_panel='Training options',
+            )
+        ] = False,
+        task: Annotated[
+            str,
+            typer.Option(
+                help='Training task [ImageClassification, SequenceClassification, CausalLM, InstructLM]',
+                rich_help_panel='Training options',
+            )
+        ] = 'ImageClassification',
+        load_in_4bit: Annotated[
+            bool,
+            typer.Option(
+                help='Quantization in 4 bit',
+                rich_help_panel='Model options'
+            )
+        ] = False,
+        loss_function: Annotated[
+            str,
+            typer.Option(
+                help='PyTorch Module Loss Function Name',
+                rich_help_panel='Loss Function options',
+            )
+        ] = 'CrossEntropyLoss',
         pretrained: Annotated[
             bool,
             typer.Option(
@@ -241,7 +276,14 @@ def cli(
                 help='Name of the field that determines label for the dataset',
                 rich_help_panel='Dataset options',
             )
-        ] = 'label',
+        ] = None,
+        dataset_text_fields: Annotated[
+            Optional[List[str]],
+            typer.Option(
+                help='Name of the field(s) where the text is located for language tasks',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
         imbalance_factor: Annotated[
             Optional[float],
             typer.Option(

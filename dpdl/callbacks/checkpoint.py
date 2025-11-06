@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 
 import torchmetrics
 
@@ -9,14 +10,37 @@ from .base_callback import Callback
 
 log = logging.getLogger(__name__)
 
+def get_latest_checkpoint(checkpoint_dir):
+    """Find the latest checkpoint by modification time"""
+
+    if not os.path.exists(checkpoint_dir):
+        return 0
+
+    checkpoints = [d for d in os.listdir(checkpoint_dir) if d.startswith('checkpoint_step_')]
+
+    if not checkpoints:
+        return 0
+
+    # Sort by modification time
+    latest = max(checkpoints, key=lambda x: os.path.getmtime(os.path.join(checkpoint_dir, x)))
+
+    # Extract step number
+    match = re.search(r'checkpoint_step_(\d+)', latest)
+
+    if match:
+        return int(match.group(1))
+
+    return 0
+
+
 class CheckpointCallback(Callback):
     def __init__(self, log_dir: str, checkpoint_step_interval: int):
         super().__init__()
 
         self.log_dir = log_dir
         self.checkpoint_step_interval = checkpoint_step_interval
-        self.global_step = 0
         self.checkpoints_dir = os.path.join(self.log_dir, 'checkpoints')
+        self.global_step = get_latest_checkpoint(self.checkpoints_dir)
 
         os.makedirs(self.checkpoints_dir, exist_ok=True)
 
@@ -24,6 +48,7 @@ class CheckpointCallback(Callback):
         self.interval_loss = torchmetrics.aggregation.MeanMetric(sync_on_compute=False).cuda()
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, **kwargs):
+
         if not self._is_global_zero():
             return
 
@@ -35,6 +60,7 @@ class CheckpointCallback(Callback):
             checkpoint_path = os.path.join(
                 self.checkpoints_dir, f'checkpoint_step_{self.global_step}.pt'
             )
+
             self.save_checkpoint(trainer, checkpoint_path)
 
             trainer.validate(enable_callbacks=False)

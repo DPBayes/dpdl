@@ -1,10 +1,12 @@
 import logging
+import os
 import re
-import torch
-
 from dataclasses import dataclass, field
 from typing import List
-from peft import get_peft_model, LoraConfig
+
+import torch
+
+from peft import LoraConfig, PeftModel, get_peft_model
 
 from .configurationmanager import Configuration, Hyperparameters
 
@@ -28,11 +30,15 @@ def print_trainable_modules(model: torch.nn.Module):
         if any(p.requires_grad for p in module.parameters()):
             log.info(module_name)
 
+
 class PeftFactory:
     @staticmethod
-    def get_peft_model(model: torch.nn.Module, configuration: Configuration):
+    def get_peft_model(model: torch.nn.Module, configuration: Configuration, checkpoints_dir: str = None):
         if configuration.peft == 'lora':
-            return LoRA.get_peft_model(model, configuration.model_name)
+            if checkpoints_dir is not None:
+                return LoRA.get_peft_model(model, configuration.model_name, checkpoints_dir, True)
+            else:
+                return LoRA.get_peft_model(model, configuration.model_name)
 
         if configuration.peft == 'film':
             return FiLM.get_peft_model(model, configuration.model_name)
@@ -41,6 +47,7 @@ class PeftFactory:
             return HeadOnly.get_peft_model(model, configuration.model_name)
 
         raise RuntimeError(f'Unkown PEFT method: {configuration.peft}')
+
 
 class HeadOnly:
     @staticmethod
@@ -59,13 +66,14 @@ class HeadOnly:
 
             log.info(f'Finetuning head only - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
 
-
         return model
+
 
 @dataclass
 class FilmConfig:
     target_modules: str
     modules_to_save: List[str] = field(default_factory=list)
+
 
 class FiLM:
     @staticmethod
@@ -129,17 +137,31 @@ class FiLM:
 
         raise RuntimeError(f'No known FiLM configuration for model: {model_name}')
 
+
 class LoRA:
     @staticmethod
-    def get_peft_model(model: torch.nn.Module, model_name: str):
-        lora_config = LoRA._get_config(model_name)
-        lora_model = get_peft_model(model, lora_config)
+    def get_peft_model(
+        model: torch.nn.Module,
+        model_name: str,
+        checkpoint_dir: str = None,
+        is_trainable: bool = False,
+    ):
+        if checkpoint_dir is not None:
+            if not os.path.exists(checkpoint_dir):
+                raise FileNotFoundError(f'Checkpoint directory not found: {checkpoint_dir}')
+
+            lora_model = PeftModel.from_pretrained(model, checkpoint_dir, is_trainable=is_trainable)
+        else:
+            lora_config = LoRA._get_config(model_name)
+            lora_model = get_peft_model(model, lora_config)
 
         trainable_params, all_params = get_nb_trainable_parameters(lora_model)
 
         if torch.distributed.get_rank() == 0:
             print_trainable_modules(model)
-            log.info(f'LoRA setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
+            log.info(
+                f'LoRA setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}'
+            )
 
         return lora_model
 
@@ -149,7 +171,7 @@ class LoRA:
         lora_rank = 4
 
         # general recommendation for alpha is 2*rank
-        lora_alpha = 2*lora_rank
+        lora_alpha = 2 * lora_rank
 
         if model_name.startswith('vit_base_patch16_224'):
             return LoraConfig(
@@ -159,14 +181,38 @@ class LoRA:
                 target_modules=r'patched_embed\.proj|.*\.attn\.qkv|.*\.attn_proj|.*\.mlp\.fc\d',
                 modules_to_save=['head'],
             )
-
-        if model_name.startswith('resnetv2_50x1_bit'):
+        elif model_name.startswith('resnetv2_50x1_bit'):
             return LoraConfig(
                 r=lora_rank,
                 lora_alpha=lora_alpha,
                 bias='none',
                 target_modules=r'stem\.conv|.*\.downsample\.conv|.*\.conv\d',
                 modules_to_save=['head.fc'],
+            )
+        elif 'bert' in model_name:  # For the LLM experiments
+            return LoraConfig(
+                task_type='SEQ_CLS',
+                r=16,  # rank
+                lora_alpha=32,
+                target_modules=['query', 'value'],
+                lora_dropout=0.1,
+                bias='none',
+            )
+        elif 'gpt' in model_name:
+            # Configure LoRA for causal LM
+            return LoraConfig(
+                r=8,
+                lora_alpha=16,
+                target_modules=[
+                    'c_attn',
+                    'c_proj',
+                ],  # For GPT-2, the attention layers are called "c_attn"
+                # This is more for LLAMA models
+                # target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+                lora_dropout=0.1,
+                inference_mode=False,
+                bias='none',
+                task_type='CAUSAL_LM',
             )
 
         raise RuntimeError(f'No known LoRA configuration for model: {model_name}')
