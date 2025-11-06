@@ -256,6 +256,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = None,
+        dataset_text_fields: Annotated[
+            Optional[List[str]],
+            typer.Option(
+                help='Name of the field(s) where the text is located for language tasks',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
         imbalance_factor: Annotated[
             Optional[float],
             typer.Option(

@@ -860,6 +860,7 @@ class DataModuleFactory:
                 privacy=configuration.privacy,
                 evaluation_mode=configuration.evaluation_mode,
                 label_field=configuration.dataset_label_field,
+                text_fields=configuration.dataset_text_fields,
                 max_test_examples=configuration.max_test_examples,
                 imbalance_factor=configuration.imbalance_factor,
                 imbalance_reverse=configuration.imbalance_reverse,
@@ -956,21 +957,11 @@ class NLPDataModule(DataModule):
         if self._text_fields is not None:
             if torch.distributed.get_rank() == 0:
                 log.info(f"Using manually provided text fields: {self._text_fields}")
+
             return
 
-        # Otherwise detect text fields (string features)
-        candidates = []
-        for feature_name, feature in dataset.features.items():
-            # Skip label field
-            if feature_name == self._label_field:
-                continue
-            # The datasets library uses Value('string') for raw text columns
-            if getattr(feature, "dtype", None) == "string":
-                candidates.append(feature_name)
-
-        self._text_fields = (
-            candidates[:1] if candidates else []
-        )  # use only the first text field if multiple found
+        # Pick the wrist feature as the text field
+        self._text_fields = list(dataset['train'].features.keys())[0]
 
         if torch.distributed.get_rank() == 0:
             log.info(f"Detected text fields: {self._text_fields}")
