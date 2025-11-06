@@ -123,6 +123,7 @@ class Configuration(BaseModel):
     use_steps: Optional[bool] = False
     evaluation_mode: Optional[bool] = False
     dataset_label_field: Optional[str] = None
+    dataset_text_fields: Optional[List[str]] = None
     max_test_examples: Optional[int] = None
     imbalance_factor: Optional[float] = None
     imbalance_reverse: Optional[bool] = False
@@ -212,6 +213,7 @@ class Configuration(BaseModel):
             ('Optimizer', self.optimizer),
             ('Dataset name', self.dataset_name),
             ('Dataset label field', self.dataset_label_field),
+            ('Dataset text field(s) for LLM tasks', self.dataset_text_fields),
             ('Dataset imbalance factor', self.imbalance_factor),
             ('Dataset imbalance reverse', self.imbalance_reverse),
             ('Cache dataset transforms', self.cache_dataset_transforms),
