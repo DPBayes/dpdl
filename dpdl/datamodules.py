@@ -46,7 +46,6 @@ class DataModule:
         imbalance_reverse: bool = False,
         fairness_imbalance_class: int = None,
         cache_transforms: bool = False,
-        group_field: str = None,
     ):
 
         self.dataset_name = dataset_name
@@ -70,7 +69,6 @@ class DataModule:
         self._imbalance_reverse = imbalance_reverse
         self._fairness_imbalance_class = fairness_imbalance_class
         self._cache_transforms = cache_transforms
-        self._group_field = group_field
 
         self._dataloaders = {
             'train': None,
@@ -893,7 +891,6 @@ class DataModuleFactory:
             privacy=configuration.privacy,
             evaluation_mode=configuration.evaluation_mode,
             label_field=configuration.dataset_label_field,
-            group_field=configuration.dataset_group_field,
             max_test_examples=configuration.max_test_examples,
             imbalance_factor=configuration.imbalance_factor,
             imbalance_reverse=configuration.imbalance_reverse,
