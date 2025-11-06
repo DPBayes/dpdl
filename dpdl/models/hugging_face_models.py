@@ -1,77 +1,40 @@
-import os
 import json
-import re
+import os
 import typing as t
 from collections.abc import Mapping
-from huggingface_hub import snapshot_download
 
 import torch
+from huggingface_hub import snapshot_download
 from safetensors.torch import load_file as safe_load_file
-
 from transformers import (
-    AutoModel,
     AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
     AutoTokenizer,
     BitsAndBytesConfig,
-    AutoModelForSequenceClassification,
 )
 
 SAFE_WEIGHTS_INDEX_NAME = "model.safetensors.index.json"
 SAFE_WEIGHTS_NAME = "model.safetensors"
 
 
-"""
-Let's make two versions of model loading. 
-    - The first one is loading the tensors. This way, we can control better the architecture.
-    Pros:
-        - We can control better the architecture
-        - We can introduce the LoRA parameters 
-    Cons:
-        - We need the architecture defined
-
-    - Load directly from HuggingFace
-    Pros:
-        - Easy to load.
-        - No need of knowing the original architecture
-    Cons:
-        - Less control over the model. We use it more as a black box. Maybe modify it is harder.
-"""
-
-"""
-download_safetensors
-#TODO 
-"""
-
-
 def download_safetensors(model_name):
-
-    # folder = snapshot_download("microsoft/Phi-3-mini-128k-instruct", allow_patterns=["*.json", "*model*.safetensors"])
+    """
+        Load model directly from HuggingFace
+    """
     folder = snapshot_download(model_name, allow_patterns=["*.json", "*model*.safetensors"])
-
-    print(folder)
 
     # Load the index
     safe_index_file = os.path.join(folder, SAFE_WEIGHTS_INDEX_NAME)
     assert os.path.isfile(safe_index_file)
+
     with open(safe_index_file, "r", encoding="utf-8") as f:
         index = json.load(f)
 
     shard_files = list(set(index["weight_map"].values()))
     state_dict: t.Dict[str, torch.Tensor] = {}
+
     for shard_file in shard_files:
         state_dict |= safe_load_file(os.path.join(folder, shard_file), "cpu")
-
-
-"""
-download_generic_huggingface_model
-
-Downloads a generic AutoModelForCausalLM.
-model_name: str 
-quantization: dict
-trust_remote_code: bool
-We should:
-    - Create a method that is for other tasks
-"""
 
 
 def download_generic_huggingface_model(
@@ -83,6 +46,16 @@ def download_generic_huggingface_model(
     checkpoint_dir=None,
     task: str = None,
 ):
+    """
+    download_generic_huggingface_model
+
+    Downloads a generic AutoModelForCausalLM.
+    model_name: str
+    quantization: dict
+    trust_remote_code: bool
+    We should:
+        - Create a method that is for other tasks
+    """
 
     quantization_config = None
 
@@ -104,22 +77,20 @@ def download_generic_huggingface_model(
         "trust_remote_code": trust_remote_code,
     }
 
-    print("load_kwargs:", load_kwargs)
-
     if quantization_config is not None:
         load_kwargs["quantization_config"] = quantization_config
 
     # For encoder/sequence classification models (roberta/bert), they are under AutoModelForSequenceClassification.
 
-    # is_seq_classification = any(x in model_name.lower() for x in ['roberta', 'bert', 'distilbert'])
     is_seq_classification = task == "SequenceClassification"
     if is_seq_classification:
         if num_labels is not None:
             load_kwargs["num_labels"] = num_labels
-        print("Loading sequence classification model")
+
         model = AutoModelForSequenceClassification.from_pretrained(
             checkpoint_or_not(model_name, checkpoint_dir, peft), device_map="cuda:0", **load_kwargs
         )
+
         # Freeze embedding layer that doesn't work for Opacus
         model_type = model.config.model_type  # e.g., 'bert', 'roberta', 'distilbert'
 
@@ -136,7 +107,6 @@ def download_generic_huggingface_model(
         if hasattr(model, "transformer"):
             for name, module in model.transformer.named_modules():
                 if isinstance(module, torch.nn.Embedding):
-                    # print(f"Freezing embedding layer: {name}")
                     for param in module.parameters():
                         param.requires_grad = False
 
@@ -171,12 +141,12 @@ def download_generic_huggingface_model(
 def checkpoint_or_not(model_name, checkpoint_dir_latest, peft):
 
     if checkpoint_dir_latest is not None and not peft:
-        print("loading checkpoint")
         return checkpoint_dir_latest
+
     return model_name
 
 
-class HF_llm(torch.nn.Module):
+class HuggingfaceLanguageModel(torch.nn.Module):
     def __init__(
         self,
         model_name: str,
@@ -184,9 +154,9 @@ class HF_llm(torch.nn.Module):
         ignore_index: int = -100,
         trust_remote_code: bool = False,
         peft: bool = False,
-        checkpoint_dir: str = None,
+        checkpoint_dir: str | None = None,
         num_labels: int | None = None,
-        task: str = None,
+        task: str | None = None,
     ):
 
         super().__init__()
@@ -261,24 +231,11 @@ class HF_llm(torch.nn.Module):
         head = self.get_classifier()
         if head is None:
             raise RuntimeError("No classifier/LM head found for this model")
+
         return head(features)
 
-    # use CrossEntropyLoss from torch.nn?
-    # TODO: For sentence classification
-    def criterion(self, logits, targets):
-
-        shift_logits = logits[..., :-1, :].contiguous()
-        shift_targets = targets[..., 1:].contiguous()
-
-        print("are we in criterion?", shift_logits.shape, shift_targets.shape)
-
-        return self._criterion(
-            shift_logits.view(-1, self.vocab_size),
-            shift_targets.view(-1),
-            self.ignore_index,
-        )
-
     def generate(self, *args, **kwargs):
+        # NB: This requires `prepare_inputs_for_generation` method exists in the model.
         return self.model.generate(**args[0], **kwargs)
 
     # Encoder models (e.g., RoBERTa/BERT) commonly use classifier or score. Causal LMs use lm_head.
@@ -288,17 +245,15 @@ class HF_llm(torch.nn.Module):
                 head = getattr(self.model, attr)
                 if isinstance(head, torch.nn.Module):
                     return head
-        return None
 
-    # def get_body(self):
-    #    return self.model.get_base_model().model
+        return None
 
     def get_transforms(self):
         return self.tokenizer
 
     def save_model(self, path):
-        print("saving the model", path)
         if str(path).endswith(".pt"):
             path = str(path)[:-3]
+
         # This saves the model, whether it has peft or not. If it has peft, it will save only the trainable parameters
         self.model.save_pretrained(path)

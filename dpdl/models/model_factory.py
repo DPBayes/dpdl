@@ -7,7 +7,7 @@ import os
 from .model_base import ModelBase
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet
-from .hugging_face_models import HF_llm
+from .hugging_face_models import HuggingfaceLanguageModel
 
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -86,7 +86,7 @@ class ModelFactory:
             checkpoints_dir_latest = get_latest_checkpoint(
                 configuration.checkpoints_dir
             )
-            model_instance = HF_llm(
+            model_instance = HuggingfaceLanguageModel(
                 configuration.model_name,
                 configuration.load_in_4bit,
                 num_labels=num_classes,
