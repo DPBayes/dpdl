@@ -129,7 +129,6 @@ class ModelFactory:
             else:
                 raise ValueError('Num classes not given and unable to infer it.')
 
-
         # Wrap the instantiated model with ModelBase
         model = ModelBase(
             model_instance=model_instance,
