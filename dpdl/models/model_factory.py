@@ -29,17 +29,18 @@ def get_latest_checkpoint(checkpoint_dir):
 
     if not os.path.exists(checkpoint_dir):
         return None
-    
-    checkpoints = [d for d in os.listdir(checkpoint_dir) 
-                   if d.startswith("checkpoint_step_") 
-                   and os.path.isdir(os.path.join(checkpoint_dir, d))]
-    
+
+    checkpoints = [
+        d
+        for d in os.listdir(checkpoint_dir)
+        if d.startswith('checkpoint_step_') and os.path.isdir(os.path.join(checkpoint_dir, d))
+    ]
+
     if not checkpoints:
         return None
-    
+
     # Sort by modification time
-    latest = max(checkpoints, 
-                key=lambda x: os.path.getmtime(os.path.join(checkpoint_dir, x)))
+    latest = max(checkpoints, key=lambda x: os.path.getmtime(os.path.join(checkpoint_dir, x)))
     return os.path.join(checkpoint_dir, latest)
 
 class ModelFactory:
@@ -82,15 +83,17 @@ class ModelFactory:
 
         # check if we want to experiment on LLMs
         if configuration.llm:
-            checkpoints_dir_latest = get_latest_checkpoint(configuration.checkpoints_dir)
+            checkpoints_dir_latest = get_latest_checkpoint(
+                configuration.checkpoints_dir
+            )
             model_instance = HF_llm(
-                        configuration.model_name,
-                        configuration.load_in_4bit,
-                        num_labels=num_classes,
-                        peft = configuration.peft, 
-                        checkpoint_dir = checkpoints_dir_latest,
-                        task=configuration.task
-                    )
+                configuration.model_name,
+                configuration.load_in_4bit,
+                num_labels=num_classes,
+                peft=configuration.peft,
+                checkpoint_dir=checkpoints_dir_latest,
+                task=configuration.task,
+            )
 
             transforms = model_instance.get_transforms()
             loaded_hf = True

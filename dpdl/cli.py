@@ -148,7 +148,7 @@ def cli(
             bool,
             typer.Option(
                 help='Enable LLM model mode (use HuggingFace models and tokenization)',
-                rich_help_panel='Model options',
+                rich_help_panel='Training options',
             )
         ] = False,
         task: Annotated[
@@ -161,10 +161,9 @@ def cli(
         load_in_4bit: Annotated[
             bool,
             typer.Option(
-                help='Quantization in 4 bit', 
+                help='Quantization in 4 bit',
                 rich_help_panel='Model options'
             )
-
         ] = False,
         loss_function: Annotated[
             str,

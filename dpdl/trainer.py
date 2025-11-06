@@ -155,8 +155,6 @@ class Trainer:
 
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
 
-            print('---------------------------------- end batch ------------------------')
-
         # compute the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
         self._unwrap_model().train_metrics.reset()
@@ -195,7 +193,6 @@ class Trainer:
             loss.backward()
 
             logical_batch_loss += loss.item()
-            print(f'LOSS: {loss.item()}')
 
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
@@ -308,15 +305,10 @@ class Trainer:
             self._unwrap_model().save_model(fpath)
 
     def _sample_impl(self):
-
         self.model.eval()
 
         with torch.no_grad():
-
             for batch_idx, batch in enumerate(self.datamodule.get_dataloader('sample')):
-
-                print('sample',batch)
-
                 X = batch
                 X = self.adapter.move_to_device(X)
 
@@ -332,11 +324,7 @@ class Trainer:
 
                 N = len(X_split['input_ids'])
 
-                # process the sub batches one at a time
-                print('Number of physical batches', N)
-
                 for i in range(N):
-                    print('X_split', X_split)
                     if is_mapping:
                         X_splitted = {k: X_split[k][i] for k in X_split}
                     else:
@@ -352,7 +340,7 @@ class Trainer:
                         eos_token_id=self.datamodule.tokenizer.eos_token_id,
                     )
 
-                    print('sampled text decoded',self.datamodule.decode(generated_ids))
+                    log.info('Sampled text decoded', self.datamodule.decode(generated_ids))
 
         self.model.train()
 

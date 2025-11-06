@@ -13,26 +13,25 @@ log = logging.getLogger(__name__)
 def get_latest_checkpoint(checkpoint_dir):
     """Find the latest checkpoint by modification time"""
 
-    print('checkpoint_dir',checkpoint_dir)
-
     if not os.path.exists(checkpoint_dir):
         return 0
-    
-    checkpoints = [d for d in os.listdir(checkpoint_dir) 
-                if d.startswith("checkpoint_step_")]
-    
+
+    checkpoints = [d for d in os.listdir(checkpoint_dir) if d.startswith('checkpoint_step_')]
+
     if not checkpoints:
         return 0
-    
+
     # Sort by modification time
-    latest = max(checkpoints, 
-                key=lambda x: os.path.getmtime(os.path.join(checkpoint_dir, x)))
-    
+    latest = max(checkpoints, key=lambda x: os.path.getmtime(os.path.join(checkpoint_dir, x)))
+
     # Extract step number
     match = re.search(r'checkpoint_step_(\d+)', latest)
+
     if match:
         return int(match.group(1))
+
     return 0
+
 
 class CheckpointCallback(Callback):
     def __init__(self, log_dir: str, checkpoint_step_interval: int):
