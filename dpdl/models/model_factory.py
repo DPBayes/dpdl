@@ -128,7 +128,6 @@ class ModelFactory:
             else:
                 raise ValueError('Num classes not given and unable to infer it.')
 
-
         # Wrap the instantiated model with ModelBase
         model = ModelBase(
             model_instance=model_instance,
@@ -149,7 +148,7 @@ class ModelFactory:
         # should we do Parameter Efficient Fine-Tuning (PEFT)?
         if configuration.peft:
             print(model)
-            model = PeftFactory.get_peft_model(model, configuration,checkpoints_dir_latest)
+            model = PeftFactory.get_peft_model(model, configuration, checkpoints_dir_latest)
 
         return model, transforms, num_classes
 
