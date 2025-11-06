@@ -16,7 +16,7 @@ class ModelBase(torch.nn.Module):
         model_instance: torch.nn.Module = None,
         num_classes: int = 10,
         use_feature_cache: bool = False,
-        criterion: torch.nn.Module = torch.nn.CrossEntropyLoss() ,
+        criterion: torch.nn.Module = None,
         metrics: Optional[Dict[str, Any]] = None
     ):
 
@@ -26,27 +26,32 @@ class ModelBase(torch.nn.Module):
         self.num_classes = num_classes
         self.use_feature_cache = use_feature_cache
 
+        if not criterion:
+            raise ValueError('Criterion not passed to ModelBase.')
+
         self._criterion = criterion.cuda()
 
         if metrics is not None:
             self.train_metrics = metrics['train_metrics']
             self.valid_metrics = metrics['valid_metrics']
             self.test_metrics = metrics['test_metrics']
-    
+
     @property
     def config(self):
         return self.model.config
-    
+
     @property
     def prepare_inputs_for_generation(self):
         """Expose the underlying model's method."""
+
+        # NB: This is used when calling `model.generate()`
         return self.model.prepare_inputs_for_generation
-    
+
     def set_metrics(self, metrics):
-        self.train_metrics = metrics['train_metrics']
-        self.valid_metrics = metrics['valid_metrics']
-        self.test_metrics = metrics['test_metrics']
-        
+        self.train_metrics = metrics["train_metrics"]
+        self.valid_metrics = metrics["valid_metrics"]
+        self.test_metrics = metrics["test_metrics"]
+
     def forward(self, *args, **kwargs):
 
         # If PEFT calls with keyword arguments, convert them to a dict and pass as x
@@ -61,7 +66,7 @@ class ModelBase(torch.nn.Module):
             x = None
 
         if self.use_feature_cache:
-            return self.model.forward_head(x) 
+            return self.model.forward_head(x)
         else:
             return self.model(x)
 
@@ -73,7 +78,7 @@ class ModelBase(torch.nn.Module):
 
     def criterion(self, logits, targets):
         return self._criterion(logits, targets)
-    
+
     def generate(self, *args, **kwargs):
         return self.model.generate(*args, **kwargs)
 
