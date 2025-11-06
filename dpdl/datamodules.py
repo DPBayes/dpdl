@@ -903,11 +903,14 @@ class DataModuleFactory:
 class NLPDataModule(DataModule):
     """DataModule specialized for NLP tasks.
     - Detect text fields (string features) automatically if they are not specified.
-    - Collate function returning (tokenized_batch_dict, labels_tensor). e.g., tokenized_batch_dict = {"input_ids": torch.Tensor(batch_size, seq_len),
-                                                                        "attention_mask": torch.Tensor(batch_size, seq_len)}
+    - Collate function returning (tokenized_batch_dict, labels_tensor).
+      e.g., tokenized_batch_dict = {"input_ids": torch.Tensor(batch_size, seq_len),
+                                    "attention_mask": torch.Tensor(batch_size, seq_len)}
     """
 
-    def __init__(self, text_fields=None, max_length: int = 64, task: str = None, **kwargs):
+    def __init__(
+        self, text_fields=None, max_length: int = 64, task: str = None, **kwargs
+    ):
         self._text_fields = text_fields  # list of text fields or None
         self.max_length = max_length
         self.task = task
@@ -916,40 +919,48 @@ class NLPDataModule(DataModule):
     def _load_datasets(self):
         """Load the datasets to memory."""
         if torch.distributed.get_rank() == 0:
-            log.info(f'Loading dataset "{self.dataset_name}" from Huggingface datasets.')
+            log.info(
+                f'Loading dataset "{self.dataset_name}" from Huggingface datasets.'
+            )
 
-        if self.dataset_name == 'wikitext':
-            dataset_splits = datasets.load_dataset(self.dataset_name,'wikitext-2-raw-v1')
+        if self.dataset_name == "wikitext":
+            dataset_splits = datasets.load_dataset(
+                self.dataset_name, "wikitext-2-raw-v1"
+            )
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
-        if self.task not in ['CausalLM', 'InstructLM']:
-
+        if self.task not in ["CausalLM", "InstructLM"]:
             # Set dataset label fields based on the training split
             self._set_dataset_label_fields(dataset_splits)
 
-            self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
+            self._detect_text_fields(
+                dataset_splits["train"]
+            )  # decide which text column(s) to use
 
             # Make sure the dataset label field is of type ClassLabel
             self._dataset_splits = self._enforce_label_field_type(dataset_splits)
 
             # Automatically determine the number of classes
             # NB: This can be done if the label is of type ClassLabel
-            self.num_classes = dataset_splits['train'].features[self._label_field].num_classes
+            self.num_classes = (
+                dataset_splits["train"].features[self._label_field].num_classes
+            )
 
             if torch.distributed.get_rank() == 0:
-                log.info(f'Determined the number of classes to be {self.num_classes}.')
-    
+                log.info(f"Determined the number of classes to be {self.num_classes}.")
+
         else:
-            self._detect_text_fields(dataset_splits['train']) # decide which text column(s) to use
+            self._detect_text_fields(
+                dataset_splits["train"]
+            )  # decide which text column(s) to use
             self._dataset_splits = dataset_splits
 
-    def _set_dataset_label_fields(self, dataset_splits):  
-        
+    def _set_dataset_label_fields(self, dataset_splits):
         if torch.distributed.get_rank() == 0:
-            log.info('Setting dataset label field (LLM mode).')
-        self._set_label_field(dataset_splits['train']) # find the label column
-        
+            log.info("Setting dataset label field (LLM mode).")
+        self._set_label_field(dataset_splits["train"])  # find the label column
+
     def _detect_text_fields(self, dataset):
         if self._text_fields is not None:
             if torch.distributed.get_rank() == 0:
@@ -963,29 +974,31 @@ class NLPDataModule(DataModule):
             if feature_name == self._label_field:
                 continue
             # The datasets library uses Value('string') for raw text columns
-            if getattr(feature, 'dtype', None) == 'string':
+            if getattr(feature, "dtype", None) == "string":
                 candidates.append(feature_name)
 
-        #if candidates:
+        # if candidates:
         #    self._text_fields = candidates
         #    if len(candidates) > 1 and torch.distributed.get_rank() == 0:
         #        log.warning(f"Multiple text fields detected, using all: {candidates}")
-        #else:
+        # else:
         #    self._text_fields = []
-        print('candidates',candidates)
-        self._text_fields = candidates[:1] if candidates else []  # use only the first text field if multiple found
-        print('self._text_fields',self._text_fields)
+        print("candidates", candidates)
+        self._text_fields = (
+            candidates[:1] if candidates else []
+        )  # use only the first text field if multiple found
+        print("self._text_fields", self._text_fields)
         if torch.distributed.get_rank() == 0:
             log.info(f"Detected text fields: {self._text_fields}")
         if not self._text_fields:
-            raise ValueError('Could not determine any text field for NLP dataset.')
+            raise ValueError("Could not determine any text field for NLP dataset.")
 
     # skip image transforms and set custom dataloaders
     def initialize(self, tokenizer):
         self.tokenizer = tokenizer
 
         if torch.distributed.get_rank() == 0:
-            log.info('Initializing NLPDataModule datasets...')
+            log.info("Initializing NLPDataModule datasets...")
             self._initialize_datasets()
             torch.distributed.barrier()
         else:
@@ -1001,12 +1014,13 @@ class NLPDataModule(DataModule):
             batch_size = int(self.sample_rate * len(self.train_dataset))
 
             if torch.distributed.get_rank() == 0:
-                log.info(f'Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.')
+                log.info(
+                    f"Sample rate is {self.sample_rate}, setting batch size to: {batch_size}."
+                )
 
             self.batch_size = batch_size
 
         self._initialize_text_dataloaders()
-
 
     def _initialize_text_dataloaders(self):
         self._set_generators_and_seed_worker()
@@ -1014,7 +1028,7 @@ class NLPDataModule(DataModule):
 
         collate_fn = self._make_text_collate()
 
-        self._dataloaders['train'] = torch.utils.data.DataLoader(
+        self._dataloaders["train"] = torch.utils.data.DataLoader(
             self.train_dataset,
             sampler=self.train_sampler,
             batch_size=self.local_batch_size,
@@ -1025,7 +1039,7 @@ class NLPDataModule(DataModule):
             worker_init_fn=self.seed_worker,
         )
 
-        self._dataloaders['valid'] = torch.utils.data.DataLoader(
+        self._dataloaders["valid"] = torch.utils.data.DataLoader(
             self.val_dataset,
             sampler=self.val_sampler,
             batch_size=self.physical_batch_size,
@@ -1034,15 +1048,15 @@ class NLPDataModule(DataModule):
         )
 
         if self.test_dataset:
-            self._dataloaders['test'] = torch.utils.data.DataLoader(
+            self._dataloaders["test"] = torch.utils.data.DataLoader(
                 self.test_dataset,
                 sampler=self.test_sampler,
                 batch_size=self.physical_batch_size,
                 collate_fn=collate_fn,
                 num_workers=self.num_workers,
             )
-            if self.task == 'InstructLM':
-                self._dataloaders['sample'] = torch.utils.data.DataLoader(
+            if self.task == "InstructLM":
+                self._dataloaders["sample"] = torch.utils.data.DataLoader(
                     self.test_dataset,
                     sampler=self.test_sampler,
                     batch_size=self.physical_batch_size,
@@ -1061,7 +1075,7 @@ class NLPDataModule(DataModule):
 
         def collate(batch):
             texts = [
-                ' '.join(str(sample[field]) for field in text_fields)
+                " ".join(str(sample[field]) for field in text_fields)
                 for sample in batch
             ]
 
@@ -1070,100 +1084,99 @@ class NLPDataModule(DataModule):
                 padding=True,
                 truncation=True,
                 max_length=max_len,
-                return_tensors='pt'
-            ) 
+                return_tensors="pt",
+            )
 
-            if task == 'CausalLM':
-                labels = tokenized['input_ids'].clone()
-                labels[labels == tokenizer.pad_token_id] = -100  #Padding tokens are ignored in loss computation.
-                tokenized['labels'] = labels
-            elif task == 'SequenceClassification':
-                labels = torch.tensor([sample[label_field] for sample in batch], dtype=torch.long)
+            if task == "CausalLM":
+                labels = tokenized["input_ids"].clone()
+                labels[
+                    labels == tokenizer.pad_token_id
+                ] = -100  # Padding tokens are ignored in loss computation.
+                tokenized["labels"] = labels
+            elif task == "SequenceClassification":
+                labels = torch.tensor(
+                    [sample[label_field] for sample in batch], dtype=torch.long
+                )
             return tokenized, labels
 
-    
         def collate_instruct_function(batch):
-
             conversations = [
-                    tokenizer.apply_chat_template(
-                        [
-                            {"role": "user", "content": sample['question']},
-                            {"role": "assistant", "content": sample['answer']}
-                        ],
-                        tokenize=False,
-                        add_generation_prompt=False
-                    )
-                    for sample in batch
-                ]
-             
-            #Tokenize the text already in chat format
+                tokenizer.apply_chat_template(
+                    [
+                        {"role": "user", "content": sample["question"]},
+                        {"role": "assistant", "content": sample["answer"]},
+                    ],
+                    tokenize=False,
+                    add_generation_prompt=False,
+                )
+                for sample in batch
+            ]
+
+            # Tokenize the text already in chat format
             tokenized = tokenizer(
                 conversations,
                 padding=True,
                 truncation=True,
                 max_length=max_len,
-                return_tensors='pt',
-                add_special_tokens=True
-            ) 
+                return_tensors="pt",
+                add_special_tokens=True,
+            )
 
-            #print("tokenized chat: ", tokenizer.decode(tokenized[0]))
+            # print("tokenized chat: ", tokenizer.decode(tokenized[0]))
 
-            #We need the user tokens, only that part, so we can remove that from the 
-            #loss function
+            # We need the user tokens, only that part, so we can remove that from the
+            # loss function
 
             # Create labels with list comprehension
             user_texts = [
                 tokenizer.apply_chat_template(
                     [{"role": "user", "content": q["question"]}],
                     tokenize=False,
-                    add_generation_prompt=True
+                    add_generation_prompt=True,
                 )
                 for q in batch
             ]
-            
+
             user_tokenized = tokenizer(
-                user_texts, 
-                add_special_tokens=True, 
-                padding=False
+                user_texts, add_special_tokens=True, padding=False
             )
-            
+
             # Mask user parts
             labels = tokenized["input_ids"].clone()
 
             for i, user_ids in enumerate(user_tokenized["input_ids"]):
                 user_len = len(user_ids)
-                print('len of user ',user_len)
-                print('len of labels',len(labels[i]))
+                print("len of user ", user_len)
+                print("len of labels", len(labels[i]))
                 labels[i, :user_len] = -100
 
-            labels[labels == tokenizer.pad_token_id] = -100  #Padding tokens are ignored in loss computation.
+            labels[
+                labels == tokenizer.pad_token_id
+            ] = -100  # Padding tokens are ignored in loss computation.
 
             tokenized["labels"] = labels
 
             return tokenized, labels
 
-        return collate_instruct_function if task == 'InstructLM' else collate
+        return collate_instruct_function if task == "InstructLM" else collate
 
-    def tokenize_for_sample(self,batch):
-
+    def tokenize_for_sample(self, batch):
         conversations = [
-                    self.tokenizer.apply_chat_template(
-                        [
-                            {"role": "user", "content": sample['question']}
-                        ],
-                        tokenize=False,
-                        add_generation_prompt=True
-                    )
-                    for sample in batch
-                ]            
-        #Tokenize the text already in chat format
+            self.tokenizer.apply_chat_template(
+                [{"role": "user", "content": sample["question"]}],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            for sample in batch
+        ]
+        # Tokenize the text already in chat format
         tokenized = self.tokenizer(
             conversations,
             padding=True,
             truncation=True,
             max_length=self.max_length,
-            return_tensors='pt',
-            add_special_tokens=True
+            return_tensors="pt",
+            add_special_tokens=True,
         )
 
         return tokenized
@@ -1171,9 +1184,11 @@ class NLPDataModule(DataModule):
     def decode(self, generated_ids):
         return self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
-    def _add_rgb_transform(self):  
+    def _add_rgb_transform(self):
         return
-    def _replace_to_tensor_with_to_float(self):  
+
+    def _replace_to_tensor_with_to_float(self):
         return
-    def _apply_transforms_to_datasets(self):  
+
+    def _apply_transforms_to_datasets(self):
         return
