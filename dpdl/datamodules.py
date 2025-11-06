@@ -954,14 +954,15 @@ class NLPDataModule(DataModule):
         self._set_label_field(dataset_splits["train"])  # find the label column
 
     def _detect_text_fields(self, dataset):
-        if self._text_fields is not None:
+        if self._text_fields:
             if torch.distributed.get_rank() == 0:
                 log.info(f"Using manually provided text fields: {self._text_fields}")
 
             return
 
         # Pick the wrist feature as the text field
-        self._text_fields = list(dataset['train'].features.keys())[0]
+        keys = list(dataset.features.keys())
+        self._text_fields = keys[:1]
 
         if torch.distributed.get_rank() == 0:
             log.info(f"Detected text fields: {self._text_fields}")
