@@ -961,6 +961,8 @@ class NLPDataModule(DataModule):
                 dataset_splits["train"]
             )  # decide which text column(s) to use
             self._dataset_splits = dataset_splits
+        
+        log.info("Datasets loaded")
 
     def _set_dataset_label_fields(self, dataset_splits):
         if torch.distributed.get_rank() == 0:
