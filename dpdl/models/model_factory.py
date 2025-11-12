@@ -4,6 +4,8 @@ import timm
 import torch
 import os
 
+from typing import Any, Dict, Optional
+
 from .model_base import ModelBase
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet
@@ -51,7 +53,7 @@ class ModelFactory:
         hyperparams: Hyperparameters,
         num_classes: int,
         loss_fn: torch.nn,
-        metrics: dict
+        metrics: Optional[Dict[str, Any]] = None
     ):
 
         """
@@ -79,7 +81,7 @@ class ModelFactory:
         loaded_hf = False
 
         # Flag to see if we load a local model already fine tuned
-        checkpoints_dir_latest = False
+        checkpoints_dir_latest = None
 
         # check if we want to experiment on LLMs
         if configuration.llm:
@@ -147,7 +149,6 @@ class ModelFactory:
 
         # should we do Parameter Efficient Fine-Tuning (PEFT)?
         if configuration.peft:
-            print(model)
             model = PeftFactory.get_peft_model(model, configuration, checkpoints_dir_latest)
 
         return model, transforms, num_classes

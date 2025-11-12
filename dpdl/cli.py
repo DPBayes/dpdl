@@ -207,6 +207,13 @@ def cli(
                 rich_help_panel='Model options',
             )
         ] = None,
+        lora_rank: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Rank for LoRA fine-tuning',
+                rich_help_panel='Model options',
+            )
+        ] = None,
         weight_perturbation_level: Annotated[
             float,
             typer.Option(

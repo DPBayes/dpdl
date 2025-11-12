@@ -128,6 +128,7 @@ class Configuration(BaseModel):
     stratify_shots: Optional[bool] = True
     zero_head: bool = False
     peft: Optional[Literal['lora', 'film', 'head-only']]
+    lora_rank: Optional[int] = None
     pretrained: bool = True
     cache_features: Optional[bool] = False
     use_steps: Optional[bool] = False

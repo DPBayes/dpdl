@@ -837,7 +837,6 @@ class TrainerFactory:
             hyperparams,
             num_classes,
             loss_fn,
-            None
         )
 
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
@@ -923,7 +922,6 @@ class TrainerFactory:
             hyperparams,
             num_classes,
             loss_fn,
-            None
         )
 
         metrics = MetricsFactory.get_metrics(configuration, num_classes_eff)
