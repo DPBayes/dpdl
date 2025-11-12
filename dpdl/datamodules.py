@@ -936,7 +936,7 @@ class NLPDataModule(DataModule):
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
-        if self.task not in ["CausalLM", "InstructLM"] and self._label_field is None:
+        if self.task not in ("CausalLM", "InstructLM", 'DiseaseTask'):
             # Set dataset label fields based on the training split
             self._set_dataset_label_fields(dataset_splits)
 
@@ -955,7 +955,19 @@ class NLPDataModule(DataModule):
 
             if torch.distributed.get_rank() == 0:
                 log.info(f"Determined the number of classes to be {self.num_classes}.")
+        
+        elif self.task == 'DiseaseTask' and self._label_field is not None:
+            self._detect_text_fields(
+                dataset_splits["train"]
+            )  # decide which text column(s) to use
 
+            self._dataset_splits = self._enforce_label_field_type(dataset_splits)
+
+            self.num_classes = (
+                dataset_splits["train"].features[self._label_field].num_classes
+            )
+            if torch.distributed.get_rank() == 0:
+                log.info(f"Determined the number of diseases to be {self.num_classes}.")
         else:
             self._detect_text_fields(
                 dataset_splits["train"]
