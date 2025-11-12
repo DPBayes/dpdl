@@ -963,11 +963,11 @@ class NLPDataModule(DataModule):
 
             self._dataset_splits = self._enforce_label_field_type(dataset_splits)
 
-            self.num_classes = (
+            num_classes = (
                 dataset_splits["train"].features[self._label_field].num_classes
             )
             if torch.distributed.get_rank() == 0:
-                log.info(f"Determined the number of diseases to be {self.num_classes}.")
+                log.info(f"Determined the number of diseases to be {num_classes}.")
         else:
             self._detect_text_fields(
                 dataset_splits["train"]
