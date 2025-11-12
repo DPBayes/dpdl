@@ -117,7 +117,7 @@ def download_generic_huggingface_model(
             model.config.pad_token_id = model.config.eos_token_id
             model.resize_token_embeddings(len(tokenizer))
 
-    if task == "InstructLM" and tokenizer.chat_template is None:
+    if task in ("InstructLM", "DiseaseTask") and tokenizer.chat_template is None:
         tokenizer.padding_side = "left"
 
         special_tokens = {"additional_special_tokens": ["<|im_start|>", "<|im_end|>"]}
