@@ -162,7 +162,7 @@ class Trainer:
 
         # log sample of generated text if asked for
         if torch.distributed.get_rank() == 0:
-            self.adapter.sample(self)
+            self.adapter.eval_acc(self)
 
         # wait for rank 0 to possilby sample
         torch.distributed.barrier()
@@ -720,6 +720,9 @@ class TaskAdapter:
     def sample(self, trainer):
         pass
 
+    def eval_acc(self, trainer):
+        pass
+
 
 class ClassificationAdapter(TaskAdapter):
     def iterate_physical_batches(self, batch, physical_batch_size):
@@ -848,6 +851,8 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
     def eval_acc(self, trainer):
 
         acc = self.evaluate_diseases_accuracy_exact_matching(trainer)
+
+        log.info('Accuracy after the epoch for the diseases', acc)
 
         return acc 
 
