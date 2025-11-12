@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 import torch
 
@@ -35,10 +35,24 @@ class PeftFactory:
     @staticmethod
     def get_peft_model(model: torch.nn.Module, configuration: Configuration, checkpoints_dir: str = None):
         if configuration.peft == 'lora':
+            lora_rank = configuration.lora_rank
+
             if checkpoints_dir is not None:
-                return LoRA.get_peft_model(model, configuration.model_name, checkpoints_dir, True)
+                return LoRA.get_peft_model(
+                    model=model,
+                    model_name=configuration.model_name,
+                    lora_rank=lora_rank,
+                    checkpoint_dir=checkpoints_dir,
+                    is_trainable=True,
+                )
             else:
-                return LoRA.get_peft_model(model, configuration.model_name)
+                return LoRA.get_peft_model(
+                    model=model,
+                    model_name=configuration.model_name,
+                    lora_rank=lora_rank,
+                    checkpoint_dir=checkpoints_dir,
+                    is_trainable=True
+                )
 
         if configuration.peft == 'film':
             return FiLM.get_peft_model(model, configuration.model_name)
@@ -143,8 +157,9 @@ class LoRA:
     def get_peft_model(
         model: torch.nn.Module,
         model_name: str,
-        checkpoint_dir: str = None,
-        is_trainable: bool = False,
+        lora_rank: Optional[int] = None,
+        checkpoint_dir: Optional[str] = None,
+        is_trainable: Optional[bool] = False,
     ):
         if checkpoint_dir is not None:
             if not os.path.exists(checkpoint_dir):
@@ -152,7 +167,7 @@ class LoRA:
 
             lora_model = PeftModel.from_pretrained(model, checkpoint_dir, is_trainable=is_trainable)
         else:
-            lora_config = LoRA._get_config(model_name)
+            lora_config = LoRA._get_config(model_name, lora_rank)
             lora_model = get_peft_model(model, lora_config)
 
         trainable_params, all_params = get_nb_trainable_parameters(lora_model)
@@ -166,19 +181,30 @@ class LoRA:
         return lora_model
 
     @staticmethod
-    def _get_config(model_name: str):
+    def _get_config(model_name: str, lora_rank: int = None):
         # default rank
-        lora_rank = 4
+        if not lora_rank:
+            lora_rank = 4
 
         # general recommendation for alpha is 2*rank
-        lora_alpha = 2 * lora_rank
+        lora_alpha = lora_rank
 
-        if model_name.startswith('vit_base_patch16_224'):
+        if model_name.startswith('vit_'):
+
+            # https://huggingface.co/docs/peft/main/en/task_guides/image_classification_lora
+            # config = LoraConfig(
+            #     r=16,
+            #     lora_alpha=16,
+            #     target_modules=["query", "value"],
+            #     lora_dropout=0.1,
+            #     bias="none",
+            #     modules_to_save=["classifier"],
+            # )
             return LoraConfig(
                 r=lora_rank,
                 lora_alpha=lora_alpha,
                 bias='none',
-                target_modules=r'patched_embed\.proj|.*\.attn\.qkv|.*\.attn_proj|.*\.mlp\.fc\d',
+                target_modules=r'.*\.attn\.qkv',
                 modules_to_save=['head'],
             )
         elif model_name.startswith('resnetv2_50x1_bit'):

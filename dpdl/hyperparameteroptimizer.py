@@ -14,6 +14,7 @@ from .datamodules import DataModuleFactory
 from .models.model_factory import ModelFactory
 from .configurationmanager import ConfigurationManager
 from .experimentmanager import save_study, log_final_epsilon, save_hpo_metrics
+from .loss_factory import LossFactory
 
 log = logging.getLogger(__name__)
 
@@ -424,10 +425,14 @@ class HyperparameterOptimizer:
         )
         num_classes = datamodule.get_num_classes()
 
-        _, transforms = ModelFactory.get_model(
+        # Now, setup data, model, and optimizer
+        loss_fn = LossFactory.get_loss(config_manager.configuration)
+
+        _, transforms, _ = ModelFactory.get_model(
             config_manager.configuration,
             config_manager.hyperparams,
             num_classes,
+            loss_fn,
         )
 
         datamodule.initialize(transforms)
