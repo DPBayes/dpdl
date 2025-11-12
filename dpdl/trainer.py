@@ -790,6 +790,29 @@ class InstructLMAdapter(LanguageModelAdapter):
 
 class DiseaseTaskAdapter(LanguageModelAdapter):
 
+    def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
+        print('Check batch for Disease Task',batch, flush=True)
+        X, labels = batch
+        y = X['labels']
+        logits = model(X)
+        preds, y_flat = shift_and_flatten(logits, y)
+
+        loss = model.criterion(preds, y_flat)
+
+        if normalize_by:
+            loss = loss / normalize_by
+
+        if metrics is not None:
+            metrics_to_update = metrics
+        else:
+            metrics_to_update = model.train_metrics if model.training else model.valid_metrics
+
+        with torch.no_grad():
+            metrics_to_update['Perplexity'].update(logits, y)
+            metrics_to_update['MulticlassAccuracy'].update(preds.argmax(dim=-1), y_flat)
+
+        return loss
+
     def sample(self, trainer):
         trainer._sample_impl()
 
@@ -801,6 +824,7 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
         with torch.no_grad():
             for batch_idx, batch in enumerate(trainer.datamodule.get_dataloader('sample')):
+                print('Check batch for Disease Task evaluation ',batch, flush=True)
                 X, y = batch
                 X = trainer.adapter.move_to_device(X)
 
