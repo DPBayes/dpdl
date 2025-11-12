@@ -1218,7 +1218,7 @@ class NLPDataModule(DataModule):
 
             return tokenized, labels
         
-        if label_field is not None and task == "InstructLM":
+        if label_field is not None and task == "DiseaseTask":
             return collate_instruct_function_sarus
 
         return collate_instruct_function if task == "InstructLM" else collate
