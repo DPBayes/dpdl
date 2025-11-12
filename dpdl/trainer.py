@@ -4,6 +4,7 @@ import logging
 import math
 import os
 from collections.abc import Mapping
+import re
 
 import opacus
 import torch
@@ -784,12 +785,88 @@ class InstructLMAdapter(LanguageModelAdapter):
     def sample(self, trainer):
         trainer._sample_impl()
 
+class DiseaseTaskAdapter(LanguageModelAdapter):
+
+    def sample(self, trainer):
+        trainer._sample_impl()
+
+    def evaluate_diseases_accuracy_exact_matching(self, trainer):
+        trainer.model.eval()
+
+        corr_total = 0
+        total = 0
+
+        with torch.no_grad():
+            for batch_idx, batch in enumerate(trainer.datamodule.get_dataloader('sample')):
+                X, y = batch
+                X = trainer.adapter.move_to_device(X)
+
+                is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
+                # gradient accumulation. split the batch to sub batches that fit in the GPU memory.
+                # then process the sub batches one at a time and call backward.
+                # when all the sub batches have been processed we can finally step the optimizer.
+                if is_mapping:
+                    # split each tensor in the dict
+                    X_split = {k: v.split(trainer.physical_batch_size, dim=0) for k, v in X.items()}
+                else:
+                    X_split = X.split(trainer.physical_batch_size, dim=0)
+                
+                y_splits = y.split(trainer.physical_batch_size, dim=0)
+
+                N = len(X_split['input_ids'])
+
+                for i in range(N):
+                    if is_mapping:
+                        X_splitted = {k: X_split[k][i] for k in X_split}
+                    else:
+                        X_splitted = X_split[i]
+                        y_splitted = y_splits[i]
+
+                    generated_ids = trainer._unwrap_model().generate(
+                        X_splitted,
+                        max_new_tokens=250,
+                        temperature=0.5,
+                        do_sample=True,
+                        top_p=0.9,
+                        pad_token_id=trainer.datamodule.tokenizer.pad_token_id,
+                        eos_token_id=trainer.datamodule.tokenizer.eos_token_id,
+                    )
+
+
+                    decoded_text = trainer.datamodule.decode(generated_ids)
+
+                    corr_total += exact_matching(decoded_text, y_splitted)
+                    total += len(X_splitted)
+
+                    #log.info('Sampled text decoded', trainer.datamodule.decode(generated_ids))
+
+        trainer.model.train()
+
+        return corr_total / total
+    
+
+    def eval_acc(self, trainer):
+
+        acc = self.evaluate_diseases_accuracy_exact_matching(trainer)
+
+        return acc 
+
+def exact_matching(texts, labels):
+    corr = 0
+    for i in range(len(texts)):
+        if re.findall(f"\b{labels[i]}\b", texts[i], flags=re.IGNORECASE):
+            corr += 1
+            print('found one!',texts[i])
+
+    return corr
+
 # Define task specific adapters
 _ADAPTERS = {
     'ImageClassification': ClassificationAdapter,
     'SequenceClassification': ClassificationAdapter,
     'CausalLM': CausalLMAdapter,
     'InstructLM': InstructLMAdapter,
+    'DiseaseTask': DiseaseTaskAdapter
 }
 
 class TrainerFactory:

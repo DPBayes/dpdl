@@ -168,7 +168,7 @@ def cli(
         task: Annotated[
             str,
             typer.Option(
-                help='Training task [ImageClassification, SequenceClassification, CausalLM, InstructLM]',
+                help='Training task [ImageClassification, SequenceClassification, CausalLM, InstructLM, DiseaseTask]',
                 rich_help_panel='Training options',
             )
         ] = 'ImageClassification',
@@ -281,6 +281,13 @@ def cli(
             Optional[List[str]],
             typer.Option(
                 help='Name of the field(s) where the text is located for language tasks',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
+        dataset_additional_args: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Additional parameters for the dataset loading options',
                 rich_help_panel='Dataset options',
             )
         ] = None,

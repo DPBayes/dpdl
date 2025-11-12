@@ -99,7 +99,7 @@ class Configuration(BaseModel):
     optimizer: str = 'Adam'
     dataset_name: str = 'cifar10'
     llm: bool = False
-    task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM', 'InstructLM' ]
+    task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM', 'InstructLM', 'DiseaseTask']
     physical_batch_size: int = 40
     num_workers: int = 8
     validation_frequency: float = 1.0
@@ -134,6 +134,7 @@ class Configuration(BaseModel):
     evaluation_mode: Optional[bool] = False
     dataset_label_field: Optional[str] = None
     dataset_text_fields: Optional[List[str]] = None
+    dataset_additional_args: Optional[str] = None
     max_test_examples: Optional[int] = None
     imbalance_factor: Optional[float] = None
     imbalance_reverse: Optional[bool] = False
@@ -229,6 +230,7 @@ class Configuration(BaseModel):
             ('Dataset name', self.dataset_name),
             ('Dataset label field', self.dataset_label_field),
             ('Dataset text field(s) for LLM tasks', self.dataset_text_fields),
+            ('Dataset additional arguments for loading', self.dataset_additional_args),
             ('Dataset imbalance factor', self.imbalance_factor),
             ('Dataset imbalance reverse', self.imbalance_reverse),
             ('Cache dataset transforms', self.cache_dataset_transforms),

@@ -873,6 +873,7 @@ class DataModuleFactory:
                 evaluation_mode=configuration.evaluation_mode,
                 label_field=configuration.dataset_label_field,
                 text_fields=configuration.dataset_text_fields,
+                dataset_additional_args=configuration.dataset_additional_args,
                 max_test_examples=configuration.max_test_examples,
                 imbalance_factor=configuration.imbalance_factor,
                 imbalance_reverse=configuration.imbalance_reverse,
@@ -913,11 +914,12 @@ class NLPDataModule(DataModule):
     """
 
     def __init__(
-        self, text_fields=None, max_length: int = 64, task: str = None, **kwargs
+        self, text_fields=None, max_length: int = 64, task: str = None, dataset_additional_args: str = None, **kwargs
     ):
         self._text_fields = text_fields  # list of text fields or None
         self.max_length = max_length
         self.task = task
+        self.dataset_additional_args = dataset_additional_args
         super().__init__(**kwargs)
 
     def _load_datasets(self):
@@ -927,14 +929,14 @@ class NLPDataModule(DataModule):
                 f'Loading dataset "{self.dataset_name}" from Huggingface datasets.'
             )
 
-        if self.dataset_name == "wikitext":
+        if self.dataset_additional_args is not None:
             dataset_splits = datasets.load_dataset(
-                self.dataset_name, "wikitext-2-raw-v1"
+                self.dataset_name, self.dataset_additional_args
             )
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
-        if self.task not in ["CausalLM", "InstructLM"]:
+        if self.task not in ["CausalLM", "InstructLM"] and self._label_field is None:
             # Set dataset label fields based on the training split
             self._set_dataset_label_fields(dataset_splits)
 
@@ -1142,6 +1144,68 @@ class NLPDataModule(DataModule):
             tokenized["labels"] = labels
 
             return tokenized, labels
+        
+        def collate_instruct_function_sarus(batch):
+            conversations = [
+                tokenizer.apply_chat_template(
+                    [
+                        {"role": "user", "content": sample["question"]},
+                        {"role": "assistant", "content": sample["answer"]},
+                    ],
+                    tokenize=False,
+                    add_generation_prompt=False,
+                )
+                for sample in batch
+            ]
+
+            # Tokenize the text already in chat format
+            tokenized = tokenizer(
+                conversations,
+                padding=True,
+                truncation=True,
+                max_length=max_len,
+                return_tensors="pt",
+                add_special_tokens=True,
+            )
+
+            # We need the user tokens, only that part, so we can remove that from the
+            # loss function
+
+            # Create labels with list comprehension
+            user_texts = [
+                tokenizer.apply_chat_template(
+                    [{"role": "user", "content": q["question"]}],
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+                for q in batch
+            ]
+
+            user_tokenized = tokenizer(
+                user_texts, add_special_tokens=True, padding=False
+            )
+
+            # Mask user parts
+            y = tokenized["input_ids"].clone()
+
+            for i, user_ids in enumerate(user_tokenized["input_ids"]):
+                user_len = len(user_ids)
+                y[i, :user_len] = -100
+
+            y[
+                y == tokenizer.pad_token_id
+            ] = -100  # Padding tokens are ignored in loss computation.
+
+            tokenized["labels"] = y
+
+            labels = torch.tensor(
+                    [sample[label_field] for sample in batch], dtype=torch.long
+                )
+
+            return tokenized, labels
+        
+        if label_field is not None and task == "InstructLM":
+            return collate_instruct_function_sarus
 
         return collate_instruct_function if task == "InstructLM" else collate
 
@@ -1163,6 +1227,13 @@ class NLPDataModule(DataModule):
             return_tensors="pt",
             add_special_tokens=True,
         )
+
+        if self._label_field is not None:
+
+            labels = torch.tensor(
+                    [sample[self._label_field] for sample in batch], dtype=torch.long
+                )
+            return tokenized, labels
 
         return tokenized
 
