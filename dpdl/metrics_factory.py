@@ -102,7 +102,7 @@ class MetricsFactory:
                 with_confusion_matrix=True,
             )
 
-        elif task in ('CausalLM', 'InstructLM'):
+        elif task in ('CausalLM', 'InstructLM', 'DiseaseTask'):
             if torch.distributed.get_rank() == 0:
                 log.info(f'Task is "{configuration.task}", initializing language model metrics.')
 
