@@ -1060,7 +1060,7 @@ class NLPDataModule(DataModule):
                 collate_fn=collate_fn,
                 num_workers=self.num_workers,
             )
-            if self.task == "InstructLM":
+            if self.task in ("InstructLM", "DiseaseTask"):
                 self._dataloaders["sample"] = torch.utils.data.DataLoader(
                     self.test_dataset,
                     sampler=self.test_sampler,
