@@ -724,6 +724,9 @@ class TaskAdapter:
     def eval_acc(self, trainer):
         pass
 
+    def set_label_tokens(self,datamodule):
+        pass
+
 
 class ClassificationAdapter(TaskAdapter):
     def iterate_physical_batches(self, batch, physical_batch_size):
@@ -790,6 +793,10 @@ class InstructLMAdapter(LanguageModelAdapter):
         trainer._sample_impl()
 
 class DiseaseTaskAdapter(LanguageModelAdapter):
+
+    def __init__(self):
+        self.tokens_labels = None
+        super().__init__()
 
     def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
         #print('Check batch for Disease Task',batch, flush=True)
@@ -871,7 +878,6 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
         trainer.model.train()
 
         return corr_total / total
-    
 
     def eval_acc(self, trainer):
 
@@ -880,6 +886,31 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
         log.info('Accuracy after the epoch for the diseases', acc)
 
         return acc 
+    
+    def set_label_tokens(self, datamodule):
+
+        diseases = {}
+        for i in datamodule.dataset['train']['Disease']:
+            if i in diseases:
+                diseases[i]['count'] += 1
+            else:
+                tokens = datamodule.tokenizer.encode(diseases[i],add_special_tokens=False)
+                diseases[i]['count'] = 0
+                diseases[i]['tokens'] = tokens
+        
+        self.tokens_labels = diseases
+        print(self.tokens_labels)
+
+    def get_token_labels(self, label):
+        if label is None:
+            return self.tokens_labels
+        if isinstance(label,list):
+            new_list = []
+            for i in label:
+                new_list.append(self.tokens_labels[i])
+            return new_list 
+        return self.tokens_labels[label]
+
 
 def exact_matching(texts, labels):
     corr = 0
@@ -971,6 +1002,7 @@ class TrainerFactory:
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
         adapter = TrainerFactory._make_adapter(configuration)
+        adapter.set_label_tokens(datamodule)
 
         # instantiate a trainer without dp
         trainer = Trainer(
@@ -1060,6 +1092,7 @@ class TrainerFactory:
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
         adapter = TrainerFactory._make_adapter(configuration)
+        adapter.set_label_tokens(datamodule)
 
         # instantiate a differentialy private trained
         trainer = DifferentiallyPrivateTrainer(
