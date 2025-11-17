@@ -162,6 +162,7 @@ class Trainer:
 
         # log sample of generated text if asked for
         if torch.distributed.get_rank() == 0:
+            log.info('rank and eval',torch.distributed.get_rank())
             self.adapter.eval_acc(self)
 
         # wait for rank 0 to possilby sample
@@ -791,7 +792,7 @@ class InstructLMAdapter(LanguageModelAdapter):
 class DiseaseTaskAdapter(LanguageModelAdapter):
 
     def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
-        print('Check batch for Disease Task',batch, flush=True)
+        #print('Check batch for Disease Task',batch, flush=True)
         X, labels = batch
         y = X['labels']
         logits = model(X)
@@ -824,7 +825,7 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
         with torch.no_grad():
             for batch_idx, batch in enumerate(trainer.datamodule.get_dataloader('sample')):
-                print('Check batch for Disease Task evaluation ',batch, flush=True)
+                #print('Check batch for Disease Task evaluation ',batch, flush=True)
                 X, y = batch
                 X = trainer.adapter.move_to_device(X)
 
