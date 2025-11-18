@@ -922,8 +922,8 @@ def exact_matching(texts, labels):
     corr = 0
 
     print('In exact matching')
-    print('texts',texts)
-    print('labels',labels)
+    print('texts',texts, 'num texts' ,len(texts))
+    print('labels',labels,'num labels', len(labels))
 
     for i in range(len(texts)):
         if re.findall(f"\b{labels[i]}\b", texts[i], flags=re.IGNORECASE):
