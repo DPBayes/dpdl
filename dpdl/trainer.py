@@ -926,7 +926,7 @@ def exact_matching(texts, labels):
     print('labels',labels,'num labels', len(labels))
 
     for i in range(len(texts)):
-        if re.findall(f"\b{labels[i]}\b", texts[i], flags=re.IGNORECASE):
+        if re.findall(labels[i], texts[i], flags=re.IGNORECASE):
             corr += 1
             print('found one!',texts[i])
 
