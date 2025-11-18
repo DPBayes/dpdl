@@ -869,8 +869,11 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
 
                     decoded_text = trainer.datamodule.decode(generated_ids)
+                    print(y_splitted)
 
-                    corr_total += exact_matching(decoded_text, y_splitted)
+                    labels_texts = [self.tokens_labels[i]["text"] for i in y_splitted]
+
+                    corr_total += exact_matching(decoded_text, labels_texts)
                     total += len(X_splitted)
 
                     #log.info('Sampled text decoded', trainer.datamodule.decode(generated_ids))
@@ -889,15 +892,19 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
     
     def set_label_tokens(self, datamodule):
 
+        class_label = datamodule._dataset_splits['train']['Disease']
+
         diseases = {}
-        for i in datamodule._dataset_splits['train']['Disease']:
-            print(i)
+        for i in class_label:
+
+            disease_text = class_label.int2str(i)
+            
+            print('Disease', disease_text)
             if i in diseases.keys():
                 diseases[i]['count'] += 1
             else:
-                tokens = datamodule.tokenizer.encode(str(i),add_special_tokens=False)
-                diseases[i]['count'] = 0
-                diseases[i]['tokens'] = tokens
+                tokens = datamodule.tokenizer.encode(disease_text,add_special_tokens=False)
+                diseases[i] = {'count': 1, 'tokens': tokens, 'text': disease_text}
         
         self.tokens_labels = diseases
         print(self.tokens_labels)
