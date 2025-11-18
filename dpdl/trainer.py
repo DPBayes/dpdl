@@ -856,6 +856,16 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
                         X_splitted = X_split[i]
                     y_splitted = y_splits[i]
 
+                    #X, labels = batch
+                    #y = X['labels']
+                    logits = trainer.model(X_splitted)
+                    #preds, y_flat = shift_and_flatten(logits, y)
+                    #loss = model.criterion(preds, y_flat)
+
+                    print(logits)
+
+                    print(logits.shape)
+
                     generated_ids = trainer._unwrap_model().generate(
                         X_splitted,
                         max_new_tokens=250,
@@ -920,10 +930,6 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
 def exact_matching(texts, labels):
     corr = 0
-
-    print('In exact matching')
-    print('texts',texts, 'num texts' ,len(texts))
-    print('labels',labels,'num labels', len(labels))
 
     for i in range(len(texts)):
         if re.findall(labels[i], texts[i], flags=re.IGNORECASE):
