@@ -162,7 +162,6 @@ class Trainer:
 
         # log sample of generated text if asked for
         if torch.distributed.get_rank() == 0:
-            log.info('rank and eval',torch.distributed.get_rank())
             self.adapter.eval_acc(self)
 
         # wait for rank 0 to possilby sample
@@ -870,7 +869,7 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
                     decoded_text = trainer.datamodule.decode(generated_ids)
                     
-                    labels_texts = [self.tokens_labels[i]["text"] for i in y_splitted]
+                    labels_texts = [self.tokens_labels[i.item()]["text"] for i in y_splitted]
 
                     corr_total += exact_matching(decoded_text, labels_texts)
                     total += len(X_splitted)
