@@ -884,7 +884,7 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
         acc = self.evaluate_diseases_accuracy_exact_matching(trainer)
 
-        log.info('Accuracy after the epoch for the diseases', acc)
+        log.info(f'Accuracy after the epoch for the diseases {acc}')
 
         return acc 
     
@@ -920,6 +920,11 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
 def exact_matching(texts, labels):
     corr = 0
+
+    print('In exact matching')
+    print('texts',texts)
+    print('labels',labels)
+
     for i in range(len(texts)):
         if re.findall(f"\b{labels[i]}\b", texts[i], flags=re.IGNORECASE):
             corr += 1

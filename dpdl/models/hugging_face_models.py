@@ -110,7 +110,7 @@ def download_generic_huggingface_model(
                     for param in module.parameters():
                         param.requires_grad = False
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     if not is_seq_classification:
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
