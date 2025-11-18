@@ -894,7 +894,8 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
             if i in diseases:
                 diseases[i]['count'] += 1
             else:
-                tokens = datamodule.tokenizer.encode(i,add_special_tokens=False)
+                print(i)
+                tokens = datamodule.tokenizer.encode(str(i),add_special_tokens=False)
                 diseases[i]['count'] = 0
                 diseases[i]['tokens'] = tokens
         
