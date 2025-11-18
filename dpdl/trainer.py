@@ -892,10 +892,11 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
     
     def set_label_tokens(self, datamodule):
 
-        class_label = datamodule._dataset_splits['train']['Disease']
+        class_number = datamodule._dataset_splits['train']['Disease']
+        class_label = datamodule._dataset_splits['train'].features['Disease']
 
         diseases = {}
-        for i in class_label:
+        for i in class_number:
 
             disease_text = class_label.int2str(i)
             
