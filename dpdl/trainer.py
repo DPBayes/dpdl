@@ -891,10 +891,10 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
         diseases = {}
         for i in datamodule._dataset_splits['train']['Disease']:
-            if i in diseases:
+            print(i)
+            if i in diseases.keys():
                 diseases[i]['count'] += 1
             else:
-                print(i)
                 tokens = datamodule.tokenizer.encode(str(i),add_special_tokens=False)
                 diseases[i]['count'] = 0
                 diseases[i]['tokens'] = tokens
