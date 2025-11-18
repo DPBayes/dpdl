@@ -855,7 +855,7 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
                         X_splitted = {k: X_split[k][i] for k in X_split}
                     else:
                         X_splitted = X_split[i]
-                        y_splitted = y_splits[i]
+                    y_splitted = y_splits[i]
 
                     generated_ids = trainer._unwrap_model().generate(
                         X_splitted,
@@ -869,8 +869,7 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
 
                     decoded_text = trainer.datamodule.decode(generated_ids)
-                    print(y_splitted)
-
+                    
                     labels_texts = [self.tokens_labels[i]["text"] for i in y_splitted]
 
                     corr_total += exact_matching(decoded_text, labels_texts)
@@ -900,7 +899,6 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
             disease_text = class_label.int2str(i)
             
-            print('Disease', disease_text)
             if i in diseases.keys():
                 diseases[i]['count'] += 1
             else:
