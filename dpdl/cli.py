@@ -658,13 +658,11 @@ def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
             )
             config_manager.configuration.model_weights_path = str(save_path)
 
-        saved_model_path = save_path
-
         if rank_zero:
             log.info(f'Saving model to "{save_path}"...')
             trainer.save_model(save_path)
-
-        torch.distributed.barrier()
+            log.info('Saving model done.')
+            saved_model_path = save_path
 
     return saved_model_path
 
@@ -708,11 +706,25 @@ def run_train_and_predict(config_manager: ConfigurationManager) -> None:
     )
     saved_model_path = run_train(train_config_manager)
 
-    if saved_model_path is None:
-        raise RuntimeError('Prediction failed: Could not find saved model.')
+    # Only rank 0 saved the model, so we need to synchronize the
+    # saved model path to other ranks. Otherwise they don't know
+    # where to load th emodel from.
+    saved_model_path = synchronize_saved_model_path(saved_model_path)
 
     predict_config_manager = config_manager.clone_with_overrides(
         command='predict',
         model_weights_path=str(saved_model_path),
+        privacy=False,  # We of course predict without Opacus.
     )
     run_predict(predict_config_manager)
+
+
+def synchronize_saved_model_path(saved_model_path: Optional[Path]) -> Path:
+    path_list = [str(saved_model_path) if saved_model_path else None]
+    torch.distributed.broadcast_object_list(path_list, src=0)
+    path_str = path_list[0]
+
+    if path_str is None:
+        raise RuntimeError('Prediction failed: Could not find saved model.')
+
+    return Path(path_str)

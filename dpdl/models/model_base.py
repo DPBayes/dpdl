@@ -109,7 +109,11 @@ class ModelBase(torch.nn.Module):
         if not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
 
-        self.model.save_model(fpath)
+        if hasattr(self.model, 'save_model'):
+            self.model.save_model(fpath)
+        else:
+            # Default to saving the raw state dict for standard timm/torch models
+            torch.save(self.model.state_dict(), fpath)
 
     def load_model(
         self,
