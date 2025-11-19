@@ -92,7 +92,7 @@ class Hyperparameters(BaseModel):
         return 'Hyperparameters:\n  ' + '\n  '.join(hyper_str) + '\n'
 
 class Configuration(BaseModel):
-    command: Literal['train', 'optimize', 'predict', 'show-layers']
+    command: Literal['train', 'optimize', 'predict', 'show-layers', 'train-predict']
     privacy: bool = True
     model_name: str = 'resnet50'
     loss_function: str = 'CrossEntropyLoss'
@@ -182,8 +182,8 @@ class Configuration(BaseModel):
     def check_command(cls, values):
         command = values.get('command')
 
-        if command not in ['train', 'optimize', 'predict', 'show-layers']:
-            raise ValueError('Command must be "train", "optimize", "predict", or "show-layers".')
+        if command not in ['train', 'optimize', 'predict', 'show-layers', 'train-predict']:
+            raise ValueError('Command must be "train", "optimize", "predict", "show-layers", or "train-predict".')
 
         return values
 
@@ -307,6 +307,7 @@ class Configuration(BaseModel):
 
 class ConfigurationManager:
     def __init__(self, cli_params: dict):
+        self._cli_params = dict(cli_params)
         self.command = cli_params['command']
 
         self.configuration = Configuration(**cli_params)
@@ -364,3 +365,9 @@ class ConfigurationManager:
                 fh.write(self.hyperparams.json())
 
             log.info(f'Hyperparameters saved to {directory}/.')
+
+    def clone_with_overrides(self, **overrides) -> 'ConfigurationManager':
+        params = dict(self._cli_params)
+        params.update(overrides)
+        return ConfigurationManager(params)
+
