@@ -29,7 +29,7 @@ def cli(
         command: Annotated[
             str,
             typer.Argument(
-                help='Command to run ("train", "optimize", "predict" or "show-layers")',
+                help='Command to run ("train", "optimize", "predict", "train-predict", or "show-layers")',
             )
         ],
         use_steps: Annotated[
@@ -566,98 +566,153 @@ def cli(
         ] = 'test',
     ):
 
+    # Map from commands to functions
+    HANDLERS = {
+        'train': run_train,
+        'optimize': run_optimize,
+        'predict': run_predict,
+        'train-predict': run_train_and_predict,
+    }
+
     config_manager = ConfigurationManager(ctx.params)
+    command = config_manager.get_command()
 
-    if config_manager.get_command() == 'show-layers':
-        log.info(config_manager.configuration)
-        log.info('Showing model layers.')
-        model, _ = ModelFactory.get_model(
-            config_manager.configuration,
-            config_manager.hyperparams,
-        )
-        model.show_layers()
-
+    if command == 'show-layers':
+        run_show_layers(config_manager)
         return
 
-    # ConfigurationManager knows our experiment directory, so let's start logging also there
+    # ConfigurationManager knows our experiment
+    # directory, so let's start logging also there
     if torch.distributed.get_rank() == 0:
         start_experiment_logging(log.parent, config_manager)
-        torch.distributed.barrier()
-    else:
-        torch.distributed.barrier()
 
-    if config_manager.get_command() == 'train':
-        if torch.distributed.get_rank() == 0:
-            log.info('Starting training.')
-            log.info(config_manager.hyperparams)
-            log.info(config_manager.configuration)
+    torch.distributed.barrier()
 
-        seed_everything(config_manager.configuration.seed)
+    handler = HANDLERS.get(command)
+    if handler is None:
+        raise typer.BadParameter(f'Unknown command "{command}".')
 
-        trainer = TrainerFactory.get_trainer(config_manager)
+    handler(config_manager)
 
-        start_time = time.time()
-        trainer.fit()
-        end_time = time.time()
 
-        # log final train accuracy if needed
-        if config_manager.configuration.record_final_train_accuracy:
-            if torch.distributed.get_rank() == 0:
-                log.info('Evaluating on train set..')
+def run_show_layers(config_manager: ConfigurationManager) -> None:
+    log.info(config_manager.configuration)
+    log.info('Showing model layers.')
+    model, _ = ModelFactory.get_model(
+        config_manager.configuration,
+        config_manager.hyperparams,
+    )
+    model.show_layers()
 
-            train_loss, train_metrics = trainer._evaluate('train', enable_callbacks=False)
 
-            if torch.distributed.get_rank() == 0:
-                log_train_metrics(config_manager, train_metrics, train_loss)
+def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
+    rank_zero = torch.distributed.get_rank() == 0
 
-        # log test accuracy and run time, and save model if asked
-        if torch.distributed.get_rank() == 0:
-            log.info('Evaluating on test set..')
-            test_loss, test_metrics = trainer.test()
+    if rank_zero:
+        log.info('Starting training.')
+        log.info(config_manager.hyperparams)
+        log.info(config_manager.configuration)
 
-            log_test_metrics(config_manager, test_metrics, test_loss)
-            log_runtime(config_manager, start_time, end_time)
+    seed_everything(config_manager.configuration.seed)
 
-            # We need to have an option to disable this, as it might fail due to an OOM
-            # error if using very small noise multipliers.
-            if not config_manager.configuration.disable_epsilon_logging:
-                log_final_epsilon(config_manager, trainer)
+    trainer = TrainerFactory.get_trainer(config_manager)
 
-            if save_model := config_manager.configuration.save_model:
-                if model_weights_path in config_manager.configuration:
-                    save_path = config_manager.configuration.model_weights_path
-                else:
-                    save_path = Path(config_manager.configuration.log_dir, config_manager.configuration.experiment_name, 'final_model.pt')
+    start_time = time.time()
+    trainer.fit()
+    end_time = time.time()
 
-                log.info(f'Saving model to "{save_path}"...')
-                trainer.save_model(save_path)
+    # log final train accuracy if needed
+    if config_manager.configuration.record_final_train_accuracy:
+        if rank_zero:
+            log.info('Evaluating on train set..')
 
-    elif config_manager.get_command() == 'optimize':
-        if torch.distributed.get_rank() == 0:
-            log.info('Starting hyperparameter optimization.')
-            log.info(config_manager.configuration)
+        train_loss, train_metrics = trainer._evaluate('train', enable_callbacks=False)
 
-        seed_everything(config_manager.configuration.seed)
+        if rank_zero:
+            log_train_metrics(config_manager, train_metrics, train_loss)
 
-        start_time = time.time()
-        HyperparameterOptimizer.optimize_hypers(config_manager)
-        end_time = time.time()
+    # log test accuracy and run time, and save model if asked
+    if rank_zero:
+        log.info('Evaluating on test set..')
+        test_loss, test_metrics = trainer.test()
 
-        # log the runtime
-        if torch.distributed.get_rank() == 0:
-            log_runtime(config_manager, start_time, end_time)
-
-    elif config_manager.get_command() == 'predict':
-        if torch.distributed.get_rank() == 0:
-            log.info('Starting prediction.')
-            log.info(config_manager.configuration)
-
-        seed_everything(config_manager.configuration.seed)
-
-        start_time = time.time()
-
-        predictor = PredictorFactory.get_predictor(config_manager)
-        predictor.predict(config_manager.configuration)
-
-        end_time = time.time()
+        log_test_metrics(config_manager, test_metrics, test_loss)
         log_runtime(config_manager, start_time, end_time)
+
+        # We need to have an option to disable this, as it might fail due to an OOM
+        # error if using very small noise multipliers.
+        if not config_manager.configuration.disable_epsilon_logging:
+            log_final_epsilon(config_manager, trainer)
+
+    saved_model_path = None
+
+    # Should we save the model?
+    if config_manager.configuration.save_model:
+        if config_manager.configuration.model_weights_path:
+            save_path = Path(config_manager.configuration.model_weights_path)
+        else:
+            save_path = Path(
+                config_manager.configuration.log_dir,
+                config_manager.configuration.experiment_name,
+                'final_model.pt',
+            )
+            config_manager.configuration.model_weights_path = str(save_path)
+
+        saved_model_path = save_path
+
+        if rank_zero:
+            log.info(f'Saving model to "{save_path}"...')
+            trainer.save_model(save_path)
+
+        torch.distributed.barrier()
+
+    return saved_model_path
+
+
+def run_optimize(config_manager: ConfigurationManager) -> None:
+    if torch.distributed.get_rank() == 0:
+        log.info('Starting hyperparameter optimization.')
+        log.info(config_manager.configuration)
+
+    seed_everything(config_manager.configuration.seed)
+
+    start_time = time.time()
+    HyperparameterOptimizer.optimize_hypers(config_manager)
+    end_time = time.time()
+
+    # log the runtime
+    if torch.distributed.get_rank() == 0:
+        log_runtime(config_manager, start_time, end_time)
+
+
+def run_predict(config_manager: ConfigurationManager) -> None:
+    if torch.distributed.get_rank() == 0:
+        log.info('Starting prediction.')
+        log.info(config_manager.configuration)
+
+    seed_everything(config_manager.configuration.seed)
+
+    start_time = time.time()
+
+    predictor = PredictorFactory.get_predictor(config_manager)
+    predictor.predict(config_manager.configuration)
+
+    end_time = time.time()
+    log_runtime(config_manager, start_time, end_time)
+
+
+def run_train_and_predict(config_manager: ConfigurationManager) -> None:
+    train_config_manager = config_manager.clone_with_overrides(
+        command='train',
+        save_model=True,
+    )
+    saved_model_path = run_train(train_config_manager)
+
+    if saved_model_path is None:
+        raise RuntimeError('Prediction failed: Could not find saved model.')
+
+    predict_config_manager = config_manager.clone_with_overrides(
+        command='predict',
+        model_weights_path=str(saved_model_path),
+    )
+    run_predict(predict_config_manager)
