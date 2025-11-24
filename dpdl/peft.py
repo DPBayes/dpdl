@@ -149,6 +149,12 @@ class FiLM:
                 modules_to_save=['model.head.fc'],
             )
 
+        if 'distilbert' in model_name:
+            return FilmConfig(
+                target_modules=r'.*LayerNorm$|.*layer_norm$',
+                modules_to_save=['pre_classifier', 'classifier'],
+            )
+
         raise RuntimeError(f'No known FiLM configuration for model: {model_name}')
 
 
