@@ -986,6 +986,12 @@ class NLPDataModule(DataModule):
     def initialize(self, tokenizer):
         self.tokenizer = tokenizer
 
+        if self.tokenizer.pad_token is None:
+            raise ValueError(
+                "NLPDataModule received a tokenizer without pad_token. "
+                "Make sure HuggingFace model setup sets tokenizer.pad_token and model.config.pad_token_id."
+            )
+
         if torch.distributed.get_rank() == 0:
             log.info("Initializing NLPDataModule datasets...")
             self._initialize_datasets()
