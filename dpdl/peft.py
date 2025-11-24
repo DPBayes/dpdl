@@ -215,6 +215,15 @@ class LoRA:
                 target_modules=r'stem\.conv|.*\.downsample\.conv|.*\.conv\d',
                 modules_to_save=['head.fc'],
             )
+        elif 'distilbert' in model_name:
+            return LoraConfig(
+                task_type='SEQ_CLS',
+                r=16,
+                lora_alpha=32,
+                target_modules=['q_lin', 'v_lin'],  # DistilBERT attention projections
+                lora_dropout=0.1,
+                bias='none',
+            )
         elif 'bert' in model_name:  # For the LLM experiments
             return LoraConfig(
                 task_type='SEQ_CLS',
