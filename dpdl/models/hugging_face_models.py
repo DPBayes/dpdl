@@ -111,11 +111,10 @@ def download_generic_huggingface_model(
                         param.requires_grad = False
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    if not is_seq_classification:
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-            model.config.pad_token_id = model.config.eos_token_id
-            model.resize_token_embeddings(len(tokenizer))
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+        model.config.pad_token_id = model.config.eos_token_id
+        model.resize_token_embeddings(len(tokenizer))
 
     if task == "InstructLM" and tokenizer.chat_template is None:
         tokenizer.padding_side = "left"
@@ -181,7 +180,6 @@ class HuggingfaceLanguageModel(torch.nn.Module):
     def config(self):
         return self.model.config
 
-    @property
     def prepare_inputs_for_generation(self):
         """Expose the underlying model's method."""
         return self.model.prepare_inputs_for_generation
