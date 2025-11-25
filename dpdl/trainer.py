@@ -7,13 +7,18 @@ from collections.abc import Mapping
 
 import opacus
 import torch
+from opacus import GradSampleModule
+from opacus.distributed import DifferentiallyPrivateDistributedDataParallel
 from opacus.utils.batch_memory_manager import BatchMemoryManager
+
+from peft import PeftModel
 
 from .callbacks.callback_factory import CallbackFactory, CallbackHandler
 from .configurationmanager import Configuration, ConfigurationManager, Hyperparameters
 from .datamodules import DataModule, DataModuleFactory
 from .loss_factory import LossFactory
 from .metrics_factory import MetricsFactory
+from .models.model_base import ModelBase
 from .models.model_factory import ModelFactory
 from .optimizers import OptimizerFactory
 from .utils import seed_everything, shift_and_flatten
@@ -276,36 +281,71 @@ class Trainer:
         return loss.item()
 
     def _unwrap_model(self):
-        # the model is wrapped inside torch distributed,
-        # here we just return the vanilla model
-        #return self.model.module
-
         m = self.model
-        # remove DDP/DataParallel
-        while hasattr(m, "module"):
+
+        # model can be wrapped inside many module, such as
+        # DDP, Opacus' DPDDP or GradSampleModule, and HuggingFace's
+        # PeftModule. Let's just unwrap the all the get to ModelBase
+        while hasattr(m, 'module'):
             m = m.module
 
-        return m  #ModelBase
+        return m  # ModelBase
+
 
     def _calculate_steps_per_epoch(self):
         N = len(self.datamodule.get_dataloader('train').dataset)
         B = self.datamodule.batch_size
         return math.ceil(N / B)
 
-    def save_model(self, fpath):
+    def save_model(self, fpath, adapters_only=False):
+        def unwrap_model_for_saving(m):
+            # strip opacus and distributed models until we hit
+            # either a ModelBase or HuggingFace's PeftModel
+            while True:
+                # Strip Opacus' GradSampleModule
+                if isinstance(m, opacus.GradSampleModule):
+                    m = m._module
+                    continue
 
-        if self.peft is not None and self.peft == 'lora':
-            # Extract the directory from the path
-            directory = os.path.dirname(fpath)
+                # Strip Opacus' DP DPDDP
+                if isinstance(m, opacus.distributed.DifferentiallyPrivateDistributedDataParallel):
+                    m = m.module
+                    continue
 
-            # Create the directory if it doesn't exist
-            if not os.path.exists(directory):
-                os.makedirs(directory, exist_ok=True)
+                # Strip standard DDP
+                if isinstance(m, torch.nn.parallel.DistributedDataParallel):
+                    m = m.module
+                    continue
 
-            self._unwrap_model().save_pretrained(fpath)
+                # Stop when we if we found what we want
+                if isinstance(m, (PeftModel, ModelBase)):
+                    return m
 
-        else:
-            self._unwrap_model().save_model(fpath)
+            return m
+
+        model = unwrap_model_for_saving(self.model)
+
+        if isinstance(model, PeftModel):
+            if adapters_only:
+                # PeftModel knows to save the adapters only
+                model.save_pretrained(fpath)
+
+                log.info(f'Saved merged HF PEFT adapters to {fpath}')
+            else:
+                # Merge PEFT into model and save the whole model
+                merged = model.merge_and_unload()
+
+                log.info(f'GOT A NEW MODEL FROM MERGE_AND_UNLOAD: {merged}')
+                # The `merge_and_unload` will incorporate the LoRA layers in
+                # the model. Then it will return as ModelBase.
+                merged.save_model(fpath)
+
+                if torch.distributed.get_rank() == 0:
+                    log.info(f'Saved merged HF PEFT model to {fpath}')
+
+            return
+
+        model.save_model(fpath)
 
     def _sample_impl(self):
         self.model.eval()
@@ -672,9 +712,6 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # wait for rank 0 to possilby sample
         torch.distributed.barrier()
-
-    def save_model(self, fpath):
-        self.model.module.save_model(fpath)
 
 
 class TaskAdapter:

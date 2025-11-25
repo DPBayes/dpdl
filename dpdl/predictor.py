@@ -1,6 +1,7 @@
 import logging
 import os
 from collections import OrderedDict
+from collections.abc import Mapping
 from typing import Optional
 
 import torch
@@ -89,7 +90,12 @@ class Predictor:
                 if torch.distributed.get_rank() == 0:
                     log.info(f' - Predicting on batch {i}')
 
-                X = X.cuda(non_blocking=True)
+                # Move inputs to CUDA
+                if isinstance(X, Mapping):  # Special case for HF language models
+                    X = {k: v.cuda(non_blocking=True) for k, v in X.items()}
+                else:
+                    X = X.cuda(non_blocking=True)
+
                 y = y.cuda(non_blocking=True)
 
                 logits = model(X)
@@ -110,8 +116,6 @@ class Predictor:
                         grad_records.append(record)
 
         metrics = self.trainer._unwrap_model().train_metrics.compute()
-
-        torch.distributed.barrier()
 
         gathered_preds = _all_gather_object_list(local_preds)
         gathered_probs = _all_gather_object_list(local_probs)
@@ -172,37 +176,60 @@ class Predictor:
 
         return model, params, buffers, param_names
 
-    def _per_sample_grad_norms(self, X: torch.Tensor, y: torch.Tensor):
+
+    def _per_sample_grad_norms(self, X, y):
         model, params, buffers, param_names = self._get_model_params_and_buffers()
 
         if not param_names:
             raise RuntimeError('Model has no trainable parameters to compute gradients for.')
 
-        def loss_one(p, x, yi):
-            logits = functional_call(model, (p, buffers), (x.unsqueeze(0),))
-            return F.cross_entropy(logits, yi.unsqueeze(0), reduction='sum')
+        is_mapping = isinstance(X, Mapping)
+
+        # Figure out batch size
+        if is_mapping:
+            first_tensor = next(iter(X.values()))
+            batch_size = first_tensor.size(0)
+        else:
+            batch_size = X.size(0)
+
+        def loss_one(p, x_single, yi_single):
+            # x_single is either a single example tensor or a dict of single-example tensors
+            if isinstance(x_single, Mapping):
+                x_batch = {k: v.unsqueeze(0) for k, v in x_single.items()}
+            else:
+                x_batch = x_single.unsqueeze(0)
+
+            logits = functional_call(model, (p, buffers), (x_batch,))
+            return F.cross_entropy(logits, yi_single.unsqueeze(0), reduction='sum')
 
         gfun = grad(loss_one, argnums=0)
 
-        # use torch.func.vmap to get per-example gradients
-        per_sample_grads = vmap(
-            lambda x, yi: gfun(params, x, yi),
-            in_dims=(0, 0),
-        )(X, y)
+        norms_sq = torch.zeros(batch_size, device=y.device, dtype=y.dtype)
 
-        batch_size = X.size(0)
+        if is_mapping:
+            # HF / dict input: vmap is broken by data-dependent control flow, so loop per-sample
+            for i in range(batch_size):
+                x_i = {k: v[i] for k, v in X.items()}
+                y_i = y[i]
+                grads_i = gfun(params, x_i, y_i)
 
-        # accumulate norms here
-        norms_sq = torch.zeros(batch_size, device=X.device, dtype=X.dtype)
+                total = 0.0
+                for name in param_names:
+                    g = grads_i[name].reshape(-1)
+                    total += g.square().sum()
+                norms_sq[i] = total
+        else:
+            # Plain tensor input: keep fast vmap path
+            per_sample_grads = vmap(
+                lambda x, yi: gfun(params, x, yi),
+                in_dims=(0, 0),
+            )(X, y)
 
-        # compute the norms: norms_sq[i] = Σ_all_layers Σ_over_all_params( (grad[i, param])^2 )
-        for name in param_names:
-            grad_tensor = per_sample_grads[name]
-            flat_grad = grad_tensor.reshape(batch_size, -1)
-
-            # Σ_over_all_params_in_layer( (grad[i, param])^2 )
-            norms_sq += flat_grad.square().sum(dim=1)
-            per_sample_grads[name] = None  # drop reference to save memory
+            for name in param_names:
+                grad_tensor = per_sample_grads[name]  # shape: [B, ...]
+                flat_grad = grad_tensor.reshape(batch_size, -1)
+                norms_sq += flat_grad.square().sum(dim=1)
+                per_sample_grads[name] = None  # drop reference
 
         return norms_sq.sqrt().clamp_min(1e-12)
 

@@ -41,7 +41,6 @@ class ModelBase(torch.nn.Module):
     def config(self):
         return self.model.config
 
-    @property
     def prepare_inputs_for_generation(self):
         """Expose the underlying model's method."""
 
@@ -137,8 +136,17 @@ class ModelBase(torch.nn.Module):
         if not fpath:
             raise ValueError('load_model: fpath is required')
 
-        if not os.path.isfile(fpath):
+        if not os.path.isdir(fpath):
             raise FileNotFoundError(f'Checkpoint not found: {fpath}')
+
+        # Try and see if our model class know how to load its own weights
+        if hasattr(self.model, 'load_model'):
+            self.model.load_model(fpath)
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Loaded model from {fpath}')
+
+            return
 
         ckpt = torch.load(fpath, map_location=map_location)
 

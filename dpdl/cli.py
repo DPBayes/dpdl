@@ -664,6 +664,8 @@ def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
             log.info('Saving model done.')
             saved_model_path = save_path
 
+        torch.distributed.barrier()
+
     return saved_model_path
 
 
@@ -715,6 +717,7 @@ def run_train_and_predict(config_manager: ConfigurationManager) -> None:
         command='predict',
         model_weights_path=str(saved_model_path),
         privacy=False,  # We of course predict without Opacus.
+        num_workers=0,  # Avoid reusing workers, we don't need many for this.
     )
     run_predict(predict_config_manager)
 
