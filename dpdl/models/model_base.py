@@ -136,7 +136,7 @@ class ModelBase(torch.nn.Module):
         if not fpath:
             raise ValueError('load_model: fpath is required')
 
-        if not os.path.isdir(fpath):
+        if not os.path.exists(fpath):
             raise FileNotFoundError(f'Checkpoint not found: {fpath}')
 
         # Try and see if our model class know how to load its own weights
