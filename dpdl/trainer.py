@@ -194,7 +194,9 @@ class Trainer:
         for i, physical_batch in enumerate(physical_batches):
             self.callback_handler.call('on_train_physical_batch_start', self, i, physical_batch)
 
-            loss = self.adapter.forward_loss_and_update_metrics(self._unwrap_model(), physical_batch, normalize_by=N)
+            forward_output = self.adapter.forward(self._unwrap_model(), physical_batch)
+            loss = self.adapter.compute_loss(self._unwrap_model(), physical_batch, forward_output, normalize_by=N)
+            self.adapter.update_metrics(self._unwrap_model(), physical_batch, forward_output)
             loss.backward()
 
             logical_batch_loss += loss.item()
@@ -269,9 +271,12 @@ class Trainer:
         X, y = batch
         X, y = self.adapter.move_to_device(X, y)
 
-        loss =  self.adapter.forward_loss_and_update_metrics(
+        forward_output = self.adapter.forward(self._unwrap_model(), (X, y))
+        loss = self.adapter.compute_loss(self._unwrap_model(), (X, y), forward_output)
+        self.adapter.update_metrics(
             self._unwrap_model(),
             (X, y),
+            forward_output,
             metrics=metrics_evaluator,  # record into the provided evaluator
         )
 
@@ -638,7 +643,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         X, y = batch
         X, y = self.adapter.move_to_device(X, y)
 
-        loss = self.adapter.forward_loss_and_update_metrics(self._unwrap_model(), (X, y), normalize_by=None)
+        forward_output = self.adapter.forward(self._unwrap_model(), (X, y))
+        loss = self.adapter.compute_loss(self._unwrap_model(), (X, y), forward_output, normalize_by=None)
+        self.adapter.update_metrics(self._unwrap_model(), (X, y), forward_output)
         loss.backward()
 
         self.optimizer.step()
@@ -747,11 +754,14 @@ class TaskAdapter:
         """
         ...
 
-    def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
-        """
-        Updates metrics and return loss tensor (for backward).
-        """
-        ...
+    def forward(self, model, batch):
+        raise NotImplementedError
+
+    def compute_loss(self, model, batch, forward_output, normalize_by: int | None = None):
+        raise NotImplementedError
+
+    def update_metrics(self, model, batch, forward_output, metrics = None):
+        raise NotImplementedError
 
     def sample(self, trainer):
         pass
@@ -763,24 +773,31 @@ class ClassificationAdapter(TaskAdapter):
         for Xs, ys in zip(X.split(physical_batch_size, 0), y.split(physical_batch_size, 0)):
             yield (Xs, ys)
 
-    def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
+    def forward(self, model, batch):
         X, y = batch
-
         logits = model(X)
-        loss = model.criterion(logits, y)
+        return logits
+
+    def compute_loss(self, model, batch, forward_output, normalize_by: int | None = None):
+        _, y = batch
+
+        loss = model.criterion(forward_output, y)
 
         if normalize_by:
             loss = loss / normalize_by
+
+        return loss
+
+    def update_metrics(self, model, batch, forward_output, metrics = None):
+        _, y = batch
 
         if metrics is not None:
             metrics_to_update = metrics
         else:
             metrics_to_update = model.train_metrics if model.training else model.valid_metrics
 
-        preds = torch.argmax(logits, dim=1)
+        preds = torch.argmax(forward_output, dim=1)
         metrics_to_update.update(preds, y)
-
-        return loss
 
 
 class LanguageModelAdapter(TaskAdapter):
@@ -792,15 +809,25 @@ class LanguageModelAdapter(TaskAdapter):
         for i in range(len(y_splits)):
             yield ({k: splits[k][i] for k in splits}, y_splits[i])
 
-    def forward_loss_and_update_metrics(self, model, batch, metrics = None, normalize_by: int | None = None):
-        X, y = batch
+    def forward(self, model, batch):
+        X, _ = batch
         logits = model(X)
-        preds, y_flat = shift_and_flatten(logits, y)
+        return logits
+
+    def compute_loss(self, model, batch, forward_output, normalize_by: int | None = None):
+        _, y = batch
+        preds, y_flat = shift_and_flatten(forward_output, y)
 
         loss = model.criterion(preds, y_flat)
 
         if normalize_by:
             loss = loss / normalize_by
+
+        return loss
+
+    def update_metrics(self, model, batch, forward_output, metrics = None):
+        _, y = batch
+        preds, y_flat = shift_and_flatten(forward_output, y)
 
         if metrics is not None:
             metrics_to_update = metrics
@@ -808,10 +835,7 @@ class LanguageModelAdapter(TaskAdapter):
             metrics_to_update = model.train_metrics if model.training else model.valid_metrics
 
         with torch.no_grad():
-            metrics_to_update['Perplexity'].update(logits, y)
-            metrics_to_update['MulticlassAccuracy'].update(preds.argmax(dim=-1), y_flat)
-
-        return loss
+            metrics_to_update.update(preds, y_flat)
 
 class CausalLMAdapter(LanguageModelAdapter):
     def sample(self, trainer):
