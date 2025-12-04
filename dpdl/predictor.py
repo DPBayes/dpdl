@@ -204,7 +204,9 @@ class Predictor:
 
         gfun = grad(loss_one, argnums=0)
 
-        norms_sq = torch.zeros(batch_size, device=y.device, dtype=y.dtype)
+        # Gradients are floating point; keep accumulation in parameter dtype to avoid Long casts
+        param_dtype = next(params.values()).dtype
+        norms_sq = torch.zeros(batch_size, device=y.device, dtype=param_dtype)
 
         if is_mapping:
             # HF / dict input: vmap is broken by data-dependent control flow, so loop per-sample
@@ -213,7 +215,7 @@ class Predictor:
                 y_i = y[i]
                 grads_i = gfun(params, x_i, y_i)
 
-                total = 0.0
+                total = torch.zeros((), device=y.device, dtype=param_dtype)
                 for name in param_names:
                     g = grads_i[name].reshape(-1)
                     total += g.square().sum()
