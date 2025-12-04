@@ -18,6 +18,7 @@ from .experimentmanager import (
 )
 from .hyperparameteroptimizer import HyperparameterOptimizer
 from .models.model_factory import ModelFactory
+from .loss_landscape import LossLandscapeVisualizerFactory
 from .predictor import PredictorFactory
 from .trainer import TrainerFactory
 from .utils import seed_everything
@@ -29,7 +30,7 @@ def cli(
         command: Annotated[
             str,
             typer.Argument(
-                help='Command to run ("train", "optimize", "predict", "train-predict", or "show-layers")',
+                help='Command to run ("train", "optimize", "predict", "train-predict", "visualize", or "show-layers")',
             )
         ],
         use_steps: Annotated[
@@ -564,6 +565,139 @@ def cli(
                 rich_help_panel='Inference options',
             )
         ] = 'test',
+        visualization_dataset_split: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Dataset split to use for loss landscape visualization',
+                rich_help_panel='Visualization options',
+            )
+        ] = 'train',
+        visualization_axes: Annotated[
+            str,
+            typer.Option(
+                help='Axes to use for loss landscape visualization ("random", "adam", or "hessian")',
+                rich_help_panel='Visualization options',
+            )
+        ] = 'random',
+        visualization_normalization: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Direction normalization ("weight", "model", "layer", "filter", or "none")',
+                rich_help_panel='Visualization options',
+            )
+        ] = 'filter',
+        visualization_distance: Annotated[
+            float,
+            typer.Option(
+                help='Maximum distance in parameter space',
+                rich_help_panel='Visualization options',
+            )
+        ] = 1.0,
+        visualization_steps: Annotated[
+            int,
+            typer.Option(
+                help='Grid resolution for each axis',
+                rich_help_panel='Visualization options',
+            )
+        ] = 40,
+        visualization_num_plots: Annotated[
+            int,
+            typer.Option(
+                help='Number of plots for random-axis evaluation',
+                rich_help_panel='Visualization options',
+            )
+        ] = 4,
+        visualization_num_per_plot: Annotated[
+            int,
+            typer.Option(
+                help='Number of plots per row when using random axes',
+                rich_help_panel='Visualization options',
+            )
+        ] = 2,
+        visualization_mode: Annotated[
+            str,
+            typer.Option(
+                help='Weight update equation ("add", "moment", or "adameq")',
+                rich_help_panel='Visualization options',
+            )
+        ] = 'add',
+        visualization_order: Annotated[
+            int,
+            typer.Option(
+                help='Normalization order (1 or 2)',
+                rich_help_panel='Visualization options',
+            )
+        ] = 2,
+        visualization_b_sqrt: Annotated[
+            bool,
+            typer.Option(
+                help='Use sqrt for Adam second moment when mode=adameq',
+                rich_help_panel='Visualization options',
+            )
+        ] = True,
+        visualization_viz_dev: Annotated[
+            bool,
+            typer.Option(
+                help='Evaluate preset combinations of visualization settings',
+                rich_help_panel='Visualization options',
+            )
+        ] = False,
+        visualization_cap_loss: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Cap loss values at this threshold (None disables clipping)',
+                rich_help_panel='Visualization options',
+            )
+        ] = None,
+        visualization_eval_hessian: Annotated[
+            bool,
+            typer.Option(
+                help='Compute Hessian eigenspectrum alongside loss landscape',
+                rich_help_panel='Visualization options',
+            )
+        ] = False,
+        visualization_calc_crit: Annotated[
+            bool,
+            typer.Option(
+                help='Calculate Hessian-based criteria (requires eval_hessian)',
+                rich_help_panel='Visualization options',
+            )
+        ] = False,
+        visualization_khn_power: Annotated[
+            float,
+            typer.Option(
+                help='Khn power parameter for Hessian criteria',
+                rich_help_panel='Visualization options',
+            )
+        ] = 0.5,
+        visualization_freeze_layer: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Freeze layers after (positive) or before (negative) the given index',
+                rich_help_panel='Visualization options',
+            )
+        ] = None,
+        visualization_dir: Annotated[
+            str,
+            typer.Option(
+                help='Subdirectory for loss landscape outputs',
+                rich_help_panel='Visualization options',
+            )
+        ] = 'viz_results',
+        visualization_res_dir: Annotated[
+            str,
+            typer.Option(
+                help='Subdirectory for Hessian analysis outputs',
+                rich_help_panel='Visualization options',
+            )
+        ] = 'analysis_results',
+        visualization_name_suffix: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Optional suffix appended to visualization artifact names',
+                rich_help_panel='Visualization options',
+            )
+        ] = None,
     ):
 
     # Map from commands to functions
@@ -572,6 +706,7 @@ def cli(
         'optimize': run_optimize,
         'predict': run_predict,
         'train-predict': run_train_and_predict,
+        'visualize': run_visualize,
     }
 
     config_manager = ConfigurationManager(ctx.params)
@@ -699,6 +834,26 @@ def run_predict(config_manager: ConfigurationManager) -> None:
 
     end_time = time.time()
     log_runtime(config_manager, start_time, end_time)
+
+
+def run_visualize(config_manager: ConfigurationManager) -> None:
+    rank_zero = torch.distributed.get_rank() == 0
+
+    if rank_zero:
+        log.info('Starting loss landscape visualization.')
+        log.info(config_manager.configuration)
+
+    seed_everything(config_manager.configuration.seed)
+
+    start_time = time.time()
+
+    visualizer = LossLandscapeVisualizerFactory.get_visualizer(config_manager)
+    visualizer.visualize()
+
+    end_time = time.time()
+
+    if rank_zero:
+        log_runtime(config_manager, start_time, end_time)
 
 
 def run_train_and_predict(config_manager: ConfigurationManager) -> None:

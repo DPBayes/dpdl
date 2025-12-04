@@ -59,6 +59,11 @@ class Hyperparameters(BaseModel):
 
     @root_validator(pre=True)
     def check_epochs(cls, values):
+        command = values.get('command')
+
+        if command in ['predict', 'show-layers', 'visualize']:
+            return values
+
         epochs = values.get('epochs')
         total_steps = values.get('total_steps')
 
@@ -92,7 +97,7 @@ class Hyperparameters(BaseModel):
         return 'Hyperparameters:\n  ' + '\n  '.join(hyper_str) + '\n'
 
 class Configuration(BaseModel):
-    command: Literal['train', 'optimize', 'predict', 'show-layers', 'train-predict']
+    command: Literal['train', 'optimize', 'predict', 'show-layers', 'train-predict', 'visualize']
     privacy: bool = True
     model_name: str = 'resnet50'
     loss_function: str = 'CrossEntropyLoss'
@@ -160,6 +165,25 @@ class Configuration(BaseModel):
     dataset_split: Optional[str] = None
     prediction_save_gradient_data: Optional[bool] = False
     load_in_4bit: bool = False
+    visualization_dataset_split: Optional[str] = 'train'
+    visualization_dir: str = 'viz_results'
+    visualization_res_dir: str = 'analysis_results'
+    visualization_axes: Literal['random', 'adam', 'hessian'] = 'random'
+    visualization_normalization: Optional[Literal['weight', 'model', 'layer', 'filter', 'none', 'None']] = 'filter'
+    visualization_distance: float = 1.0
+    visualization_steps: int = 40
+    visualization_num_plots: int = 4
+    visualization_num_per_plot: int = 2
+    visualization_mode: Literal['add', 'moment', 'adameq'] = 'add'
+    visualization_order: int = 2
+    visualization_b_sqrt: bool = True
+    visualization_viz_dev: bool = False
+    visualization_cap_loss: Optional[float] = None
+    visualization_eval_hessian: bool = False
+    visualization_calc_crit: bool = False
+    visualization_khn_power: float = 0.5
+    visualization_name_suffix: Optional[str] = None
+    visualization_freeze_layer: Optional[int] = None
 
     class Config:
         # Fix Pydantic warning:
@@ -182,8 +206,8 @@ class Configuration(BaseModel):
     def check_command(cls, values):
         command = values.get('command')
 
-        if command not in ['train', 'optimize', 'predict', 'show-layers', 'train-predict']:
-            raise ValueError('Command must be "train", "optimize", "predict", "show-layers", or "train-predict".')
+        if command not in ['train', 'optimize', 'predict', 'show-layers', 'train-predict', 'visualize']:
+            raise ValueError('Command must be "train", "optimize", "predict", "show-layers", "train-predict", or "visualize".')
 
         return values
 
@@ -299,6 +323,29 @@ class Configuration(BaseModel):
                 ('Save gradient information when predicting', self.prediction_save_gradient_data),
             ]
             attributes.extend(predict_attributes)
+        elif self.command == 'visualize':
+            visualization_attributes = [
+                ('Dataset split', self.visualization_dataset_split),
+                ('Axes', self.visualization_axes),
+                ('Normalization', self.visualization_normalization),
+                ('Distance', self.visualization_distance),
+                ('Steps', self.visualization_steps),
+                ('Number of plots', self.visualization_num_plots),
+                ('Plots per row', self.visualization_num_per_plot),
+                ('Mode', self.visualization_mode),
+                ('Order', self.visualization_order),
+                ('Use sqrt(b) for Adam eq', self.visualization_b_sqrt),
+                ('All modes (viz_dev)', self.visualization_viz_dev),
+                ('Cap loss', self.visualization_cap_loss),
+                ('Evaluate Hessian', self.visualization_eval_hessian),
+                ('Calculate Hessian criteria', self.visualization_calc_crit),
+                ('Khn power', self.visualization_khn_power),
+                ('Freeze layer', self.visualization_freeze_layer),
+                ('Visualization dir', self.visualization_dir),
+                ('Results dir', self.visualization_res_dir),
+                ('Name suffix', self.visualization_name_suffix),
+            ]
+            attributes.extend(visualization_attributes)
 
         max_key_length = max(len(attr[0]) for attr in attributes)
         attribute_str = [f'{attr[0]:<{max_key_length}}: {attr[1]}' for attr in attributes]
@@ -370,4 +417,3 @@ class ConfigurationManager:
         params = dict(self._cli_params)
         params.update(overrides)
         return ConfigurationManager(params)
-
