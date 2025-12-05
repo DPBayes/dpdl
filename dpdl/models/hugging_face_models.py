@@ -1,3 +1,4 @@
+import logging
 import json
 import os
 import typing as t
@@ -12,6 +13,9 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
 )
+from peft import PeftModel
+
+log = logging.getLogger(__name__)
 
 SAFE_WEIGHTS_INDEX_NAME = "model.safetensors.index.json"
 SAFE_WEIGHTS_NAME = "model.safetensors"
@@ -250,8 +254,30 @@ class HuggingfaceLanguageModel(torch.nn.Module):
         return self.tokenizer
 
     def save_model(self, path):
-        if str(path).endswith(".pt"):
-            path = str(path)[:-3]
-
-        # This saves the model, whether it has peft or not. If it has peft, it will save only the trainable parameters
+        # NB: Only saves the underlying model, no PEFT configuration.
         self.model.save_pretrained(path)
+
+    def load_model(
+        self,
+        fpath: str,
+        *,
+        is_trainable: bool = True,
+    ) -> None:
+
+        if not fpath:
+            raise ValueError("Cannot load Huggingface model from disk: fpath is required")
+
+        if not os.path.isdir(fpath):
+            raise FileNotFoundError(f"Cannot load Huggingface model from disk: checkpoint '{fpath}' missing")
+
+        if self.task == "SequenceClassification":
+            model_cls = AutoModelForSequenceClassification
+        else:
+            model_cls = AutoModelForCausalLM
+
+        model_from_disk = model_cls.from_pretrained(
+            fpath,
+            torch_dtype=torch.float32, # NB: No quantization support!
+        ).cuda()
+
+        self.model = model_from_disk
