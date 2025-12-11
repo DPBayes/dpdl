@@ -273,20 +273,33 @@ class DataModule:
 
         # No validation or test splist, create both
         if not has_validation_split and not has_test_split:
-            # Split the training dataset into training and validation
-            self.train_dataset, val_and_test_split = self._dataset_splits['train'].train_test_split(
-                test_size=(self.test_size + self.val_size),
-                seed=self.seed,
-                shuffle=True,
-                stratify_by_column=self._label_field,
-            ).values()
 
-            self.val_dataset, self.test_dataset = val_and_test_split.train_test_split(
-                test_size=0.5,
-                seed=self.seed,
-                shuffle=True,
-                stratify_by_column=self._label_field,
-            ).values()
+            if len(self._check_rare_classes(self._dataset_splits['train'])) > 0:
+                print('In rare classes')
+                self.train_dataset, val_and_test_split = self._add_rare_classes_to_train_set(self._dataset_splits['train'])
+            else:
+
+                # Split the training dataset into training and validation
+                self.train_dataset, val_and_test_split = self._dataset_splits['train'].train_test_split(
+                    test_size=(self.test_size + self.val_size),
+                    seed=self.seed,
+                    shuffle=True,
+                    stratify_by_column=self._label_field,
+                ).values()
+
+            try:
+                self.val_dataset, self.test_dataset = val_and_test_split.train_test_split(
+                    test_size=0.5,
+                    seed=self.seed,
+                    shuffle=True,
+                    stratify_by_column=self._label_field,
+                ).values()
+            except ValueError:
+                self.val_dataset, self.test_dataset = val_and_test_split.train_test_split(
+                    test_size=0.5,
+                    seed=self.seed,
+                    shuffle=True
+                ).values()
 
         # We have only test split, create validation split from train
         if not has_validation_split and has_test_split:
@@ -321,6 +334,34 @@ class DataModule:
 
             # In evaluation mode, we validate on the test dataset
             self.val_dataset = self.test_dataset
+
+    def _check_rare_classes(self, dataset_split):
+
+        class_counts = Counter(dataset_split[self._label_field])
+
+        rare_classes = [cls for cls, count in class_counts.items() if count < 2]
+
+        return rare_classes
+
+    def _add_rare_classes_to_train_set(self,dataset_split):
+
+        class_counts = Counter(dataset_split[self._label_field])
+
+        rare_classes = [cls for cls, count in class_counts.items() if count < 2]
+
+        train_dataset = dataset_split.filter(lambda x: x[self._label_field] in rare_classes)
+        stratifiable_dataset = dataset_split.filter(lambda x: x[self._label_field] not in rare_classes)
+
+        split_train, split_test = stratifiable_dataset.train_test_split(
+            test_size=(self.test_size + self.val_size),
+            seed=self.seed,
+            shuffle=True,stratify_by_column=self._label_field
+            ).values()
+
+        split_train = datasets.concatenate_datasets([split_train, train_dataset])
+
+        return split_train, split_test
+
 
     def _enforce_label_field_type(self, dataset_splits):
         # Iterate through all dataset splits, and make the label field ClassLabel
