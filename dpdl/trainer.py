@@ -862,9 +862,9 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
                     #preds, y_flat = shift_and_flatten(logits, y)
                     #loss = model.criterion(preds, y_flat)
 
-                    print(logits)
+                    #print(logits)
 
-                    print(logits.shape)
+                    #print(logits.shape)
 
                     generated_ids = trainer._unwrap_model().generate(
                         X_splitted,
@@ -893,6 +893,7 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
     def eval_acc(self, trainer):
 
         acc = self.evaluate_diseases_accuracy_exact_matching(trainer)
+        trainer._unwrap_model().train_metrics['MulticlassAccuracyDisease'].update(acc)
 
         log.info(f'Accuracy after the epoch for the diseases {acc}')
 

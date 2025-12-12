@@ -65,6 +65,41 @@ def _get_language_model_metrics(
 
     return torchmetrics.MetricCollection(metrics).cuda()
 
+class CustomAccuracyLog(torchmetrics.Metric):
+    def __init__(self):
+        super().__init__()
+        self.add_state("value", default=torch.tensor(0.0), dist_reduce_fx="mean")
+    
+    def update(self, value: float):
+        """Update with your pre-calculated accuracy"""
+        self.value = torch.tensor(value, device=self.device)
+    
+    def compute(self):
+        """Return the stored value"""
+        return self.value
+
+def _metrics_diseases(
+    vocab_size: int,
+    ignore_index: int,
+    sync: bool,
+) -> torchmetrics.MetricCollection:
+    metrics = {
+        'MulticlassAccuracy': torchmetrics.classification.MulticlassAccuracy(
+            num_classes=vocab_size,
+            average='micro',
+            ignore_index=ignore_index,
+            sync_on_compute=sync,
+        ),
+        'Perplexity': Perplexity(
+            ignore_index=ignore_index,
+            sync_on_compute=sync,
+        ),
+        'MulticlassAccuracyDisease': CustomAccuracyLog(
+        ),
+    }
+    
+    return torchmetrics.MetricCollection(metrics).cuda()
+
 
 class MetricsFactory:
 
@@ -102,7 +137,7 @@ class MetricsFactory:
                 with_confusion_matrix=True,
             )
 
-        elif task in ('CausalLM', 'InstructLM', 'DiseaseTask'):
+        elif task in ('CausalLM', 'InstructLM'):
             if torch.distributed.get_rank() == 0:
                 log.info(f'Task is "{configuration.task}", initializing language model metrics.')
 
@@ -120,6 +155,23 @@ class MetricsFactory:
                 sync=eval_sync,
             )
             test = _get_language_model_metrics(
+                vocab_size=vocab_size,
+                ignore_index=ignore_index,
+                sync=eval_sync,
+            )
+
+        elif task == 'DiseaseTask':
+            train = _metrics_diseases(
+                vocab_size=vocab_size,
+                ignore_index=ignore_index,
+                sync=train_sync,
+            )
+            valid = _metrics_diseases(
+                vocab_size=vocab_size,
+                ignore_index=ignore_index,
+                sync=eval_sync,
+            )
+            test = _metrics_diseases(
                 vocab_size=vocab_size,
                 ignore_index=ignore_index,
                 sync=eval_sync,
