@@ -664,12 +664,11 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # wrap up epoch
         metrics = self._unwrap_model().train_metrics.compute()
-        self._unwrap_model().train_metrics.reset()
-        self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
-
         # log sample of generated text if asked for
         if torch.distributed.get_rank() == 0:
             self.adapter.eval_acc(self)
+        self._unwrap_model().train_metrics.reset()
+        self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
         # wait for rank 0 to possilby sample
         torch.distributed.barrier()
