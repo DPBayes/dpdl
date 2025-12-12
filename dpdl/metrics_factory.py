@@ -161,6 +161,8 @@ class MetricsFactory:
             )
 
         elif task == 'DiseaseTask':
+            vocab_size = int(num_classes)
+            ignore_index = -100
             train = _metrics_diseases(
                 vocab_size=vocab_size,
                 ignore_index=ignore_index,
