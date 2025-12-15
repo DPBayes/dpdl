@@ -162,7 +162,7 @@ class Trainer:
 
         # log sample of generated text if asked for
         if torch.distributed.get_rank() == 0:
-            self.adapter.eval_acc(self)
+            self.adapter.eval_acc(self,self._unwrap_model().train_metrics)
 
         # wait for rank 0 to possilby sample
         torch.distributed.barrier()
@@ -247,6 +247,8 @@ class Trainer:
             evaluation_loss += loss
 
         evaluation_loss /= len(dataloader)
+
+        self.adapter.eval_acc(self, metrics_evaluator)
 
         metrics = metrics_evaluator.compute()
 
@@ -666,7 +668,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         metrics = self._unwrap_model().train_metrics.compute()
         # log sample of generated text if asked for
         if torch.distributed.get_rank() == 0:
-            self.adapter.eval_acc(self)
+            self.adapter.eval_acc(self,self._unwrap_model().train_metrics)
         self._unwrap_model().train_metrics.reset()
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
@@ -719,7 +721,7 @@ class TaskAdapter:
     def sample(self, trainer):
         pass
 
-    def eval_acc(self, trainer):
+    def eval_acc(self, trainer, metrics_evaluator):
         pass
 
     def set_label_tokens(self,datamodule):
@@ -813,7 +815,7 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
         else:
             metrics_to_update = model.train_metrics if model.training else model.valid_metrics
 
-        with torch.no_grad():
+        with torch.no_grad(): 
             metrics_to_update['Perplexity'].update(logits, y)
             metrics_to_update['MulticlassAccuracy'].update(preds.argmax(dim=-1), y_flat)
 
@@ -889,10 +891,11 @@ class DiseaseTaskAdapter(LanguageModelAdapter):
 
         return corr_total / total
 
-    def eval_acc(self, trainer):
+    def eval_acc(self, trainer, metrics_evaluator):
 
         acc = self.evaluate_diseases_accuracy_exact_matching(trainer)
-        trainer._unwrap_model().train_metrics['MulticlassAccuracyDisease'].update(acc)
+
+        metrics_evaluator['MulticlassAccuracyDisease'].update(acc)
 
         log.info(f'Accuracy after the epoch for the diseases {acc}')
 
