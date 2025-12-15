@@ -156,13 +156,15 @@ class Trainer:
 
             self.callback_handler.call('on_train_batch_end', self, batch_idx, batch, logical_batch_loss)
 
+        # log sample of generated text if asked for
+        if torch.distributed.get_rank() == 0:
+            self.adapter.eval_acc(self,self._unwrap_model().train_metrics)
+
         # compute the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
         self._unwrap_model().train_metrics.reset()
 
-        # log sample of generated text if asked for
-        if torch.distributed.get_rank() == 0:
-            self.adapter.eval_acc(self,self._unwrap_model().train_metrics)
+
 
         # wait for rank 0 to possilby sample
         torch.distributed.barrier()
@@ -664,11 +666,13 @@ class DifferentiallyPrivateTrainer(Trainer):
                     phys_in_logical = 0
                     in_new_logical = True
 
+        if torch.distributed.get_rank() == 0:
+            self.adapter.eval_acc(self,self._unwrap_model().train_metrics)
+
         # wrap up epoch
         metrics = self._unwrap_model().train_metrics.compute()
         # log sample of generated text if asked for
-        if torch.distributed.get_rank() == 0:
-            self.adapter.eval_acc(self,self._unwrap_model().train_metrics)
+
         self._unwrap_model().train_metrics.reset()
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
