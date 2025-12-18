@@ -164,13 +164,6 @@ class Trainer:
         metrics = self._unwrap_model().train_metrics.compute()
         self._unwrap_model().train_metrics.reset()
 
-        # log sample of generated text if asked for
-        if torch.distributed.get_rank() == 0:
-            self.adapter.sample(self)
-
-        # wait for rank 0 to possilby sample
-        torch.distributed.barrier()
-
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
     def fit_one_batch(self, batch_idx, batch):
@@ -713,13 +706,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         self._unwrap_model().train_metrics.reset()
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
-        # log a sample if defined in the adapter
-        if torch.distributed.get_rank == 0:
-            self.adapter.sample(self)
-
-        # wait for rank 0 to possilby sample
-        torch.distributed.barrier()
-
 
 class TaskAdapter:
     """
@@ -763,9 +749,6 @@ class TaskAdapter:
     def update_metrics(self, model, batch, forward_output, metrics = None):
         raise NotImplementedError
 
-    def sample(self, trainer):
-        pass
-
 
 class ClassificationAdapter(TaskAdapter):
     def iterate_physical_batches(self, batch, physical_batch_size):
@@ -774,7 +757,7 @@ class ClassificationAdapter(TaskAdapter):
             yield (Xs, ys)
 
     def forward(self, model, batch):
-        X, y = batch
+        X, _ = batch
         logits = model(X)
         return logits
 
@@ -837,20 +820,12 @@ class LanguageModelAdapter(TaskAdapter):
         with torch.no_grad():
             metrics_to_update.update(preds, y_flat)
 
-class CausalLMAdapter(LanguageModelAdapter):
-    def sample(self, trainer):
-        return
-
-class InstructLMAdapter(LanguageModelAdapter):
-    def sample(self, trainer):
-        trainer._sample_impl()
-
 # Define task specific adapters
 _ADAPTERS = {
     'ImageClassification': ClassificationAdapter,
     'SequenceClassification': ClassificationAdapter,
-    'CausalLM': CausalLMAdapter,
-    'InstructLM': InstructLMAdapter,
+    'CausalLM': LanguageModelAdapter,
+    'InstructLM': LanguageModelAdapter,
 }
 
 class TrainerFactory:
