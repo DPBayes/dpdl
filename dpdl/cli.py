@@ -368,6 +368,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_llm_samples: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Generate and log LLM samples at epoch end',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         record_gradient_norms: Annotated[
             Optional[bool],
             typer.Option(

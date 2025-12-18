@@ -20,6 +20,7 @@ from .per_class_accuracy import RecordPerClassAccuracyCallback
 from .record_losses import RecordLossesByEpochCallback, RecordTrainLossByStepCallback
 from .record_accuracy import RecordAccuracyByEpochCallback
 from .record_snr import RecordSNRCallback
+from .llm_sampling import LLMSamplingCallback
 
 log = logging.getLogger(__name__)
 
@@ -122,5 +123,8 @@ class CallbackFactory:
                     checkpoint_step_interval=configuration.checkpoint_step_interval,
                 )
             )
+
+        if configuration.record_llm_samples:
+            callbacks.append(LLMSamplingCallback())
 
         return callbacks
