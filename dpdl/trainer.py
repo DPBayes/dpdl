@@ -28,7 +28,7 @@ class Trainer:
 
         # essentials
         model: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
+        optimizer: torch.optim.Optimizer,  
         datamodule: DataModule,
         adapter: TaskAdapter,
 
@@ -41,10 +41,12 @@ class Trainer:
         callback_handler: CallbackHandler | None = None,
         peft: str | None = None,
         task: str | None = None,
+        scheduler: torch.optim.lr_scheduler.LambdaLR = None,
     ):
 
         self.model = model
         self.optimizer = optimizer
+        self.scheduler = scheduler
         self.datamodule = datamodule
         self.epochs = epochs
         self.total_steps = total_steps
@@ -202,6 +204,8 @@ class Trainer:
 
         # after accumulating the gradients for all the sub batches we can finally update weights.
         self.optimizer.step()
+        if self.scheduler is not None:
+            self.scheduler.step()
 
         return logical_batch_loss
 
@@ -552,6 +556,8 @@ class DifferentiallyPrivateTrainer(Trainer):
 
                 # if the logical batch is complete, notify batch end and reset counters
                 if logical_batch_completed:
+                    if self.scheduler is not None:
+                        self.scheduler.step()
                     self.callback_handler.call(
                         'on_train_batch_end',
                         self,
@@ -654,6 +660,8 @@ class DifferentiallyPrivateTrainer(Trainer):
                 # check for logical‐batch boundary
                 if not self.optimizer._check_skip_next_step(False):
                     avg = logical_loss / phys_in_logical
+                    if self.scheduler is not None:
+                        self.scheduler.step()
                     self.callback_handler.call(
                         'on_train_batch_end',
                         self,
@@ -1025,6 +1033,8 @@ class TrainerFactory:
 
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
+        scheduler = OptimizerFactory.get_scheduler(configuration,hyperparams,optimizer,total_steps)
+
         adapter = TrainerFactory._make_adapter(configuration)
         adapter.set_label_tokens(datamodule)
 
@@ -1032,6 +1042,7 @@ class TrainerFactory:
         trainer = Trainer(
             model=model,
             optimizer=optimizer,
+            scheduler=scheduler,
             datamodule=datamodule,
             adapter=adapter,
             callback_handler=callback_handler,
@@ -1115,6 +1126,8 @@ class TrainerFactory:
         target_delta, target_epsilon = _get_target_privacy_params(hyperparams)
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
+        scheduler = OptimizerFactory.get_scheduler(configuration,hyperparams,optimizer,total_steps)
+
         adapter = TrainerFactory._make_adapter(configuration)
         adapter.set_label_tokens(datamodule)
 
@@ -1122,6 +1135,7 @@ class TrainerFactory:
         trainer = DifferentiallyPrivateTrainer(
             model=model,
             optimizer=optimizer,
+            scheduler=scheduler,
             datamodule=datamodule,
             adapter=adapter,
             # hypers

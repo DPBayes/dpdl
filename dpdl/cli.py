@@ -88,6 +88,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = 'Adam',
+        scheduler_type: Annotated[
+            str,
+            typer.Option(
+                help='Scheduler type [cosine, linear] by defaul None',
+                rich_help_panel='Training options',
+            )
+        ] = None,
         physical_batch_size: Annotated[
             Optional[int],
             typer.Option(
