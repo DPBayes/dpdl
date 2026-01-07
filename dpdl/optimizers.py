@@ -26,7 +26,7 @@ class OptimizerFactory:
             return None
         
         scheduler_type = getattr(configuration, 'scheduler_type', 'cosine')
-        warmup_steps = int(total_steps*0.1)
+        warmup_steps = int(total_steps*0.15)
 
         if total_steps is None:
             raise ValueError("total_steps must be specified in configuration for scheduler")

@@ -202,6 +202,11 @@ class Trainer:
             # notify the callbacks of a physical batch end
             self.callback_handler.call('on_train_physical_batch_end', self, i, physical_batch, loss.item())
 
+            if torch.isnan(loss):
+                print(f"NaN detected at batch_idx {batch_idx}")
+                print(f"Current LR: {self.scheduler.get_last_lr()}")
+                break
+
         # after accumulating the gradients for all the sub batches we can finally update weights.
         self.optimizer.step()
         if self.scheduler is not None:
@@ -1034,6 +1039,8 @@ class TrainerFactory:
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
         scheduler = OptimizerFactory.get_scheduler(configuration,hyperparams,optimizer,total_steps)
+
+        log.info(f"total steps: {total_steps}, scheduler {scheduler}")
 
         adapter = TrainerFactory._make_adapter(configuration)
         adapter.set_label_tokens(datamodule)
