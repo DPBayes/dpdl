@@ -22,10 +22,8 @@ class OptimizerFactory:
         - warmup_steps: int
         - total_steps: int (or max_steps)
         """
-        if not getattr(configuration, 'use_scheduler', False):
-            return None
         
-        scheduler_type = getattr(configuration, 'scheduler_type', 'cosine')
+        scheduler_type = configuration.scheduler_type
         warmup_steps = int(total_steps*0.15)
 
         if total_steps is None:
