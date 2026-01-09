@@ -89,7 +89,7 @@ def cli(
             )
         ] = 'Adam',
         scheduler_type: Annotated[
-            str,
+            Optional[str],
             typer.Option(
                 help='Scheduler type [cosine, linear] by defaul None',
                 rich_help_panel='Training options',
