@@ -97,7 +97,7 @@ class Configuration(BaseModel):
     model_name: str = 'resnet50'
     loss_function: str = 'CrossEntropyLoss'
     optimizer: str = 'Adam'
-    scheduler_type: str = None
+    scheduler_type: Optional[str] = None
     dataset_name: str = 'cifar10'
     llm: bool = False
     task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM', 'InstructLM', 'DiseaseTask']
