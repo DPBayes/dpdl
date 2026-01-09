@@ -22,12 +22,16 @@ class OptimizerFactory:
         - warmup_steps: int
         - total_steps: int (or max_steps)
         """
-        
+
+        if configuration.scheduler_type is None:
+            return None
+
         scheduler_type = configuration.scheduler_type
-        warmup_steps = int(total_steps*0.15)
 
         if total_steps is None:
             raise ValueError("total_steps must be specified in configuration for scheduler")
+        
+        warmup_steps = int(total_steps*0.15)
         
         if scheduler_type == 'cosine':
             scheduler = get_cosine_schedule_with_warmup(
