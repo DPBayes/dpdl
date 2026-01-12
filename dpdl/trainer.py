@@ -204,7 +204,8 @@ class Trainer:
 
             if torch.isnan(loss):
                 print(f"NaN detected at batch_idx {batch_idx}")
-                print(f"Current LR: {self.scheduler.get_last_lr()}")
+                if self.scheduler is not None:
+                    print(f"Current LR: {self.scheduler.get_last_lr()}")
                 break
 
         # after accumulating the gradients for all the sub batches we can finally update weights.
