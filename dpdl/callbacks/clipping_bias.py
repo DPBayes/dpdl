@@ -77,7 +77,14 @@ class ClipMSEDecompositionCallback(Callback):
         return float(getattr(trainer.optimizer, 'noise_multiplier', 0.0))
 
     def _get_q(self, trainer) -> float:
-        return float(trainer.datamodule.sample_rate)
+        if trainer.datamodule.sample_rate:
+            return float(trainer.datamodule.sample_rate)
+
+        N = trainer.datamodule.get_dataset_size()
+        B = trainer.datamodule.batch_size
+        q = B/N
+
+        return q
 
     def _get_N(self, trainer) -> int:
         return int(trainer.datamodule.get_dataset_size('train_dataset'))
