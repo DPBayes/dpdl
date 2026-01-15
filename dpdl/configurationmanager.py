@@ -144,6 +144,15 @@ class Configuration(BaseModel):
     save_model: Optional[bool] = False
     model_weights_path: Optional[str] = None
     record_clipping: Optional[bool] = False
+    record_clip_severity: Optional[bool] = False
+    record_clip_direction_distortion: Optional[bool] = False
+    record_class_conditional_clipping: Optional[bool] = False
+    record_grad_norm_trace: Optional[bool] = False
+    clip_diagnostics_cs: Optional[List[float]] = None
+    clip_diagnostics_log_every_n_steps: int = 100
+    clip_diagnostics_max_samples: Optional[int] = None
+    clip_diagnostics_include_param_name_regex: Optional[str] = None
+    clip_diagnostics_exclude_param_name_regex: Optional[str] = None
     record_snr: Optional[bool] = False
     record_llm_samples: Optional[bool] = False
     record_gradient_norms: Optional[bool] = False
@@ -256,6 +265,15 @@ class Configuration(BaseModel):
             ('Save final model', self.save_model),
             ('Path for saving/loding model weights', self.model_weights_path),
             ('Record clipping stats (MSE)', self.record_clipping),
+            ('Record clipping severity curves', self.record_clip_severity),
+            ('Record clipping direction distortion', self.record_clip_direction_distortion),
+            ('Record class-conditional clipping', self.record_class_conditional_clipping),
+            ('Record gradient norm trace', self.record_grad_norm_trace),
+            ('Clipping diagnostics C grid', self.clip_diagnostics_cs),
+            ('Clipping diagnostics log every n steps', self.clip_diagnostics_log_every_n_steps),
+            ('Clipping diagnostics max samples', self.clip_diagnostics_max_samples),
+            ('Clipping diagnostics include param regex', self.clip_diagnostics_include_param_name_regex),
+            ('Clipping diagnostics exclude param regex', self.clip_diagnostics_exclude_param_name_regex),
             ('Record signal-to-noise ratio', self.record_snr),
             ('Record LLM samples', self.record_llm_samples),
             ('Record gradient norms', self.record_gradient_norms),

@@ -361,6 +361,69 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_clip_severity: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record global clipping severity curves (r(C), m(C), wbar(C))',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
+        record_clip_direction_distortion: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record directional distortion metrics cos(C) and shrink(C)',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
+        record_class_conditional_clipping: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record class-conditional clipping statistics',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
+        record_grad_norm_trace: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record gradient norm quantiles over training',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
+        clip_diagnostics_cs: Annotated[
+            Optional[List[float]],
+            typer.Option(
+                help='Grid of hypothetical clipping bounds C to evaluate (repeatable option)',
+                rich_help_panel='Logging options',
+            ),
+        ] = None,
+        clip_diagnostics_log_every_n_steps: Annotated[
+            int,
+            typer.Option(
+                help='Log clipping/norm diagnostics every n steps (0 = every step)',
+                rich_help_panel='Logging options',
+            ),
+        ] = 100,
+        clip_diagnostics_max_samples: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Max examples per logged step for class-conditional stats (None = all)',
+                rich_help_panel='Logging options',
+            ),
+        ] = None,
+        clip_diagnostics_include_param_name_regex: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Regex to select which parameters to include (by name)',
+                rich_help_panel='Logging options',
+            ),
+        ] = None,
+        clip_diagnostics_exclude_param_name_regex: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Regex to exclude parameters (by name)',
+                rich_help_panel='Logging options',
+            ),
+        ] = None,
         record_snr: Annotated[
             Optional[bool],
             typer.Option(

@@ -21,6 +21,12 @@ from .record_losses import RecordLossesByEpochCallback, RecordTrainLossByStepCal
 from .record_accuracy import RecordAccuracyByEpochCallback
 from .record_snr import RecordSNRCallback
 from .llm_sampling import LLMSamplingCallback
+from .clipping_diagnostics import (
+    ClassConditionalClippingCallback,
+    ClipDirectionDistortionCallback,
+    ClipSeverityCallback,
+)
+from .grad_norm_trace import GradNormTraceCallback
 
 log = logging.getLogger(__name__)
 
@@ -114,6 +120,50 @@ class CallbackFactory:
                     log_dir=full_log_dir,
                     max_grad_norm=hyperparams.max_grad_norm,
                     normalize_clipping=configuration.normalize_clipping,
+                )
+            )
+
+        if configuration.record_clip_severity:
+            callbacks.append(
+                ClipSeverityCallback(
+                    log_dir=full_log_dir,
+                    cs=configuration.clip_diagnostics_cs,
+                    log_every_n_steps=configuration.clip_diagnostics_log_every_n_steps,
+                    include_param_name_regex=configuration.clip_diagnostics_include_param_name_regex,
+                    exclude_param_name_regex=configuration.clip_diagnostics_exclude_param_name_regex,
+                )
+            )
+
+        if configuration.record_clip_direction_distortion:
+            callbacks.append(
+                ClipDirectionDistortionCallback(
+                    log_dir=full_log_dir,
+                    cs=configuration.clip_diagnostics_cs,
+                    log_every_n_steps=configuration.clip_diagnostics_log_every_n_steps,
+                    include_param_name_regex=configuration.clip_diagnostics_include_param_name_regex,
+                    exclude_param_name_regex=configuration.clip_diagnostics_exclude_param_name_regex,
+                )
+            )
+
+        if configuration.record_class_conditional_clipping:
+            callbacks.append(
+                ClassConditionalClippingCallback(
+                    log_dir=full_log_dir,
+                    cs=configuration.clip_diagnostics_cs,
+                    log_every_n_steps=configuration.clip_diagnostics_log_every_n_steps,
+                    include_param_name_regex=configuration.clip_diagnostics_include_param_name_regex,
+                    exclude_param_name_regex=configuration.clip_diagnostics_exclude_param_name_regex,
+                    max_samples=configuration.clip_diagnostics_max_samples,
+                )
+            )
+
+        if configuration.record_grad_norm_trace:
+            callbacks.append(
+                GradNormTraceCallback(
+                    log_dir=full_log_dir,
+                    log_every_n_steps=configuration.clip_diagnostics_log_every_n_steps,
+                    include_param_name_regex=configuration.clip_diagnostics_include_param_name_regex,
+                    exclude_param_name_regex=configuration.clip_diagnostics_exclude_param_name_regex,
                 )
             )
 
