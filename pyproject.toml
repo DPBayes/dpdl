@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dpdl"
+version = "0.1.0"
+description = "Framework for differentially private deep learning experiments"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "torch",
+  "torchvision",
+  "timm",
+  "datasets",
+  "transformers",
+  "huggingface_hub",
+  "safetensors",
+  "peft",
+  "optuna",
+  "optuna-integration",
+  "botorch",
+  "torchmetrics",
+  "pydantic",
+  "typer[all]",
+  "multiprocess",
+  "numpy",
+  "pandas",
+  "PyYAML",
+  "Pillow",
+]
+
+[project.scripts]
+dpdl = "run:main"
+
+[tool.setuptools]
+py-modules = ["run"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dpdl*"]
