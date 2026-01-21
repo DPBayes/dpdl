@@ -1,6 +1,7 @@
 import logging
 import math
 
+import torch
 import torchmetrics
 
 from ..utils import tensor_to_python_type
@@ -10,15 +11,16 @@ log = logging.getLogger(__name__)
 
 
 class RecordEpochStatsCallback(Callback):
-    def __init__(self, use_steps=False):
+    def __init__(self, use_steps=False, device=None):
         super().__init__()
 
         self.use_steps = use_steps
 
-        self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()
+        device = device or torch.device('cuda')
+        self.train_loss = torchmetrics.aggregation.MeanMetric().to(device)
         self.evaluation_loss = torchmetrics.aggregation.MeanMetric(
             sync_on_compute=False
-        ).cuda()
+        ).to(device)
 
         # Do not log these metrics
         self._metrics_to_ignore = [
@@ -100,4 +102,3 @@ class RecordEpochStatsCallback(Callback):
         for key, value in metrics.items():
             if not key in self._metrics_to_ignore:
                 log.info(f" - {key}: {value}.")
-

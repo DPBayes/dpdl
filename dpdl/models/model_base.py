@@ -30,7 +30,7 @@ class ModelBase(torch.nn.Module):
         if not criterion:
             raise ValueError('Criterion not passed to ModelBase.')
 
-        self._criterion = criterion.cuda()
+        self._criterion = criterion
 
         if metrics is not None:
             self.train_metrics = metrics['train_metrics']

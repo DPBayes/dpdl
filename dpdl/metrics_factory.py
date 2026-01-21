@@ -42,7 +42,7 @@ def _get_classification_metrics(
             sync_on_compute=sync,
         )
 
-    return torchmetrics.MetricCollection(metrics).cuda()
+    return torchmetrics.MetricCollection(metrics)
 
 
 def _get_language_model_metrics(
@@ -63,7 +63,7 @@ def _get_language_model_metrics(
         ),
     }
 
-    return torchmetrics.MetricCollection(metrics).cuda()
+    return torchmetrics.MetricCollection(metrics)
 
 
 class MetricsFactory:

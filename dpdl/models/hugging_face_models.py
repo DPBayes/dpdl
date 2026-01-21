@@ -38,7 +38,7 @@ def download_safetensors(model_name):
     state_dict: t.Dict[str, torch.Tensor] = {}
 
     for shard_file in shard_files:
-        state_dict |= safe_load_file(os.path.join(folder, shard_file), "cpu")
+        state_dict |= safe_load_file(os.path.join(folder, shard_file), 'cpu')
 
 
 def download_generic_huggingface_model(
@@ -265,10 +265,10 @@ class HuggingfaceLanguageModel(torch.nn.Module):
     ) -> None:
 
         if not fpath:
-            raise ValueError("Cannot load Huggingface model from disk: fpath is required")
+            raise ValueError('Cannot load Huggingface model from disk: fpath is required')
 
         if not os.path.isdir(fpath):
-            raise FileNotFoundError(f"Cannot load Huggingface model from disk: checkpoint '{fpath}' missing")
+            raise FileNotFoundError(f'Cannot load Huggingface model from disk: checkpoint {fpath} missing')
 
         if self.task == "SequenceClassification":
             model_cls = AutoModelForSequenceClassification
@@ -278,6 +278,13 @@ class HuggingfaceLanguageModel(torch.nn.Module):
         model_from_disk = model_cls.from_pretrained(
             fpath,
             torch_dtype=torch.float32, # NB: No quantization support!
-        ).cuda()
+        )
+
+        try:
+            device = next(self.model.parameters()).device
+        except StopIteration as exc:
+            raise RuntimeError('Cannot resolve device from Huggingface model parameters.') from exc
+
+        model_from_disk = model_from_disk.to(device)
 
         self.model = model_from_disk

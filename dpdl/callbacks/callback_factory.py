@@ -38,14 +38,17 @@ class CallbackHandler:
 class CallbackFactory:
     @staticmethod
     def get_callbacks(
-        configuration: Configuration, hyperparams: Hyperparameters) -> List[Callback]:
+        configuration: Configuration,
+        hyperparams: Hyperparameters,
+        device=None,
+    ) -> List[Callback]:
 
         log_dir = configuration.log_dir
         experiment_name = configuration.experiment_name
         full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
         callbacks = [
-            RecordEpochStatsCallback(use_steps=configuration.use_steps),
+            RecordEpochStatsCallback(use_steps=configuration.use_steps, device=device),
         ]
 
         if configuration.record_gradient_norms:
@@ -90,7 +93,7 @@ class CallbackFactory:
             callbacks.append(RecordTrainLossByStepCallback(log_dir=full_log_dir))
 
         if configuration.record_loss_by_epoch:
-            callbacks.append(RecordLossesByEpochCallback(log_dir=full_log_dir))
+            callbacks.append(RecordLossesByEpochCallback(log_dir=full_log_dir, device=device))
             callbacks.append(RecordAccuracyByEpochCallback(log_dir=full_log_dir))
 
         if configuration.record_per_class_accuracy:
@@ -122,6 +125,7 @@ class CallbackFactory:
                 CheckpointCallback(
                     log_dir=full_log_dir,
                     checkpoint_step_interval=configuration.checkpoint_step_interval,
+                    device=device,
                 )
             )
 

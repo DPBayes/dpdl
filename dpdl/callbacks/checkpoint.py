@@ -3,6 +3,7 @@ import logging
 import os
 import re
 
+import torch
 import torchmetrics
 
 from ..utils import tensor_to_python_type
@@ -34,7 +35,7 @@ def get_latest_checkpoint(checkpoint_dir):
 
 
 class CheckpointCallback(Callback):
-    def __init__(self, log_dir: str, checkpoint_step_interval: int):
+    def __init__(self, log_dir: str, checkpoint_step_interval: int, device=None):
         super().__init__()
 
         self.log_dir = log_dir
@@ -45,7 +46,8 @@ class CheckpointCallback(Callback):
         os.makedirs(self.checkpoints_dir, exist_ok=True)
 
         # Initialize mean metric for accumulating train loss over interval
-        self.interval_loss = torchmetrics.aggregation.MeanMetric(sync_on_compute=False).cuda()
+        device = device or torch.device('cuda')
+        self.interval_loss = torchmetrics.aggregation.MeanMetric(sync_on_compute=False).to(device)
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, **kwargs):
 
