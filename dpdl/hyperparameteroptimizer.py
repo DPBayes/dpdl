@@ -10,6 +10,7 @@ import math
 from functools import partial
 
 from .trainer import TrainerFactory
+from .device import resolve_device
 from .datamodules import DataModuleFactory
 from .models.model_factory import ModelFactory
 from .configurationmanager import ConfigurationManager
@@ -419,9 +420,11 @@ class HyperparameterOptimizer:
 
     @staticmethod
     def get_max_batch_size(config_manager: ConfigurationManager):
+        device = resolve_device(config_manager.configuration.device)
         datamodule = DataModuleFactory.get_datamodule(
             config_manager.configuration,
             config_manager.hyperparams,
+            device,
         )
         num_classes = datamodule.get_num_classes()
 

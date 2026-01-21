@@ -7,13 +7,15 @@ import torch
 import typer
 
 from dpdl.cli import cli
+from dpdl.device import distributed_backend, resolve_device, set_cuda_device
 from dpdl.logger_config import configure_logger
 
 
 def setup_torch():
     # Enable TensorFloat-32 for performance
-    torch.backends.cuda.matmul.allow_tf32 = True
-    torch.backends.cudnn.allow_tf32 = True
+    if torch.cuda.is_available():
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
 
     # Reproducible results
     torch.use_deterministic_algorithms(True, warn_only=True)
@@ -26,9 +28,20 @@ def setup_torch():
     multiprocess.set_start_method('spawn', force=True)
 
 
+def _parse_device_arg(argv):
+    for i, arg in enumerate(argv):
+        if arg == '--device' and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith('--device='):
+            return arg.split('=', 1)[1]
+    return None
+
+
 def main():
     log = configure_logger()
     setup_torch()
+    device_arg = os.getenv('DPDL_DEVICE') or _parse_device_arg(sys.argv) or 'cuda'
+    device = resolve_device(device_arg)
 
     world_size = os.getenv('WORLD_SIZE')
     rank = os.getenv('RANK')
@@ -52,15 +65,18 @@ def main():
     )
 
     # We only have one visible device exposed by `run_wrapper.sh` as recommended by AMD
-    torch.cuda.set_device(0)
+    set_cuda_device(device)
 
     # Initialize the process group
-    torch.distributed.init_process_group(
-        backend='nccl',
-        world_size=world_size,
-        rank=rank,
-        device_id=torch.device('cuda', 0),  # Only one visible device
-    )
+    init_kwargs = {
+        'backend': distributed_backend(device),
+        'world_size': world_size,
+        'rank': rank,
+    }
+    if device.type == 'cuda':
+        init_kwargs['device_id'] = torch.device('cuda', 0)  # Only one visible device
+
+    torch.distributed.init_process_group(**init_kwargs)
 
     log.info(f'Rank {rank} initialized.')
 

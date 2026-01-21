@@ -1,8 +1,10 @@
 import logging
+import os
 from collections import Counter
 from functools import partial
 
 import datasets
+import numpy as np
 import torch
 import torchvision
 from PIL import Image
@@ -10,6 +12,41 @@ from PIL import Image
 from .configurationmanager import Configuration, Hyperparameters
 
 log = logging.getLogger(__name__)
+
+def _make_fake_image_splits(
+    seed: int,
+    num_classes: int = 2,
+    image_size: tuple[int, int] = (32, 32),
+    train_size: int = 20,
+    val_size: int = 8,
+    test_size: int = 8,
+):
+    rng = np.random.default_rng(seed)
+    features = datasets.Features(
+        {
+            'image': datasets.Image(),
+            'label': datasets.ClassLabel(names=[f'class_{i}' for i in range(num_classes)]),
+        }
+    )
+
+    def _make_split(n: int):
+        images = [
+            rng.integers(0, 256, size=(image_size[0], image_size[1], 3), dtype=np.uint8)
+            for _ in range(n)
+        ]
+        labels = [i % num_classes for i in range(n)]
+        return datasets.Dataset.from_dict(
+            {'image': images, 'label': labels},
+            features=features,
+        )
+
+    return datasets.DatasetDict(
+        {
+            'train': _make_split(train_size),
+            'validation': _make_split(val_size),
+            'test': _make_split(test_size),
+        }
+    )
 
 
 class DataModule:
@@ -37,6 +74,7 @@ class DataModule:
         imbalance_reverse: bool = False,
         fairness_imbalance_class: int = None,
         cache_transforms: bool = False,
+        device: torch.device | None = None,
     ):
 
         self.dataset_name = dataset_name
@@ -60,6 +98,7 @@ class DataModule:
         self._imbalance_reverse = imbalance_reverse
         self._fairness_imbalance_class = fairness_imbalance_class
         self._cache_transforms = cache_transforms
+        self.device = device or torch.device('cuda')
 
         self._dataloaders = {
             'train': None,
@@ -177,20 +216,20 @@ class DataModule:
                 raise ValueError('Cannot reverse imbalance for fairness style imbalanced dataset.')
 
             if torch.distributed.get_rank() == 0:
-                log.info("Creating fairness imbalanced train set..")
+                log.info('Creating fairness imbalanced train set..')
                 self.train_dataset = self._get_fairness_imbalanced_subset(
                     self.train_dataset
                 )
 
             if torch.distributed.get_rank() == 0:
-                log.info("Creating fairness imbalanced validation set..")
+                log.info('Creating fairness imbalanced validation set..')
                 self.val_dataset = self._get_fairness_imbalanced_subset(
                     self.val_dataset
                 )
 
             if torch.distributed.get_rank() == 0:
                 log.info(
-                    f"We will not create fairness imbalanced test sets. Size of test set: {len(self.test_dataset)}"
+                    f'We will not create fairness imbalanced test sets. Size of test set: {len(self.test_dataset)}'
                 )
 
         # if subset of dataset is requested, we'll do stratified sampling
@@ -240,11 +279,17 @@ class DataModule:
             self._apply_transforms_to_datasets()
 
     def _load_datasets(self):
-        """Load the datasets to memory."""
+        '''Load the datasets to memory.'''
         if torch.distributed.get_rank() == 0:
-            log.info(f'Loading dataset "{self.dataset_name}" from Huggingface datasets.')
+            log.info(f'Loading dataset {self.dataset_name} from Huggingface datasets.')
 
-        dataset_splits = datasets.load_dataset(self.dataset_name)
+        use_fake = os.getenv('DPDL_FAKE_DATASET') == '1' and self.dataset_name == 'fake'
+        if use_fake:
+            if torch.distributed.get_rank() == 0:
+                log.info('Using fake dataset for testing.')
+            dataset_splits = _make_fake_image_splits(seed=self.seed)
+        else:
+            dataset_splits = datasets.load_dataset(self.dataset_name)
 
         # Set dataset label fields based on the training split
         self._set_dataset_label_fields(dataset_splits)
@@ -524,7 +569,7 @@ class DataModule:
 
         test_size = self.shots * self.num_classes
 
-        # Special case: `train_test_split` is unable to "split" if
+        # Special case: `train_test_split` is unable to 'split' if
         # the requested split size equals the dataset size. Also,
         # for small datasets we request more samples than exist.
         if test_size >= len(dataset):
@@ -546,7 +591,7 @@ class DataModule:
         return subset
 
     def _get_imbalanced_subset(self, dataset, reverse=False):
-        """
+        '''
         Creates an imbalanced subset using an exponential distribution.
 
         https://github.com/richardaecn/class-balanced-loss/blob/1d7857208a2abc03d84e35a9d5383af8225d4b4d/src/data_utils.py#L93-L115
@@ -554,7 +599,7 @@ class DataModule:
         If reverse is True, the class distribution is inverted:
           - The class that originally gets the most samples now gets the least,
           - And vice versa.
-        """
+        '''
         if not self._imbalance_factor:
             raise ValueError('Imbalance factor must be provided for creating an imbalanced dataset.')
 
@@ -600,9 +645,9 @@ class DataModule:
         return sampled_dataset
 
     def _get_fairness_imbalanced_subset(self, dataset):
-        """
+        '''
         Creates an imbalanced subset with one class having less examples than the others.
-        """
+        '''
         if not self._fairness_imbalance_class:
             raise ValueError('Fairness imbalance class must be provided for creating an imbalanced dataset.')
 
@@ -657,7 +702,7 @@ class ImageDataModule(DataModule):
         super().__init__(**kwargs)
 
     def cache_features(self, model):
-        """Cache features for the train, validation, and test datasets using the provided model."""
+        '''Cache features for the train, validation, and test datasets using the provided model.'''
 
         if torch.distributed.get_rank() == 0:
             log.info('Feature caching enabled, caching features.')
@@ -672,7 +717,7 @@ class ImageDataModule(DataModule):
 
             return examples
 
-        model = model.cuda()
+        model = model.to(self.device)
         _extract_features_fn = partial(_extract_features, model, self._image_field)
 
         if torch.distributed.get_rank() == 0:
@@ -680,7 +725,9 @@ class ImageDataModule(DataModule):
 
         datasets_map_bs = 512
 
-        self.train_dataset = self.train_dataset.with_format('torch', device='cuda').map(
+        device_str = 'cuda' if self.device.type == 'cuda' else 'cpu'
+
+        self.train_dataset = self.train_dataset.with_format('torch', device=device_str).map(
             _extract_features_fn,
             batched=True,
             batch_size=datasets_map_bs,
@@ -691,7 +738,7 @@ class ImageDataModule(DataModule):
         if torch.distributed.get_rank() == 0:
             log.info(f' - Processing {len(self.val_dataset)} examples in the validation dataset.')
 
-        self.val_dataset = self.val_dataset.with_format('torch', device='cuda').map(
+        self.val_dataset = self.val_dataset.with_format('torch', device=device_str).map(
             _extract_features_fn,
             batched=True,
             batch_size=datasets_map_bs,
@@ -703,7 +750,7 @@ class ImageDataModule(DataModule):
             if torch.distributed.get_rank() == 0:
                 log.info(f' - Processing {len(self.test_dataset)} examples in the test dataset.')
 
-            self.test_dataset = self.test_dataset.with_format('torch', device='cuda').map(
+            self.test_dataset = self.test_dataset.with_format('torch', device=device_str).map(
                 _extract_features_fn,
                 batched=True,
                 batch_size=datasets_map_bs,
@@ -852,6 +899,7 @@ class DataModuleFactory:
     def get_datamodule(
         configuration: Configuration,
         hyperparams: Hyperparameters,
+        device: torch.device,
     ) -> DataModule:
 
         if getattr(configuration, 'llm', False):
@@ -879,6 +927,7 @@ class DataModuleFactory:
                 fairness_imbalance_class=configuration.fairness_imbalance_class,
                 cache_transforms=False,  # no image transforms for text
                 split_seed=configuration.split_seed,
+                device=device,
             )
 
         return ImageDataModule(
@@ -901,16 +950,17 @@ class DataModuleFactory:
             fairness_imbalance_class=configuration.fairness_imbalance_class,
             cache_transforms=configuration.cache_dataset_transforms,
             split_seed=configuration.split_seed,
+            device=device,
         )
 
 
 class NLPDataModule(DataModule):
-    """DataModule specialized for NLP tasks.
+    '''DataModule specialized for NLP tasks.
     - Detect text fields (string features) automatically if they are not specified.
     - Collate function returning (tokenized_batch_dict, labels_tensor).
-      e.g., tokenized_batch_dict = {"input_ids": torch.Tensor(batch_size, seq_len),
-                                    "attention_mask": torch.Tensor(batch_size, seq_len)}
-    """
+      e.g., tokenized_batch_dict = {'input_ids': torch.Tensor(batch_size, seq_len),
+                                    'attention_mask': torch.Tensor(batch_size, seq_len)}
+    '''
 
     def __init__(
         self, text_fields=None, max_length: int = 64, task: str = None, **kwargs
@@ -921,25 +971,25 @@ class NLPDataModule(DataModule):
         super().__init__(**kwargs)
 
     def _load_datasets(self):
-        """Load the datasets to memory."""
+        '''Load the datasets to memory.'''
         if torch.distributed.get_rank() == 0:
             log.info(
-                f'Loading dataset "{self.dataset_name}" from Huggingface datasets.'
+                f'Loading dataset {self.dataset_name} from Huggingface datasets.'
             )
 
-        if self.dataset_name == "wikitext":
+        if self.dataset_name == 'wikitext':
             dataset_splits = datasets.load_dataset(
-                self.dataset_name, "wikitext-2-raw-v1"
+                self.dataset_name, 'wikitext-2-raw-v1'
             )
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
-        if self.task not in ["CausalLM", "InstructLM"]:
+        if self.task not in ['CausalLM', 'InstructLM']:
             # Set dataset label fields based on the training split
             self._set_dataset_label_fields(dataset_splits)
 
             self._detect_text_fields(
-                dataset_splits["train"]
+                dataset_splits['train']
             )  # decide which text column(s) to use
 
             # Make sure the dataset label field is of type ClassLabel
@@ -948,27 +998,27 @@ class NLPDataModule(DataModule):
             # Automatically determine the number of classes
             # NB: This can be done if the label is of type ClassLabel
             self.num_classes = (
-                dataset_splits["train"].features[self._label_field].num_classes
+                dataset_splits['train'].features[self._label_field].num_classes
             )
 
             if torch.distributed.get_rank() == 0:
-                log.info(f"Determined the number of classes to be {self.num_classes}.")
+                log.info(f'Determined the number of classes to be {self.num_classes}.')
 
         else:
             self._detect_text_fields(
-                dataset_splits["train"]
+                dataset_splits['train']
             )  # decide which text column(s) to use
             self._dataset_splits = dataset_splits
 
     def _set_dataset_label_fields(self, dataset_splits):
         if torch.distributed.get_rank() == 0:
-            log.info("Setting dataset label field (LLM mode).")
-        self._set_label_field(dataset_splits["train"])  # find the label column
+            log.info('Setting dataset label field (LLM mode).')
+        self._set_label_field(dataset_splits['train'])  # find the label column
 
     def _detect_text_fields(self, dataset):
         if self._text_fields:
             if torch.distributed.get_rank() == 0:
-                log.info(f"Using manually provided text fields: {self._text_fields}")
+                log.info(f'Using manually provided text fields: {self._text_fields}')
 
             return
 
@@ -977,10 +1027,10 @@ class NLPDataModule(DataModule):
         self._text_fields = keys[:1]
 
         if torch.distributed.get_rank() == 0:
-            log.info(f"Detected text fields: {self._text_fields}")
+            log.info(f'Detected text fields: {self._text_fields}')
 
         if not self._text_fields:
-            raise ValueError("Could not determine any text field for NLP dataset.")
+            raise ValueError('Could not determine any text field for NLP dataset.')
 
     # skip image transforms and set custom dataloaders
     def initialize(self, tokenizer):
@@ -988,12 +1038,12 @@ class NLPDataModule(DataModule):
 
         if self.tokenizer.pad_token is None:
             raise ValueError(
-                "NLPDataModule received a tokenizer without pad_token. "
-                "Make sure HuggingFace model setup sets tokenizer.pad_token and model.config.pad_token_id."
+                'NLPDataModule received a tokenizer without pad_token. '
+                'Make sure HuggingFace model setup sets tokenizer.pad_token and model.config.pad_token_id.'
             )
 
         if torch.distributed.get_rank() == 0:
-            log.info("Initializing NLPDataModule datasets...")
+            log.info('Initializing NLPDataModule datasets...')
             self._initialize_datasets()
             torch.distributed.barrier()
         else:
@@ -1010,7 +1060,7 @@ class NLPDataModule(DataModule):
 
             if torch.distributed.get_rank() == 0:
                 log.info(
-                    f"Sample rate is {self.sample_rate}, setting batch size to: {batch_size}."
+                    f'Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.'
                 )
 
             self.batch_size = batch_size
@@ -1023,7 +1073,7 @@ class NLPDataModule(DataModule):
 
         collate_fn = self._make_text_collate()
 
-        self._dataloaders["train"] = torch.utils.data.DataLoader(
+        self._dataloaders['train'] = torch.utils.data.DataLoader(
             self.train_dataset,
             sampler=self.train_sampler,
             batch_size=self.local_batch_size,
@@ -1034,7 +1084,7 @@ class NLPDataModule(DataModule):
             worker_init_fn=self.seed_worker,
         )
 
-        self._dataloaders["valid"] = torch.utils.data.DataLoader(
+        self._dataloaders['valid'] = torch.utils.data.DataLoader(
             self.val_dataset,
             sampler=self.val_sampler,
             batch_size=self.physical_batch_size,
@@ -1043,15 +1093,15 @@ class NLPDataModule(DataModule):
         )
 
         if self.test_dataset:
-            self._dataloaders["test"] = torch.utils.data.DataLoader(
+            self._dataloaders['test'] = torch.utils.data.DataLoader(
                 self.test_dataset,
                 sampler=self.test_sampler,
                 batch_size=self.physical_batch_size,
                 collate_fn=collate_fn,
                 num_workers=self.num_workers,
             )
-            if self.task == "InstructLM":
-                self._dataloaders["sample"] = torch.utils.data.DataLoader(
+            if self.task == 'InstructLM':
+                self._dataloaders['sample'] = torch.utils.data.DataLoader(
                     self.test_dataset,
                     sampler=self.test_sampler,
                     batch_size=self.physical_batch_size,
@@ -1070,7 +1120,7 @@ class NLPDataModule(DataModule):
 
         def collate(batch):
             texts = [
-                " ".join(str(sample[field]) for field in text_fields)
+                ' '.join(str(sample[field]) for field in text_fields)
                 for sample in batch
             ]
 
@@ -1079,16 +1129,16 @@ class NLPDataModule(DataModule):
                 padding=True,
                 truncation=True,
                 max_length=max_len,
-                return_tensors="pt",
+                return_tensors='pt',
             )
 
-            if task == "CausalLM":
-                labels = tokenized["input_ids"].clone()
+            if task == 'CausalLM':
+                labels = tokenized['input_ids'].clone()
                 labels[
                     labels == tokenizer.pad_token_id
                 ] = -100  # Padding tokens are ignored in loss computation.
-                tokenized["labels"] = labels
-            elif task == "SequenceClassification":
+                tokenized['labels'] = labels
+            elif task == 'SequenceClassification':
                 labels = torch.tensor(
                     [sample[label_field] for sample in batch], dtype=torch.long
                 )
@@ -1098,8 +1148,8 @@ class NLPDataModule(DataModule):
             conversations = [
                 tokenizer.apply_chat_template(
                     [
-                        {"role": "user", "content": sample["question"]},
-                        {"role": "assistant", "content": sample["answer"]},
+                        {'role': 'user', 'content': sample['question']},
+                        {'role': 'assistant', 'content': sample['answer']},
                     ],
                     tokenize=False,
                     add_generation_prompt=False,
@@ -1113,7 +1163,7 @@ class NLPDataModule(DataModule):
                 padding=True,
                 truncation=True,
                 max_length=max_len,
-                return_tensors="pt",
+                return_tensors='pt',
                 add_special_tokens=True,
             )
 
@@ -1123,7 +1173,7 @@ class NLPDataModule(DataModule):
             # Create labels with list comprehension
             user_texts = [
                 tokenizer.apply_chat_template(
-                    [{"role": "user", "content": q["question"]}],
+                    [{'role': 'user', 'content': q['question']}],
                     tokenize=False,
                     add_generation_prompt=True,
                 )
@@ -1135,9 +1185,9 @@ class NLPDataModule(DataModule):
             )
 
             # Mask user parts
-            labels = tokenized["input_ids"].clone()
+            labels = tokenized['input_ids'].clone()
 
-            for i, user_ids in enumerate(user_tokenized["input_ids"]):
+            for i, user_ids in enumerate(user_tokenized['input_ids']):
                 user_len = len(user_ids)
                 labels[i, :user_len] = -100
 
@@ -1145,16 +1195,16 @@ class NLPDataModule(DataModule):
                 labels == tokenizer.pad_token_id
             ] = -100  # Padding tokens are ignored in loss computation.
 
-            tokenized["labels"] = labels
+            tokenized['labels'] = labels
 
             return tokenized, labels
 
-        return collate_instruct_function if task == "InstructLM" else collate
+        return collate_instruct_function if task == 'InstructLM' else collate
 
     def tokenize_for_sample(self, batch):
         conversations = [
             self.tokenizer.apply_chat_template(
-                [{"role": "user", "content": sample["question"]}],
+                [{'role': 'user', 'content': sample['question']}],
                 tokenize=False,
                 add_generation_prompt=True,
             )
@@ -1166,7 +1216,7 @@ class NLPDataModule(DataModule):
             padding=True,
             truncation=True,
             max_length=self.max_length,
-            return_tensors="pt",
+            return_tensors='pt',
             add_special_tokens=True,
         )
 

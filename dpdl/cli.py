@@ -354,6 +354,14 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        device: Annotated[
+            str,
+            typer.Option(
+                help="Device to run on ('cuda', 'cpu', or 'auto')",
+                rich_help_panel='Runtime options',
+                envvar='DPDL_DEVICE',
+            )
+        ] = 'cuda',
         record_clipping: Annotated[
             Optional[bool],
             typer.Option(

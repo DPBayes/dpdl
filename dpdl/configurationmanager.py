@@ -108,6 +108,7 @@ class Configuration(BaseModel):
     checkpoints_dir: str = None
     experiment_name: str = 'default-experiment'
     overwrite_experiment: bool = False
+    device: Literal['cuda', 'cpu', 'auto'] = 'cuda'
     clipping_mode: str = 'flat'
     secure_mode: bool = False
     accountant: str = 'prv'
@@ -243,6 +244,7 @@ class Configuration(BaseModel):
             ('Log dir', self.log_dir),
             ('Experiment name', self.experiment_name),
             ('Overwrite experiment', self.overwrite_experiment),
+            ('Device', self.device),
             ('Shots', self.shots),
             ('Use stratified sampling for few-shot dataset', self.stratify_shots),
             ('Subset size', self.subset_size),

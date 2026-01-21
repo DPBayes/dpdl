@@ -16,6 +16,7 @@ from peft import PeftModel
 from .callbacks.callback_factory import CallbackFactory, CallbackHandler
 from .configurationmanager import Configuration, ConfigurationManager, Hyperparameters
 from .datamodules import DataModule, DataModuleFactory
+from .device import resolve_device
 from .loss_factory import LossFactory
 from .metrics_factory import MetricsFactory
 from .models.model_base import ModelBase
@@ -45,6 +46,7 @@ class Trainer:
         callback_handler: CallbackHandler | None = None,
         peft: str | None = None,
         task: str | None = None,
+        device: torch.device | None = None,
     ):
 
         self.model = model
@@ -57,7 +59,9 @@ class Trainer:
         self.physical_batch_size = physical_batch_size
         self.peft = peft
         self.task = task
+        self.device = device or torch.device('cuda')
         self.adapter = adapter
+        self.adapter.device = self.device
 
         if not callback_handler:
             self.callback_handler = CallbackHandler()
@@ -70,7 +74,7 @@ class Trainer:
         self.setup()
 
     def setup(self):
-        self.model = self.model.cuda()
+        self.model = self.model.to(self.device)
         self.model = torch.nn.parallel.DistributedDataParallel(self.model)
 
     def fit(self):
@@ -84,7 +88,6 @@ class Trainer:
         self.callback_handler.call('on_train_end', self)
 
     def _fit_epochs(self):
-        self.device = torch.cuda.current_device()
         for epoch in range(self.epochs):
             self.fit_one_epoch(epoch)
 
@@ -452,11 +455,11 @@ class DifferentiallyPrivateTrainer(Trainer):
         return True
 
     def setup(self):
-        noise_generator = torch.Generator(device=torch.cuda.current_device())
+        noise_generator = torch.Generator(device=self.device)
         if self.seed:
             noise_generator.manual_seed(self.seed)
 
-        self.model = self.model.cuda()
+        self.model = self.model.to(self.device)
 
         # let's be distributed by default and wrap the model for Opacus DDP.
         # DifferentiallyPrivateDistributedDataParallel is actually a no-op in Opacus, but
@@ -718,8 +721,11 @@ class TaskAdapter:
 
         Handles per-task splitting, moving to device, forward/loss/metrics calls.
     """
+    def __init__(self, device: torch.device):
+        self.device = device
+
     def move_to_device(self, X, y=None):
-        device = torch.cuda.current_device()
+        device = self.device
 
         def move(obj):
             if isinstance(obj, Mapping):
@@ -831,19 +837,25 @@ _ADAPTERS = {
 class TrainerFactory:
 
     @staticmethod
-    def _make_adapter(configuration):
+    def _make_adapter(configuration, device):
         task = configuration.task or 'classification'
 
         if task not in _ADAPTERS:
             raise ValueError(f'No adapter for task "{task}"')
 
-        return _ADAPTERS[task]()
+        return _ADAPTERS[task](device)
 
     @staticmethod
     def get_trainer(config_manager: ConfigurationManager) -> Trainer:
+        device = resolve_device(config_manager.configuration.device)
+
         # are we differentially private?
         if config_manager.configuration.privacy:
-            return TrainerFactory._get_differentially_private_trainer(config_manager.configuration, config_manager.hyperparams)
+            return TrainerFactory._get_differentially_private_trainer(
+                config_manager.configuration,
+                config_manager.hyperparams,
+                device,
+            )
 
         # XXX: checkpoint dir??? We should have this from the new save model implementation?
         if config_manager.configuration.checkpoint_step_interval is not None:
@@ -853,13 +865,21 @@ class TrainerFactory:
                 'checkpoints',
         )
 
-        return TrainerFactory._get_basic_trainer(config_manager.configuration, config_manager.hyperparams)
+        return TrainerFactory._get_basic_trainer(
+            config_manager.configuration,
+            config_manager.hyperparams,
+            device,
+        )
 
     @staticmethod
-    def _get_basic_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
+    def _get_basic_trainer(
+        configuration: Configuration,
+        hyperparams: Hyperparameters,
+        device: torch.device,
+    ) -> Trainer:
 
         # First create DataModule, it can figure out the number of classes
-        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
+        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, device)
         num_classes = datamodule.get_num_classes()
 
         # Now, setup data, model, and optimizer
@@ -893,12 +913,12 @@ class TrainerFactory:
                 datamodule.cache_features(model)
 
         callback_handler = CallbackHandler(
-            CallbackFactory.get_callbacks(configuration, hyperparams)
+            CallbackFactory.get_callbacks(configuration, hyperparams, device=device)
         )
 
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
-        adapter = TrainerFactory._make_adapter(configuration)
+        adapter = TrainerFactory._make_adapter(configuration, device)
 
         # instantiate a trainer without dp
         trainer = Trainer(
@@ -913,13 +933,18 @@ class TrainerFactory:
             seed=configuration.seed,
             validation_frequency=configuration.validation_frequency,
             peft=configuration.peft,
-            task=configuration.task
+            task=configuration.task,
+            device=device,
         )
 
         return trainer
 
     @staticmethod
-    def _get_differentially_private_trainer(configuration: Configuration, hyperparams: Hyperparameters) -> Trainer:
+    def _get_differentially_private_trainer(
+        configuration: Configuration,
+        hyperparams: Hyperparameters,
+        device: torch.device,
+    ) -> Trainer:
         # Target delta calculation: A common heuristic is to use 1/N', with N'
         # being the size of the dataset rounded up to the nearest power of 10.
         # To avoid too large values of delta, let's pick a somewhat sensible
@@ -947,7 +972,7 @@ class TrainerFactory:
             return target_delta, target_epsilon
 
         # First initialize the DataModule, it will know about the number of classes
-        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
+        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, device)
         num_classes = datamodule.get_num_classes()
 
         # Now, setup data, model, and optimizer
@@ -980,13 +1005,13 @@ class TrainerFactory:
                 datamodule.cache_features(model)
 
         callback_handler = CallbackHandler(
-            CallbackFactory.get_callbacks(configuration, hyperparams)
+            CallbackFactory.get_callbacks(configuration, hyperparams, device=device)
         )
 
         target_delta, target_epsilon = _get_target_privacy_params(hyperparams)
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
-        adapter = TrainerFactory._make_adapter(configuration)
+        adapter = TrainerFactory._make_adapter(configuration, device)
 
         # instantiate a differentialy private trained
         trainer = DifferentiallyPrivateTrainer(
@@ -1013,7 +1038,8 @@ class TrainerFactory:
             callback_handler=callback_handler,
             validation_frequency=configuration.validation_frequency,
             peft=configuration.peft,
-            task=configuration.task
+            task=configuration.task,
+            device=device,
         )
 
         return trainer
