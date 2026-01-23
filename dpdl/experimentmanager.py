@@ -268,6 +268,13 @@ def _log_gpus(config_manager):
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
+    if config_manager.configuration.device == 'cpu' or not torch.cuda.is_available():
+        with safe_open(f'{full_log_dir}/gpu_type', 'w') as fh:
+            fh.write('cpu\n')
+        with safe_open(f'{full_log_dir}/gpu_count', 'w') as fh:
+            fh.write('0\n')
+        return
+
     with safe_open(f'{full_log_dir}/gpu_type', 'w') as fh:
         gpu_name = torch.cuda.get_device_name()
         fh.write(f'{gpu_name}\n')
