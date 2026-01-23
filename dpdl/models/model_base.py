@@ -148,6 +148,9 @@ class ModelBase(torch.nn.Module):
 
             return
 
+        if map_location == 'cuda' and not torch.cuda.is_available():
+            map_location = 'cpu'
+
         ckpt = torch.load(fpath, map_location=map_location)
 
         # extract a plausible state_dict

@@ -1,6 +1,7 @@
 import pytest
 
 yaml = pytest.importorskip('yaml')
+pytest.importorskip('opacus')
 
 from dpdl.hyperparameteroptimizer import HyperparameterOptimizer
 

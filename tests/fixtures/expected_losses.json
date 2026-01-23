@@ -1,0 +1,8 @@
+{
+  "train_non_dp": 0.6922356,
+  "train_dp": 0.748920,
+  "peft_head_only": 0.693805,
+  "peft_film": 0.764640,
+  "hpo_non_dp_trial0": 0.695139,
+  "hpo_dp_trial0": 0.704730
+}
