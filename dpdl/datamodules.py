@@ -166,6 +166,32 @@ class DataModule:
 
         self._initialize_dataloaders()
 
+    def initialize_datasets_only(self):
+        """
+        Initialize dataset splits without building dataloaders.
+
+        This is useful for lightweight queries like max batch size, where we
+        only need dataset lengths and want to avoid model/transforms setup.
+        """
+        if torch.distributed.get_rank() == 0:
+            self._initialize_datasets()
+            torch.distributed.barrier()
+        else:
+            torch.distributed.barrier()
+            self._initialize_datasets()
+
+        # Map `-1` to full batch
+        if self.batch_size == -1:
+            self.batch_size = len(self.train_dataset)
+
+        if self.sample_rate and self.sample_rate > 0:
+            batch_size = int(self.sample_rate * len(self.train_dataset))
+
+            if torch.distributed.get_rank() == 0:
+                log.info(f'Sample rate is {self.sample_rate}, setting batch size to: {batch_size}.')
+
+            self.batch_size = batch_size
+
     def get_num_classes(self):
         return self.num_classes
 

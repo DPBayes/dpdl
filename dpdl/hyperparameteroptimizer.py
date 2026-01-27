@@ -12,10 +12,8 @@ from functools import partial
 from .trainer import TrainerFactory
 from .device import resolve_device
 from .datamodules import DataModuleFactory
-from .models.model_factory import ModelFactory
 from .configurationmanager import ConfigurationManager
 from .experimentmanager import save_study, log_final_epsilon, save_hpo_metrics
-from .loss_factory import LossFactory
 
 log = logging.getLogger(__name__)
 
@@ -426,19 +424,7 @@ class HyperparameterOptimizer:
             config_manager.hyperparams,
             device,
         )
-        num_classes = datamodule.get_num_classes()
-
-        # Now, setup data, model, and optimizer
-        loss_fn = LossFactory.get_loss(config_manager.configuration)
-
-        _, transforms, _ = ModelFactory.get_model(
-            config_manager.configuration,
-            config_manager.hyperparams,
-            num_classes,
-            loss_fn,
-        )
-
-        datamodule.initialize(transforms)
+        datamodule.initialize_datasets_only()
         max_batch_size = datamodule.get_dataset_size()
 
         return max_batch_size
