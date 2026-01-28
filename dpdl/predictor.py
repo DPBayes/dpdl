@@ -257,7 +257,7 @@ class PredictorFactory:
 
         predictor = Predictor(
             trainer=trainer,
-            dataset_split=configuration.dataset_split,
+            dataset_split=configuration.predict_dataset_split,
             config_manager=config_manager,
             save_gradient_data=configuration.prediction_save_gradient_data,
         )
