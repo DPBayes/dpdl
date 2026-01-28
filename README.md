@@ -31,7 +31,13 @@ pip install -e .
 Some features (`--use-steps` and `--normalize-clipping`) require our fork of Opacus:
 
 ```
-pip install -e "git+https://github.com/DPBayes/opacus"
+pip install "git+https://github.com/DPBayes/opacus.git"
+```
+
+Otherwise, the official Opacus can be installed by
+
+```
+pip install opacus
 ```
 
 ### Test your installation
