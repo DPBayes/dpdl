@@ -22,7 +22,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 
-# Install PyTorch for your platform/CUDA/ROCm first.
+# You might want to install PyTorch for your platform/CUDA/ROCm first.
 # See https://pytorch.org/get-started/locally/
 
 pip install -e .
@@ -46,7 +46,7 @@ pytest -m "not gpu"
 To run GPU smoke tests (requires CUDA and a visible GPU):
 
 ```
-DPDL_RUN_GPU_TESTS=1 pytest -m gpu
+pytest -m gpu
 ```
 
 Optional: parallelize tests (if your machine can handle it):
