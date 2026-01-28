@@ -15,7 +15,16 @@
 
 ### Install from source
 
-Create and activate a virtual environment, then install DPDL:
+Clone the repository:
+
+```
+git clone --branch joss --single-branch --depth 1 git@github.com:PROBIC/dpdl.git
+cd ./dpdl
+```
+
+Create and activate a virtual environment, then install DPDL.
+
+Note that you might want to use `--system-site-packages`, if you are installing DPDL on your cluster.
 
 ```
 python -m venv .venv
