@@ -32,7 +32,7 @@ def test_integration_train_predict(tmp_path: Path) -> None:
         '4',
         '--num-workers',
         '0',
-        '--dataset-split',
+        '--predict-dataset-split',
         'test',
         '--seed',
         '42',
