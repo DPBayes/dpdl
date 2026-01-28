@@ -62,8 +62,10 @@ class Hyperparameters(BaseModel):
         epochs = values.get('epochs')
         total_steps = values.get('total_steps')
 
-        if not any([epochs, total_steps]):
-            raise ValueError('Epochs is not set! Hint: Add `--epochs X` parameter to CLI...')
+        if epochs is None and total_steps is None:
+            raise ValueError(
+                'Missing training length: set `--epochs` or use `--use-steps` with `--total-steps`.'
+            )
 
         return values
 
@@ -94,21 +96,21 @@ class Hyperparameters(BaseModel):
 class Configuration(BaseModel):
     command: Literal['train', 'optimize', 'predict', 'show-layers', 'train-predict']
     privacy: bool = True
-    model_name: str = 'resnet50'
+    model_name: str = 'resnetv2_50x1_bit.goog_in21k'
     loss_function: str = 'CrossEntropyLoss'
     optimizer: str = 'Adam'
-    dataset_name: str = 'cifar10'
+    dataset_name: str = 'uoft-cs/cifar10'
     llm: bool = False
-    task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM', 'InstructLM' ]
+    task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM', 'InstructLM' ] = 'ImageClassification'
     physical_batch_size: int = 40
-    num_workers: int = 8
+    num_workers: int = 7
     validation_frequency: float = 1.0
     seed: int = 0
     log_dir: str = 'logs'
     checkpoints_dir: str = None
-    experiment_name: str = 'default-experiment'
+    experiment_name: str = 'default'
     overwrite_experiment: bool = False
-    device: Literal['cuda', 'cpu', 'auto'] = 'cuda'
+    device: Literal['cuda', 'cpu', 'auto'] = 'auto'
     clipping_mode: str = 'flat'
     secure_mode: bool = False
     accountant: str = 'prv'
@@ -124,11 +126,11 @@ class Configuration(BaseModel):
     optuna_journal: str = 'optuna.journal'
     optuna_resume: bool = False
     optuna_sampler: str = 'BoTorchSampler'
-    subset_size: Optional[float]
-    shots: Optional[int]
+    subset_size: Optional[float] = 1.0
+    shots: Optional[int] = None
     stratify_shots: Optional[bool] = True
     zero_head: bool = False
-    peft: Optional[Literal['lora', 'film', 'head-only']]
+    peft: Optional[Literal['lora', 'film', 'head-only']] = None
     lora_rank: Optional[int] = None
     pretrained: bool = True
     cache_features: Optional[bool] = False
@@ -159,7 +161,7 @@ class Configuration(BaseModel):
     checkpoint_step_interval: Optional[int] = None
     disable_epsilon_logging: Optional[bool] = False
     split_seed: Optional[int] = 42
-    dataset_split: Optional[str] = None
+    predict_dataset_split: Optional[str] = 'test'
     prediction_save_gradient_data: Optional[bool] = False
     load_in_4bit: bool = False
 
@@ -299,7 +301,7 @@ class Configuration(BaseModel):
             attributes.extend(optuna_attributes)
         elif self.command == 'predict':
             predict_attributes = [
-                ('Dataset split', self.dataset_split),
+                ('Prediction dataset split', self.predict_dataset_split),
                 ('Save gradient information when predicting', self.prediction_save_gradient_data),
             ]
             attributes.extend(predict_attributes)

@@ -40,14 +40,14 @@ def cli(
             )
         ] = False,
         epochs: Annotated[
-            int,
+            Optional[int],
             typer.Option(
                 help='Number of epochs to train',
                 rich_help_panel='Training options',
             )
-        ] = 0,
+        ] = None,
         total_steps: Annotated[
-            int,
+            Optional[int],
             typer.Option(
                 help='Total number of gradient updates',
                 rich_help_panel='Training options',
@@ -241,7 +241,7 @@ def cli(
                 help='Dataset name',
                 rich_help_panel='Dataset options',
             )
-        ] = 'cifar10',
+        ] = 'uoft-cs/cifar10',
         subset_size: Annotated[
             float,
             typer.Option(
@@ -361,7 +361,7 @@ def cli(
                 rich_help_panel='Runtime options',
                 envvar='DPDL_DEVICE',
             )
-        ] = 'cuda',
+        ] = 'auto',
         record_clipping: Annotated[
             Optional[bool],
             typer.Option(
@@ -572,11 +572,12 @@ def cli(
                 rich_help_panel='',
             )
         ] = False,
-        dataset_split: Annotated[
+        predict_dataset_split: Annotated[
             Optional[str],
             typer.Option(
-                help='Dataset split to use for inference',
-                rich_help_panel='Inference options',
+                '--predict-dataset-split',
+                help='Dataset split to use for prediction',
+                rich_help_panel='Prediction options',
             )
         ] = 'test',
     ):
