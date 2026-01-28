@@ -9,8 +9,6 @@ torch = pytest.importorskip('torch')
 
 
 def _should_skip_gpu_tests() -> bool:
-    if os.environ.get('DPDL_RUN_GPU_TESTS') != '1':
-        return True
     return not torch.cuda.is_available()
 
 
@@ -28,7 +26,7 @@ def _run_smoke(cmd: list[str], env: dict, cwd: Path) -> None:
 @pytest.mark.gpu
 def test_smoke_train_non_dp(tmp_path: Path) -> None:
     if _should_skip_gpu_tests():
-        pytest.skip('GPU smoke tests disabled or CUDA not available.')
+        pytest.skip('CUDA not available.')
 
     repo_root = Path(__file__).resolve().parents[1]
     env = os.environ.copy()
@@ -72,7 +70,7 @@ def test_smoke_train_non_dp(tmp_path: Path) -> None:
 @pytest.mark.gpu
 def test_smoke_train_dp(tmp_path: Path) -> None:
     if _should_skip_gpu_tests():
-        pytest.skip('GPU smoke tests disabled or CUDA not available.')
+        pytest.skip('CUDA not available.')
 
     repo_root = Path(__file__).resolve().parents[1]
     env = os.environ.copy()
