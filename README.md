@@ -49,12 +49,6 @@ To run GPU smoke tests (requires CUDA and a visible GPU):
 pytest -m gpu
 ```
 
-Optional: parallelize tests (if your machine can handle it):
-
-```
-pytest -n auto -m "not gpu"
-```
-
 ### Command line usage
 
 The entry point is [run.py](run.py) (also installed as the `dpdl` CLI).
