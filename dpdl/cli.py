@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import torch
 import typer
+from pydantic import ValidationError
 from typing_extensions import Annotated
 from pathlib import Path
 
@@ -23,6 +24,32 @@ from .trainer import TrainerFactory
 from .utils import seed_everything
 
 log = logging.getLogger(__name__)
+
+
+def _format_validation_error(exc: ValidationError) -> str:
+    """
+    Format a clean message of possibly multiple validation errors.
+    """
+
+    errors = exc.errors() or []
+    if not errors:
+        return str(exc)
+
+    messages = []
+    for err in errors:
+        msg = err.get('msg', str(exc))
+        loc = err.get('loc') or ()
+        loc_parts = []
+        for item in loc:
+            if item == '__root__':
+                continue
+            loc_parts.append(str(item))
+        if loc_parts:
+            messages.append(f"{'.'.join(loc_parts)}: {msg}")
+        else:
+            messages.append(msg)
+
+    return '; '.join(messages)
 
 def cli(
         ctx: typer.Context,
@@ -590,7 +617,14 @@ def cli(
         'train-predict': run_train_and_predict,
     }
 
-    config_manager = ConfigurationManager(ctx.params)
+    # Throw a clean error to typer instead of outputting a stacktrace
+    try:
+        config_manager = ConfigurationManager(ctx.params)
+    except ValidationError as exc:
+        raise typer.BadParameter(_format_validation_error(exc))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+
     command = config_manager.get_command()
 
     if command == 'show-layers':
