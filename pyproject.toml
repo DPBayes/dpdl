@@ -22,7 +22,7 @@ dependencies = [
   "botorch",
   "torchmetrics",
   "pydantic",
-  "typer[all]",
+  "typer",
   "multiprocess",
   "numpy",
   "pandas",
@@ -32,6 +32,12 @@ dependencies = [
 
 [project.scripts]
 dpdl = "run:main"
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-xdist",
+]
 
 [tool.setuptools]
 py-modules = ["run"]
