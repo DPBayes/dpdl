@@ -17,7 +17,7 @@
 
 Clone the repository:
 
-```
+```bash
 git clone --branch joss --single-branch --depth 1 git@github.com:PROBIC/dpdl.git
 cd ./dpdl
 ```
@@ -26,7 +26,7 @@ Create and activate a virtual environment, then install DPDL.
 
 Note that you might want to use `--system-site-packages`, if you are installing DPDL on your cluster.
 
-```
+```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -U pip
@@ -39,13 +39,13 @@ pip install -e .
 
 Some features (`--use-steps` and `--normalize-clipping`) require our fork of Opacus:
 
-```
+```bash
 pip install "git+https://github.com/DPBayes/opacus.git"
 ```
 
 Otherwise, the official Opacus can be installed by
 
-```
+```bash
 pip install opacus
 ```
 
@@ -53,14 +53,14 @@ pip install opacus
 
 Run the CPU-only test suite (uses the fake dataset; no downloads):
 
-```
+```bash
 pip install -e ".[test]"
 pytest -m "not gpu"
 ```
 
 To run GPU smoke tests (requires CUDA and a visible GPU):
 
-```
+```bash
 pytest -m gpu
 ```
 
@@ -74,13 +74,13 @@ At minimum, specify `--epochs` (or `--use-steps` with `--total-steps`).
 
 Real-world example (CIFAR-10 + ResNetV2; downloads data and weights):
 
-```
+```bash
 dpdl train --epochs 10 --dataset-name uoft-cs/cifar10 --model-name resnetv2_50x1_bit.goog_in21k --device auto
 ```
 
 Quick CPU sanity check (no downloads; uses the fake dataset):
 
-```
+```bash
 DPDL_FAKE_DATASET=1 dpdl train --epochs 1 --dataset-name fake --model-name resnet18 --device cpu --batch-size 64 --physical-batch-size 32 --num-workers 0
 ```
 
