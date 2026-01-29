@@ -48,6 +48,8 @@ PEFT is configured via `--peft MODE`
 
 Please note that LoRA/FiLM require model‑specific patterns and unsupported model names will raise an error until a new config is added in [peft.py](../dpdl/peft.py).
 
+Additionally, the classifier (head) can be initialized to zero using the --zero-head option, following [prior work](https://arxiv.org/abs/2302.01190).
+
 ### Why PEFT can be useful for DP
 
 In DP training, larger numbers of trainable parameters tend to increase average per‑step gradient magnitudes, which in turn increases the scale of injected noise for a fixed clipping bound.
