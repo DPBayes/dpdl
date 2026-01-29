@@ -1,7 +1,7 @@
 # Models and PEFT
 
 In this document, we summarize how DPDL handles models, covering three model sources: [PyTorch Image Models (timm)](https://github.com/huggingface/pytorch-image-models), [HuggingFace](https://huggingface.co/models), and custom.
-Further we describe how to use parameter‑efficient fine‑tuning (PEFT) with the models.
+Further we describe how to use parameter‑efficient fine‑tuning ([PEFT](https://github.com/huggingface/peft)) with the models.
 We aim keeep the document brief and point to code for further details.
 
 ## Overview
@@ -9,7 +9,7 @@ We aim keeep the document brief and point to code for further details.
 Model creation happens in [ModelFactory](../dpdl/models/model_factory.py).
 The main selection logic is:
 - If `--llm` is set, load a HuggingFace model via [HuggingfaceLanguageModel](../dpdl/models/hugging_face_models.py).
-- Otherwise, by default we use `timm` models, unless the model name matches a custom model (e.g., `wrn-<depth>-<width>` or `koskela-net`).
+- Otherwise, by default we use `timm` models, unless the model name matches a custom model (e.g., `wrn-<depth>-<width>` for [WideResNet](https://arxiv.org/abs/1605.07146) or `koskela-net`).
 
 After initilization, we wrap the modesl in [ModelBase](../dpdl/models/model_base.py) what provides a common interface (e.g. loss, metrics, save/load, etc) for the underlying models.
 
@@ -17,7 +17,7 @@ After initilization, we wrap the modesl in [ModelBase](../dpdl/models/model_base
 
 When `--llm` is **not** set and the model name does not match a custom model, [ModelFactory](../dpdl/models/model_factory.py) calls `timm.create_model()` to instatiate the requested model.
 The factory gets the parameters from [ConfigurationManager](../dpdl/callbacks/configurationmanager.py) and creates the model as requested.
-The model requested model is specified with `--model-name` CLI switch and loading pretrained weights is controlled by `--pretrained` switch.
+The model requested model is specified with `--model-name` CLI switch and loading pretrained weights is controlled by `--pretrained`/`--no-pretrained` switch.
 
 ## HuggingFace models (language)
 
@@ -28,25 +28,25 @@ If you need model‑specific behaviors (e.g., special tokenization), consult the
 ## Custom models
 
 DPDL includes a small set of custom models, that have been implemented on a case-by-case needs:
-- [WideResNet] (https://arxiv.org/abs/1605.07146) via name pattern `wrn-<depth>-<width>`.
+- [WideResNet](https://arxiv.org/abs/1605.07146) via name pattern `wrn-<depth>-<width>`.
 - KoskelaNet (used in [this paper](https://arxiv.org/pdf/1809.03832.pdf)) via name `koskela-net`.
 
 Should you need to implement a custom model, use the above implementations as an example.
 In essence:
-- Implement a new module under `dpdl/models/` while following the [ModelBase API]((../dpdl/models/model_base.py).
+- Implement a new module under `dpdl/models/` while following the [ModelBase API](../dpdl/models/model_base.py).
 - Extend `ModelFactory.get_model()` to route to your model.
 
 The name based routing is *a bit hacky*, but we haven't yet come up with a more reasonable method.
 
 ## PEFT (parameter‑efficient fine‑tuning)
 
-We provide an [implementation]((../dpdl/peft.py) for some PEFT models.
+We provide an [implementation](../dpdl/peft.py) for some PEFT models.
 PEFT is configured via `--peft MODE`
 - `lora`: [Low‑rank adapters](https://arxiv.org/abs/2106.09685) for supported timm/HF model families.
 - `film`: [FiLM](https://arxiv.org/abs/1709.07871) parameterization (e.g., train only norm scale/bias plus the head).
 - `head-only`: Train only the (classifier) head.
 
-Please note that LoRA/FiLM require model‑specific patterns and unsupported model names will raise an error until a new config is added in [peft.py]((../dpdl/peft.py).
+Please note that LoRA/FiLM require model‑specific patterns and unsupported model names will raise an error until a new config is added in [peft.py](../dpdl/peft.py).
 
 ### Why PEFT can be useful for DP
 
