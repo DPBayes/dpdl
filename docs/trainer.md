@@ -20,9 +20,9 @@ DPDL uses two trainer paths:
 
 ## Metrics
 
-We support [torchmetrics](https://github.com/Lightning-AI/torchmetrics) through the [metrics module]((../dpdl/metrics_factory.py).
+We support [torchmetrics](https://github.com/Lightning-AI/torchmetrics) through the [metrics module](../dpdl/metrics_factory.py).
 
-Metrics live in the [model]((../dpdl/models/model_base.py) (`train_metrics`, `valid_metrics`, `test_metrics`) and the Trainer(s) update them during different training phases.
+Metrics live in the [model](../dpdl/models/model_base.py) (`train_metrics`, `valid_metrics`, `test_metrics`) and the Trainer(s) update them during different training phases.
 
 ## Task adapters
 
@@ -43,6 +43,8 @@ Should you need to add a new task, implement a new adapter and register it in `_
 The core loop lives in `Trainer.fit()` and chooses between:
 - **Epoch mode**: iterate dataloader for each epoch.
 - **Step mode**: iterate until a target number of optimizer steps is reached.
+
+_Note: Please install [our Opacus fork](https://github.com/DPBayes/opacus) to use the step mode._
 
 When `--use-steps` is enabled, epoch counts are **approximate** and derived from batch size and dataset size.
 This behavior is documented in [Training length and sampling](training-length-and-sampling.md).
@@ -68,4 +70,4 @@ In essence, DP training mode just uses Opacus to wrap the model, optimizer, and 
 ## Callbacks and logging
 
 Callbacks are created by `CallbackFactory` and invoked through `CallbackHandler` (see [callback factory](../dpdl/callbacks/callback_factory.py)) inside the trainer loops.
-For furrther information on hooks and the callback system in general, see [Callback system](callbacks.md).
+For further information on hooks and the callback system in general, see [Callback system](callbacks.md).
