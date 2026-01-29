@@ -4,16 +4,20 @@ DPDL supports both epoch-based and step-based training.
 Under the hood, Opacus uses Poisson sampling, so the number of optimizer updates per epoch is depends from the sampling scheme.
 This section documents how `--use-steps`, `--epochs`, and `--total-steps` interact, why rounding appears in logs, and why this mirrors Opacus behavior.
 
+We will use `S` for steps, `N` for the size of the dataset, `B` for batch sizes.
+
 ## Modes and conversions
+
+Note: Please install [our Opacus fork](https://github.com/DPBayes/opacus) to use the step mode.
 
 - Epoch mode: provide `--epochs E`.
   - DPDL trains for E epochs (full passes through the dataloader).
   - By default Opacus only supports [discrete sample-rates](https://github.com/meta-pytorch/opacus/blob/f17f254ab8f1f1095e8257bf278769d549748bbc/opacus/privacy_engine.py#L408), e.g. `sample_rate = 1 / len(data_loader)`.
-    For standard dataloaders, `len(data_loader) = ceil(N / B)`.
+    For standard dataloaders, `len(data_loader) = ceil(N / B)`. This setting limits the choice of batch size, which will be discussed in detail [later](#sample-rate-discrete-vs-smooth).
 
-- Step mode: provide `--use-steps` and either `--total-steps` or `--epochs`.
+- Step mode: provide `--use-steps`, and then specify the value for either `--total-steps` or `--epochs`.
   - `--use-steps --total-steps S`: DPDL trains for exactly `S` optimizer updates.
-    Opacus sets `sample_rate = batch_size / dataset_size` and the sampler runs for exactly `S` steps.
+    We set `sample_rate = batch_size / dataset_size` and the sampler runs for exactly `S` steps.
   - `--use-steps --epochs E`: DPDL converts epochs to steps and then trains in step mode.
     The conversion is:
 
@@ -24,9 +28,9 @@ total_steps = steps_per_epoch * E
 
 ## Rounding of epochs up in logs when using `--use-steps`
 
-When step-based training is enabled, DPDL reconstructs an "approximate epoch" for logging and callbacks.
+When step-based training is enabled, DPDL reconstructs an "approximate epoch" for logging and [callbacks](./callbacks.md), which enables the analysis of the dynamics during the training.
 This is intentionally approximate because Poisson sampling does not yield a fixed number of samples per step.
-The log conversion uses:
+The conversion that logging uses:
 
 ```
 steps_per_epoch ~= N / B
