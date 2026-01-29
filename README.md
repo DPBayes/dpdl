@@ -149,6 +149,14 @@ The CLI calls the `optimize_hypers` method of [hyperparameteroptimizer](dpdl/hyp
 
 The ranges/options for the different hyperparameters is in `conf/optuna_hypers.conf`.
 
+See the detailed guide: [docs/hyperparameter-optimization.md](docs/hyperparameter-optimization.md).
+
+Example (optimize learning rate and batch size):
+
+```
+dpdl optimize --target-hypers learning_rate --target-hypers batch_size --n-trials 20 --optuna-config conf/optuna_hypers.conf
+```
+
 ### Callbacks
 
 The system provides a flexible [callback system](dpdl/callbacks.py).
