@@ -8,7 +8,7 @@ This section documents how `--use-steps`, `--epochs`, and `--total-steps` intera
 
 - Epoch mode: provide `--epochs E`.
   - DPDL trains for E epochs (full passes through the dataloader).
-  - By default Opacus only supports [discrete sample-rates](https://github.com/meta-pytorch/opacus/blob/f17f254ab8f1f1095e8257bf278769d549748bbc/opacus/privacy_engine.py#L408), e.e. `sample_rate = 1 / len(data_loader)`.
+  - By default Opacus only supports [discrete sample-rates](https://github.com/meta-pytorch/opacus/blob/f17f254ab8f1f1095e8257bf278769d549748bbc/opacus/privacy_engine.py#L408), e.g. `sample_rate = 1 / len(data_loader)`.
     For standard dataloaders, `len(data_loader) = ceil(N / B)`.
 
 - Step mode: provide `--use-steps` and either `--total-steps` or `--epochs`.
@@ -21,10 +21,6 @@ This section documents how `--use-steps`, `--epochs`, and `--total-steps` intera
 steps_per_epoch = ceil(N / B)
 total_steps = steps_per_epoch * E
 ```
-
-Where:
-- `N` = training dataset size
-- `B` = logical batch size
 
 ## Rounding of epochs up in logs when using `--use-steps`
 
@@ -49,21 +45,21 @@ Example:
 So logs may show "approximate epoch 2" even though you asked for 1 epoch.
 **This only affects logging**; the number of optimizer updates is still exactly `total_steps`.
 
-## Why this matches Opacus default behavior
+## Comparison to Opacus default behavior
 
 When `total_steps` is not provided, Opacus computes:
 - `sample_rate = 1 / len(data_loader)`
 - [UniformSampler](https://github.com/meta-pytorch/opacus/blob/f17f254ab8f1f1095e8257bf278769d549748bbc/opacus/privacy_engine.py#L408) uses `steps = int(1 / sample_rate)`.
 
 With standard dataloaders, `len(data_loader) = ceil(N / B)`, so Opacus implicitly rounds to `ceil(N / B)` steps per epoch.
-DPDL uses the same conversion so privacy accounting and step counts are consistent with Opacus.
+DPDL uses the same conversion actual so step counts are consistent with Opacus.
 
 ## Sample-rate: discrete vs smooth
 
 The choice of `total_steps` also controls which sample rates are possible.
 
 - Without `total_steps`:
-  - `sample_rate` is forced to `1 / len(data_loader)` (examples: 1/2, 1/3, 1/4, ...).
+  - `sample_rate` in Opacus is [forced to discrete values](https://github.com/meta-pytorch/opacus/blob/f17f254ab8f1f1095e8257bf278769d549748bbc/opacus/privacy_engine.py#L408) `1 / len(data_loader)` (examples: 1/2, 1/3, 1/4, ...).
   - This forces discrete sample rates tied to the dataloader length.
 
 - With `total_steps`:
