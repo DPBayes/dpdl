@@ -12,7 +12,7 @@ Relevant sources:
 
 ## Overview
 
-When running `dpdl optimize`, the DPDL system starts a distributed Optuna study on rank 0 and broadcasts the best hyperparameters (of each trial) to all ranks.
+When running `dpdl optimize`, the DPDL system starts an Optuna study on rank 0 and broadcasts the best hyperparameters (of each trial) to all ranks.
 Each trial trains a model (without validation during training) and evaluates the optimization objective (e.g. loss or accuracy) on validation data at the end.
 After the best trial is found, we combine the training and validation sets into a new training set (to maximize the amount of training data) and train on it using the hyperparameters from the best trial.
 The final metrics are evaluated on the test set.
@@ -24,12 +24,12 @@ For this, there exists a config file in YAML format.
 For each hyperparameter to optimize, there *must* be an entry that defines a **type** and its bounds/options.
 
 Supported types:
-- `float`: `min`, `max`, and optional `log_space`
+- `float`: `min`, `max`, and optional boolean `log_space`
 - `int`: `min`, `max`
 - `categorical`: `options`
 - `ordered`: ordered discrete values (see below)
 
-In the config, we can use `-1` to indicate maximum batch size (e.g. full dataset).
+In the config, we can use `-1` to indicate the [maximum batch size](../dpdl/hyperparameteroptimizer.py#L146) (i.e. full dataset).
 
 See [`conf/optuna_hypers.conf`](../conf/optuna_hypers.conf) for an example.
 
