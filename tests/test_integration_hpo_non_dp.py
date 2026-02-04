@@ -14,7 +14,7 @@ from integration_utils import (
 
 
 @pytest.mark.integration
-def test_integration_hpo_non_dp(tmp_path: Path) -> None:
+def test_integration_hpo_non_dp(tmp_path: Path, image_dataset_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     env = base_env()
 
@@ -24,7 +24,9 @@ def test_integration_hpo_non_dp(tmp_path: Path) -> None:
         '--device',
         'cpu',
         '--dataset-name',
-        'fake',
+        'local-image',
+        '--dataset-path',
+        str(image_dataset_path),
         '--model-name',
         'resnet18',
         '--no-pretrained',

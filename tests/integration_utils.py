@@ -71,6 +71,5 @@ def get_expected_hpo_params(key: str) -> dict:
 
 def base_env() -> dict:
     env = os.environ.copy()
-    env['DPDL_FAKE_DATASET'] = '1'
     env['_TYPER_STANDARD_TRACEBACK'] = '1'
     return env

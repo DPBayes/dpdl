@@ -100,6 +100,7 @@ class Configuration(BaseModel):
     loss_function: str = 'CrossEntropyLoss'
     optimizer: str = 'Adam'
     dataset_name: str = 'uoft-cs/cifar10'
+    dataset_path: Optional[str] = None
     llm: bool = False
     task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM', 'InstructLM' ] = 'ImageClassification'
     physical_batch_size: int = 40
@@ -232,6 +233,7 @@ class Configuration(BaseModel):
             ('Model name', self.model_name),
             ('Optimizer', self.optimizer),
             ('Dataset name', self.dataset_name),
+            ('Dataset path', self.dataset_path),
             ('Dataset label field', self.dataset_label_field),
             ('Dataset text field(s) for LLM tasks', self.dataset_text_fields),
             ('Dataset imbalance factor', self.imbalance_factor),

@@ -269,6 +269,13 @@ def cli(
                 rich_help_panel='Dataset options',
             )
         ] = 'uoft-cs/cifar10',
+        dataset_path: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Load local dataset on disk from given path',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
         subset_size: Annotated[
             float,
             typer.Option(

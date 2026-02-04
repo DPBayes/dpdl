@@ -8,10 +8,6 @@ import pytest
 torch = pytest.importorskip('torch')
 
 
-def _should_skip_gpu_tests() -> bool:
-    return not torch.cuda.is_available()
-
-
 def _run_smoke(cmd: list[str], env: dict, cwd: Path) -> None:
     result = subprocess.run(
         cmd,
@@ -23,33 +19,28 @@ def _run_smoke(cmd: list[str], env: dict, cwd: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
-@pytest.mark.gpu
-def test_smoke_train_non_dp(tmp_path: Path, image_dataset_path: Path) -> None:
-    if _should_skip_gpu_tests():
-        pytest.skip('CUDA not available.')
-
+@pytest.mark.llm
+@pytest.mark.integration
+def test_smoke_llm_causal(tmp_path: Path, text_dataset_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     env = os.environ.copy()
+    env['TOKENIZERS_PARALLELISM'] = 'false'
     env['_TYPER_STANDARD_TRACEBACK'] = '1'
-
     cmd = [
         sys.executable,
-        '-m',
-        'torch.distributed.run',
-        '--standalone',
-        '--nproc_per_node=1',
         'run.py',
         'train',
-        '--device',
-        'cuda',
-        '--dataset-name',
-        'local-image',
-        '--dataset-path',
-        str(image_dataset_path),
+        '--llm',
+        '--task',
+        'CausalLM',
         '--model-name',
-        'resnet18',
-        '--no-pretrained',
-        '--no-privacy',
+        'sshleifer/tiny-gpt2',
+        '--dataset-name',
+        'local-llm-causal',
+        '--dataset-path',
+        str(text_dataset_path),
+        '--dataset-text-fields',
+        'text',
         '--use-steps',
         '--total-steps',
         '2',
@@ -59,41 +50,48 @@ def test_smoke_train_non_dp(tmp_path: Path, image_dataset_path: Path) -> None:
         '4',
         '--num-workers',
         '0',
+        '--max-length',
+        '64',
+        '--device',
+        'cpu',
+        '--no-privacy',
         '--log-dir',
         str(tmp_path),
         '--experiment-name',
-        'smoke-non-dp',
+        'smoke-llm-causal',
     ]
 
     _run_smoke(cmd, env, repo_root)
 
 
+@pytest.mark.llm
+@pytest.mark.integration
 @pytest.mark.gpu
-def test_smoke_train_dp(tmp_path: Path, image_dataset_path: Path) -> None:
-    if _should_skip_gpu_tests():
+def test_smoke_llm_sequence_classification(tmp_path: Path, text_dataset_path: Path) -> None:
+    if not torch.cuda.is_available():
         pytest.skip('CUDA not available.')
 
     repo_root = Path(__file__).resolve().parents[1]
     env = os.environ.copy()
+    env['TOKENIZERS_PARALLELISM'] = 'false'
     env['_TYPER_STANDARD_TRACEBACK'] = '1'
-
     cmd = [
         sys.executable,
-        '-m',
-        'torch.distributed.run',
-        '--standalone',
-        '--nproc_per_node=1',
         'run.py',
         'train',
-        '--device',
-        'cuda',
-        '--dataset-name',
-        'local-image',
-        '--dataset-path',
-        str(image_dataset_path),
+        '--llm',
+        '--task',
+        'SequenceClassification',
         '--model-name',
-        'resnet18',
-        '--no-pretrained',
+        'sshleifer/tiny-distilbert-base-uncased-finetuned-sst-2-english',
+        '--dataset-name',
+        'local-llm-seq',
+        '--dataset-path',
+        str(text_dataset_path),
+        '--dataset-text-fields',
+        'text',
+        '--dataset-label-field',
+        'label',
         '--use-steps',
         '--total-steps',
         '2',
@@ -103,10 +101,15 @@ def test_smoke_train_dp(tmp_path: Path, image_dataset_path: Path) -> None:
         '4',
         '--num-workers',
         '0',
+        '--max-length',
+        '64',
+        '--device',
+        'cuda',
+        '--no-privacy',
         '--log-dir',
         str(tmp_path),
         '--experiment-name',
-        'smoke-dp',
+        'smoke-llm-seq',
     ]
 
     _run_smoke(cmd, env, repo_root)
