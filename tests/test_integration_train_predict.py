@@ -8,7 +8,7 @@ from integration_utils import base_env, load_json, run_distributed
 
 
 @pytest.mark.integration
-def test_integration_train_predict(tmp_path: Path) -> None:
+def test_integration_train_predict(tmp_path: Path, image_dataset_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     env = base_env()
 
@@ -18,7 +18,9 @@ def test_integration_train_predict(tmp_path: Path) -> None:
         '--device',
         'cpu',
         '--dataset-name',
-        'fake',
+        'local-image',
+        '--dataset-path',
+        str(image_dataset_path),
         '--model-name',
         'resnet18',
         '--no-pretrained',
@@ -51,7 +53,7 @@ def test_integration_train_predict(tmp_path: Path) -> None:
 
     preds = load_json(preds_path)
     assert isinstance(preds, list), 'Expected predictions JSON to be a list.'
-    assert len(preds) == 8, 'Expected fake test split size of 8.'
+    assert len(preds) == 8, 'Expected test split size of 8.'
 
     metrics_path = tmp_path / 'train-predict' / 'predict_metrics.json'
     assert metrics_path.exists(), 'Expected predict_metrics.json to be written.'

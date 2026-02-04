@@ -1,10 +1,8 @@
 import logging
-import os
 from collections import Counter
 from functools import partial
 
 import datasets
-import numpy as np
 import torch
 import torchvision
 from PIL import Image
@@ -13,40 +11,6 @@ from .configurationmanager import Configuration, Hyperparameters
 
 log = logging.getLogger(__name__)
 
-def _make_fake_image_splits(
-    seed: int,
-    num_classes: int = 2,
-    image_size: tuple[int, int] = (32, 32),
-    train_size: int = 20,
-    val_size: int = 8,
-    test_size: int = 8,
-):
-    rng = np.random.default_rng(seed)
-    features = datasets.Features(
-        {
-            'image': datasets.Image(),
-            'label': datasets.ClassLabel(names=[f'class_{i}' for i in range(num_classes)]),
-        }
-    )
-
-    def _make_split(n: int):
-        images = [
-            rng.integers(0, 256, size=(image_size[0], image_size[1], 3), dtype=np.uint8)
-            for _ in range(n)
-        ]
-        labels = [i % num_classes for i in range(n)]
-        return datasets.Dataset.from_dict(
-            {'image': images, 'label': labels},
-            features=features,
-        )
-
-    return datasets.DatasetDict(
-        {
-            'train': _make_split(train_size),
-            'validation': _make_split(val_size),
-            'test': _make_split(test_size),
-        }
-    )
 
 
 class DataModule:
@@ -54,6 +18,7 @@ class DataModule:
     def __init__(
         self,
         dataset_name: str = 'default-dataset',
+        dataset_path: str | None = None,
         batch_size: int = 64,
         max_test_examples: int = 0,
         sample_rate: float = 0,
@@ -78,6 +43,7 @@ class DataModule:
     ):
 
         self.dataset_name = dataset_name
+        self.dataset_path = dataset_path
         self.batch_size = batch_size
         self.max_test_examples = max_test_examples
         self.sample_rate = sample_rate
@@ -309,11 +275,8 @@ class DataModule:
         if torch.distributed.get_rank() == 0:
             log.info(f'Loading dataset {self.dataset_name} from Huggingface datasets.')
 
-        use_fake = os.getenv('DPDL_FAKE_DATASET') == '1' and self.dataset_name == 'fake'
-        if use_fake:
-            if torch.distributed.get_rank() == 0:
-                log.info('Using fake dataset for testing.')
-            dataset_splits = _make_fake_image_splits(seed=self.seed)
+        if self.dataset_path:
+            dataset_splits = datasets.load_from_disk(self.dataset_path)
         else:
             dataset_splits = datasets.load_dataset(self.dataset_name)
 
@@ -934,6 +897,7 @@ class DataModuleFactory:
                 max_length=hyperparams.max_length,
                 task=configuration.task,
                 dataset_name=configuration.dataset_name,
+                dataset_path=configuration.dataset_path,
                 num_workers=configuration.num_workers,
                 physical_batch_size=configuration.physical_batch_size,
                 subset_size=configuration.subset_size,
@@ -958,6 +922,7 @@ class DataModuleFactory:
 
         return ImageDataModule(
             dataset_name=configuration.dataset_name,
+            dataset_path=configuration.dataset_path,
             num_workers=configuration.num_workers,
             physical_batch_size=configuration.physical_batch_size,
             subset_size=configuration.subset_size,
@@ -1003,7 +968,9 @@ class NLPDataModule(DataModule):
                 f'Loading dataset {self.dataset_name} from Huggingface datasets.'
             )
 
-        if self.dataset_name == 'wikitext':
+        if self.dataset_path:
+            dataset_splits = datasets.load_from_disk(self.dataset_path)
+        elif self.dataset_name == 'wikitext':
             dataset_splits = datasets.load_dataset(
                 self.dataset_name, 'wikitext-2-raw-v1'
             )

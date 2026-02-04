@@ -8,10 +8,9 @@ import pytest
 pytest.importorskip('torch')
 
 
-def test_cpu_smoke_train(tmp_path: Path) -> None:
+def test_cpu_smoke_train(tmp_path: Path, image_dataset_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     env = os.environ.copy()
-    env['DPDL_FAKE_DATASET'] = '1'
     env['_TYPER_STANDARD_TRACEBACK'] = '1'
 
     cmd = [
@@ -25,7 +24,9 @@ def test_cpu_smoke_train(tmp_path: Path) -> None:
         '--device',
         'cpu',
         '--dataset-name',
-        'fake',
+        'local-image',
+        '--dataset-path',
+        str(image_dataset_path),
         '--model-name',
         'resnet18',
         '--no-pretrained',

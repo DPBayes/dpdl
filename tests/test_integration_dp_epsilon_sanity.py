@@ -8,7 +8,7 @@ pytest.importorskip('opacus')
 from integration_utils import base_env, load_json, run_distributed
 
 
-def _run_dp(tmp_path: Path, experiment: str, epsilon: float) -> float:
+def _run_dp(tmp_path: Path, image_dataset_path: Path, experiment: str, epsilon: float) -> float:
     repo_root = Path(__file__).resolve().parents[1]
     env = base_env()
 
@@ -18,7 +18,9 @@ def _run_dp(tmp_path: Path, experiment: str, epsilon: float) -> float:
         '--device',
         'cpu',
         '--dataset-name',
-        'fake',
+        'local-image',
+        '--dataset-path',
+        str(image_dataset_path),
         '--model-name',
         'vit_tiny_patch16_224.augreg_in21k',
         '--no-pretrained',
@@ -57,9 +59,9 @@ def _run_dp(tmp_path: Path, experiment: str, epsilon: float) -> float:
 
 
 @pytest.mark.integration
-def test_dp_lower_epsilon_higher_loss(tmp_path: Path) -> None:
+def test_dp_lower_epsilon_higher_loss(tmp_path: Path, image_dataset_path: Path) -> None:
     # Higher epsilon (weaker privacy) should not yield worse loss than lower epsilon.
-    loss_high_eps = _run_dp(tmp_path, 'dp-eps-8', epsilon=8)
-    loss_low_eps = _run_dp(tmp_path, 'dp-eps-2', epsilon=2)
+    loss_high_eps = _run_dp(tmp_path, image_dataset_path, 'dp-eps-8', epsilon=8)
+    loss_low_eps = _run_dp(tmp_path, image_dataset_path, 'dp-eps-2', epsilon=2)
 
     assert loss_low_eps >= loss_high_eps - 1e-6
