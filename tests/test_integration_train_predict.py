@@ -4,7 +4,12 @@ import pytest
 
 pytest.importorskip('torch')
 
-from integration_utils import base_env, load_json, run_distributed
+from integration_utils import (
+    assert_config_and_hyperparams,
+    base_env,
+    load_json,
+    run_distributed,
+)
 
 
 @pytest.mark.integration
@@ -47,6 +52,29 @@ def test_integration_train_predict(tmp_path: Path, image_dataset_path: Path) -> 
     ]
 
     run_distributed(cmd_args, env, repo_root)
+
+    assert_config_and_hyperparams(
+        tmp_path / 'train-predict',
+        expected_config={
+            'command': 'train-predict',
+            'device': 'cpu',
+            'dataset_name': 'local-image',
+            'dataset_path': str(image_dataset_path),
+            'model_name': 'resnet18',
+            'privacy': False,
+            'use_steps': True,
+            'predict_dataset_split': 'test',
+            'log_dir': str(tmp_path),
+            'experiment_name': 'train-predict',
+            'seed': 42,
+            'split_seed': 42,
+        },
+        expected_hyperparams={
+            'epochs': None,
+            'total_steps': 2,
+            'batch_size': 4,
+        },
+    )
 
     preds_path = tmp_path / 'train-predict' / 'predictions_test.json'
     assert preds_path.exists(), 'Expected predictions_test.json to be written.'

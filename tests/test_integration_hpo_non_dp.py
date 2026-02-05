@@ -5,6 +5,7 @@ import pytest
 pytest.importorskip('torch')
 
 from integration_utils import (
+    assert_config_and_hyperparams,
     base_env,
     get_expected_hpo_params,
     get_expected_loss,
@@ -61,6 +62,33 @@ def test_integration_hpo_non_dp(tmp_path: Path, image_dataset_path: Path) -> Non
     ]
 
     run_distributed(cmd_args, env, repo_root)
+
+    assert_config_and_hyperparams(
+        tmp_path / 'hpo-non-dp',
+        expected_config={
+            'command': 'optimize',
+            'device': 'cpu',
+            'dataset_name': 'local-image',
+            'dataset_path': str(image_dataset_path),
+            'model_name': 'resnet18',
+            'privacy': False,
+            'use_steps': True,
+            'target_hypers': ['learning_rate'],
+            'n_trials': 1,
+            'optuna_config': 'tests/fixtures/optuna_hypers_small.conf',
+            'optuna_sampler': 'RandomSampler',
+            'optuna_journal': str(tmp_path / 'optuna-non-dp.journal'),
+            'log_dir': str(tmp_path),
+            'experiment_name': 'hpo-non-dp',
+            'seed': 42,
+            'split_seed': 42,
+        },
+        expected_hyperparams={
+            'epochs': None,
+            'total_steps': 2,
+            'batch_size': 4,
+        },
+    )
 
     metrics_path = tmp_path / 'hpo-non-dp' / 'hpo_metrics.json'
     assert metrics_path.exists(), 'Expected hpo_metrics.json to be written.'
