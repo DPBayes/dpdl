@@ -13,13 +13,13 @@
 
 ## Determinism Strategy
 To make losses reproducible across runs and platforms:
-- Use the fake dataset: `DPDL_FAKE_DATASET=1` and `--dataset-name fake`.
+- Use a small local dataset saved with `datasets.save_to_disk` and pass `--dataset-path <path>` (keep `--dataset-name` as a label only).
 - Run on CPU: `--device cpu`.
 - Fix all RNG seeds: `--seed 42` and `--split-seed 42` (or another constant). (`seed=0` disables seeding in this codebase.)
 - Disable non-determinism in tests when possible:
   - Set `torch.use_deterministic_algorithms(True)` inside tests (or use env vars if preferred).
   - Set `--num-workers 0` to avoid worker-level nondeterminism.
-- Avoid network downloads: `--no-pretrained`.
+- Avoid network downloads: `--no-pretrained` and local datasets via `--dataset-path`.
 - Keep steps tiny: `--use-steps --total-steps 2` (or 3) and small batch sizes.
 
 Notes for DP runs:
@@ -29,7 +29,7 @@ Notes for DP runs:
 
 ## Rationale for Common Flags
 - `--device cpu`: avoids GPU hardware variability and makes CI/local runs consistent.
-- `--dataset-name fake` + `DPDL_FAKE_DATASET=1`: removes network dependence and fixes dataset size/content.
+- `--dataset-path <path>`: removes network dependence and fixes dataset size/content.
 - `--no-pretrained`: avoids downloading weights and makes initialization depend solely on the seed.
 - `--seed 42`: enables seeding (seed `0` disables seeding in `seed_everything`).
 - `--split-seed 42`: fixes dataset sub‑sampling/splitting for determinism.
@@ -48,6 +48,7 @@ Notes for DP runs:
   - `batch_size`: small categorical `[4, 8]`
   - `epochs`: fixed `1` (or omit from targets)
 - This keeps trials deterministic and fast.
+ - For full-batch mapping tests, use `tests/fixtures/optuna_hypers_full_batch.conf` to force the `-1` sentinel.
 
 2) **Manual trials fixture** (optional, for fully deterministic HPO)
 - Add `tests/fixtures/optuna_manual_trials.yaml` with a single trial so Optuna picks exactly one configuration.
@@ -94,11 +95,12 @@ All tests should use the same harness pattern as the current smoke tests (run `r
 - [x] T5 — Prediction (Saved Model) (tests/test_integration_train_predict.py)
 - [x] T6 — HPO (Non‑DP) (tests/test_integration_hpo_non_dp.py)
 - [x] T7 — HPO (DP) (tests/test_integration_hpo_dp.py)
+- [x] T6b — HPO Full Batch Size Mapping (tests/test_integration_hpo_full_batch_size.py)
 
 ### T1 — Train (Non‑DP) Deterministic Loss
 **Command (example):**
 - `python -m torch.distributed.run --standalone --nproc_per_node=1 run.py train`
-- `--device cpu --dataset-name fake --model-name resnet18 --no-pretrained`
+- `--device cpu --dataset-name local-image --dataset-path <path> --model-name resnet18 --no-pretrained`
 - `--no-privacy --use-steps --total-steps 2`
 - `--batch-size 4 --physical-batch-size 4 --num-workers 0`
 - `--seed 42 --split-seed 42 --log-dir <tmp> --experiment-name train-non-dp`
@@ -145,21 +147,21 @@ Use the built‑in `train-predict` path so saving and prediction are covered tog
 
 **Command:**
 - `python -m torch.distributed.run --standalone --nproc_per_node=1 run.py train-predict`
-- `--device cpu --dataset-name fake --model-name resnet18 --no-pretrained`
+- `--device cpu --dataset-name local-image --dataset-path <path> --model-name resnet18 --no-pretrained`
 - `--no-privacy --use-steps --total-steps 2`
 - `--batch-size 4 --physical-batch-size 4 --num-workers 0`
-- `--dataset-split test`
+- `--predict-dataset-split test`
 - `--seed 42 --split-seed 42 --log-dir <tmp> --experiment-name train-predict`
 
 **Assertions:**
 - `predictions_test.json` exists.
-- JSON list length equals fake test split size (8 by default).
+- JSON list length equals test split size (8 in the local fixture).
 - `predict_metrics.json` exists.
 
 ### T6 — HPO (Non‑DP)
 **Command:**
 - `python -m torch.distributed.run --standalone --nproc_per_node=1 run.py optimize`
-- `--device cpu --dataset-name fake --model-name resnet18 --no-pretrained`
+- `--device cpu --dataset-name local-image --dataset-path <path> --model-name resnet18 --no-pretrained`
 - `--no-privacy --use-steps --total-steps 2`
 - `--target-hypers learning_rate --n-trials 1`
 - `--optuna-config tests/fixtures/optuna_hypers_small.conf`
@@ -180,6 +182,17 @@ Use the built‑in `train-predict` path so saving and prediction are covered tog
 **Assertions:**
 - Same as T6, loss equals `expected_losses["hpo_dp_trial0"]`.
 
+### T6b — HPO Full Batch Size Mapping
+**Goal:** Ensure Optuna’s `batch_size = -1` maps to the dataset size.
+
+**Command:** run HPO with a config that forces ordered `batch_size` to only include `-1`:
+- `--target-hypers batch_size`
+- `--optuna-config tests/fixtures/optuna_hypers_full_batch.conf`
+- `--n-trials 1`
+
+**Assertions:**
+- `best-params.json` has `batch_size == 20` (train size of the local dataset fixture).
+
 ## Implementation Notes
 - Create a small test helper in `tests/` to:
   - Build command lists.
@@ -188,7 +201,7 @@ Use the built‑in `train-predict` path so saving and prediction are covered tog
 - For local/CI runs, use `python -m torch.distributed.run --standalone --nproc_per_node=1` so `WORLD_SIZE`, `RANK`, and `LOCAL_RANK` are set. The Slurm `run_wrapper.sh` is only needed in cluster jobs.
 - Use `bin/run-tests.sh` for local runs; it checks for an active venv or uses `DPDL_VENV` to activate one.
 - Mark new tests with `@pytest.mark.integration` so they can be excluded from quick local runs, while still available in CI for JOSS.
-- Keep each test under ~5–10 seconds on CPU by using small steps and fake dataset.
+- Keep each test under ~5–10 seconds on CPU by using small steps and the local dataset fixture.
 
 ## Updating Golden Losses
 1) Run the integration tests locally on CPU.
@@ -197,7 +210,7 @@ Use the built‑in `train-predict` path so saving and prediction are covered tog
 4) If dependencies change and values drift, update this file intentionally and document the change in the PR.
 
 ## Optional Extensions (later)
-- Add a GPU integration test variant (gated by `DPDL_RUN_GPU_TESTS=1`).
+- Add a GPU integration test variant (gated by marker and CUDA availability).
 - Add LoRA path (if needed) with a tiny model that supports it.
 - Add multi‑process DDP test (`--nproc_per_node=2`) if CI can support it.
 ### T2b — DP Epsilon Sanity Check

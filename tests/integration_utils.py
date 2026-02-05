@@ -32,6 +32,42 @@ def load_json(path: Path) -> dict:
         return json.load(handle)
 
 
+def load_experiment_config(log_dir: Path) -> tuple[dict, dict]:
+    config_path = log_dir / 'configuration.json'
+    hyperparams_path = log_dir / 'hyperparameters.json'
+    assert config_path.exists(), f'Expected configuration.json at {config_path}'
+    assert hyperparams_path.exists(), f'Expected hyperparameters.json at {hyperparams_path}'
+    return load_json(config_path), load_json(hyperparams_path)
+
+
+def _assert_expected(actual: dict, expected: dict, label: str) -> None:
+    for key, expected_value in expected.items():
+        assert key in actual, f'Missing {label} key: {key}'
+        actual_value = actual[key]
+        if isinstance(expected_value, float):
+            assert actual_value == pytest.approx(expected_value, rel=0, abs=1e-8), (
+                f'Unexpected {label} value for "{key}": {actual_value}'
+            )
+        else:
+            assert actual_value == expected_value, (
+                f'Unexpected {label} value for "{key}": {actual_value}'
+            )
+
+
+def assert_config_and_hyperparams(
+    log_dir: Path,
+    expected_config: dict | None = None,
+    expected_hyperparams: dict | None = None,
+) -> None:
+    config, hyperparams = load_experiment_config(log_dir)
+
+    if expected_config:
+        _assert_expected(config, expected_config, 'configuration')
+
+    if expected_hyperparams:
+        _assert_expected(hyperparams, expected_hyperparams, 'hyperparameters')
+
+
 def load_expected_losses() -> dict:
     fixture_path = Path(__file__).parent / 'fixtures' / 'expected_losses.json'
     if not fixture_path.exists():

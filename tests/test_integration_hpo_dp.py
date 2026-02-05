@@ -6,6 +6,7 @@ pytest.importorskip('torch')
 pytest.importorskip('opacus')
 
 from integration_utils import (
+    assert_config_and_hyperparams,
     base_env,
     get_expected_hpo_params,
     get_expected_loss,
@@ -66,6 +67,35 @@ def test_integration_hpo_dp(tmp_path: Path, image_dataset_path: Path) -> None:
     ]
 
     run_distributed(cmd_args, env, repo_root)
+
+    assert_config_and_hyperparams(
+        tmp_path / 'hpo-dp',
+        expected_config={
+            'command': 'optimize',
+            'device': 'cpu',
+            'dataset_name': 'local-image',
+            'dataset_path': str(image_dataset_path),
+            'model_name': 'vit_tiny_patch16_224.augreg_in21k',
+            'privacy': True,
+            'use_steps': True,
+            'target_hypers': ['learning_rate'],
+            'n_trials': 1,
+            'optuna_config': 'tests/fixtures/optuna_hypers_small.conf',
+            'optuna_sampler': 'RandomSampler',
+            'optuna_journal': str(tmp_path / 'optuna-dp.journal'),
+            'log_dir': str(tmp_path),
+            'experiment_name': 'hpo-dp',
+            'seed': 42,
+            'split_seed': 42,
+        },
+        expected_hyperparams={
+            'epochs': None,
+            'total_steps': 2,
+            'batch_size': 4,
+            'target_epsilon': 8.0,
+            'max_grad_norm': 1.0,
+        },
+    )
 
     metrics_path = tmp_path / 'hpo-dp' / 'hpo_metrics.json'
     assert metrics_path.exists(), 'Expected hpo_metrics.json to be written.'

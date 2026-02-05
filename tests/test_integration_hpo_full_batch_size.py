@@ -4,7 +4,12 @@ import pytest
 
 pytest.importorskip('torch')
 
-from integration_utils import base_env, load_json, run_distributed
+from integration_utils import (
+    assert_config_and_hyperparams,
+    base_env,
+    load_json,
+    run_distributed,
+)
 
 
 @pytest.mark.integration
@@ -55,6 +60,32 @@ def test_integration_hpo_full_batch_size(tmp_path: Path, image_dataset_path: Pat
     ]
 
     run_distributed(cmd_args, env, repo_root)
+
+    assert_config_and_hyperparams(
+        tmp_path / 'hpo-full-batch',
+        expected_config={
+            'command': 'optimize',
+            'device': 'cpu',
+            'dataset_name': 'local-image',
+            'dataset_path': str(image_dataset_path),
+            'model_name': 'resnet18',
+            'privacy': False,
+            'use_steps': True,
+            'target_hypers': ['batch_size'],
+            'n_trials': 1,
+            'optuna_config': 'tests/fixtures/optuna_hypers_full_batch.conf',
+            'optuna_sampler': 'RandomSampler',
+            'optuna_journal': str(tmp_path / 'optuna-full-batch.journal'),
+            'log_dir': str(tmp_path),
+            'experiment_name': 'hpo-full-batch',
+            'seed': 42,
+            'split_seed': 42,
+        },
+        expected_hyperparams={
+            'epochs': None,
+            'total_steps': 2,
+        },
+    )
 
     raw_params_path = tmp_path / 'hpo-full-batch' / 'best-params-raw-idx.json'
     assert raw_params_path.exists(), 'Expected best-params-raw-idx.json to be written.'
