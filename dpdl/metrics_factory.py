@@ -45,25 +45,58 @@ def _get_classification_metrics(
     return torchmetrics.MetricCollection(metrics)
 
 
+class LanguageModelMetrics(torchmetrics.MetricCollection):
+    def __init__(self, vocab_size: int, ignore_index: int, sync: bool) -> None:
+        metrics = {
+            'MulticlassAccuracy': torchmetrics.classification.MulticlassAccuracy(
+                num_classes=vocab_size,
+                average='micro',
+                ignore_index=ignore_index,
+                sync_on_compute=sync,
+            ),
+            'Perplexity': Perplexity(
+                ignore_index=ignore_index,
+                sync_on_compute=sync,
+            ),
+        }
+        super().__init__(metrics)
+
+    def update(self, preds, target) -> None:
+        # Accuracy metrics use standard flattened inputs
+        if not hasattr(preds, 'ndim'):
+            return super().update(preds, target)
+
+        # We need to shape the data for perplexity that expects 3D logits and 2D labels
+        if preds.ndim == 3:
+            shift_logits = preds[:, :-1, :].contiguous()                      # (batch, seq_len-1, vocab)
+            shift_labels = target[:, 1:].contiguous()                         # (batch, seq_len-1)
+            shift_logits_flat = shift_logits.view(-1, shift_logits.size(-1))  # (batch*(seq_len-1), vocab)
+            shift_labels_flat = shift_labels.view(-1)                         # (batch*(seq_len-1))
+
+            self['Perplexity'].update(shift_logits, shift_labels)
+
+            for name, metric in self.items():
+                if name == 'Perplexity':
+                    continue
+
+                metric.update(shift_logits_flat, shift_labels_flat)
+
+            return
+
+        return super().update(preds, target)
+
+
 def _get_language_model_metrics(
     vocab_size: int,
     ignore_index: int,
     sync: bool,
 ) -> torchmetrics.MetricCollection:
-    metrics = {
-        'MulticlassAccuracy': torchmetrics.classification.MulticlassAccuracy(
-            num_classes=vocab_size,
-            average='micro',
-            ignore_index=ignore_index,
-            sync_on_compute=sync,
-        ),
-        'Perplexity': Perplexity(
-            ignore_index=ignore_index,
-            sync_on_compute=sync,
-        ),
-    }
 
-    return torchmetrics.MetricCollection(metrics)
+    return LanguageModelMetrics(
+        vocab_size=vocab_size,
+        ignore_index=ignore_index,
+        sync=sync,
+    )
 
 
 class MetricsFactory:
