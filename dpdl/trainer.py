@@ -816,15 +816,13 @@ class LanguageModelAdapter(TaskAdapter):
 
     def update_metrics(self, model, batch, forward_output, metrics = None):
         _, y = batch
-        preds, y_flat = shift_and_flatten(forward_output, y)
-
         if metrics is not None:
             metrics_to_update = metrics
         else:
             metrics_to_update = model.train_metrics if model.training else model.valid_metrics
 
         with torch.no_grad():
-            metrics_to_update.update(preds, y_flat)
+            metrics_to_update.update(forward_output, y)
 
 # Define task specific adapters
 _ADAPTERS = {
