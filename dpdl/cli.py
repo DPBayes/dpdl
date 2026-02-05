@@ -522,13 +522,6 @@ def cli(
                 rich_help_panel='Opacus options',
             )
         ] = 8,
-        noise_batch_ratio: Annotated[
-            Optional[float],
-            typer.Option(
-                help='Noise-batch ratio (https://arxiv.org/abs/2501.18914)',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
         target_hypers: Annotated[
             Optional[List[str]],
             typer.Option(
