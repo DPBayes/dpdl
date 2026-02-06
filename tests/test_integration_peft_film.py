@@ -6,9 +6,10 @@ pytest.importorskip('torch')
 
 from integration_utils import (
     assert_config_and_hyperparams,
+    assert_runtime,
+    assert_test_metrics,
     base_env,
     get_expected_loss,
-    load_json,
     run_distributed,
 )
 
@@ -77,14 +78,9 @@ def test_integration_peft_film(tmp_path: Path, image_dataset_path: Path) -> None
         },
     )
 
-    metrics_path = tmp_path / 'peft-film' / 'test_metrics'
-    assert metrics_path.exists(), 'Expected test_metrics to be written.'
-
-    metrics = load_json(metrics_path)
-    assert 'loss' in metrics, 'Expected loss in test_metrics.'
+    metrics = assert_test_metrics(tmp_path / 'peft-film')
 
     expected_loss = get_expected_loss('peft_film')
     assert metrics['loss'] == pytest.approx(expected_loss, rel=0, abs=1e-6)
 
-    runtime_path = tmp_path / 'peft-film' / 'runtime'
-    assert runtime_path.exists(), 'Expected runtime to be written.'
+    assert_runtime(tmp_path / 'peft-film')

@@ -7,8 +7,9 @@ pytest.importorskip('opacus')
 
 from integration_utils import (
     assert_config_and_hyperparams,
+    assert_runtime,
+    assert_test_metrics,
     base_env,
-    load_json,
     run_distributed,
 )
 
@@ -79,11 +80,8 @@ def _run_dp(tmp_path: Path, image_dataset_path: Path, experiment: str, epsilon: 
         },
     )
 
-    metrics_path = tmp_path / experiment / 'test_metrics'
-    assert metrics_path.exists(), 'Expected test_metrics to be written.'
-
-    metrics = load_json(metrics_path)
-    assert 'loss' in metrics, 'Expected loss in test_metrics.'
+    metrics = assert_test_metrics(tmp_path / experiment)
+    assert_runtime(tmp_path / experiment)
     return metrics['loss']
 
 

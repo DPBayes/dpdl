@@ -1,5 +1,4 @@
 from pathlib import Path
-import math
 
 import pytest
 
@@ -7,8 +6,10 @@ pytest.importorskip('torch')
 
 from integration_utils import (
     assert_config_and_hyperparams,
+    assert_runtime,
+    assert_test_metrics,
     base_env,
-    load_json,
+    get_expected_loss,
     run_distributed,
 )
 
@@ -73,14 +74,12 @@ def test_integration_train_epochs(tmp_path: Path, image_dataset_path: Path) -> N
         },
     )
 
-    metrics_path = tmp_path / 'train-epochs' / 'test_metrics'
-    assert metrics_path.exists(), 'Expected test_metrics to be written.'
+    metrics = assert_test_metrics(
+        tmp_path / 'train-epochs',
+        expected_keys={'MulticlassAccuracy'},
+    )
 
-    metrics = load_json(metrics_path)
-    assert 'loss' in metrics, 'Expected loss in test_metrics.'
-    assert 'MulticlassAccuracy' in metrics, 'Expected MulticlassAccuracy in test_metrics.'
-    assert math.isfinite(metrics['loss']), 'Expected loss to be finite.'
-    assert math.isfinite(metrics['MulticlassAccuracy']), 'Expected accuracy to be finite.'
+    expected_loss = get_expected_loss('train_epochs')
+    assert metrics['loss'] == pytest.approx(expected_loss, rel=0, abs=1e-6)
 
-    runtime_path = tmp_path / 'train-epochs' / 'runtime'
-    assert runtime_path.exists(), 'Expected runtime to be written.'
+    assert_runtime(tmp_path / 'train-epochs')
