@@ -696,8 +696,20 @@ class ImageDataModule(DataModule):
         if torch.distributed.get_rank() == 0:
             log.info('Feature caching enabled, caching features.')
 
-        def _extract_features(model, image_field, examples):
+        def _extract_features(model, image_field, transforms, target_device, target_dtype, examples):
             inputs = examples[image_field]
+            images = []
+
+            for image in inputs:
+                image_tensor = transforms(image) if transforms else image
+
+                # HuggingFace image features can still be uint8 tensors; force float input.
+                if isinstance(image_tensor, torch.Tensor) and image_tensor.dtype == torch.uint8:
+                    image_tensor = image_tensor.float().div(255.0)
+
+                images.append(image_tensor)
+
+            inputs = torch.stack(images).to(device=target_device, dtype=target_dtype)
 
             with torch.no_grad():
                 features = model.forward_features(inputs)
@@ -707,7 +719,18 @@ class ImageDataModule(DataModule):
             return examples
 
         model = model.to(self.device)
-        _extract_features_fn = partial(_extract_features, model, self._image_field)
+        model.eval()
+
+        model_dtype = next(model.parameters()).dtype
+
+        _extract_features_fn = partial(
+            _extract_features,
+            model,
+            self._image_field,
+            self.transforms,
+            self.device,
+            model_dtype,
+        )
 
         if torch.distributed.get_rank() == 0:
             log.info(f' - Processing {len(self.train_dataset)} examples in the train dataset.')
@@ -871,7 +894,9 @@ class ImageDataModule(DataModule):
         return images, labels
 
     @staticmethod
-    def _collate_fn_with_cached_features(batch, label_field=None, image_field=None):
+    def _collate_fn_with_cached_features(batch, label_field=None, image_field=None, transforms=None):
+        # This should work with the generic collate_fn builder in _create_dataloaders.
+        # We ignore `transforms` because we have already precomputed the features.
         features = torch.stack(
             [item['features'] for item in batch]
         )
