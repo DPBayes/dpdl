@@ -1,24 +1,17 @@
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 pytest.importorskip('torch')
 
+from integration_utils import assert_runtime, assert_test_metrics, base_env, run_distributed
+
 
 def test_cpu_smoke_train(tmp_path: Path, image_dataset_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    env = os.environ.copy()
-    env['_TYPER_STANDARD_TRACEBACK'] = '1'
+    env = base_env()
 
-    cmd = [
-        sys.executable,
-        '-m',
-        'torch.distributed.run',
-        '--standalone',
-        '--nproc_per_node=1',
+    cmd_args = [
         'run.py',
         'train',
         '--device',
@@ -46,12 +39,7 @@ def test_cpu_smoke_train(tmp_path: Path, image_dataset_path: Path) -> None:
         'smoke-cpu',
     ]
 
-    result = subprocess.run(
-        cmd,
-        cwd=repo_root,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
+    run_distributed(cmd_args, env, repo_root)
 
-    assert result.returncode == 0, result.stderr
+    assert_test_metrics(tmp_path / 'smoke-cpu')
+    assert_runtime(tmp_path / 'smoke-cpu')

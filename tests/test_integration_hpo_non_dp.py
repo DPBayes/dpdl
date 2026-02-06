@@ -6,10 +6,13 @@ pytest.importorskip('torch')
 
 from integration_utils import (
     assert_config_and_hyperparams,
+    assert_files_exist,
+    assert_best_params,
+    assert_hpo_metrics,
+    assert_runtime,
     base_env,
     get_expected_hpo_params,
     get_expected_loss,
-    load_json,
     run_distributed,
 )
 
@@ -90,28 +93,11 @@ def test_integration_hpo_non_dp(tmp_path: Path, image_dataset_path: Path) -> Non
         },
     )
 
-    metrics_path = tmp_path / 'hpo-non-dp' / 'hpo_metrics.json'
-    assert metrics_path.exists(), 'Expected hpo_metrics.json to be written.'
-
-    metrics = load_json(metrics_path)
-    assert isinstance(metrics, list) and metrics, 'Expected non-empty hpo_metrics list.'
-    assert 'loss' in metrics[0], 'Expected loss in hpo_metrics entry.'
-
     expected_loss = get_expected_loss('hpo_non_dp_trial0')
-    assert metrics[0]['loss'] == pytest.approx(expected_loss, rel=0, abs=1e-6)
-
-    best_params_path = tmp_path / 'hpo-non-dp' / 'best-params.json'
-    assert best_params_path.exists(), 'Expected best-params.json to be written.'
-    best_params = load_json(best_params_path)
+    assert_hpo_metrics(tmp_path / 'hpo-non-dp', expected_loss=expected_loss)
 
     expected_params = get_expected_hpo_params('hpo_non_dp_trial0')
-    for key, expected_value in expected_params.items():
-        assert key in best_params, f'Missing expected hyperparameter: {key}'
-        if isinstance(expected_value, float):
-            assert best_params[key] == pytest.approx(expected_value, rel=0, abs=1e-8)
-        else:
-            assert best_params[key] == expected_value
+    assert_best_params(tmp_path / 'hpo-non-dp', expected_params=expected_params)
+    assert_files_exist(tmp_path / 'hpo-non-dp', ('best-value', 'best-params.json', 'final-metrics'))
 
-    for artifact in ('best-value', 'best-params.json', 'final-metrics'):
-        path = tmp_path / 'hpo-non-dp' / artifact
-        assert path.exists(), f'Expected {artifact} to be written.'
+    assert_runtime(tmp_path / 'hpo-non-dp')

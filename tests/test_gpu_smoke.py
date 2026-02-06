@@ -1,26 +1,14 @@
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 torch = pytest.importorskip('torch')
 
+from integration_utils import assert_runtime, assert_test_metrics, base_env, run_distributed
+
 
 def _should_skip_gpu_tests() -> bool:
     return not torch.cuda.is_available()
-
-
-def _run_smoke(cmd: list[str], env: dict, cwd: Path) -> None:
-    result = subprocess.run(
-        cmd,
-        cwd=cwd,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.gpu
@@ -29,15 +17,9 @@ def test_smoke_train_non_dp(tmp_path: Path, image_dataset_path: Path) -> None:
         pytest.skip('CUDA not available.')
 
     repo_root = Path(__file__).resolve().parents[1]
-    env = os.environ.copy()
-    env['_TYPER_STANDARD_TRACEBACK'] = '1'
+    env = base_env()
 
-    cmd = [
-        sys.executable,
-        '-m',
-        'torch.distributed.run',
-        '--standalone',
-        '--nproc_per_node=1',
+    cmd_args = [
         'run.py',
         'train',
         '--device',
@@ -65,7 +47,9 @@ def test_smoke_train_non_dp(tmp_path: Path, image_dataset_path: Path) -> None:
         'smoke-non-dp',
     ]
 
-    _run_smoke(cmd, env, repo_root)
+    run_distributed(cmd_args, env, repo_root)
+    assert_test_metrics(tmp_path / 'smoke-non-dp')
+    assert_runtime(tmp_path / 'smoke-non-dp')
 
 
 @pytest.mark.gpu
@@ -74,15 +58,9 @@ def test_smoke_train_dp(tmp_path: Path, image_dataset_path: Path) -> None:
         pytest.skip('CUDA not available.')
 
     repo_root = Path(__file__).resolve().parents[1]
-    env = os.environ.copy()
-    env['_TYPER_STANDARD_TRACEBACK'] = '1'
+    env = base_env()
 
-    cmd = [
-        sys.executable,
-        '-m',
-        'torch.distributed.run',
-        '--standalone',
-        '--nproc_per_node=1',
+    cmd_args = [
         'run.py',
         'train',
         '--device',
@@ -109,4 +87,6 @@ def test_smoke_train_dp(tmp_path: Path, image_dataset_path: Path) -> None:
         'smoke-dp',
     ]
 
-    _run_smoke(cmd, env, repo_root)
+    run_distributed(cmd_args, env, repo_root)
+    assert_test_metrics(tmp_path / 'smoke-dp')
+    assert_runtime(tmp_path / 'smoke-dp')

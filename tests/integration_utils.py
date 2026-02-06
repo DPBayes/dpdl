@@ -1,10 +1,23 @@
 import json
+import math
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+
+
+def run_command(cmd: list[str], env: dict, cwd: Path) -> subprocess.CompletedProcess:
+    result = subprocess.run(
+        cmd,
+        cwd=cwd,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    return result
 
 
 def run_distributed(cmd_args: list[str], env: dict, cwd: Path) -> subprocess.CompletedProcess:
@@ -16,15 +29,7 @@ def run_distributed(cmd_args: list[str], env: dict, cwd: Path) -> subprocess.Com
         '--nproc_per_node=1',
         *cmd_args,
     ]
-    result = subprocess.run(
-        cmd,
-        cwd=cwd,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stderr
-    return result
+    return run_command(cmd, env, cwd)
 
 
 def load_json(path: Path) -> dict:
@@ -66,6 +71,156 @@ def assert_config_and_hyperparams(
 
     if expected_hyperparams:
         _assert_expected(hyperparams, expected_hyperparams, 'hyperparameters')
+
+
+def _iter_numbers(value):
+    if isinstance(value, (int, float)):
+        yield value
+        return
+
+    if isinstance(value, dict):
+        for item in value.values():
+            yield from _iter_numbers(item)
+        return
+
+    if isinstance(value, list):
+        for item in value:
+            yield from _iter_numbers(item)
+        return
+
+
+def assert_metrics(
+    log_dir: Path,
+    *,
+    expected_keys: set[str] | None = None,
+    filename: str = 'test_metrics',
+    require_loss: bool = True,
+    ensure_finite: bool = True,
+) -> dict:
+    metrics_path = log_dir / filename
+    assert metrics_path.exists(), f'Expected metrics file at {metrics_path}'
+    metrics = load_json(metrics_path)
+
+    if require_loss:
+        assert 'loss' in metrics, f'Missing loss in {metrics_path}'
+
+    if expected_keys:
+        for key in expected_keys:
+            assert key in metrics, f'Missing metric "{key}" in {metrics_path}'
+
+    if ensure_finite:
+        for value in _iter_numbers(metrics):
+            assert math.isfinite(value), 'Non-finite metric value found.'
+
+    return metrics
+
+
+def assert_test_metrics(
+    log_dir: Path,
+    *,
+    expected_keys: set[str] | None = None,
+    require_loss: bool = True,
+    ensure_finite: bool = True,
+) -> dict:
+    return assert_metrics(
+        log_dir,
+        expected_keys=expected_keys,
+        filename='test_metrics',
+        require_loss=require_loss,
+        ensure_finite=ensure_finite,
+    )
+
+
+def assert_predict_metrics(
+    log_dir: Path,
+    *,
+    expected_keys: set[str] | None = None,
+    ensure_finite: bool = True,
+) -> dict:
+    return assert_metrics(
+        log_dir,
+        expected_keys=expected_keys,
+        filename='predict_metrics.json',
+        require_loss=False,
+        ensure_finite=ensure_finite,
+    )
+
+
+def assert_hpo_metrics(
+    log_dir: Path,
+    *,
+    expected_loss: float | None = None,
+    abs_tol: float = 1e-6,
+    ensure_finite: bool = True,
+) -> list[dict]:
+    metrics_path = log_dir / 'hpo_metrics.json'
+    assert metrics_path.exists(), f'Expected hpo_metrics.json at {metrics_path}'
+    metrics = load_json(metrics_path)
+    assert isinstance(metrics, list) and metrics, 'Expected non-empty hpo_metrics list.'
+    assert 'loss' in metrics[0], 'Expected loss in first hpo_metrics entry.'
+
+    if ensure_finite:
+        for entry in metrics:
+            for value in _iter_numbers(entry):
+                assert math.isfinite(value), 'Non-finite HPO metric value found.'
+
+    if expected_loss is not None:
+        assert metrics[0]['loss'] == pytest.approx(expected_loss, rel=0, abs=abs_tol)
+
+    return metrics
+
+
+def assert_files_exist(log_dir: Path, filenames: tuple[str, ...]) -> None:
+    for filename in filenames:
+        path = log_dir / filename
+        assert path.exists(), f'Expected {filename} at {path}'
+
+
+def assert_best_params(
+    log_dir: Path,
+    *,
+    expected_params: dict | None = None,
+    filename: str = 'best-params.json',
+    abs_tol: float = 1e-8,
+) -> dict:
+    path = log_dir / filename
+    assert path.exists(), f'Expected {filename} at {path}'
+    best_params = load_json(path)
+
+    if expected_params:
+        for key, expected_value in expected_params.items():
+            assert key in best_params, f'Missing expected hyperparameter: {key}'
+            if isinstance(expected_value, float):
+                assert best_params[key] == pytest.approx(expected_value, rel=0, abs=abs_tol)
+            else:
+                assert best_params[key] == expected_value
+
+    return best_params
+
+
+def assert_predictions(
+    log_dir: Path,
+    *,
+    split: str,
+    expected_len: int | None = None,
+) -> list:
+    path = log_dir / f'predictions_{split}.json'
+    assert path.exists(), f'Expected predictions file at {path}'
+    preds = load_json(path)
+    assert isinstance(preds, list), 'Expected predictions JSON to be a list.'
+    if expected_len is not None:
+        assert len(preds) == expected_len, f'Expected {expected_len} predictions.'
+    return preds
+
+
+def assert_runtime(log_dir: Path) -> None:
+    runtime_path = log_dir / 'runtime'
+    assert runtime_path.exists(), f'Expected runtime file at {runtime_path}'
+
+
+def assert_final_epsilon(log_dir: Path) -> None:
+    epsilon_path = log_dir / 'final_epsilon'
+    assert epsilon_path.exists(), f'Expected final epsilon file at {epsilon_path}'
 
 
 def load_expected_losses() -> dict:

@@ -5,7 +5,11 @@ import pytest
 pytest.importorskip('torch')
 
 from integration_utils import (
+    assert_best_params,
     assert_config_and_hyperparams,
+    assert_files_exist,
+    assert_hpo_metrics,
+    assert_runtime,
     base_env,
     load_json,
     run_distributed,
@@ -87,14 +91,15 @@ def test_integration_hpo_full_batch_size(tmp_path: Path, image_dataset_path: Pat
         },
     )
 
+    assert_hpo_metrics(tmp_path / 'hpo-full-batch')
+
     raw_params_path = tmp_path / 'hpo-full-batch' / 'best-params-raw-idx.json'
     assert raw_params_path.exists(), 'Expected best-params-raw-idx.json to be written.'
     raw_params = load_json(raw_params_path)
     assert raw_params.get('batch_size_idx') == 0, 'Expected ordered batch_size to select the -1 sentinel.'
 
-    best_params_path = tmp_path / 'hpo-full-batch' / 'best-params.json'
-    assert best_params_path.exists(), 'Expected best-params.json to be written.'
+    best_params = assert_best_params(tmp_path / 'hpo-full-batch')
+    assert best_params.get('batch_size') == 20, 'Expected full batch size to match dataset size (20).'
+    assert_files_exist(tmp_path / 'hpo-full-batch', ('best-value', 'best-params.json', 'final-metrics'))
 
-    best_params = load_json(best_params_path)
-    assert 'batch_size' in best_params, 'Expected batch_size in best-params.json.'
-    assert best_params['batch_size'] == 20, 'Expected full batch size to match dataset size (20).'
+    assert_runtime(tmp_path / 'hpo-full-batch')

@@ -1,5 +1,7 @@
 {
   "train_non_dp": 0.692236,
+  "train_epochs": 0.6904790,
+  "train_accumulation": 0.6922556,
   "train_dp": 0.748920,
   "peft_head_only": 0.693805,
   "peft_film": 0.764640,
