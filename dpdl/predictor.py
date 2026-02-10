@@ -19,6 +19,7 @@ from .experimentmanager import (
 from .models.model_base import ModelBase
 from .models.model_factory import ModelFactory
 from .trainer import Trainer, TrainerFactory
+from .device import resolve_device
 from .utils import tensor_to_python_type
 
 log = logging.getLogger(__name__)
@@ -90,13 +91,8 @@ class Predictor:
                 if torch.distributed.get_rank() == 0:
                     log.info(f' - Predicting on batch {i}')
 
-                # Move inputs to CUDA
-                if isinstance(X, Mapping):  # Special case for HF language models
-                    X = {k: v.cuda(non_blocking=True) for k, v in X.items()}
-                else:
-                    X = X.cuda(non_blocking=True)
-
-                y = y.cuda(non_blocking=True)
+                # Move inputs to device
+                X, y = self.trainer.adapter.move_to_device(X, y)
 
                 logits = model(X)
                 probs = torch.nn.functional.softmax(logits, dim=1)
@@ -253,14 +249,15 @@ class PredictorFactory:
         configuration = config_manager.configuration
         hyperparams = config_manager.hyperparams
 
-        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams)
+        device = resolve_device(configuration.device)
+        datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, device)
         num_classes = datamodule.get_num_classes()
 
         trainer = TrainerFactory.get_trainer(config_manager)
 
         predictor = Predictor(
             trainer=trainer,
-            dataset_split=configuration.dataset_split,
+            dataset_split=configuration.predict_dataset_split,
             config_manager=config_manager,
             save_gradient_data=configuration.prediction_save_gradient_data,
         )

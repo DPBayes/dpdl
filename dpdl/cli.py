@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import torch
 import typer
+from pydantic import ValidationError
 from typing_extensions import Annotated
 from pathlib import Path
 
@@ -24,6 +25,32 @@ from .utils import seed_everything
 
 log = logging.getLogger(__name__)
 
+
+def _format_validation_error(exc: ValidationError) -> str:
+    """
+    Format a clean message of possibly multiple validation errors.
+    """
+
+    errors = exc.errors() or []
+    if not errors:
+        return str(exc)
+
+    messages = []
+    for err in errors:
+        msg = err.get('msg', str(exc))
+        loc = err.get('loc') or ()
+        loc_parts = []
+        for item in loc:
+            if item == '__root__':
+                continue
+            loc_parts.append(str(item))
+        if loc_parts:
+            messages.append(f"{'.'.join(loc_parts)}: {msg}")
+        else:
+            messages.append(msg)
+
+    return '; '.join(messages)
+
 def cli(
         ctx: typer.Context,
         command: Annotated[
@@ -40,14 +67,14 @@ def cli(
             )
         ] = False,
         epochs: Annotated[
-            int,
+            Optional[int],
             typer.Option(
                 help='Number of epochs to train',
                 rich_help_panel='Training options',
             )
-        ] = 0,
+        ] = None,
         total_steps: Annotated[
-            int,
+            Optional[int],
             typer.Option(
                 help='Total number of gradient updates',
                 rich_help_panel='Training options',
@@ -241,7 +268,14 @@ def cli(
                 help='Dataset name',
                 rich_help_panel='Dataset options',
             )
-        ] = 'cifar10',
+        ] = 'uoft-cs/cifar10',
+        dataset_path: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Load local dataset on disk from given path',
+                rich_help_panel='Dataset options',
+            )
+        ] = None,
         subset_size: Annotated[
             float,
             typer.Option(
@@ -354,6 +388,14 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        device: Annotated[
+            str,
+            typer.Option(
+                help="Device to run on ('cuda', 'cpu', or 'auto')",
+                rich_help_panel='Runtime options',
+                envvar='DPDL_DEVICE',
+            )
+        ] = 'auto',
         record_clipping: Annotated[
             Optional[bool],
             typer.Option(
@@ -564,11 +606,12 @@ def cli(
                 rich_help_panel='',
             )
         ] = False,
-        dataset_split: Annotated[
+        predict_dataset_split: Annotated[
             Optional[str],
             typer.Option(
-                help='Dataset split to use for inference',
-                rich_help_panel='Inference options',
+                '--predict-dataset-split',
+                help='Dataset split to use for prediction',
+                rich_help_panel='Prediction options',
             )
         ] = 'test',
     ):
@@ -581,7 +624,14 @@ def cli(
         'train-predict': run_train_and_predict,
     }
 
-    config_manager = ConfigurationManager(ctx.params)
+    # Throw a clean error to typer instead of outputting a stacktrace
+    try:
+        config_manager = ConfigurationManager(ctx.params)
+    except ValidationError as exc:
+        raise typer.BadParameter(_format_validation_error(exc))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+
     command = config_manager.get_command()
 
     if command == 'show-layers':

@@ -1,0 +1,8 @@
+{
+  "hpo_non_dp_trial0": {
+    "learning_rate": 0.00023688639
+  },
+  "hpo_dp_trial0": {
+    "learning_rate": 0.00023688639
+  }
+}

@@ -2,6 +2,7 @@ import csv
 import logging
 import os
 
+import torch
 import torchmetrics
 
 from .base_callback import Callback
@@ -36,12 +37,13 @@ class RecordTrainLossByStepCallback(Callback):
 
 
 class RecordLossesByEpochCallback(Callback):
-    def __init__(self, log_dir):
+    def __init__(self, log_dir, device=None):
         super().__init__()
 
         self.log_dir = log_dir
-        self.train_loss = torchmetrics.aggregation.MeanMetric().cuda()
-        self.evaluation_loss = torchmetrics.aggregation.MeanMetric(sync_on_compute=False).cuda()
+        device = device or torch.device('cuda')
+        self.train_loss = torchmetrics.aggregation.MeanMetric().to(device)
+        self.evaluation_loss = torchmetrics.aggregation.MeanMetric(sync_on_compute=False).to(device)
         self.train_losses = []
         self.val_losses = []
 

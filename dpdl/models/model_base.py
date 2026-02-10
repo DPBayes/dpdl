@@ -30,7 +30,7 @@ class ModelBase(torch.nn.Module):
         if not criterion:
             raise ValueError('Criterion not passed to ModelBase.')
 
-        self._criterion = criterion.cuda()
+        self._criterion = criterion
 
         if metrics is not None:
             self.train_metrics = metrics['train_metrics']
@@ -147,6 +147,9 @@ class ModelBase(torch.nn.Module):
                 log.info(f'Loaded model from {fpath}')
 
             return
+
+        if map_location == 'cuda' and not torch.cuda.is_available():
+            map_location = 'cpu'
 
         ckpt = torch.load(fpath, map_location=map_location)
 

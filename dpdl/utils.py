@@ -9,6 +9,7 @@ import torch
 
 log = logging.getLogger(__name__)
 
+
 def seed_everything(seed) -> None:
     if not seed:
         return
