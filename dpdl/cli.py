@@ -571,6 +571,13 @@ def cli(
                 rich_help_panel='Opacus options',
             )
         ] = None,
+        bsr_iterations_number: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BSR iterations_number override for MF sensitivity horizon',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
         bsr_alpha: Annotated[
             Optional[float],
             typer.Option(

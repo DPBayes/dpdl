@@ -411,6 +411,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         bsr_max_participations: int | None = None,
         bsr_min_separation: int | None = None,
         bsr_mf_sensitivity: float | None = None,
+        bsr_iterations_number: int | None = None,
         bsr_alpha: float | None = None,
         bsr_beta: float | None = None,
         secure_mode: bool = False,
@@ -437,6 +438,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.bsr_max_participations = bsr_max_participations
         self.bsr_min_separation = bsr_min_separation
         self.bsr_mf_sensitivity = bsr_mf_sensitivity
+        self.bsr_iterations_number = bsr_iterations_number
         self.bsr_alpha = bsr_alpha
         self.bsr_beta = bsr_beta
 
@@ -495,6 +497,9 @@ class DifferentiallyPrivateTrainer(Trainer):
             if self.bsr_mf_sensitivity is not None:
                 privacy_metadata['mf_sensitivity'] = float(self.bsr_mf_sensitivity)
 
+            if self.bsr_iterations_number is not None:
+                privacy_metadata['iterations_number'] = int(self.bsr_iterations_number)
+
             return SamplingSemantics(
                 sampling_mode=self.sampling_mode,
                 privacy_metadata=privacy_metadata,
@@ -519,6 +524,8 @@ class DifferentiallyPrivateTrainer(Trainer):
 
             if self.bsr_mf_sensitivity is not None:
                 mechanism_state['mf_sensitivity'] = float(self.bsr_mf_sensitivity)
+            if self.bsr_iterations_number is not None:
+                mechanism_state['iterations_number'] = int(self.bsr_iterations_number)
 
             # make_private_with_epsilon calibrates and sets z_std itself.
             if not self._has_target_privacy_params():
@@ -584,6 +591,9 @@ class DifferentiallyPrivateTrainer(Trainer):
         bsr_kwargs = {}
         if self.bsr_mf_sensitivity is not None:
             bsr_kwargs['bsr_mf_sensitivity'] = float(self.bsr_mf_sensitivity)
+
+        if self.bsr_iterations_number is not None:
+            bsr_kwargs['bsr_iterations_number'] = int(self.bsr_iterations_number)
 
         if self.bsr_max_participations is not None:
             bsr_kwargs['bsr_max_participations'] = int(self.bsr_max_participations)
@@ -1185,6 +1195,7 @@ class TrainerFactory:
             bsr_max_participations=configuration.bsr_max_participations,
             bsr_min_separation=configuration.bsr_min_separation,
             bsr_mf_sensitivity=configuration.bsr_mf_sensitivity,
+            bsr_iterations_number=configuration.bsr_iterations_number,
             bsr_alpha=configuration.bsr_alpha,
             bsr_beta=configuration.bsr_beta,
             # config

@@ -125,6 +125,7 @@ class Configuration(BaseModel):
     bsr_max_participations: Optional[int] = None
     bsr_min_separation: Optional[int] = None
     bsr_mf_sensitivity: Optional[float] = None
+    bsr_iterations_number: Optional[int] = None
     bsr_alpha: Optional[float] = None
     bsr_beta: Optional[float] = None
     n_trials: int = 20
@@ -247,6 +248,7 @@ class Configuration(BaseModel):
         bsr_z_std = values.get('bsr_z_std')
         bsr_alpha = values.get('bsr_alpha')
         bsr_beta = values.get('bsr_beta')
+        bsr_iterations_number = values.get('bsr_iterations_number')
 
         bsr_fields = [
             'bsr_coeffs',
@@ -255,6 +257,7 @@ class Configuration(BaseModel):
             'bsr_max_participations',
             'bsr_min_separation',
             'bsr_mf_sensitivity',
+            'bsr_iterations_number',
             'bsr_alpha',
             'bsr_beta',
         ]
@@ -306,6 +309,9 @@ class Configuration(BaseModel):
 
             if bsr_z_std is not None and bsr_z_std < 0:
                 raise ValueError('--bsr-z-std must be >= 0.')
+
+            if bsr_iterations_number is not None and bsr_iterations_number < 1:
+                raise ValueError('--bsr-iterations-number must be >= 1.')
 
             if bsr_alpha is not None and not (0.0 < bsr_alpha <= 1.0):
                 raise ValueError('--bsr-alpha must be in (0, 1].')
@@ -385,6 +391,7 @@ class Configuration(BaseModel):
                 ('BSR max participations', self.bsr_max_participations),
                 ('BSR min separation', self.bsr_min_separation),
                 ('BSR MF sensitivity', self.bsr_mf_sensitivity),
+                ('BSR iterations number', self.bsr_iterations_number),
                 ('BSR alpha', self.bsr_alpha),
                 ('BSR beta', self.bsr_beta),
             ]
