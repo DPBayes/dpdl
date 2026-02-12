@@ -86,3 +86,13 @@ def test_bsr_alpha_beta_validation() -> None:
             bsr_bands=5,
             bsr_beta=1.0,
         )
+
+
+def test_non_bsr_allows_empty_bsr_coeff_list_default() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='gaussian',
+        accountant='rdp',
+        bsr_coeffs=[],
+    )
+    assert cfg.noise_mechanism == 'gaussian'

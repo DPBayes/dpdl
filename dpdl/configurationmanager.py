@@ -258,7 +258,17 @@ class Configuration(BaseModel):
             'bsr_alpha',
             'bsr_beta',
         ]
-        has_any_bsr_field = any(values.get(field) is not None for field in bsr_fields)
+
+        def _is_explicitly_set(v):
+            if v is None:
+                return False
+
+            if isinstance(v, (list, tuple, set, dict)):
+                return len(v) > 0
+
+            return True
+
+        has_any_bsr_field = any(_is_explicitly_set(values.get(field)) for field in bsr_fields)
 
         if mechanism != 'bsr' and has_any_bsr_field:
             raise ValueError(
