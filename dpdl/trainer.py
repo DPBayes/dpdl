@@ -8,12 +8,15 @@ from collections.abc import Mapping
 import opacus
 import torch
 from opacus import GradSampleModule
+from opacus.accountants.analysis.bsr import calibrate_bsr_z_std
 from opacus.distributed import DifferentiallyPrivateDistributedDataParallel
+from opacus.mechanism_contracts import NoiseMechanismConfig, SamplingSemantics
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 from peft import PeftModel
 
 from .callbacks.callback_factory import CallbackFactory, CallbackHandler
+from .bsr import generate_bsr_coeffs_from_sgd_workload
 from .configurationmanager import Configuration, ConfigurationManager, Hyperparameters
 from .datamodules import DataModule, DataModuleFactory
 from .device import resolve_device
@@ -400,6 +403,16 @@ class DifferentiallyPrivateTrainer(Trainer):
         accountant: str = 'prv',
         poisson_sampling: bool = True,
         normalize_clipping: bool = False,
+        noise_mechanism: str = 'gaussian',
+        sampling_mode: str | None = None,
+        bsr_coeffs: list[float] | None = None,
+        bsr_z_std: float | None = None,
+        bsr_bands: int | None = None,
+        bsr_max_participations: int | None = None,
+        bsr_min_separation: int | None = None,
+        bsr_mf_sensitivity: float | None = None,
+        bsr_alpha: float | None = None,
+        bsr_beta: float | None = None,
         secure_mode: bool = False,
         target_epsilon: float | None = None,
         target_delta: float | None = None,
@@ -416,6 +429,16 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.seed = seed
         self.poisson_sampling = poisson_sampling
         self.normalize_clipping = normalize_clipping
+        self.noise_mechanism = noise_mechanism
+        self.sampling_mode = sampling_mode
+        self.bsr_coeffs = bsr_coeffs
+        self.bsr_z_std = bsr_z_std
+        self.bsr_bands = bsr_bands
+        self.bsr_max_participations = bsr_max_participations
+        self.bsr_min_separation = bsr_min_separation
+        self.bsr_mf_sensitivity = bsr_mf_sensitivity
+        self.bsr_alpha = bsr_alpha
+        self.bsr_beta = bsr_beta
 
         # setup opacus privacy engine
         privacy_engine_args = {
@@ -455,6 +478,119 @@ class DifferentiallyPrivateTrainer(Trainer):
         return True
 
     def setup(self):
+        def _build_sampling_semantics() -> SamplingSemantics | None:
+            if self.sampling_mode is None:
+                return None
+
+            privacy_metadata = {}
+            if self.sampling_mode == 'cyclic_poisson' and self.bsr_bands is not None:
+                privacy_metadata['bands'] = int(self.bsr_bands)
+
+            if self.bsr_max_participations is not None:
+                privacy_metadata['max_participations'] = int(self.bsr_max_participations)
+
+            if self.bsr_min_separation is not None:
+                privacy_metadata['min_separation'] = int(self.bsr_min_separation)
+
+            if self.bsr_mf_sensitivity is not None:
+                privacy_metadata['mf_sensitivity'] = float(self.bsr_mf_sensitivity)
+
+            return SamplingSemantics(
+                sampling_mode=self.sampling_mode,
+                privacy_metadata=privacy_metadata,
+            )
+
+        def _build_noise_mechanism_config(
+            *,
+            noise_multiplier_ref: float | None,
+        ) -> NoiseMechanismConfig | None:
+            if self.noise_mechanism != 'bsr':
+                return None
+
+            mechanism_state = {
+                'coeffs': list(self.bsr_coeffs or []),
+            }
+
+            if self.bsr_max_participations is not None:
+                mechanism_state['max_participations'] = int(self.bsr_max_participations)
+
+            if self.bsr_min_separation is not None:
+                mechanism_state['min_separation'] = int(self.bsr_min_separation)
+
+            if self.bsr_mf_sensitivity is not None:
+                mechanism_state['mf_sensitivity'] = float(self.bsr_mf_sensitivity)
+
+            # make_private_with_epsilon calibrates and sets z_std itself.
+            if not self._has_target_privacy_params():
+                if self.bsr_z_std is not None:
+                    mechanism_state['z_std'] = float(self.bsr_z_std)
+                else:
+                    if noise_multiplier_ref is None:
+                        raise ValueError(
+                            'BSR setup requires noise_multiplier when bsr_z_std is not provided.'
+                        )
+                    mechanism_state['z_std'] = calibrate_bsr_z_std(
+                        noise_multiplier_ref=float(noise_multiplier_ref),
+                        max_grad_norm=float(self.max_grad_norm),
+                        denominator=float(self.datamodule.batch_size),
+                    )
+
+            return NoiseMechanismConfig(
+                mechanism='bsr',
+                accounting_mode='bsr_accountant',
+                mechanism_state=mechanism_state,
+            )
+
+        has_target_privacy_params = self._has_target_privacy_params()
+        sampling_semantics = _build_sampling_semantics()
+
+        if self.noise_mechanism == 'bsr' and not self.bsr_coeffs:
+            if self.bsr_bands is None:
+                raise ValueError(
+                    'BSR auto coefficient generation requires --bsr-bands when --bsr-coeffs is not given.'
+                )
+
+            self.bsr_coeffs = generate_bsr_coeffs_from_sgd_workload(
+                bands=int(self.bsr_bands),
+                momentum=float(
+                    self.bsr_beta if self.bsr_beta is not None else 0.0
+                ),
+                weight_decay=float(
+                    self.bsr_alpha
+                    if self.bsr_alpha is not None
+                    else 1.0
+                ),
+            )
+
+            if torch.distributed.get_rank() == 0:
+                log.info(
+                    f'Auto-generated BSR coeffs from SGD workload (bands={self.bsr_bands}, '
+                    f'alpha={(self.bsr_alpha if self.bsr_alpha is not None else 1.0)}, '
+                    f'beta={(self.bsr_beta if self.bsr_beta is not None else 0.0)}): '
+                    f'{self.bsr_coeffs}'
+                )
+
+        noise_multiplier_ref = self.noise_multiplier
+        if not has_target_privacy_params:
+            if self.target_epsilon == -1:
+                noise_multiplier_ref = 0.0
+            elif self.noise_batch_ratio:
+                noise_multiplier_ref = self.noise_batch_ratio * self.datamodule.batch_size
+
+        noise_mechanism_config = _build_noise_mechanism_config(
+            noise_multiplier_ref=noise_multiplier_ref,
+        )
+
+        bsr_kwargs = {}
+        if self.bsr_mf_sensitivity is not None:
+            bsr_kwargs['bsr_mf_sensitivity'] = float(self.bsr_mf_sensitivity)
+
+        if self.bsr_max_participations is not None:
+            bsr_kwargs['bsr_max_participations'] = int(self.bsr_max_participations)
+
+        if self.bsr_min_separation is not None:
+            bsr_kwargs['bsr_min_separation'] = int(self.bsr_min_separation)
+
         noise_generator = torch.Generator(device=self.device)
         if self.seed:
             noise_generator.manual_seed(self.seed)
@@ -470,7 +606,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         train_dataloader = self.datamodule.get_dataloader('train')
 
         # setup differential privacy for the model, optimize, and dataloader
-        if self._has_target_privacy_params():
+        if has_target_privacy_params:
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private_with_epsilon(
                 module=model,
                 optimizer=optimizer,
@@ -484,6 +620,9 @@ class DifferentiallyPrivateTrainer(Trainer):
                 poisson_sampling=self.poisson_sampling,
                 normalize_clipping=self.normalize_clipping,
                 total_steps=self.total_steps,
+                noise_mechanism_config=noise_mechanism_config,
+                sampling_semantics=sampling_semantics,
+                **bsr_kwargs,
             )
         else:
             if self.target_epsilon == -1:
@@ -503,6 +642,8 @@ class DifferentiallyPrivateTrainer(Trainer):
                 poisson_sampling=self.poisson_sampling,
                 normalize_clipping=self.normalize_clipping,
                 total_steps=self.total_steps,
+                noise_mechanism_config=noise_mechanism_config,
+                sampling_semantics=sampling_semantics,
             )
 
         # now we can start using the DP'ifyed stuff
@@ -1027,6 +1168,16 @@ class TrainerFactory:
             noise_batch_ratio=hyperparams.noise_batch_ratio,
             poisson_sampling=configuration.poisson_sampling,
             normalize_clipping=configuration.normalize_clipping,
+            noise_mechanism=configuration.noise_mechanism,
+            sampling_mode=configuration.sampling_mode,
+            bsr_coeffs=configuration.bsr_coeffs,
+            bsr_z_std=configuration.bsr_z_std,
+            bsr_bands=configuration.bsr_bands,
+            bsr_max_participations=configuration.bsr_max_participations,
+            bsr_min_separation=configuration.bsr_min_separation,
+            bsr_mf_sensitivity=configuration.bsr_mf_sensitivity,
+            bsr_alpha=configuration.bsr_alpha,
+            bsr_beta=configuration.bsr_beta,
             # config
             accountant=configuration.accountant,
             secure_mode=configuration.secure_mode,

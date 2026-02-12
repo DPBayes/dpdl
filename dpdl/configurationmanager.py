@@ -117,6 +117,16 @@ class Configuration(BaseModel):
     accountant: str = 'prv'
     poisson_sampling: bool = True
     normalize_clipping: bool = False
+    noise_mechanism: Literal['gaussian', 'bsr'] = 'gaussian'
+    sampling_mode: Optional[Literal['fixed_batch', 'cyclic_poisson']] = None
+    bsr_coeffs: Optional[List[float]] = None
+    bsr_z_std: Optional[float] = None
+    bsr_bands: Optional[int] = None
+    bsr_max_participations: Optional[int] = None
+    bsr_min_separation: Optional[int] = None
+    bsr_mf_sensitivity: Optional[float] = None
+    bsr_alpha: Optional[float] = None
+    bsr_beta: Optional[float] = None
     n_trials: int = 20
     optuna_random_trials: int = 10
     target_hypers: List[str] = []
@@ -226,6 +236,78 @@ class Configuration(BaseModel):
 
         return values
 
+    @root_validator(pre=False, skip_on_failure=True)
+    def check_bsr_configuration(cls, values):
+        mechanism = values.get('noise_mechanism')
+        sampling_mode = values.get('sampling_mode')
+        accountant = values.get('accountant')
+        poisson_sampling = values.get('poisson_sampling')
+        bsr_coeffs = values.get('bsr_coeffs')
+        bsr_bands = values.get('bsr_bands')
+        bsr_z_std = values.get('bsr_z_std')
+        bsr_alpha = values.get('bsr_alpha')
+        bsr_beta = values.get('bsr_beta')
+
+        bsr_fields = [
+            'bsr_coeffs',
+            'bsr_z_std',
+            'bsr_bands',
+            'bsr_max_participations',
+            'bsr_min_separation',
+            'bsr_mf_sensitivity',
+            'bsr_alpha',
+            'bsr_beta',
+        ]
+        has_any_bsr_field = any(values.get(field) is not None for field in bsr_fields)
+
+        if mechanism != 'bsr' and has_any_bsr_field:
+            raise ValueError(
+                'BSR-specific parameters require --noise-mechanism bsr.'
+            )
+
+        if sampling_mode == 'cyclic_poisson' and mechanism != 'bsr':
+            raise ValueError(
+                'Cyclic-poisson sampling requires --noise-mechanism bsr.'
+            )
+
+        if mechanism == 'bsr':
+            if accountant != 'bsr':
+                raise ValueError(
+                    'BSR mechanism requires --accountant bsr.'
+                )
+
+            if poisson_sampling:
+                raise ValueError(
+                    'BSR mechanism requires fixed-batch semantics: set --poisson-sampling False.'
+                )
+
+            if not bsr_coeffs and not bsr_bands:
+                raise ValueError(
+                    'BSR mechanism requires --bsr-coeffs or --bsr-bands (for auto-generation).'
+                )
+
+            if sampling_mode == 'cyclic_poisson' and not bsr_bands:
+                raise ValueError(
+                    'Cyclic-poisson BSR sampling requires --bsr-bands.'
+                )
+
+            if bsr_bands is not None and bsr_bands < 1:
+                raise ValueError('--bsr-bands must be >= 1.')
+
+            if bsr_z_std is not None and bsr_z_std < 0:
+                raise ValueError('--bsr-z-std must be >= 0.')
+
+            if bsr_alpha is not None and not (0.0 < bsr_alpha <= 1.0):
+                raise ValueError('--bsr-alpha must be in (0, 1].')
+
+            if bsr_beta is not None and not (0.0 <= bsr_beta < 1.0):
+                raise ValueError('--bsr-beta must be in [0, 1).')
+
+            if bsr_alpha is not None and bsr_beta is not None and bsr_beta > bsr_alpha:
+                raise ValueError('--bsr-beta must be <= --bsr-alpha.')
+
+        return values
+
     def __str__(self):
         attributes = [
             ('Command', self.command),
@@ -285,6 +367,16 @@ class Configuration(BaseModel):
                 ('Accountant', self.accountant),
                 ('Poisson sampling', self.poisson_sampling),
                 ('Normalize clipping', self.normalize_clipping),
+                ('Noise mechanism', self.noise_mechanism),
+                ('Sampling mode', self.sampling_mode),
+                ('BSR coeffs', self.bsr_coeffs),
+                ('BSR z std', self.bsr_z_std),
+                ('BSR bands', self.bsr_bands),
+                ('BSR max participations', self.bsr_max_participations),
+                ('BSR min separation', self.bsr_min_separation),
+                ('BSR MF sensitivity', self.bsr_mf_sensitivity),
+                ('BSR alpha', self.bsr_alpha),
+                ('BSR beta', self.bsr_beta),
             ]
             attributes.extend(privacy_attributes)
 

@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from .model_base import ModelBase
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet
+from .bsr_test_model import BSRTestModel
 from .hugging_face_models import HuggingfaceLanguageModel
 
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -110,6 +111,9 @@ class ModelFactory:
             elif configuration.model_name == 'koskela-net':
                 model_instance = KoskelaNet()
                 transforms = model_instance.get_transforms()
+            elif configuration.model_name == 'bsr-test-net':
+                model_instance = BSRTestModel(num_classes=num_classes)
+                transforms = model_instance.get_transforms()
             else:
                 model_instance = timm.create_model(
                     configuration.model_name,
@@ -152,4 +156,3 @@ class ModelFactory:
             model = PeftFactory.get_peft_model(model, configuration, checkpoints_dir_latest)
 
         return model, transforms, num_classes
-

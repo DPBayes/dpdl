@@ -515,6 +515,76 @@ def cli(
                 rich_help_panel='Opacus options',
             )
         ] = 'prv',
+        noise_mechanism: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Noise mechanism ("gaussian" or "bsr")',
+                rich_help_panel='Opacus options',
+            )
+        ] = 'gaussian',
+        sampling_mode: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Sampling semantics ("fixed_batch" or "cyclic_poisson")',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bsr_coeffs: Annotated[
+            Optional[List[float]],
+            typer.Option(
+                help='BSR Toeplitz coefficients (repeat flag for multiple values)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bsr_z_std: Annotated[
+            Optional[float],
+            typer.Option(
+                help='BSR runtime z std (optional; auto-derived if not set)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bsr_bands: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BSR bands (required for cyclic_poisson semantics)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bsr_max_participations: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BSR max participations for MF sensitivity derivation',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bsr_min_separation: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BSR minimum separation for MF sensitivity derivation',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bsr_mf_sensitivity: Annotated[
+            Optional[float],
+            typer.Option(
+                help='BSR MF sensitivity override for accounting/calibration',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bsr_alpha: Annotated[
+            Optional[float],
+            typer.Option(
+                help='BSR alpha (multiplicative decay in SGD workload model; defaults to optimizer weight_decay if set, else 1)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bsr_beta: Annotated[
+            Optional[float],
+            typer.Option(
+                help='BSR beta (momentum in SGD workload model; defaults to optimizer momentum)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
         target_epsilon: Annotated[
             Optional[float],
             typer.Option(
