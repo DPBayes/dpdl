@@ -690,89 +690,98 @@ class DifferentiallyPrivateTrainer(Trainer):
             self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
             logical_batch_begin = False
 
-        # if 'total_steps' is set then Opacus will do the stepping for us, or
-        # more precisely: the dataloader will have exactly 'total_steps' batches.
-        # Here, we will spend approximately an epoch worth of those.
-        with BatchMemoryManager(
-            data_loader=self.datamodule.get_dataloader('train'),
-            max_physical_batch_size=self.physical_batch_size,
-            optimizer=self.optimizer,
-        ) as virtual_dataloader:
-            for batch_idx, batch in enumerate(virtual_dataloader):
-                # first batch, we can start first epoch
-                if batch_idx == 0:
-                    self._handle_virtual_epoch_start(virtual_epoch)
+        self._handle_virtual_epoch_start(virtual_epoch)
 
-                # now, let's check if we are going to reach the end of logical batch.
-                # the optimizer will not skip next gradient update if we are not at
-                # the end of the logical batch. there's currently pretty much no other
-                # way to do it than this, because we don't know the size of the logical
-                # batch that was sampled.
-                if not self.optimizer._check_skip_next_step(False):
-                    step += 1
-                    logical_batch_completed = True
-                else:
-                    logical_batch_completed = False
+        # Opacus-wrapped dataloaders can exhaust before `total_steps` under fixed-batch
+        # semantics; keep reopening until we hit the target logical step count.
+        while step < self.total_steps:
+            batches_seen_in_pass = 0
 
-                # notify the callbacks of a physical batch start
-                self.callback_handler.call('on_train_physical_batch_start', self, batch_idx, batch)
+            with BatchMemoryManager(
+                data_loader=self.datamodule.get_dataloader('train'),
+                max_physical_batch_size=self.physical_batch_size,
+                optimizer=self.optimizer,
+            ) as virtual_dataloader:
+                for batch_idx, batch in enumerate(virtual_dataloader):
+                    batches_seen_in_pass += 1
 
-                # let's fit this physical batch
-                batch_loss = self.fit_one_batch(batch_idx, batch)
+                    # now, let's check if we are going to reach the end of logical batch.
+                    # the optimizer will not skip next gradient update if we are not at
+                    # the end of the logical batch. there's currently pretty much no other
+                    # way to do it than this, because we don't know the size of the logical
+                    # batch that was sampled.
+                    if not self.optimizer._check_skip_next_step(False):
+                        step += 1
+                        logical_batch_completed = True
+                    else:
+                        logical_batch_completed = False
 
-                # notify the callbacks of a physical batch end
-                self.callback_handler.call('on_train_physical_batch_end', self, batch_idx, batch, batch_loss)
+                    # notify the callbacks of a physical batch start
+                    self.callback_handler.call('on_train_physical_batch_start', self, batch_idx, batch)
 
-                # accumulate loss and count the number of physical batches in a logical batch
-                logical_batch_loss += batch_loss
-                n_physical_batch_in_logical += 1
+                    # let's fit this physical batch
+                    batch_loss = self.fit_one_batch(batch_idx, batch)
 
-                # if the logical batch is complete, notify batch end and reset counters
-                if logical_batch_completed:
-                    self.callback_handler.call(
-                        'on_train_batch_end',
-                        self,
-                        n_logical_batches,
-                        None,
-                        logical_batch_loss / n_physical_batch_in_logical,  # mean of physical batch losses
-                    )
-                    n_logical_batches += 1
-                    logical_batch_loss = 0
-                    n_physical_batch_in_logical = 0
+                    # notify the callbacks of a physical batch end
+                    self.callback_handler.call('on_train_physical_batch_end', self, batch_idx, batch, batch_loss)
 
-                    # the next iteration starts a new logical batch
-                    logical_batch_begin = True
+                    # accumulate loss and count the number of physical batches in a logical batch
+                    logical_batch_loss += batch_loss
+                    n_physical_batch_in_logical += 1
 
-                # At the beginning of a new logical batch, call on_train_batch_start.
-                if logical_batch_begin:
-                    self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
-                    logical_batch_begin = False
+                    # if the logical batch is complete, notify batch end and reset counters
+                    if logical_batch_completed:
+                        self.callback_handler.call(
+                            'on_train_batch_end',
+                            self,
+                            n_logical_batches,
+                            None,
+                            logical_batch_loss / n_physical_batch_in_logical,  # mean of physical batch losses
+                        )
+                        n_logical_batches += 1
+                        logical_batch_loss = 0
+                        n_physical_batch_in_logical = 0
 
-                # and next we check for epoch end
-                if (logical_batch_completed and step % steps_per_epoch == 0) or step == self.total_steps:
-                    self._handle_virtual_epoch_end(virtual_epoch)
+                        # the next iteration starts a new logical batch
+                        logical_batch_begin = True
 
-                    if self.validation_frequency and virtual_epoch % self.validation_frequency == 0:
-                        # validate only on rank 0. no need to do distributed here,
-                        # the computation is not heavy because we don't need gradients.
-                        if torch.distributed.get_rank() == 0:
-                            self.validate(virtual_epoch)
-
-                        # other ranks will wait for validation
-                        torch.distributed.barrier()
-
-                    if step < self.total_steps:
-                        virtual_epoch += 1
-                        self._handle_virtual_epoch_start(virtual_epoch)
-                        # Start a new logical batch for the new epoch.
+                    # At the beginning of a new logical batch, call on_train_batch_start.
+                    if logical_batch_begin:
                         self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
                         logical_batch_begin = False
 
-                # Reset the logical batch completion flag for the next iteration.
-                logical_batch_completed = False
+                    # and next we check for epoch end
+                    if (logical_batch_completed and step % steps_per_epoch == 0) or step == self.total_steps:
+                        self._handle_virtual_epoch_end(virtual_epoch)
+
+                        if self.validation_frequency and virtual_epoch % self.validation_frequency == 0:
+                            # validate only on rank 0. no need to do distributed here,
+                            # the computation is not heavy because we don't need gradients.
+                            if torch.distributed.get_rank() == 0:
+                                self.validate(virtual_epoch)
+
+                            # other ranks will wait for validation
+                            torch.distributed.barrier()
+
+                        if step < self.total_steps:
+                            virtual_epoch += 1
+                            self._handle_virtual_epoch_start(virtual_epoch)
+                            # Start a new logical batch for the new epoch.
+                            self.callback_handler.call('on_train_batch_start', self, n_logical_batches, None)
+                            logical_batch_begin = False
+                        else:
+                            break
+
+                    # Reset the logical batch completion flag for the next iteration.
+                    logical_batch_completed = False
+
+            if batches_seen_in_pass == 0:
+                raise RuntimeError(
+                    'Train dataloader yielded zero batches while using total_steps mode.'
+                )
 
         if step != self.total_steps:
-            log.warn(f'Was going to step for {self.total_steps}, but stepped only {step} steps.')
+            log.warning(f'Was going to step for {self.total_steps}, but stepped only {step} steps.')
 
     def fit_one_batch(self, batch_idx, batch):
         self.optimizer.zero_grad()
