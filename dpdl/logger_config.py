@@ -16,4 +16,13 @@ def configure_logger() -> logging.Logger:
     # add the new handler
     log.addHandler(handler)
 
+    # Also configure root/opacus loggers so library INFO logs are visible.
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    root.addHandler(handler)
+
+    opacus_log = logging.getLogger('opacus')
+    opacus_log.setLevel(logging.INFO)
+    opacus_log.propagate = True
+
     return log
