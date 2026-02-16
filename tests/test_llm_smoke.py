@@ -98,6 +98,8 @@ def test_smoke_llm_causal_private(tmp_path: Path, text_dataset_path: Path) -> No
         '--device',
         'cpu',
         '--privacy',
+        '--target-epsilon',
+        '8',
         '--log-dir',
         str(tmp_path),
         '--experiment-name',

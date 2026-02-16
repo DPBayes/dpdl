@@ -518,14 +518,14 @@ def cli(
         noise_mechanism: Annotated[
             Optional[str],
             typer.Option(
-                help='Noise mechanism ("gaussian" or "bsr")',
+                help='Noise mechanism ("gaussian", "bsr", or "bnb")',
                 rich_help_panel='Opacus options',
             )
         ] = 'gaussian',
         sampling_mode: Annotated[
             Optional[str],
             typer.Option(
-                help='Sampling semantics ("fixed_batch" or "cyclic_poisson")',
+                help='Sampling semantics ("torch_sampler", "cyclic_poisson", "b_min_sep", "balls_in_bins")',
                 rich_help_panel='Opacus options',
             )
         ] = None,
@@ -589,6 +589,76 @@ def cli(
             Optional[float],
             typer.Option(
                 help='BSR beta (momentum in SGD workload model; defaults to optimizer momentum)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bnb_b: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BNB b-min-separation parameter b (required for b_min_sep)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bnb_p: Annotated[
+            Optional[float],
+            typer.Option(
+                help='BNB b-min-separation participation probability p in (0,1] (required for b_min_sep)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bnb_bands: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BNB Toeplitz bands (required for BNB accounting)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bnb_num_samples: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BNB Monte Carlo sample count for epsilon calibration',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bnb_seed: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BNB Monte Carlo seed for calibration',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bnb_confidence_alpha: Annotated[
+            Optional[float],
+            typer.Option(
+                help='BNB EVR total confidence alpha',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bnb_evr_num_checks: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BNB EVR repeated checks per direction',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bnb_require_evr_pass: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='BNB EVR fail-fast guard (disable only for diagnostics)',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bnb_verify_both_directions: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='BNB EVR two-direction verification',
+                rich_help_panel='Opacus options',
+            )
+        ] = None,
+        bnb_calibration_timeout_seconds: Annotated[
+            Optional[float],
+            typer.Option(
+                help='BNB calibration timeout in seconds',
                 rich_help_panel='Opacus options',
             )
         ] = None,

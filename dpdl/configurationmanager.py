@@ -3,8 +3,8 @@ import pathlib
 import torch
 import typer
 
-from pydantic import BaseModel, root_validator
-from typing import Optional, List, Literal
+from pydantic import BaseModel, ConfigDict, model_validator
+from typing import Any, Optional, List, Literal
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +21,8 @@ class Hyperparameters(BaseModel):
     privacy: bool = True # Only used in __str__
     max_length: Optional[int] = None
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_batch_size_or_sample_rate(cls, values):
         batch_size, sample_rate = values.get('batch_size'), values.get('sample_rate')
 
@@ -30,7 +31,8 @@ class Hyperparameters(BaseModel):
 
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_target_epsilon_or_noise_multiplier(cls, values):
         target_epsilon, noise_multiplier = values.get('target_epsilon'), values.get('noise_multiplier')
 
@@ -39,7 +41,8 @@ class Hyperparameters(BaseModel):
 
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_target_epsilon_or_noise_batch_ratio(cls, values):
         target_epsilon, noise_batch_ratio = values.get('target_epsilon'), values.get('noise_batch_ratio')
 
@@ -48,7 +51,8 @@ class Hyperparameters(BaseModel):
 
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_noise_batch_ratio_or_noise_multiplier(cls, values):
         noise_multiplier, noise_batch_ratio = values.get('noise_multiplier'), values.get('noise_batch_ratio')
 
@@ -57,7 +61,8 @@ class Hyperparameters(BaseModel):
 
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_epochs(cls, values):
         epochs = values.get('epochs')
         total_steps = values.get('total_steps')
@@ -117,8 +122,8 @@ class Configuration(BaseModel):
     accountant: str = 'prv'
     poisson_sampling: bool = True
     normalize_clipping: bool = False
-    noise_mechanism: Literal['gaussian', 'bsr'] = 'gaussian'
-    sampling_mode: Optional[Literal['fixed_batch', 'cyclic_poisson']] = None
+    noise_mechanism: Literal['gaussian', 'bsr', 'bnb'] = 'gaussian'
+    sampling_mode: Optional[Literal['torch_sampler', 'cyclic_poisson', 'b_min_sep', 'balls_in_bins']] = None
     bsr_coeffs: Optional[List[float]] = None
     bsr_z_std: Optional[float] = None
     bsr_bands: Optional[int] = None
@@ -128,6 +133,16 @@ class Configuration(BaseModel):
     bsr_iterations_number: Optional[int] = None
     bsr_alpha: Optional[float] = None
     bsr_beta: Optional[float] = None
+    bnb_b: Optional[int] = None
+    bnb_p: Optional[float] = None
+    bnb_bands: Optional[int] = None
+    bnb_num_samples: Optional[int] = None
+    bnb_seed: Optional[int] = None
+    bnb_confidence_alpha: Optional[float] = None
+    bnb_evr_num_checks: Optional[int] = None
+    bnb_require_evr_pass: Optional[bool] = None
+    bnb_verify_both_directions: Optional[bool] = None
+    bnb_calibration_timeout_seconds: Optional[float] = None
     n_trials: int = 20
     optuna_random_trials: int = 10
     target_hypers: List[str] = []
@@ -177,12 +192,10 @@ class Configuration(BaseModel):
     prediction_save_gradient_data: Optional[bool] = False
     load_in_4bit: bool = False
 
-    class Config:
-        # Fix Pydantic warning:
-        # UserWarning: Field "model_name" has conflict with protected namespace "model_".
-        protected_namespaces = ()
+    model_config = ConfigDict(protected_namespaces=())
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_fairness_imbalance_factor(cls, values):
         imbalance_factor = values.get('imbalance_factor')
         fairness_imbalance_class = values.get('fairness_imbalance_class')
@@ -194,7 +207,8 @@ class Configuration(BaseModel):
 
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_command(cls, values):
         command = values.get('command')
 
@@ -203,7 +217,8 @@ class Configuration(BaseModel):
 
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_total_steps(cls, values):
         total_steps = values.get('total_steps')
         use_steps = values.get('use_steps')
@@ -217,7 +232,8 @@ class Configuration(BaseModel):
 
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_shots_and_subset_size(cls, values):
         shots = values.get('shots')
         subset_size = values.get('subset_size')
@@ -227,7 +243,8 @@ class Configuration(BaseModel):
 
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_feature_cache(cls, values):
         cache_features = values.get('cache_features')
         peft_method = values.get('peft')
@@ -237,18 +254,18 @@ class Configuration(BaseModel):
 
         return values
 
-    @root_validator(pre=False, skip_on_failure=True)
-    def check_bsr_configuration(cls, values):
-        mechanism = values.get('noise_mechanism')
-        sampling_mode = values.get('sampling_mode')
-        accountant = values.get('accountant')
-        poisson_sampling = values.get('poisson_sampling')
-        bsr_coeffs = values.get('bsr_coeffs')
-        bsr_bands = values.get('bsr_bands')
-        bsr_z_std = values.get('bsr_z_std')
-        bsr_alpha = values.get('bsr_alpha')
-        bsr_beta = values.get('bsr_beta')
-        bsr_iterations_number = values.get('bsr_iterations_number')
+    @model_validator(mode="after")
+    def check_bsr_configuration(self):
+        mechanism = self.noise_mechanism
+        sampling_mode = self.sampling_mode
+        accountant = self.accountant
+        poisson_sampling = self.poisson_sampling
+        bsr_coeffs = self.bsr_coeffs
+        bsr_bands = self.bsr_bands
+        bsr_z_std = self.bsr_z_std
+        bsr_alpha = self.bsr_alpha
+        bsr_beta = self.bsr_beta
+        bsr_iterations_number = self.bsr_iterations_number
 
         bsr_fields = [
             'bsr_coeffs',
@@ -271,9 +288,9 @@ class Configuration(BaseModel):
 
             return True
 
-        has_any_bsr_field = any(_is_explicitly_set(values.get(field)) for field in bsr_fields)
+        has_any_bsr_field = any(_is_explicitly_set(getattr(self, field)) for field in bsr_fields)
 
-        if mechanism != 'bsr' and has_any_bsr_field:
+        if mechanism not in ('bsr', 'bnb') and has_any_bsr_field:
             raise ValueError(
                 'BSR-specific parameters require --noise-mechanism bsr.'
             )
@@ -291,7 +308,7 @@ class Configuration(BaseModel):
 
             if poisson_sampling:
                 raise ValueError(
-                    'BSR mechanism requires fixed-batch semantics: set --poisson-sampling False.'
+                    'BSR mechanism requires non-Poisson semantics: set --poisson-sampling False.'
                 )
 
             if not bsr_coeffs and not bsr_bands:
@@ -322,7 +339,97 @@ class Configuration(BaseModel):
             if bsr_alpha is not None and bsr_beta is not None and bsr_beta > bsr_alpha:
                 raise ValueError('--bsr-beta must be <= --bsr-alpha.')
 
-        return values
+        return self
+
+    @model_validator(mode="after")
+    def check_bnb_configuration(self):
+        mechanism = self.noise_mechanism
+        sampling_mode = self.sampling_mode
+        accountant = self.accountant
+        poisson_sampling = self.poisson_sampling
+        bnb_b = self.bnb_b
+        bnb_p = self.bnb_p
+        bnb_bands = self.bnb_bands
+
+        bnb_fields = [
+            'bnb_b',
+            'bnb_p',
+            'bnb_bands',
+        ]
+
+        def _is_explicitly_set(v):
+            if v is None:
+                return False
+            if isinstance(v, (list, tuple, set, dict)):
+                return len(v) > 0
+
+            return True
+
+        has_any_bnb_field = any(_is_explicitly_set(getattr(self, field)) for field in bnb_fields)
+
+        if mechanism != 'bnb' and has_any_bnb_field:
+            raise ValueError(
+                'BNB-specific parameters require --noise-mechanism bnb.'
+            )
+
+        if sampling_mode in ('b_min_sep', 'balls_in_bins') and mechanism != 'bnb':
+            raise ValueError(
+                'BNB-specific sampling requires --noise-mechanism bnb.'
+            )
+
+        if mechanism == 'bnb':
+            if accountant != 'bnb':
+                raise ValueError(
+                    'BNB mechanism requires --accountant bnb.'
+                )
+
+            if poisson_sampling:
+                raise ValueError(
+                    'BNB mechanism requires non-Poisson semantics: set --poisson-sampling False.'
+                )
+
+            if sampling_mode not in ('b_min_sep', 'balls_in_bins'):
+                raise ValueError(
+                    'BNB mechanism requires --sampling-mode b_min_sep or balls_in_bins.'
+                )
+
+            if bnb_b is None:
+                raise ValueError('BNB b-min-sep sampling requires --bnb-b.')
+
+            if sampling_mode == 'b_min_sep' and bnb_p is None:
+                raise ValueError('BNB b-min-sep sampling requires --bnb-p.')
+
+            if bnb_bands is None:
+                raise ValueError('BNB Toeplitz accounting requires --bnb-bands.')
+
+            if int(bnb_b) < 1:
+                raise ValueError('--bnb-b must be >= 1.')
+
+            if sampling_mode == 'b_min_sep' and not (0.0 < float(bnb_p) <= 1.0):
+                raise ValueError('--bnb-p must be in (0, 1].')
+
+            if int(bnb_bands) < 1:
+                raise ValueError('--bnb-bands must be >= 1.')
+
+            if self.bnb_num_samples is not None and int(self.bnb_num_samples) < 1:
+                raise ValueError('--bnb-num-samples must be >= 1.')
+
+            if self.bnb_seed is not None and int(self.bnb_seed) < 0:
+                raise ValueError('--bnb-seed must be >= 0.')
+
+            if self.bnb_confidence_alpha is not None and not (0.0 < float(self.bnb_confidence_alpha) < 1.0):
+                raise ValueError('--bnb-confidence-alpha must be in (0, 1).')
+
+            if self.bnb_evr_num_checks is not None and int(self.bnb_evr_num_checks) < 1:
+                raise ValueError('--bnb-evr-num-checks must be >= 1.')
+
+            if (
+                self.bnb_calibration_timeout_seconds is not None
+                and float(self.bnb_calibration_timeout_seconds) <= 0.0
+            ):
+                raise ValueError('--bnb-calibration-timeout-seconds must be > 0.')
+
+        return self
 
     def __str__(self):
         attributes = [
@@ -394,6 +501,16 @@ class Configuration(BaseModel):
                 ('BSR iterations number', self.bsr_iterations_number),
                 ('BSR alpha', self.bsr_alpha),
                 ('BSR beta', self.bsr_beta),
+                ('BNB b', self.bnb_b),
+                ('BNB p', self.bnb_p),
+                ('BNB bands', self.bnb_bands),
+                ('BNB MC samples', self.bnb_num_samples),
+                ('BNB MC seed', self.bnb_seed),
+                ('BNB EVR alpha', self.bnb_confidence_alpha),
+                ('BNB EVR checks', self.bnb_evr_num_checks),
+                ('BNB require EVR pass', self.bnb_require_evr_pass),
+                ('BNB EVR two-sided', self.bnb_verify_both_directions),
+                ('BNB calibration timeout s', self.bnb_calibration_timeout_seconds),
             ]
             attributes.extend(privacy_attributes)
 

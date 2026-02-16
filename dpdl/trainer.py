@@ -8,6 +8,9 @@ from collections.abc import Mapping
 import opacus
 import torch
 from opacus import GradSampleModule
+from opacus.accountants.analysis.bnb import (
+    build_bnb_toeplitz_c_matrix_and_contract,
+)
 from opacus.accountants.analysis.bsr import calibrate_bsr_z_std
 from opacus.distributed import DifferentiallyPrivateDistributedDataParallel
 from opacus.mechanism_contracts import NoiseMechanismConfig, SamplingSemantics
@@ -414,6 +417,16 @@ class DifferentiallyPrivateTrainer(Trainer):
         bsr_iterations_number: int | None = None,
         bsr_alpha: float | None = None,
         bsr_beta: float | None = None,
+        bnb_b: int | None = None,
+        bnb_p: float | None = None,
+        bnb_bands: int | None = None,
+        bnb_num_samples: int | None = None,
+        bnb_seed: int | None = None,
+        bnb_confidence_alpha: float | None = None,
+        bnb_evr_num_checks: int | None = None,
+        bnb_require_evr_pass: bool | None = None,
+        bnb_verify_both_directions: bool | None = None,
+        bnb_calibration_timeout_seconds: float | None = None,
         secure_mode: bool = False,
         target_epsilon: float | None = None,
         target_delta: float | None = None,
@@ -441,6 +454,16 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.bsr_iterations_number = bsr_iterations_number
         self.bsr_alpha = bsr_alpha
         self.bsr_beta = bsr_beta
+        self.bnb_b = bnb_b
+        self.bnb_p = bnb_p
+        self.bnb_bands = bnb_bands
+        self.bnb_num_samples = bnb_num_samples
+        self.bnb_seed = bnb_seed
+        self.bnb_confidence_alpha = bnb_confidence_alpha
+        self.bnb_evr_num_checks = bnb_evr_num_checks
+        self.bnb_require_evr_pass = bnb_require_evr_pass
+        self.bnb_verify_both_directions = bnb_verify_both_directions
+        self.bnb_calibration_timeout_seconds = bnb_calibration_timeout_seconds
 
         # setup opacus privacy engine
         privacy_engine_args = {
@@ -455,6 +478,19 @@ class DifferentiallyPrivateTrainer(Trainer):
     def _has_target_privacy_params(self):
         if self.target_epsilon == -1:
             return False
+
+        if self.target_epsilon is not None and self.target_epsilon < 0:
+            raise ValueError('Parameter "target_epsilon" must be positive, or -1 for clip-only mode.')
+
+        if (
+            self.target_epsilon is None
+            and self.noise_multiplier is None
+            and self.noise_batch_ratio is None
+        ):
+            raise ValueError(
+                'Privacy is enabled but no DP noise parameter was provided. '
+                'Set one of "target_epsilon", "noise_multiplier", or "noise_batch_ratio".'
+            )
 
         if not self.target_epsilon:
             return False
@@ -488,6 +524,23 @@ class DifferentiallyPrivateTrainer(Trainer):
             if self.sampling_mode == 'cyclic_poisson' and self.bsr_bands is not None:
                 privacy_metadata['bands'] = int(self.bsr_bands)
 
+            if self.sampling_mode == 'b_min_sep':
+                if self.bnb_b is not None:
+                    privacy_metadata['b'] = int(self.bnb_b)
+
+                if self.bnb_p is not None:
+                    privacy_metadata['p'] = float(self.bnb_p)
+
+                if self.bnb_bands is not None:
+                    privacy_metadata['bands'] = int(self.bnb_bands)
+
+            if self.sampling_mode == 'balls_in_bins':
+                if self.bnb_b is not None:
+                    privacy_metadata['bins'] = int(self.bnb_b)
+
+                if self.bnb_bands is not None:
+                    privacy_metadata['bands'] = int(self.bnb_bands)
+
             if self.bsr_max_participations is not None:
                 privacy_metadata['max_participations'] = int(self.bsr_max_participations)
 
@@ -508,13 +561,24 @@ class DifferentiallyPrivateTrainer(Trainer):
         def _build_noise_mechanism_config(
             *,
             noise_multiplier_ref: float | None,
+            bnb_horizon: int | None,
         ) -> NoiseMechanismConfig | None:
-            if self.noise_mechanism != 'bsr':
+            if self.noise_mechanism not in ('bsr', 'bnb'):
                 return None
 
             mechanism_state = {
                 'coeffs': list(self.bsr_coeffs or []),
             }
+            if self.noise_mechanism == 'bnb' and self.bnb_bands is not None:
+                mechanism_state['bands'] = int(self.bnb_bands)
+                if bnb_horizon is not None:
+                    c_matrix, c_matrix_contract = build_bnb_toeplitz_c_matrix_and_contract(
+                        coeffs=mechanism_state['coeffs'],
+                        bands=int(self.bnb_bands),
+                        horizon=int(bnb_horizon),
+                    )
+                    mechanism_state['c_matrix'] = c_matrix
+                    mechanism_state['c_matrix_contract'] = c_matrix_contract
 
             if self.bsr_max_participations is not None:
                 mechanism_state['max_participations'] = int(self.bsr_max_participations)
@@ -542,23 +606,32 @@ class DifferentiallyPrivateTrainer(Trainer):
                         denominator=float(self.datamodule.batch_size),
                     )
 
+            if self.noise_mechanism == 'bsr':
+                return NoiseMechanismConfig(
+                    mechanism='bsr',
+                    accounting_mode='bsr_accountant',
+                    mechanism_state=mechanism_state,
+                )
+
             return NoiseMechanismConfig(
-                mechanism='bsr',
-                accounting_mode='bsr_accountant',
+                mechanism='bnb',
+                accounting_mode='bnb_accountant',
                 mechanism_state=mechanism_state,
             )
 
         has_target_privacy_params = self._has_target_privacy_params()
         sampling_semantics = _build_sampling_semantics()
 
-        if self.noise_mechanism == 'bsr' and not self.bsr_coeffs:
-            if self.bsr_bands is None:
+        if self.noise_mechanism in ('bsr', 'bnb'):
+            auto_bands = self.bsr_bands if self.noise_mechanism == 'bsr' else self.bnb_bands
+            if auto_bands is None:
                 raise ValueError(
-                    'BSR auto coefficient generation requires --bsr-bands when --bsr-coeffs is not given.'
+                    f'{self.noise_mechanism.upper()} auto coefficient generation requires '
+                    '--bsr-coeffs or bands (--bsr-bands for bsr, --bnb-bands for bnb).'
                 )
 
             self.bsr_coeffs = generate_bsr_coeffs_from_sgd_workload(
-                bands=int(self.bsr_bands),
+                bands=int(auto_bands),
                 momentum=float(
                     self.bsr_beta if self.bsr_beta is not None else 0.0
                 ),
@@ -571,7 +644,8 @@ class DifferentiallyPrivateTrainer(Trainer):
 
             if torch.distributed.get_rank() == 0:
                 log.info(
-                    f'Auto-generated BSR coeffs from SGD workload (bands={self.bsr_bands}, '
+                    f'Auto-generated {self.noise_mechanism.upper()} coeffs from SGD workload '
+                    f'(bands={auto_bands}, '
                     f'alpha={(self.bsr_alpha if self.bsr_alpha is not None else 1.0)}, '
                     f'beta={(self.bsr_beta if self.bsr_beta is not None else 0.0)}): '
                     f'{self.bsr_coeffs}'
@@ -581,25 +655,73 @@ class DifferentiallyPrivateTrainer(Trainer):
         if not has_target_privacy_params:
             if self.target_epsilon == -1:
                 noise_multiplier_ref = 0.0
+
             elif self.noise_batch_ratio:
                 noise_multiplier_ref = self.noise_batch_ratio * self.datamodule.batch_size
 
+        train_dataloader = self.datamodule.get_dataloader('train')
+        bnb_horizon = None
+        if self.noise_mechanism == 'bnb':
+            if self.total_steps:
+                bnb_horizon = int(self.total_steps)
+            elif self.epochs:
+                bnb_horizon = int(self.epochs) * int(len(train_dataloader))
+
+            if bnb_horizon is not None and bnb_horizon < 1:
+                raise ValueError('BNB Toeplitz horizon must be >= 1.')
+
         noise_mechanism_config = _build_noise_mechanism_config(
             noise_multiplier_ref=noise_multiplier_ref,
+            bnb_horizon=bnb_horizon,
         )
 
-        bsr_kwargs = {}
+        mechanism_kwargs = {}
         if self.bsr_mf_sensitivity is not None:
-            bsr_kwargs['bsr_mf_sensitivity'] = float(self.bsr_mf_sensitivity)
+            mechanism_kwargs['bsr_mf_sensitivity'] = float(self.bsr_mf_sensitivity)
 
         if self.bsr_iterations_number is not None:
-            bsr_kwargs['bsr_iterations_number'] = int(self.bsr_iterations_number)
+            mechanism_kwargs['bsr_iterations_number'] = int(self.bsr_iterations_number)
 
         if self.bsr_max_participations is not None:
-            bsr_kwargs['bsr_max_participations'] = int(self.bsr_max_participations)
+            mechanism_kwargs['bsr_max_participations'] = int(self.bsr_max_participations)
 
         if self.bsr_min_separation is not None:
-            bsr_kwargs['bsr_min_separation'] = int(self.bsr_min_separation)
+            mechanism_kwargs['bsr_min_separation'] = int(self.bsr_min_separation)
+
+        if self.bnb_bands is not None:
+            mechanism_kwargs['bnb_bands'] = int(self.bnb_bands)
+
+        if self.noise_mechanism == 'bnb' and has_target_privacy_params:
+            # Keep BNB epsilon calibration bounded in wall-clock time for training runs.
+            mechanism_kwargs.setdefault('bnb_calibration_timeout_seconds', 10.0)
+
+            # Keep the sigma binary-search/accountant path lightweight by default.
+            mechanism_kwargs.setdefault('epsilon_tolerance', 0.2)
+            mechanism_kwargs.setdefault('bnb_num_samples', 2_000)
+            mechanism_kwargs.setdefault('bnb_max_iterations', 64)
+            mechanism_kwargs.setdefault('bnb_tolerance', 1e-3)
+            mechanism_kwargs.setdefault('bnb_evr_num_checks', 1)
+            mechanism_kwargs.setdefault('bnb_confidence_alpha', 1e-3)
+            mechanism_kwargs.setdefault('bnb_verify_both_directions', False)
+
+            if self.bnb_num_samples is not None:
+                mechanism_kwargs['bnb_num_samples'] = int(self.bnb_num_samples)
+            if self.bnb_seed is not None:
+                mechanism_kwargs['bnb_seed'] = int(self.bnb_seed)
+            if self.bnb_confidence_alpha is not None:
+                mechanism_kwargs['bnb_confidence_alpha'] = float(self.bnb_confidence_alpha)
+            if self.bnb_evr_num_checks is not None:
+                mechanism_kwargs['bnb_evr_num_checks'] = int(self.bnb_evr_num_checks)
+            if self.bnb_require_evr_pass is not None:
+                mechanism_kwargs['bnb_require_evr_pass'] = bool(self.bnb_require_evr_pass)
+            if self.bnb_verify_both_directions is not None:
+                mechanism_kwargs['bnb_verify_both_directions'] = bool(
+                    self.bnb_verify_both_directions
+                )
+            if self.bnb_calibration_timeout_seconds is not None:
+                mechanism_kwargs['bnb_calibration_timeout_seconds'] = float(
+                    self.bnb_calibration_timeout_seconds
+                )
 
         noise_generator = torch.Generator(device=self.device)
         if self.seed:
@@ -613,7 +735,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
 
         optimizer = self.optimizer
-        train_dataloader = self.datamodule.get_dataloader('train')
 
         # setup differential privacy for the model, optimize, and dataloader
         if has_target_privacy_params:
@@ -632,7 +753,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 total_steps=self.total_steps,
                 noise_mechanism_config=noise_mechanism_config,
                 sampling_semantics=sampling_semantics,
-                **bsr_kwargs,
+                **mechanism_kwargs,
             )
         else:
             if self.target_epsilon == -1:
@@ -1198,6 +1319,16 @@ class TrainerFactory:
             bsr_iterations_number=configuration.bsr_iterations_number,
             bsr_alpha=configuration.bsr_alpha,
             bsr_beta=configuration.bsr_beta,
+            bnb_b=configuration.bnb_b,
+            bnb_p=configuration.bnb_p,
+            bnb_bands=configuration.bnb_bands,
+            bnb_num_samples=configuration.bnb_num_samples,
+            bnb_seed=configuration.bnb_seed,
+            bnb_confidence_alpha=configuration.bnb_confidence_alpha,
+            bnb_evr_num_checks=configuration.bnb_evr_num_checks,
+            bnb_require_evr_pass=configuration.bnb_require_evr_pass,
+            bnb_verify_both_directions=configuration.bnb_verify_both_directions,
+            bnb_calibration_timeout_seconds=configuration.bnb_calibration_timeout_seconds,
             # config
             accountant=configuration.accountant,
             secure_mode=configuration.secure_mode,
