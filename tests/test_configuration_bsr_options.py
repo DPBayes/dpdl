@@ -9,6 +9,129 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from dpdl.configurationmanager import Configuration
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "is_valid", "error_match"),
+    [
+        (
+            {
+                "command": "train",
+                "noise_mechanism": "gaussian",
+                "accountant": "prv",
+            },
+            True,
+            None,
+        ),
+        (
+            {
+                "command": "train",
+                "noise_mechanism": "gaussian",
+                "accountant": "bsr",
+            },
+            False,
+            "Gaussian mechanism does not support mechanism-specific accountants",
+        ),
+        (
+            {
+                "command": "train",
+                "noise_mechanism": "bsr",
+                "accountant": "bsr",
+                "poisson_sampling": False,
+                "bsr_coeffs": [1.0, 0.2],
+            },
+            True,
+            None,
+        ),
+        (
+            {
+                "command": "train",
+                "noise_mechanism": "bsr",
+                "accountant": "prv",
+                "poisson_sampling": False,
+                "bsr_coeffs": [1.0],
+            },
+            False,
+            "requires --accountant bsr",
+        ),
+        (
+            {
+                "command": "train",
+                "noise_mechanism": "bnb",
+                "accountant": "bnb",
+                "poisson_sampling": False,
+                "sampling_mode": "b_min_sep",
+                "bnb_b": 2,
+                "bnb_p": 0.2,
+                "bnb_bands": 2,
+            },
+            True,
+            None,
+        ),
+        (
+            {
+                "command": "train",
+                "noise_mechanism": "bnb",
+                "accountant": "bnb",
+                "poisson_sampling": False,
+                "sampling_mode": "balls_in_bins",
+                "bnb_b": 4,
+                "bnb_bands": 2,
+            },
+            True,
+            None,
+        ),
+        (
+            {
+                "command": "train",
+                "noise_mechanism": "bnb",
+                "accountant": "bnb",
+                "poisson_sampling": True,
+                "sampling_mode": "b_min_sep",
+                "bnb_b": 2,
+                "bnb_p": 0.2,
+                "bnb_bands": 2,
+            },
+            False,
+            "BNB mechanism requires non-Poisson semantics",
+        ),
+        (
+            {
+                "command": "train",
+                "noise_mechanism": "bnb",
+                "accountant": "bnb",
+                "poisson_sampling": False,
+                "sampling_mode": "torch_sampler",
+                "bnb_b": 2,
+                "bnb_p": 0.2,
+                "bnb_bands": 2,
+            },
+            False,
+            "requires --sampling-mode b_min_sep or balls_in_bins",
+        ),
+        (
+            {
+                "command": "train",
+                "noise_mechanism": "gaussian",
+                "sampling_mode": "b_min_sep",
+            },
+            False,
+            "BNB-specific sampling requires --noise-mechanism bnb",
+        ),
+    ],
+)
+def test_dp_contract_table_for_legal_and_illegal_mode_combinations(
+    kwargs: dict,
+    is_valid: bool,
+    error_match: str | None,
+) -> None:
+    if is_valid:
+        cfg = Configuration(**kwargs)
+        assert cfg.command == "train"
+        return
+
+    with pytest.raises(ValidationError, match=error_match):
+        Configuration(**kwargs)
+
+
 def test_bsr_configuration_valid_minimal() -> None:
     cfg = Configuration(
         command='train',
@@ -152,6 +275,43 @@ def test_bnb_configuration_accepts_balls_in_bins_alias() -> None:
         bnb_bands=4,
     )
     assert cfg.sampling_mode == 'balls_in_bins'
+
+
+def test_gaussian_rejects_mechanism_specific_accountants() -> None:
+    with pytest.raises(ValidationError, match='Gaussian mechanism does not support mechanism-specific accountants'):
+        Configuration(
+            command='train',
+            noise_mechanism='gaussian',
+            accountant='bnb',
+        )
+
+
+def test_total_steps_nonpoisson_requires_explicit_custom_sampling_mode() -> None:
+    with pytest.raises(ValidationError, match='requires --sampling-mode'):
+        Configuration(
+            command='train',
+            use_steps=True,
+            total_steps=10,
+            poisson_sampling=False,
+            sampling_mode='torch_sampler',
+            noise_mechanism='bsr',
+            accountant='bsr',
+            bsr_coeffs=[1.0],
+        )
+
+
+def test_total_steps_nonpoisson_accepts_explicit_custom_sampling_mode() -> None:
+    cfg = Configuration(
+        command='train',
+        use_steps=True,
+        total_steps=10,
+        poisson_sampling=False,
+        sampling_mode='cyclic_poisson',
+        noise_mechanism='bsr',
+        accountant='bsr',
+        bsr_bands=3,
+    )
+    assert cfg.sampling_mode == 'cyclic_poisson'
 
 
 def test_bnb_configuration_allows_shared_bsr_coeffs_field() -> None:

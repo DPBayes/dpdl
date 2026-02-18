@@ -234,6 +234,29 @@ class Configuration(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
+    def check_total_steps_nonpoisson_sampling_mode(cls, values):
+        total_steps = values.get('total_steps')
+        use_steps = values.get('use_steps')
+        poisson_sampling = values.get('poisson_sampling', True)
+        sampling_mode = values.get('sampling_mode')
+        privacy = values.get('privacy', True)
+
+        if (
+            privacy
+            and total_steps
+            and use_steps
+            and not poisson_sampling
+            and sampling_mode in (None, 'torch_sampler')
+        ):
+            raise ValueError(
+                'Setting total_steps with non-Poisson sampling requires '
+                '--sampling-mode cyclic_poisson, b_min_sep, or balls_in_bins.'
+            )
+
+        return values
+
+    @model_validator(mode="before")
+    @classmethod
     def check_shots_and_subset_size(cls, values):
         shots = values.get('shots')
         subset_size = values.get('subset_size')
@@ -431,6 +454,19 @@ class Configuration(BaseModel):
 
         return self
 
+    @model_validator(mode="after")
+    def check_accountant_mechanism_compatibility(self):
+        mechanism = self.noise_mechanism
+        accountant = self.accountant
+
+        if mechanism == 'gaussian' and accountant in ('bsr', 'bnb'):
+            raise ValueError(
+                'Gaussian mechanism does not support mechanism-specific accountants; '
+                'use --accountant prv/rdp/gdp.'
+            )
+
+        return self
+
     def __str__(self):
         attributes = [
             ('Command', self.command),
@@ -543,6 +579,25 @@ class ConfigurationManager:
     def __init__(self, cli_params: dict):
         self._cli_params = dict(cli_params)
         self.command = cli_params['command']
+
+        privacy = cli_params.get('privacy', True)
+        command = cli_params.get('command')
+        target_epsilon = cli_params.get('target_epsilon')
+        noise_multiplier = cli_params.get('noise_multiplier')
+        noise_batch_ratio = cli_params.get('noise_batch_ratio')
+
+        if (
+            privacy
+            and command in ('train', 'optimize', 'train-predict')
+            and target_epsilon is None
+            and noise_multiplier is None
+            and noise_batch_ratio is None
+        ):
+            raise ValueError(
+                'Privacy mode requires one explicit target path. '
+                'Set one of --target-epsilon (or -1 for clip-only), '
+                '--noise-multiplier, or --noise-batch-ratio.'
+            )
 
         self.configuration = Configuration(**cli_params)
         self.hyperparams = Hyperparameters(**cli_params)

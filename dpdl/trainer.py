@@ -12,8 +12,13 @@ from opacus.accountants.analysis.bnb import (
     build_bnb_toeplitz_c_matrix_and_contract,
 )
 from opacus.accountants.analysis.bsr import calibrate_bsr_z_std
+from opacus.bnb_defaults import resolve_bnb_calibration_kwargs
 from opacus.distributed import DifferentiallyPrivateDistributedDataParallel
-from opacus.mechanism_contracts import NoiseMechanismConfig, SamplingSemantics
+from opacus.mechanism_contracts import (
+    NoiseMechanismConfig,
+    SamplingSemantics,
+    resolve_accounting_mode_from_accountant,
+)
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 from peft import PeftModel
@@ -609,13 +614,13 @@ class DifferentiallyPrivateTrainer(Trainer):
             if self.noise_mechanism == 'bsr':
                 return NoiseMechanismConfig(
                     mechanism='bsr',
-                    accounting_mode='bsr_accountant',
+                    accounting_mode=resolve_accounting_mode_from_accountant(self.accountant),
                     mechanism_state=mechanism_state,
                 )
 
             return NoiseMechanismConfig(
                 mechanism='bnb',
-                accounting_mode='bnb_accountant',
+                accounting_mode=resolve_accounting_mode_from_accountant(self.accountant),
                 mechanism_state=mechanism_state,
             )
 
@@ -623,33 +628,35 @@ class DifferentiallyPrivateTrainer(Trainer):
         sampling_semantics = _build_sampling_semantics()
 
         if self.noise_mechanism in ('bsr', 'bnb'):
-            auto_bands = self.bsr_bands if self.noise_mechanism == 'bsr' else self.bnb_bands
-            if auto_bands is None:
-                raise ValueError(
-                    f'{self.noise_mechanism.upper()} auto coefficient generation requires '
-                    '--bsr-coeffs or bands (--bsr-bands for bsr, --bnb-bands for bnb).'
+            # Explicit coeffs take precedence over auto-generation.
+            if not self.bsr_coeffs:
+                auto_bands = self.bsr_bands if self.noise_mechanism == 'bsr' else self.bnb_bands
+                if auto_bands is None:
+                    raise ValueError(
+                        f'{self.noise_mechanism.upper()} auto coefficient generation requires '
+                        '--bsr-coeffs or bands (--bsr-bands for bsr, --bnb-bands for bnb).'
+                    )
+
+                self.bsr_coeffs = generate_bsr_coeffs_from_sgd_workload(
+                    bands=int(auto_bands),
+                    momentum=float(
+                        self.bsr_beta if self.bsr_beta is not None else 0.0
+                    ),
+                    weight_decay=float(
+                        self.bsr_alpha
+                        if self.bsr_alpha is not None
+                        else 1.0
+                    ),
                 )
 
-            self.bsr_coeffs = generate_bsr_coeffs_from_sgd_workload(
-                bands=int(auto_bands),
-                momentum=float(
-                    self.bsr_beta if self.bsr_beta is not None else 0.0
-                ),
-                weight_decay=float(
-                    self.bsr_alpha
-                    if self.bsr_alpha is not None
-                    else 1.0
-                ),
-            )
-
-            if torch.distributed.get_rank() == 0:
-                log.info(
-                    f'Auto-generated {self.noise_mechanism.upper()} coeffs from SGD workload '
-                    f'(bands={auto_bands}, '
-                    f'alpha={(self.bsr_alpha if self.bsr_alpha is not None else 1.0)}, '
-                    f'beta={(self.bsr_beta if self.bsr_beta is not None else 0.0)}): '
-                    f'{self.bsr_coeffs}'
-                )
+                if torch.distributed.get_rank() == 0:
+                    log.info(
+                        f'Auto-generated {self.noise_mechanism.upper()} coeffs from SGD workload '
+                        f'(bands={auto_bands}, '
+                        f'alpha={(self.bsr_alpha if self.bsr_alpha is not None else 1.0)}, '
+                        f'beta={(self.bsr_beta if self.bsr_beta is not None else 0.0)}): '
+                        f'{self.bsr_coeffs}'
+                    )
 
         noise_multiplier_ref = self.noise_multiplier
         if not has_target_privacy_params:
@@ -692,36 +699,36 @@ class DifferentiallyPrivateTrainer(Trainer):
             mechanism_kwargs['bnb_bands'] = int(self.bnb_bands)
 
         if self.noise_mechanism == 'bnb' and has_target_privacy_params:
-            # Keep BNB epsilon calibration bounded in wall-clock time for training runs.
-            mechanism_kwargs.setdefault('bnb_calibration_timeout_seconds', 10.0)
-
-            # Keep the sigma binary-search/accountant path lightweight by default.
             mechanism_kwargs.setdefault('epsilon_tolerance', 0.2)
-            mechanism_kwargs.setdefault('bnb_num_samples', 2_000)
-            mechanism_kwargs.setdefault('bnb_max_iterations', 64)
-            mechanism_kwargs.setdefault('bnb_tolerance', 1e-3)
-            mechanism_kwargs.setdefault('bnb_evr_num_checks', 1)
-            mechanism_kwargs.setdefault('bnb_confidence_alpha', 1e-3)
-            mechanism_kwargs.setdefault('bnb_verify_both_directions', False)
-
-            if self.bnb_num_samples is not None:
-                mechanism_kwargs['bnb_num_samples'] = int(self.bnb_num_samples)
-            if self.bnb_seed is not None:
-                mechanism_kwargs['bnb_seed'] = int(self.bnb_seed)
-            if self.bnb_confidence_alpha is not None:
-                mechanism_kwargs['bnb_confidence_alpha'] = float(self.bnb_confidence_alpha)
-            if self.bnb_evr_num_checks is not None:
-                mechanism_kwargs['bnb_evr_num_checks'] = int(self.bnb_evr_num_checks)
-            if self.bnb_require_evr_pass is not None:
-                mechanism_kwargs['bnb_require_evr_pass'] = bool(self.bnb_require_evr_pass)
-            if self.bnb_verify_both_directions is not None:
-                mechanism_kwargs['bnb_verify_both_directions'] = bool(
-                    self.bnb_verify_both_directions
+            bnb_calibration_overrides = {
+                'bnb_num_samples': int(self.bnb_num_samples) if self.bnb_num_samples is not None else None,
+                'bnb_seed': int(self.bnb_seed) if self.bnb_seed is not None else None,
+                'bnb_confidence_alpha': (
+                    float(self.bnb_confidence_alpha) if self.bnb_confidence_alpha is not None else None
+                ),
+                'bnb_evr_num_checks': (
+                    int(self.bnb_evr_num_checks) if self.bnb_evr_num_checks is not None else None
+                ),
+                'bnb_require_evr_pass': (
+                    bool(self.bnb_require_evr_pass) if self.bnb_require_evr_pass is not None else None
+                ),
+                'bnb_verify_both_directions': (
+                    bool(self.bnb_verify_both_directions)
+                    if self.bnb_verify_both_directions is not None
+                    else None
+                ),
+                'bnb_calibration_timeout_seconds': (
+                    float(self.bnb_calibration_timeout_seconds)
+                    if self.bnb_calibration_timeout_seconds is not None
+                    else None
+                ),
+            }
+            mechanism_kwargs.update(
+                resolve_bnb_calibration_kwargs(
+                    profile='dpdl_fast',
+                    overrides=bnb_calibration_overrides,
                 )
-            if self.bnb_calibration_timeout_seconds is not None:
-                mechanism_kwargs['bnb_calibration_timeout_seconds'] = float(
-                    self.bnb_calibration_timeout_seconds
-                )
+            )
 
         noise_generator = torch.Generator(device=self.device)
         if self.seed:

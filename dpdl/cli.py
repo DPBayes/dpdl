@@ -533,142 +533,65 @@ def cli(
             Optional[List[float]],
             typer.Option(
                 help='BSR Toeplitz coefficients (repeat flag for multiple values)',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bsr_z_std: Annotated[
-            Optional[float],
-            typer.Option(
-                help='BSR runtime z std (optional; auto-derived if not set)',
-                rich_help_panel='Opacus options',
+                rich_help_panel='BSR options',
             )
         ] = None,
         bsr_bands: Annotated[
             Optional[int],
             typer.Option(
                 help='BSR bands (required for cyclic_poisson semantics)',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bsr_max_participations: Annotated[
-            Optional[int],
-            typer.Option(
-                help='BSR max participations for MF sensitivity derivation',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bsr_min_separation: Annotated[
-            Optional[int],
-            typer.Option(
-                help='BSR minimum separation for MF sensitivity derivation',
-                rich_help_panel='Opacus options',
+                rich_help_panel='BSR options',
             )
         ] = None,
         bsr_mf_sensitivity: Annotated[
             Optional[float],
             typer.Option(
                 help='BSR MF sensitivity override for accounting/calibration',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bsr_iterations_number: Annotated[
-            Optional[int],
-            typer.Option(
-                help='BSR iterations_number override for MF sensitivity horizon',
-                rich_help_panel='Opacus options',
+                rich_help_panel='BSR options',
             )
         ] = None,
         bsr_alpha: Annotated[
             Optional[float],
             typer.Option(
-                help='BSR alpha (multiplicative decay in SGD workload model; defaults to optimizer weight_decay if set, else 1)',
-                rich_help_panel='Opacus options',
+                help='BSR alpha (multiplicative decay in SGD workload model; defaults to 1.0)',
+                rich_help_panel='BSR options',
             )
         ] = None,
         bsr_beta: Annotated[
             Optional[float],
             typer.Option(
-                help='BSR beta (momentum in SGD workload model; defaults to optimizer momentum)',
-                rich_help_panel='Opacus options',
+                help='BSR beta (momentum in SGD workload model; defaults to 0.0)',
+                rich_help_panel='BSR options',
             )
         ] = None,
         bnb_b: Annotated[
             Optional[int],
             typer.Option(
                 help='BNB b-min-separation parameter b (required for b_min_sep)',
-                rich_help_panel='Opacus options',
+                rich_help_panel='BNB options',
             )
         ] = None,
         bnb_p: Annotated[
             Optional[float],
             typer.Option(
                 help='BNB b-min-separation participation probability p in (0,1] (required for b_min_sep)',
-                rich_help_panel='Opacus options',
+                rich_help_panel='BNB options',
             )
         ] = None,
         bnb_bands: Annotated[
             Optional[int],
             typer.Option(
                 help='BNB Toeplitz bands (required for BNB accounting)',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bnb_num_samples: Annotated[
-            Optional[int],
-            typer.Option(
-                help='BNB Monte Carlo sample count for epsilon calibration',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bnb_seed: Annotated[
-            Optional[int],
-            typer.Option(
-                help='BNB Monte Carlo seed for calibration',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bnb_confidence_alpha: Annotated[
-            Optional[float],
-            typer.Option(
-                help='BNB EVR total confidence alpha',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bnb_evr_num_checks: Annotated[
-            Optional[int],
-            typer.Option(
-                help='BNB EVR repeated checks per direction',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bnb_require_evr_pass: Annotated[
-            Optional[bool],
-            typer.Option(
-                help='BNB EVR fail-fast guard (disable only for diagnostics)',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bnb_verify_both_directions: Annotated[
-            Optional[bool],
-            typer.Option(
-                help='BNB EVR two-direction verification',
-                rich_help_panel='Opacus options',
-            )
-        ] = None,
-        bnb_calibration_timeout_seconds: Annotated[
-            Optional[float],
-            typer.Option(
-                help='BNB calibration timeout in seconds',
-                rich_help_panel='Opacus options',
+                rich_help_panel='BNB options',
             )
         ] = None,
         target_epsilon: Annotated[
             Optional[float],
             typer.Option(
-                help='Target epsilon for the privacy accountant (implies delta = 1/N)',
+                help='Target epsilon for the privacy accountant (delta defaults to min(1e-5, 1/10^ceil(log10(N))))',
                 rich_help_panel='Opacus options',
             )
-        ] = 8,
+        ] = None,
         noise_batch_ratio: Annotated[
             Optional[float],
             typer.Option(
