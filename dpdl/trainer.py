@@ -427,11 +427,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         bnb_bands: int | None = None,
         bnb_num_samples: int | None = None,
         bnb_seed: int | None = None,
-        bnb_confidence_alpha: float | None = None,
-        bnb_evr_num_checks: int | None = None,
-        bnb_require_evr_pass: bool | None = None,
-        bnb_verify_both_directions: bool | None = None,
-        bnb_calibration_timeout_seconds: float | None = None,
         secure_mode: bool = False,
         target_epsilon: float | None = None,
         target_delta: float | None = None,
@@ -448,6 +443,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.seed = seed
         self.poisson_sampling = poisson_sampling
         self.normalize_clipping = normalize_clipping
+        self.accountant = accountant
         self.noise_mechanism = noise_mechanism
         self.sampling_mode = sampling_mode
         self.bsr_coeffs = bsr_coeffs
@@ -464,11 +460,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.bnb_bands = bnb_bands
         self.bnb_num_samples = bnb_num_samples
         self.bnb_seed = bnb_seed
-        self.bnb_confidence_alpha = bnb_confidence_alpha
-        self.bnb_evr_num_checks = bnb_evr_num_checks
-        self.bnb_require_evr_pass = bnb_require_evr_pass
-        self.bnb_verify_both_directions = bnb_verify_both_directions
-        self.bnb_calibration_timeout_seconds = bnb_calibration_timeout_seconds
 
         # setup opacus privacy engine
         privacy_engine_args = {
@@ -677,6 +668,20 @@ class DifferentiallyPrivateTrainer(Trainer):
             if bnb_horizon is not None and bnb_horizon < 1:
                 raise ValueError('BNB Toeplitz horizon must be >= 1.')
 
+            if bnb_horizon is not None and self.bnb_bands is not None:
+                bands = int(self.bnb_bands)
+                if bands < 1:
+                    raise ValueError('BNB bands must be >= 1.')
+                if bnb_horizon % bands != 0:
+                    aligned_horizon = int(math.ceil(bnb_horizon / bands) * bands)
+                    if torch.distributed.get_rank() == 0:
+                        log.info(
+                            'Aligning BNB Toeplitz horizon to a multiple of bands '
+                            f'for Monte Carlo accounting: horizon={bnb_horizon}, '
+                            f'bands={bands}, aligned_horizon={aligned_horizon}.'
+                        )
+                    bnb_horizon = aligned_horizon
+
         noise_mechanism_config = _build_noise_mechanism_config(
             noise_multiplier_ref=noise_multiplier_ref,
             bnb_horizon=bnb_horizon,
@@ -699,29 +704,9 @@ class DifferentiallyPrivateTrainer(Trainer):
             mechanism_kwargs['bnb_bands'] = int(self.bnb_bands)
 
         if self.noise_mechanism == 'bnb' and has_target_privacy_params:
-            mechanism_kwargs.setdefault('epsilon_tolerance', 0.2)
             bnb_calibration_overrides = {
                 'bnb_num_samples': int(self.bnb_num_samples) if self.bnb_num_samples is not None else None,
                 'bnb_seed': int(self.bnb_seed) if self.bnb_seed is not None else None,
-                'bnb_confidence_alpha': (
-                    float(self.bnb_confidence_alpha) if self.bnb_confidence_alpha is not None else None
-                ),
-                'bnb_evr_num_checks': (
-                    int(self.bnb_evr_num_checks) if self.bnb_evr_num_checks is not None else None
-                ),
-                'bnb_require_evr_pass': (
-                    bool(self.bnb_require_evr_pass) if self.bnb_require_evr_pass is not None else None
-                ),
-                'bnb_verify_both_directions': (
-                    bool(self.bnb_verify_both_directions)
-                    if self.bnb_verify_both_directions is not None
-                    else None
-                ),
-                'bnb_calibration_timeout_seconds': (
-                    float(self.bnb_calibration_timeout_seconds)
-                    if self.bnb_calibration_timeout_seconds is not None
-                    else None
-                ),
             }
             mechanism_kwargs.update(
                 resolve_bnb_calibration_kwargs(
@@ -1331,11 +1316,6 @@ class TrainerFactory:
             bnb_bands=configuration.bnb_bands,
             bnb_num_samples=configuration.bnb_num_samples,
             bnb_seed=configuration.bnb_seed,
-            bnb_confidence_alpha=configuration.bnb_confidence_alpha,
-            bnb_evr_num_checks=configuration.bnb_evr_num_checks,
-            bnb_require_evr_pass=configuration.bnb_require_evr_pass,
-            bnb_verify_both_directions=configuration.bnb_verify_both_directions,
-            bnb_calibration_timeout_seconds=configuration.bnb_calibration_timeout_seconds,
             # config
             accountant=configuration.accountant,
             secure_mode=configuration.secure_mode,

@@ -388,7 +388,7 @@ def test_bnb_configuration_balls_in_bins_does_not_require_p() -> None:
     )
     assert cfg.sampling_mode == 'balls_in_bins'
 
-def test_bnb_configuration_accepts_evr_calibration_options() -> None:
+def test_bnb_configuration_accepts_calibration_options() -> None:
     cfg = Configuration(
         command='train',
         noise_mechanism='bnb',
@@ -400,22 +400,12 @@ def test_bnb_configuration_accepts_evr_calibration_options() -> None:
         bnb_bands=1,
         bnb_num_samples=500,
         bnb_seed=7,
-        bnb_confidence_alpha=1e-3,
-        bnb_evr_num_checks=2,
-        bnb_require_evr_pass=False,
-        bnb_verify_both_directions=False,
-        bnb_calibration_timeout_seconds=5.0,
     )
     assert cfg.bnb_num_samples == 500
     assert cfg.bnb_seed == 7
-    assert cfg.bnb_confidence_alpha == 1e-3
-    assert cfg.bnb_evr_num_checks == 2
-    assert cfg.bnb_require_evr_pass is False
-    assert cfg.bnb_verify_both_directions is False
-    assert cfg.bnb_calibration_timeout_seconds == 5.0
 
 
-def test_bnb_configuration_rejects_invalid_evr_calibration_options() -> None:
+def test_bnb_configuration_rejects_invalid_calibration_options() -> None:
     with pytest.raises(ValidationError, match='--bnb-num-samples must be >= 1'):
         Configuration(
             command='train',
@@ -428,33 +418,6 @@ def test_bnb_configuration_rejects_invalid_evr_calibration_options() -> None:
             bnb_bands=1,
             bnb_num_samples=0,
         )
-
-    with pytest.raises(ValidationError, match='--bnb-confidence-alpha must be in \\(0, 1\\)'):
-        Configuration(
-            command='train',
-            noise_mechanism='bnb',
-            accountant='bnb',
-            poisson_sampling=False,
-            sampling_mode='b_min_sep',
-            bnb_b=2,
-            bnb_p=0.2,
-            bnb_bands=1,
-            bnb_confidence_alpha=1.0,
-        )
-
-    with pytest.raises(ValidationError, match='--bnb-calibration-timeout-seconds must be > 0'):
-        Configuration(
-            command='train',
-            noise_mechanism='bnb',
-            accountant='bnb',
-            poisson_sampling=False,
-            sampling_mode='b_min_sep',
-            bnb_b=2,
-            bnb_p=0.2,
-            bnb_bands=1,
-            bnb_calibration_timeout_seconds=0.0,
-        )
-
 
 def test_bnb_configuration_requires_all_b_min_sep_params() -> None:
     with pytest.raises(ValidationError, match='requires --bnb-b'):

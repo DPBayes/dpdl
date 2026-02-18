@@ -138,11 +138,6 @@ class Configuration(BaseModel):
     bnb_bands: Optional[int] = None
     bnb_num_samples: Optional[int] = None
     bnb_seed: Optional[int] = None
-    bnb_confidence_alpha: Optional[float] = None
-    bnb_evr_num_checks: Optional[int] = None
-    bnb_require_evr_pass: Optional[bool] = None
-    bnb_verify_both_directions: Optional[bool] = None
-    bnb_calibration_timeout_seconds: Optional[float] = None
     n_trials: int = 20
     optuna_random_trials: int = 10
     target_hypers: List[str] = []
@@ -440,18 +435,6 @@ class Configuration(BaseModel):
             if self.bnb_seed is not None and int(self.bnb_seed) < 0:
                 raise ValueError('--bnb-seed must be >= 0.')
 
-            if self.bnb_confidence_alpha is not None and not (0.0 < float(self.bnb_confidence_alpha) < 1.0):
-                raise ValueError('--bnb-confidence-alpha must be in (0, 1).')
-
-            if self.bnb_evr_num_checks is not None and int(self.bnb_evr_num_checks) < 1:
-                raise ValueError('--bnb-evr-num-checks must be >= 1.')
-
-            if (
-                self.bnb_calibration_timeout_seconds is not None
-                and float(self.bnb_calibration_timeout_seconds) <= 0.0
-            ):
-                raise ValueError('--bnb-calibration-timeout-seconds must be > 0.')
-
         return self
 
     @model_validator(mode="after")
@@ -542,11 +525,6 @@ class Configuration(BaseModel):
                 ('BNB bands', self.bnb_bands),
                 ('BNB MC samples', self.bnb_num_samples),
                 ('BNB MC seed', self.bnb_seed),
-                ('BNB EVR alpha', self.bnb_confidence_alpha),
-                ('BNB EVR checks', self.bnb_evr_num_checks),
-                ('BNB require EVR pass', self.bnb_require_evr_pass),
-                ('BNB EVR two-sided', self.bnb_verify_both_directions),
-                ('BNB calibration timeout s', self.bnb_calibration_timeout_seconds),
             ]
             attributes.extend(privacy_attributes)
 
