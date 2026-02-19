@@ -36,6 +36,7 @@ from .metrics_factory import MetricsFactory
 from .models.model_base import ModelBase
 from .models.model_factory import ModelFactory
 from .optimizers import OptimizerFactory
+from .schedulers import SchedulerFactory
 from .utils import seed_everything, shift_and_flatten
 
 log = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ class Trainer:
         seed: int = 0,
         physical_batch_size: int = 40,
         callback_handler: CallbackHandler | None = None,
+        lr_scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
         peft: str | None = None,
         task: str | None = None,
         device: torch.device | None = None,
@@ -81,6 +83,8 @@ class Trainer:
             self.callback_handler = CallbackHandler()
         else:
             self.callback_handler = callback_handler
+
+        self.lr_scheduler = lr_scheduler
 
         if self.epochs and self.total_steps:
             raise ValueError('You should provide either "epochs" or "total_steps", not both.')
@@ -216,8 +220,18 @@ class Trainer:
 
         # after accumulating the gradients for all the sub batches we can finally update weights.
         self.optimizer.step()
+        self._step_lr_scheduler()
 
         return logical_batch_loss
+
+    def _step_lr_scheduler(self):
+        if self.lr_scheduler is None:
+            return
+
+        if bool(getattr(self.optimizer, '_is_last_step_skipped', False)):
+            return
+
+        self.lr_scheduler.step()
 
     def validate(self, epoch=None, enable_callbacks=True):
         return self._evaluate('validation', epoch, enable_callbacks)
@@ -1179,6 +1193,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         loss.backward()
 
         self.optimizer.step()
+        self._step_lr_scheduler()
 
         loss = loss.item()
 
@@ -1367,7 +1382,6 @@ _ADAPTERS = {
 }
 
 class TrainerFactory:
-
     @staticmethod
     def _make_adapter(configuration, device):
         task = configuration.task or 'classification'
@@ -1448,7 +1462,16 @@ class TrainerFactory:
             CallbackFactory.get_callbacks(configuration, hyperparams, device=device)
         )
 
-        epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
+        epochs, total_steps, lr_scheduler_steps = TrainerFactory._get_epochs_and_steps(
+            configuration,
+            hyperparams,
+            datamodule,
+        )
+        lr_scheduler = SchedulerFactory.get_scheduler(
+            configuration=configuration,
+            optimizer=optimizer,
+            total_steps=lr_scheduler_steps,
+        )
 
         adapter = TrainerFactory._make_adapter(configuration, device)
 
@@ -1459,6 +1482,7 @@ class TrainerFactory:
             datamodule=datamodule,
             adapter=adapter,
             callback_handler=callback_handler,
+            lr_scheduler=lr_scheduler,
             physical_batch_size=configuration.physical_batch_size,
             epochs=epochs,
             total_steps=total_steps,
@@ -1541,7 +1565,16 @@ class TrainerFactory:
         )
 
         target_delta, target_epsilon = _get_target_privacy_params(hyperparams)
-        epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
+        epochs, total_steps, lr_scheduler_steps = TrainerFactory._get_epochs_and_steps(
+            configuration,
+            hyperparams,
+            datamodule,
+        )
+        lr_scheduler = SchedulerFactory.get_scheduler(
+            configuration=configuration,
+            optimizer=optimizer,
+            total_steps=lr_scheduler_steps,
+        )
 
         adapter = TrainerFactory._make_adapter(configuration, device)
 
@@ -1584,6 +1617,7 @@ class TrainerFactory:
             physical_batch_size=configuration.physical_batch_size,
             seed=configuration.seed,
             callback_handler=callback_handler,
+            lr_scheduler=lr_scheduler,
             validation_frequency=configuration.validation_frequency,
             peft=configuration.peft,
             task=configuration.task,
@@ -1612,29 +1646,34 @@ class TrainerFactory:
         batches through the BatchMemoryManager.
 
         Returns:
-            (epochs, total_steps): One of the values will be None depending on mode.
+            (epochs, total_steps, lr_scheduler_steps): One of epochs/total_steps
+            will be None depending on mode. lr_scheduler_steps is always
+            computed when epochs is known or total_steps is given.
         """
+        dataloader = datamodule.get_dataloader('train')
+        N = len(dataloader.dataset)
+        B = datamodule.batch_size
+        steps_per_epoch = math.ceil(N / B)
 
         # If we're using step-based training and the number of epochs is specified,
         # convert epochs to total steps using the default Opacus logic.
         if configuration.use_steps and hyperparams.epochs:
-            dataloader = datamodule.get_dataloader('train')
-
-            # Match Opacus: steps_per_epoch = ceil(N / B)
-            N = len(dataloader.dataset)
-            B = datamodule.batch_size
-            steps_per_epoch = math.ceil(N / B)
             total_steps = steps_per_epoch * hyperparams.epochs
             epochs = None
+            lr_scheduler_steps = int(total_steps)
 
         # If total steps are manually specified in config
         elif configuration.use_steps and hyperparams.total_steps:
             total_steps = hyperparams.total_steps
             epochs = None
+            lr_scheduler_steps = int(total_steps)
 
         # Standard epoch-based training
         else:
             total_steps = None
             epochs = hyperparams.epochs
+            lr_scheduler_steps = (
+                int(steps_per_epoch * epochs) if epochs is not None else None
+            )
 
-        return epochs, total_steps
+        return epochs, total_steps, lr_scheduler_steps

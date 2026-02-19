@@ -105,6 +105,7 @@ class Configuration(BaseModel):
     model_name: str = 'resnetv2_50x1_bit.goog_in21k'
     loss_function: str = 'CrossEntropyLoss'
     optimizer: str = 'Adam'
+    lr_scheduler: Literal['none', 'bnb_linear_decay'] = 'none'
     dataset_name: str = 'uoft-cs/cifar10'
     dataset_path: Optional[str] = None
     llm: bool = False
@@ -490,6 +491,7 @@ class Configuration(BaseModel):
             ('Privacy', self.privacy),
             ('Model name', self.model_name),
             ('Optimizer', self.optimizer),
+            ('LR scheduler', self.lr_scheduler),
             ('Dataset name', self.dataset_name),
             ('Dataset path', self.dataset_path),
             ('Dataset label field', self.dataset_label_field),

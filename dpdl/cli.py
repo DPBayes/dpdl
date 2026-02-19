@@ -1,7 +1,7 @@
 import logging
 import sys
 import time
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 import torch
 import typer
@@ -87,6 +87,13 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = 1e-3,
+        lr_scheduler: Annotated[
+            Literal['none', 'bnb_linear_decay'],
+            typer.Option(
+                help='Learning-rate scheduler',
+                rich_help_panel='Training options',
+            )
+        ] = 'none',
         batch_size: Annotated[
             Optional[int],
             typer.Option(
