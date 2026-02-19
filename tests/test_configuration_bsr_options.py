@@ -385,6 +385,19 @@ def test_bsr_alpha_beta_accepts_equal_values() -> None:
     assert cfg.bsr_beta == pytest.approx(0.9)
 
 
+def test_gaussian_allows_bsr_alpha_beta_as_optimizer_knobs() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='gaussian',
+        accountant='rdp',
+        bsr_alpha=1.0,
+        bsr_beta=0.95,
+    )
+    assert cfg.noise_mechanism == 'gaussian'
+    assert cfg.bsr_alpha == pytest.approx(1.0)
+    assert cfg.bsr_beta == pytest.approx(0.95)
+
+
 def test_non_bsr_allows_empty_bsr_coeff_list_default() -> None:
     cfg = Configuration(
         command='train',

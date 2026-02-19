@@ -303,7 +303,7 @@ class Configuration(BaseModel):
         bsr_max_participations = self.bsr_max_participations
         bsr_min_separation = self.bsr_min_separation
 
-        bsr_fields = [
+        mechanism_bound_bsr_fields = [
             'bsr_coeffs',
             'bsr_z_std',
             'bsr_bands',
@@ -311,8 +311,6 @@ class Configuration(BaseModel):
             'bsr_min_separation',
             'bsr_mf_sensitivity',
             'bsr_iterations_number',
-            'bsr_alpha',
-            'bsr_beta',
         ]
 
         def _is_explicitly_set(v):
@@ -324,12 +322,26 @@ class Configuration(BaseModel):
 
             return True
 
-        has_any_bsr_field = any(_is_explicitly_set(getattr(self, field)) for field in bsr_fields)
+        has_any_bsr_field = any(
+            _is_explicitly_set(getattr(self, field))
+            for field in mechanism_bound_bsr_fields
+        )
 
         if mechanism not in ('bsr', 'bnb') and has_any_bsr_field:
             raise ValueError(
                 'BSR-specific parameters require --noise-mechanism bsr.'
             )
+
+        # alpha/beta are workload/optimizer knobs and may be used independently
+        # of the selected noise mechanism (e.g. Gaussian DP-SGD with bsr-example-sgd).
+        if bsr_alpha is not None and not (0.0 < bsr_alpha <= 1.0):
+            raise ValueError('--bsr-alpha must be in (0, 1].')
+
+        if bsr_beta is not None and not (0.0 <= bsr_beta < 1.0):
+            raise ValueError('--bsr-beta must be in [0, 1).')
+
+        if bsr_alpha is not None and bsr_beta is not None and bsr_beta > bsr_alpha:
+            raise ValueError('--bsr-beta must be <= --bsr-alpha.')
 
         if sampling_mode == 'cyclic_poisson' and mechanism != 'bsr':
             raise ValueError(
@@ -379,15 +391,6 @@ class Configuration(BaseModel):
 
             if bsr_iterations_number is not None and bsr_iterations_number < 1:
                 raise ValueError('--bsr-iterations-number must be >= 1.')
-
-            if bsr_alpha is not None and not (0.0 < bsr_alpha <= 1.0):
-                raise ValueError('--bsr-alpha must be in (0, 1].')
-
-            if bsr_beta is not None and not (0.0 <= bsr_beta < 1.0):
-                raise ValueError('--bsr-beta must be in [0, 1).')
-
-            if bsr_alpha is not None and bsr_beta is not None and bsr_beta > bsr_alpha:
-                raise ValueError('--bsr-beta must be <= --bsr-alpha.')
 
         return self
 
