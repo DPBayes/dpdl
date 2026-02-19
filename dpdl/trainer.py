@@ -12,10 +12,10 @@ import torch
 from opacus import GradSampleModule
 from opacus.accountants.analysis.bnb import (
     build_bnb_toeplitz_c_matrix_and_contract,
+    resolve_bnb_calibration_kwargs,
 )
 from opacus.accountants.analysis.bsr import calibrate_bsr_z_std
 from opacus.accountants.analysis.bsr import compute_bsr_kappa_from_coeffs
-from opacus.bnb_defaults import resolve_bnb_calibration_kwargs
 from opacus.distributed import DifferentiallyPrivateDistributedDataParallel
 from opacus.mechanism_contracts import (
     NoiseMechanismConfig,
@@ -481,6 +481,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.noise_multiplier = noise_multiplier
         self.max_grad_norm = max_grad_norm
         self.clipping_mode = clipping_mode
+        self.accountant = accountant
         self.target_epsilon = target_epsilon
         self.target_delta = target_delta
         self.noise_batch_ratio = noise_batch_ratio
@@ -905,14 +906,20 @@ class DifferentiallyPrivateTrainer(Trainer):
             mechanism_kwargs['bnb_bands'] = int(self.bnb_bands)
 
         if self.noise_mechanism == 'bnb' and has_target_privacy_params:
-            bnb_calibration_overrides = {
-                'bnb_num_samples': int(self.bnb_num_samples) if self.bnb_num_samples is not None else None,
-                'bnb_seed': int(self.bnb_seed) if self.bnb_seed is not None else None,
-            }
             mechanism_kwargs.update(
                 resolve_bnb_calibration_kwargs(
-                    profile='dpdl_fast',
-                    overrides=bnb_calibration_overrides,
+                    overrides={
+                        'bnb_num_samples': (
+                            int(self.bnb_num_samples)
+                            if self.bnb_num_samples is not None
+                            else None
+                        ),
+                        'bnb_seed': (
+                            int(self.bnb_seed)
+                            if self.bnb_seed is not None
+                            else None
+                        ),
+                    },
                 )
             )
 

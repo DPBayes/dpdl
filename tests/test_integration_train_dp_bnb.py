@@ -21,7 +21,7 @@ def _run_dp_bnb(
     *,
     experiment: str,
     use_target_epsilon: bool,
-    sampling_mode: str = 'b_min_sep',
+    sampling_mode: str = 'balls_in_bins',
 ) -> dict:
     repo_root = Path(__file__).resolve().parents[1]
     env = base_env()
@@ -72,8 +72,6 @@ def _run_dp_bnb(
         '--experiment-name',
         experiment,
     ]
-    if sampling_mode == 'b_min_sep':
-        cmd_args.extend(['--bnb-p', '0.2'])
 
     if use_target_epsilon:
         cmd_args.extend(['--target-epsilon', '8'])
@@ -108,8 +106,6 @@ def _run_dp_bnb(
         'bnb_b': 2,
         'bnb_bands': 1,
     }
-    if sampling_mode == 'b_min_sep':
-        expected_config['bnb_p'] = 0.2
 
     assert_config_and_hyperparams(
         tmp_path / experiment,
