@@ -235,13 +235,27 @@ class Configuration(BaseModel):
         poisson_sampling = values.get('poisson_sampling', True)
         sampling_mode = values.get('sampling_mode')
         privacy = values.get('privacy', True)
+        mechanism = values.get('noise_mechanism', 'gaussian')
 
         if (
             privacy
             and total_steps
             and use_steps
             and not poisson_sampling
-            and sampling_mode in (None, 'torch_sampler')
+            and sampling_mode is None
+        ):
+            raise ValueError(
+                'Setting total_steps with non-Poisson sampling requires '
+                '--sampling-mode cyclic_poisson, b_min_sep, or balls_in_bins.'
+            )
+
+        if (
+            privacy
+            and total_steps
+            and use_steps
+            and not poisson_sampling
+            and sampling_mode == 'torch_sampler'
+            and mechanism not in ('bsr', 'bnb')
         ):
             raise ValueError(
                 'Setting total_steps with non-Poisson sampling requires '
@@ -284,6 +298,9 @@ class Configuration(BaseModel):
         bsr_alpha = self.bsr_alpha
         bsr_beta = self.bsr_beta
         bsr_iterations_number = self.bsr_iterations_number
+        bsr_mf_sensitivity = self.bsr_mf_sensitivity
+        bsr_max_participations = self.bsr_max_participations
+        bsr_min_separation = self.bsr_min_separation
 
         bsr_fields = [
             'bsr_coeffs',
@@ -338,6 +355,20 @@ class Configuration(BaseModel):
                 raise ValueError(
                     'Cyclic-poisson BSR sampling requires --bsr-bands.'
                 )
+
+            if sampling_mode == 'cyclic_poisson':
+                if bsr_mf_sensitivity is not None:
+                    raise ValueError(
+                        '--bsr-mf-sensitivity is fixed-batch BSR only and cannot be used with --sampling-mode cyclic_poisson.'
+                    )
+                if bsr_max_participations is not None:
+                    raise ValueError(
+                        '--bsr-max-participations is fixed-batch BSR only and cannot be used with --sampling-mode cyclic_poisson.'
+                    )
+                if bsr_min_separation is not None:
+                    raise ValueError(
+                        '--bsr-min-separation is fixed-batch BSR only and cannot be used with --sampling-mode cyclic_poisson.'
+                    )
 
             if bsr_bands is not None and bsr_bands < 1:
                 raise ValueError('--bsr-bands must be >= 1.')

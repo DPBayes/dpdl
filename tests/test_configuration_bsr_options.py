@@ -192,6 +192,28 @@ def test_bsr_configuration_allows_torch_sampler_literal() -> None:
     assert cfg.sampling_mode == 'torch_sampler'
 
 
+@pytest.mark.parametrize(
+    ("field", "value", "error_match"),
+    [
+        ("bsr_mf_sensitivity", 1.0, "fixed-batch BSR only"),
+        ("bsr_max_participations", 10, "fixed-batch BSR only"),
+        ("bsr_min_separation", 5, "fixed-batch BSR only"),
+    ],
+)
+def test_bsr_cyclic_poisson_rejects_fixed_batch_only_knobs(field, value, error_match) -> None:
+    kwargs = {
+        'command': 'train',
+        'noise_mechanism': 'bsr',
+        'accountant': 'bsr',
+        'poisson_sampling': False,
+        'sampling_mode': 'cyclic_poisson',
+        'bsr_bands': 3,
+        field: value,
+    }
+    with pytest.raises(ValidationError, match=error_match):
+        Configuration(**kwargs)
+
+
 def test_cyclic_poisson_requires_bsr_mechanism() -> None:
     with pytest.raises(ValidationError, match='requires --noise-mechanism bsr'):
         Configuration(
@@ -293,10 +315,8 @@ def test_total_steps_nonpoisson_requires_explicit_custom_sampling_mode() -> None
             use_steps=True,
             total_steps=10,
             poisson_sampling=False,
-            sampling_mode='torch_sampler',
-            noise_mechanism='bsr',
-            accountant='bsr',
-            bsr_coeffs=[1.0],
+            noise_mechanism='gaussian',
+            accountant='rdp',
         )
 
 
@@ -312,6 +332,36 @@ def test_total_steps_nonpoisson_accepts_explicit_custom_sampling_mode() -> None:
         bsr_bands=3,
     )
     assert cfg.sampling_mode == 'cyclic_poisson'
+
+
+def test_total_steps_nonpoisson_allows_bsr_torch_sampler_fixed_batch() -> None:
+    cfg = Configuration(
+        command='train',
+        use_steps=True,
+        total_steps=10,
+        poisson_sampling=False,
+        sampling_mode='torch_sampler',
+        noise_mechanism='bsr',
+        accountant='bsr',
+        bsr_coeffs=[1.0],
+    )
+    assert cfg.sampling_mode == 'torch_sampler'
+
+
+def test_total_steps_nonpoisson_bnb_torch_sampler_keeps_bnb_specific_error() -> None:
+    with pytest.raises(ValidationError, match='requires --sampling-mode b_min_sep or balls_in_bins'):
+        Configuration(
+            command='train',
+            use_steps=True,
+            total_steps=10,
+            poisson_sampling=False,
+            sampling_mode='torch_sampler',
+            noise_mechanism='bnb',
+            accountant='bnb',
+            bnb_b=2,
+            bnb_p=0.1,
+            bnb_bands=4,
+        )
 
 
 def test_bnb_configuration_allows_shared_bsr_coeffs_field() -> None:

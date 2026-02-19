@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+import time
 from collections.abc import Mapping
 
 import opacus
@@ -12,6 +13,7 @@ from opacus.accountants.analysis.bnb import (
     build_bnb_toeplitz_c_matrix_and_contract,
 )
 from opacus.accountants.analysis.bsr import calibrate_bsr_z_std
+from opacus.accountants.analysis.bsr import compute_bsr_kappa_from_coeffs
 from opacus.bnb_defaults import resolve_bnb_calibration_kwargs
 from opacus.distributed import DifferentiallyPrivateDistributedDataParallel
 from opacus.mechanism_contracts import (
@@ -511,6 +513,92 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         return True
 
+    @staticmethod
+    def _resolve_bsr_cyclic_sensitivity_scale(
+        *,
+        coeffs: list[float] | None,
+        steps: int | None,
+        iterations_number: int | None = None,
+    ) -> float | None:
+        if not coeffs:
+            return None
+
+        if steps is None:
+            return None
+
+        scale_steps = int(iterations_number) if iterations_number is not None else int(steps)
+        if scale_steps < 1:
+            raise ValueError('BSR cyclic sensitivity scale requires steps >= 1.')
+
+        return float(
+            compute_bsr_kappa_from_coeffs(
+                coeffs=list(coeffs),
+                steps=scale_steps,
+            )
+        )
+
+    @staticmethod
+    def _resolve_or_generate_bsr_coeffs(
+        *,
+        noise_mechanism: str,
+        explicit_coeffs: list[float] | None,
+        bsr_bands: int | None,
+        bnb_bands: int | None,
+        bsr_alpha: float | None,
+        bsr_beta: float | None,
+    ) -> list[float]:
+        if explicit_coeffs:
+            return list(explicit_coeffs)
+
+        auto_bands = bsr_bands if noise_mechanism == 'bsr' else bnb_bands
+        if auto_bands is None:
+            raise ValueError(
+                f'{noise_mechanism.upper()} auto coefficient generation requires '
+                '--bsr-coeffs or bands (--bsr-bands for bsr, --bnb-bands for bnb).'
+            )
+
+        return generate_bsr_coeffs_from_sgd_workload(
+            bands=int(auto_bands),
+            momentum=float(bsr_beta if bsr_beta is not None else 0.0),
+            weight_decay=float(bsr_alpha if bsr_alpha is not None else 1.0),
+        )
+
+    @staticmethod
+    def _resolve_expected_batch_size_for_correlated_runtime(
+        *,
+        total_steps: int | None,
+        poisson_sampling: bool,
+        sampling_mode: str | None,
+        batch_size: int,
+        dataset_size: int,
+        dataloader_len: int,
+        bnb_p: float | None,
+        bnb_b: int | None,
+    ) -> int:
+        if total_steps:
+            if not poisson_sampling and sampling_mode == 'b_min_sep':
+                if bnb_p is None:
+                    raise ValueError('b_min_sep sampling requires bnb_p to resolve expected batch size.')
+
+                sample_rate = float(bnb_p)
+            elif not poisson_sampling and sampling_mode == 'balls_in_bins':
+                if bnb_b is None:
+                    raise ValueError('balls_in_bins sampling requires bnb_b to resolve expected batch size.')
+
+                sample_rate = 1.0 / float(int(bnb_b))
+            else:
+                sample_rate = float(batch_size) / float(dataset_size)
+        else:
+            sample_rate = 1.0 / float(dataloader_len)
+
+        expected_batch_size = int(float(dataset_size) * float(sample_rate))
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            expected_batch_size = int(
+                expected_batch_size / int(torch.distributed.get_world_size())
+            )
+
+        return int(expected_batch_size)
+
     def setup(self):
         def _build_sampling_semantics() -> SamplingSemantics | None:
             if self.sampling_mode is None:
@@ -558,6 +646,8 @@ class DifferentiallyPrivateTrainer(Trainer):
             *,
             noise_multiplier_ref: float | None,
             bnb_horizon: int | None,
+            bsr_cyclic_sensitivity_scale: float | None,
+            correlated_denominator: float | None,
         ) -> NoiseMechanismConfig | None:
             if self.noise_mechanism not in ('bsr', 'bnb'):
                 return None
@@ -565,6 +655,12 @@ class DifferentiallyPrivateTrainer(Trainer):
             mechanism_state = {
                 'coeffs': list(self.bsr_coeffs or []),
             }
+            if (
+                self.noise_mechanism == 'bsr'
+                and self.sampling_mode == 'cyclic_poisson'
+                and bsr_cyclic_sensitivity_scale is not None
+            ):
+                mechanism_state['sensitivity_scale'] = float(bsr_cyclic_sensitivity_scale)
             if self.noise_mechanism == 'bnb' and self.bnb_bands is not None:
                 mechanism_state['bands'] = int(self.bnb_bands)
                 if bnb_horizon is not None:
@@ -599,7 +695,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                     mechanism_state['z_std'] = calibrate_bsr_z_std(
                         noise_multiplier_ref=float(noise_multiplier_ref),
                         max_grad_norm=float(self.max_grad_norm),
-                        denominator=float(self.datamodule.batch_size),
+                        denominator=float(correlated_denominator),
                     )
 
             if self.noise_mechanism == 'bsr':
@@ -619,35 +715,24 @@ class DifferentiallyPrivateTrainer(Trainer):
         sampling_semantics = _build_sampling_semantics()
 
         if self.noise_mechanism in ('bsr', 'bnb'):
-            # Explicit coeffs take precedence over auto-generation.
-            if not self.bsr_coeffs:
+            had_explicit_coeffs = bool(self.bsr_coeffs)
+            self.bsr_coeffs = self._resolve_or_generate_bsr_coeffs(
+                noise_mechanism=self.noise_mechanism,
+                explicit_coeffs=self.bsr_coeffs,
+                bsr_bands=self.bsr_bands,
+                bnb_bands=self.bnb_bands,
+                bsr_alpha=self.bsr_alpha,
+                bsr_beta=self.bsr_beta,
+            )
+            if not had_explicit_coeffs and torch.distributed.get_rank() == 0:
                 auto_bands = self.bsr_bands if self.noise_mechanism == 'bsr' else self.bnb_bands
-                if auto_bands is None:
-                    raise ValueError(
-                        f'{self.noise_mechanism.upper()} auto coefficient generation requires '
-                        '--bsr-coeffs or bands (--bsr-bands for bsr, --bnb-bands for bnb).'
-                    )
-
-                self.bsr_coeffs = generate_bsr_coeffs_from_sgd_workload(
-                    bands=int(auto_bands),
-                    momentum=float(
-                        self.bsr_beta if self.bsr_beta is not None else 0.0
-                    ),
-                    weight_decay=float(
-                        self.bsr_alpha
-                        if self.bsr_alpha is not None
-                        else 1.0
-                    ),
+                log.info(
+                    f'Auto-generated {self.noise_mechanism.upper()} coeffs from SGD workload '
+                    f'(bands={auto_bands}, '
+                    f'alpha={(self.bsr_alpha if self.bsr_alpha is not None else 1.0)}, '
+                    f'beta={(self.bsr_beta if self.bsr_beta is not None else 0.0)}): '
+                    f'{self.bsr_coeffs}'
                 )
-
-                if torch.distributed.get_rank() == 0:
-                    log.info(
-                        f'Auto-generated {self.noise_mechanism.upper()} coeffs from SGD workload '
-                        f'(bands={auto_bands}, '
-                        f'alpha={(self.bsr_alpha if self.bsr_alpha is not None else 1.0)}, '
-                        f'beta={(self.bsr_beta if self.bsr_beta is not None else 0.0)}): '
-                        f'{self.bsr_coeffs}'
-                    )
 
         noise_multiplier_ref = self.noise_multiplier
         if not has_target_privacy_params:
@@ -658,6 +743,28 @@ class DifferentiallyPrivateTrainer(Trainer):
                 noise_multiplier_ref = self.noise_batch_ratio * self.datamodule.batch_size
 
         train_dataloader = self.datamodule.get_dataloader('train')
+        bsr_cyclic_horizon = None
+        if self.noise_mechanism == 'bsr' and self.sampling_mode == 'cyclic_poisson':
+            if self.total_steps:
+                bsr_cyclic_horizon = int(self.total_steps)
+            elif self.epochs:
+                bsr_cyclic_horizon = int(self.epochs) * int(len(train_dataloader))
+
+        bsr_cyclic_sensitivity_scale = self._resolve_bsr_cyclic_sensitivity_scale(
+            coeffs=self.bsr_coeffs,
+            steps=bsr_cyclic_horizon,
+            iterations_number=self.bsr_iterations_number,
+        )
+        if (
+            sampling_semantics is not None
+            and self.noise_mechanism == 'bsr'
+            and self.sampling_mode == 'cyclic_poisson'
+            and bsr_cyclic_sensitivity_scale is not None
+        ):
+            sampling_semantics.privacy_metadata['sensitivity_scale'] = float(
+                bsr_cyclic_sensitivity_scale
+            )
+
         bnb_horizon = None
         if self.noise_mechanism == 'bnb':
             if self.total_steps:
@@ -682,9 +789,25 @@ class DifferentiallyPrivateTrainer(Trainer):
                         )
                     bnb_horizon = aligned_horizon
 
+        correlated_denominator = None
+        if self.noise_mechanism in ('bsr', 'bnb') and not has_target_privacy_params:
+            expected_batch_size = self._resolve_expected_batch_size_for_correlated_runtime(
+                total_steps=self.total_steps,
+                poisson_sampling=self.poisson_sampling,
+                sampling_mode=self.sampling_mode,
+                batch_size=int(self.datamodule.batch_size),
+                dataset_size=len(train_dataloader.dataset),
+                dataloader_len=len(train_dataloader),
+                bnb_p=self.bnb_p,
+                bnb_b=self.bnb_b,
+            )
+            correlated_denominator = float(expected_batch_size)
+
         noise_mechanism_config = _build_noise_mechanism_config(
             noise_multiplier_ref=noise_multiplier_ref,
             bnb_horizon=bnb_horizon,
+            bsr_cyclic_sensitivity_scale=bsr_cyclic_sensitivity_scale,
+            correlated_denominator=correlated_denominator,
         )
 
         mechanism_kwargs = {}
@@ -693,6 +816,11 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         if self.bsr_iterations_number is not None:
             mechanism_kwargs['bsr_iterations_number'] = int(self.bsr_iterations_number)
+
+        if bsr_cyclic_sensitivity_scale is not None:
+            mechanism_kwargs['bsr_sensitivity_scale'] = float(
+                bsr_cyclic_sensitivity_scale
+            )
 
         if self.bsr_max_participations is not None:
             mechanism_kwargs['bsr_max_participations'] = int(self.bsr_max_participations)
@@ -807,6 +935,11 @@ class DifferentiallyPrivateTrainer(Trainer):
         # to calculate the start/end of an epoch, we need the number
         # of steps in an epoch.
         steps_per_epoch = self._calculate_steps_per_epoch()
+        progress_log_interval = max(1, min(100, steps_per_epoch // 5))
+        stall_warning_interval = max(200, progress_log_interval * 10)
+        max_physical_without_logical_step = max(5000, steps_per_epoch * 50)
+        physical_since_last_logical_step = 0
+        loop_start_time = time.monotonic()
 
         # At the very start, call on_train_batch_start for the first logical batch.
         if logical_batch_begin:
@@ -827,6 +960,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             ) as virtual_dataloader:
                 for batch_idx, batch in enumerate(virtual_dataloader):
                     batches_seen_in_pass += 1
+                    physical_since_last_logical_step += 1
 
                     # now, let's check if we are going to reach the end of logical batch.
                     # the optimizer will not skip next gradient update if we are not at
@@ -854,6 +988,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
                     # if the logical batch is complete, notify batch end and reset counters
                     if logical_batch_completed:
+                        physical_since_last_logical_step = 0
                         self.callback_handler.call(
                             'on_train_batch_end',
                             self,
@@ -867,6 +1002,34 @@ class DifferentiallyPrivateTrainer(Trainer):
 
                         # the next iteration starts a new logical batch
                         logical_batch_begin = True
+
+                        if step == 1 or step == self.total_steps or step % progress_log_interval == 0:
+                            elapsed = time.monotonic() - loop_start_time
+                            progress_pct = 100.0 * float(step) / float(self.total_steps)
+                            log.info(
+                                'Training progress: logical step %s/%s (%.2f%%, virtual_epoch=%s, elapsed=%.1fs).',
+                                step,
+                                self.total_steps,
+                                progress_pct,
+                                virtual_epoch + 1,
+                                elapsed,
+                            )
+                    else:
+                        if physical_since_last_logical_step % stall_warning_interval == 0:
+                            log.warning(
+                                'No logical step completion for %s physical batches '
+                                '(current step=%s/%s).',
+                                physical_since_last_logical_step,
+                                step,
+                                self.total_steps,
+                            )
+                        if physical_since_last_logical_step >= max_physical_without_logical_step:
+                            raise RuntimeError(
+                                'Training made no logical-step progress for '
+                                f'{physical_since_last_logical_step} physical batches. '
+                                'Likely sampler/BatchMemoryManager mismatch or oversized '
+                                'logical batches.'
+                            )
 
                     # At the beginning of a new logical batch, call on_train_batch_start.
                     if logical_batch_begin:
