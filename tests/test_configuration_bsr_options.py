@@ -193,6 +193,119 @@ def test_bsr_configuration_allows_torch_sampler_literal() -> None:
 
 
 @pytest.mark.parametrize(
+    ("overrides", "error_match"),
+    [
+        (
+            {
+                'accountant': 'prv',
+            },
+            'requires --accountant bsr',
+        ),
+        (
+            {
+                'poisson_sampling': True,
+            },
+            'requires non-Poisson semantics',
+        ),
+        (
+            {
+                'sampling_mode': 'cyclic_poisson',
+                'bsr_coeffs': [1.0],
+                'bsr_bands': None,
+            },
+            'requires --bsr-bands',
+        ),
+        (
+            {
+                'sampling_mode': 'b_min_sep',
+            },
+            'BNB-specific sampling requires --noise-mechanism bnb',
+        ),
+        (
+            {
+                'sampling_mode': 'balls_in_bins',
+            },
+            'BNB-specific sampling requires --noise-mechanism bnb',
+        ),
+        (
+            {
+                'sampling_mode': 'cyclic_poisson',
+                'bsr_bands': 3,
+                'bsr_mf_sensitivity': 1.0,
+            },
+            'fixed-batch BSR only',
+        ),
+    ],
+)
+def test_bsr_invalid_combo_matrix(overrides: dict, error_match: str) -> None:
+    params = {
+        'command': 'train',
+        'noise_mechanism': 'bsr',
+        'accountant': 'bsr',
+        'poisson_sampling': False,
+        'sampling_mode': 'torch_sampler',
+        'bsr_coeffs': [1.0],
+    }
+    params.update(overrides)
+
+    with pytest.raises(ValidationError, match=error_match):
+        Configuration(**params)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "error_match"),
+    [
+        (
+            {
+                'noise_mechanism': 'gaussian',
+                'accountant': 'rdp',
+                'bsr_coeffs': None,
+                'bsr_iterations_number': 10,
+            },
+            'BSR-specific parameters require --noise-mechanism bsr',
+        ),
+        (
+            {
+                'bsr_iterations_number': 0,
+            },
+            'bsr-iterations-number',
+        ),
+        (
+            {
+                'use_steps': True,
+                'total_steps': 10,
+                'sampling_mode': None,
+            },
+            'requires --sampling-mode',
+        ),
+        (
+            {
+                'use_steps': True,
+                'total_steps': 10,
+                'sampling_mode': 'cyclic_poisson',
+                'bsr_bands': 3,
+                'bsr_iterations_number': 0,
+            },
+            'bsr-iterations-number',
+        ),
+    ],
+)
+def test_bsr_horizon_invalid_combo_matrix(overrides: dict, error_match: str) -> None:
+    params = {
+        'command': 'train',
+        'noise_mechanism': 'bsr',
+        'accountant': 'bsr',
+        'poisson_sampling': False,
+        'sampling_mode': 'torch_sampler',
+        'bsr_coeffs': [1.0],
+    }
+    params.update(overrides)
+
+    with pytest.raises(ValidationError, match=error_match):
+        Configuration(**params)
+
+
+@pytest.mark.parametrize(
     ("field", "value", "error_match"),
     [
         ("bsr_mf_sensitivity", 1.0, "fixed-batch BSR only"),
@@ -243,6 +356,33 @@ def test_bsr_alpha_beta_validation() -> None:
             bsr_bands=5,
             bsr_beta=1.0,
         )
+
+
+def test_bsr_alpha_beta_rejects_beta_greater_than_alpha() -> None:
+    with pytest.raises(ValidationError, match='bsr-beta must be <= --bsr-alpha'):
+        Configuration(
+            command='train',
+            noise_mechanism='bsr',
+            accountant='bsr',
+            poisson_sampling=False,
+            bsr_bands=5,
+            bsr_alpha=0.9,
+            bsr_beta=0.95,
+        )
+
+
+def test_bsr_alpha_beta_accepts_equal_values() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bsr',
+        accountant='bsr',
+        poisson_sampling=False,
+        bsr_bands=5,
+        bsr_alpha=0.9,
+        bsr_beta=0.9,
+    )
+    assert cfg.bsr_alpha == pytest.approx(0.9)
+    assert cfg.bsr_beta == pytest.approx(0.9)
 
 
 def test_non_bsr_allows_empty_bsr_coeff_list_default() -> None:

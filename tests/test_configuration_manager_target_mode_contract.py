@@ -22,6 +22,84 @@ def test_configuration_manager_requires_explicit_privacy_target_path() -> None:
         )
 
 
+def test_configuration_manager_accepts_explicit_bsr_z_std_privacy_path() -> None:
+    manager = ConfigurationManager(
+        {
+            'command': 'train',
+            'privacy': True,
+            'noise_mechanism': 'bsr',
+            'accountant': 'bsr',
+            'poisson_sampling': False,
+            'sampling_mode': 'cyclic_poisson',
+            'bsr_bands': 8,
+            'bsr_z_std': 0.02,
+            'target_epsilon': None,
+            'noise_multiplier': None,
+            'noise_batch_ratio': None,
+            'epochs': 1,
+            'batch_size': 32,
+            'max_grad_norm': 1.0,
+        }
+    )
+    assert manager.configuration.bsr_z_std == 0.02
+
+
+@pytest.mark.parametrize(
+    ("overrides", "error_match"),
+    [
+        (
+            {
+                'noise_mechanism': 'gaussian',
+                'accountant': 'prv',
+            },
+            'BSR-specific parameters require --noise-mechanism bsr',
+        ),
+        (
+            {
+                'target_epsilon': 8.0,
+            },
+            'cannot be combined with --target-epsilon',
+        ),
+        (
+            {
+                'noise_multiplier': 1.0,
+            },
+            'cannot be combined with --target-epsilon',
+        ),
+        (
+            {
+                'noise_batch_ratio': 0.2,
+            },
+            'cannot be combined with --target-epsilon',
+        ),
+    ],
+)
+def test_configuration_manager_bsr_z_std_invalid_combo_matrix(
+    overrides: dict,
+    error_match: str,
+) -> None:
+    params = {
+        'command': 'train',
+        'privacy': True,
+        'noise_mechanism': 'bsr',
+        'accountant': 'bsr',
+        'poisson_sampling': False,
+        'sampling_mode': 'cyclic_poisson',
+        'bsr_bands': 8,
+        'bsr_z_std': 0.02,
+        'target_epsilon': None,
+        'noise_multiplier': None,
+        'noise_batch_ratio': None,
+        'epochs': 1,
+        'batch_size': 32,
+        'max_grad_norm': 1.0,
+    }
+    params.update(overrides)
+
+    with pytest.raises(ValueError, match=error_match):
+        ConfigurationManager(params)
+
+
 @pytest.mark.parametrize(
     ("target_epsilon", "noise_multiplier", "noise_batch_ratio"),
     [
@@ -49,3 +127,91 @@ def test_configuration_manager_accepts_any_explicit_privacy_target_path(
         }
     )
     assert manager.configuration.privacy is True
+
+
+def test_configuration_manager_rejects_bsr_z_std_with_target_epsilon() -> None:
+    with pytest.raises(ValueError, match='cannot be combined with --target-epsilon'):
+        ConfigurationManager(
+            {
+                'command': 'train',
+                'privacy': True,
+                'noise_mechanism': 'bsr',
+                'accountant': 'bsr',
+                'poisson_sampling': False,
+                'sampling_mode': 'cyclic_poisson',
+                'bsr_bands': 8,
+                'bsr_z_std': 0.02,
+                'target_epsilon': 8.0,
+                'noise_multiplier': None,
+                'noise_batch_ratio': None,
+                'epochs': 1,
+                'batch_size': 32,
+                'max_grad_norm': 1.0,
+            }
+        )
+
+
+def test_configuration_manager_allows_bsr_z_std_in_clip_only_mode() -> None:
+    manager = ConfigurationManager(
+        {
+            'command': 'train',
+            'privacy': True,
+            'noise_mechanism': 'bsr',
+            'accountant': 'bsr',
+            'poisson_sampling': False,
+            'sampling_mode': 'cyclic_poisson',
+            'bsr_bands': 8,
+            'bsr_z_std': 0.02,
+            'target_epsilon': -1.0,
+            'noise_multiplier': None,
+            'noise_batch_ratio': None,
+            'epochs': 1,
+            'batch_size': 32,
+            'max_grad_norm': 1.0,
+        }
+    )
+    assert manager.configuration.bsr_z_std == 0.02
+
+
+def test_configuration_manager_rejects_bsr_z_std_with_noise_multiplier() -> None:
+    with pytest.raises(ValueError, match='cannot be combined with --target-epsilon'):
+        ConfigurationManager(
+            {
+                'command': 'train',
+                'privacy': True,
+                'noise_mechanism': 'bsr',
+                'accountant': 'bsr',
+                'poisson_sampling': False,
+                'sampling_mode': 'cyclic_poisson',
+                'bsr_bands': 8,
+                'bsr_z_std': 0.02,
+                'target_epsilon': None,
+                'noise_multiplier': 1.0,
+                'noise_batch_ratio': None,
+                'epochs': 1,
+                'batch_size': 32,
+                'max_grad_norm': 1.0,
+            }
+        )
+
+
+def test_configuration_manager_rejects_bsr_z_std_with_noise_batch_ratio() -> None:
+    with pytest.raises(ValueError, match='cannot be combined with --target-epsilon'):
+        ConfigurationManager(
+            {
+                'command': 'train',
+                'privacy': True,
+                'noise_mechanism': 'bsr',
+                'accountant': 'bsr',
+                'poisson_sampling': False,
+                'sampling_mode': 'cyclic_poisson',
+                'bsr_bands': 8,
+                'bsr_z_std': 0.02,
+                'target_epsilon': None,
+                'noise_multiplier': None,
+                'noise_batch_ratio': 0.2,
+                'epochs': 1,
+                'batch_size': 32,
+                'max_grad_norm': 1.0,
+            }
+        )

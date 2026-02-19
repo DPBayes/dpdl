@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import json
 import torch
 import typer
 
@@ -397,7 +398,6 @@ class Configuration(BaseModel):
         accountant = self.accountant
         poisson_sampling = self.poisson_sampling
         bnb_b = self.bnb_b
-        bnb_p = self.bnb_p
         bnb_bands = self.bnb_bands
 
         bnb_fields = [
@@ -426,6 +426,12 @@ class Configuration(BaseModel):
                 'BNB-specific sampling requires --noise-mechanism bnb.'
             )
 
+        if sampling_mode == 'b_min_sep':
+            raise ValueError(
+                'b_min_sep sampling is temporarily disabled pending p-aware BNB accounting. '
+                'Use --sampling-mode balls_in_bins.'
+            )
+
         if mechanism == 'bnb':
             if accountant != 'bnb':
                 raise ValueError(
@@ -437,25 +443,19 @@ class Configuration(BaseModel):
                     'BNB mechanism requires non-Poisson semantics: set --poisson-sampling False.'
                 )
 
-            if sampling_mode not in ('b_min_sep', 'balls_in_bins'):
+            if sampling_mode != 'balls_in_bins':
                 raise ValueError(
-                    'BNB mechanism requires --sampling-mode b_min_sep or balls_in_bins.'
+                    'BNB mechanism requires --sampling-mode balls_in_bins.'
                 )
 
             if bnb_b is None:
                 raise ValueError('BNB b-min-sep sampling requires --bnb-b.')
-
-            if sampling_mode == 'b_min_sep' and bnb_p is None:
-                raise ValueError('BNB b-min-sep sampling requires --bnb-p.')
 
             if bnb_bands is None:
                 raise ValueError('BNB Toeplitz accounting requires --bnb-bands.')
 
             if int(bnb_b) < 1:
                 raise ValueError('--bnb-b must be >= 1.')
-
-            if sampling_mode == 'b_min_sep' and not (0.0 < float(bnb_p) <= 1.0):
-                raise ValueError('--bnb-p must be in (0, 1].')
 
             if int(bnb_bands) < 1:
                 raise ValueError('--bnb-bands must be >= 1.')
@@ -594,10 +594,17 @@ class ConfigurationManager:
         target_epsilon = cli_params.get('target_epsilon')
         noise_multiplier = cli_params.get('noise_multiplier')
         noise_batch_ratio = cli_params.get('noise_batch_ratio')
+        noise_mechanism = cli_params.get('noise_mechanism', 'gaussian')
+        bsr_z_std = cli_params.get('bsr_z_std')
+        # Treat explicit bsr_z_std as an explicit privacy path at this gate so
+        # mechanism-specific validation can produce the authoritative error
+        # when noise_mechanism != 'bsr'.
+        explicit_bsr_z_std_path = bsr_z_std is not None
 
         if (
             privacy
             and command in ('train', 'optimize', 'train-predict')
+            and not explicit_bsr_z_std_path
             and target_epsilon is None
             and noise_multiplier is None
             and noise_batch_ratio is None
@@ -605,15 +612,69 @@ class ConfigurationManager:
             raise ValueError(
                 'Privacy mode requires one explicit target path. '
                 'Set one of --target-epsilon (or -1 for clip-only), '
-                '--noise-multiplier, or --noise-batch-ratio.'
+                '--noise-multiplier, --noise-batch-ratio, or --bsr-z-std (BSR only).'
             )
 
         self.configuration = Configuration(**cli_params)
         self.hyperparams = Hyperparameters(**cli_params)
 
+        if (
+            self.configuration.noise_mechanism == 'bsr'
+            and self.configuration.bsr_z_std is not None
+            and (
+                (
+                    self.hyperparams.target_epsilon is not None
+                    and float(self.hyperparams.target_epsilon) != -1.0
+                )
+                or self.hyperparams.noise_multiplier is not None
+                or self.hyperparams.noise_batch_ratio is not None
+            )
+        ):
+            raise ValueError(
+                '--bsr-z-std cannot be combined with --target-epsilon (except clip-only -1), '
+                '--noise-multiplier, or --noise-batch-ratio for BSR. '
+                'Use either explicit --bsr-z-std alone, or accounting-driven noise controls.'
+            )
+
         # remove the target hypers from hyperparams as they will be set in trials
         for target_hyper in self.configuration.target_hypers:
             setattr(self.hyperparams, target_hyper, None)
+
+        self._log_bsr_trace_from_config_parse()
+
+    def _log_bsr_trace_from_config_parse(self) -> None:
+        cfg = self.configuration
+        if cfg.noise_mechanism != 'bsr':
+            return
+
+        coeffs = cfg.bsr_coeffs if cfg.bsr_coeffs is not None else []
+        payload = {
+            'stage': 'dpdl_config_parse',
+            'command': cfg.command,
+            'noise_mechanism': cfg.noise_mechanism,
+            'accountant': cfg.accountant,
+            'sampling_mode': cfg.sampling_mode,
+            'poisson_sampling': cfg.poisson_sampling,
+            'use_steps': cfg.use_steps,
+            'epochs': self.hyperparams.epochs,
+            'total_steps': self.hyperparams.total_steps,
+            'batch_size': self.hyperparams.batch_size,
+            'target_epsilon': self.hyperparams.target_epsilon,
+            'noise_multiplier': self.hyperparams.noise_multiplier,
+            'bsr': {
+                'coeff_count': len(coeffs),
+                'coeff_head': list(coeffs[:5]),
+                'bands': cfg.bsr_bands,
+                'alpha': cfg.bsr_alpha,
+                'beta': cfg.bsr_beta,
+                'iterations_number': cfg.bsr_iterations_number,
+                'mf_sensitivity': cfg.bsr_mf_sensitivity,
+                'min_separation': cfg.bsr_min_separation,
+                'max_participations': cfg.bsr_max_participations,
+                'z_std': cfg.bsr_z_std,
+            },
+        }
+        log.info('BSR_TRACE %s', json.dumps(payload, sort_keys=True))
 
     def get_command(self):
         return self.command

@@ -4,6 +4,7 @@ import logging
 import math
 import os
 import time
+import json
 from collections.abc import Mapping
 
 import opacus
@@ -403,6 +404,47 @@ class Trainer:
 
 
 class DifferentiallyPrivateTrainer(Trainer):
+    @staticmethod
+    def _log_bsr_trace(
+        *,
+        stage: str,
+        sampling_semantics: SamplingSemantics | None,
+        noise_mechanism_config: NoiseMechanismConfig | None,
+        has_target_privacy_params: bool,
+        noise_multiplier_ref: float | None,
+        correlated_denominator: float | None,
+        mechanism_kwargs: dict,
+    ) -> None:
+        if noise_mechanism_config is None or noise_mechanism_config.mechanism != 'bsr':
+            return
+
+        state = noise_mechanism_config.mechanism_state
+        coeffs = state.get('coeffs', [])
+        metadata = sampling_semantics.privacy_metadata if sampling_semantics is not None else {}
+        payload = {
+            'stage': stage,
+            'mechanism': noise_mechanism_config.mechanism,
+            'accounting_mode': noise_mechanism_config.accounting_mode,
+            'sampling_mode': sampling_semantics.sampling_mode if sampling_semantics is not None else None,
+            'sampling_metadata': dict(metadata),
+            'has_target_privacy_params': has_target_privacy_params,
+            'noise_multiplier_ref': noise_multiplier_ref,
+            'correlated_denominator': correlated_denominator,
+            'mechanism_kwargs': dict(mechanism_kwargs),
+            'mechanism_state': {
+                'coeff_count': len(coeffs) if isinstance(coeffs, list) else None,
+                'coeff_head': list(coeffs[:5]) if isinstance(coeffs, list) else None,
+                'z_std': state.get('z_std'),
+                'sensitivity_scale': state.get('sensitivity_scale'),
+                'iterations_number': state.get('iterations_number'),
+                'min_separation': state.get('min_separation'),
+                'max_participations': state.get('max_participations'),
+                'mf_sensitivity': state.get('mf_sensitivity'),
+                'bands': state.get('bands'),
+            },
+        }
+        log.info('BSR_TRACE %s', json.dumps(payload, sort_keys=True))
+
     def __init__(
         self,
         *,
@@ -564,6 +606,31 @@ class DifferentiallyPrivateTrainer(Trainer):
         )
 
     @staticmethod
+    def _validate_correlated_mechanism_state(
+        *,
+        coeffs: list[float],
+        z_std: float | None,
+        sensitivity_scale: float | None,
+    ) -> None:
+        if not coeffs:
+            raise ValueError('Correlated noise mechanism requires non-empty coeffs.')
+
+        coeffs_f = [float(c) for c in coeffs]
+        if not all(math.isfinite(c) for c in coeffs_f):
+            raise ValueError('Correlated noise coeffs must be finite.')
+
+        if coeffs_f[0] <= 1e-12:
+            raise ValueError('Correlated noise requires coeffs[0] > 1e-12.')
+
+        if z_std is not None and (not math.isfinite(float(z_std)) or float(z_std) < 0.0):
+            raise ValueError('Correlated noise z_std must be finite and >= 0.')
+
+        if sensitivity_scale is not None:
+            s = float(sensitivity_scale)
+            if (not math.isfinite(s)) or s <= 0.0:
+                raise ValueError('Correlated noise sensitivity_scale must be finite and > 0.')
+
+    @staticmethod
     def _resolve_expected_batch_size_for_correlated_runtime(
         *,
         total_steps: int | None,
@@ -697,6 +764,12 @@ class DifferentiallyPrivateTrainer(Trainer):
                         max_grad_norm=float(self.max_grad_norm),
                         denominator=float(correlated_denominator),
                     )
+
+            self._validate_correlated_mechanism_state(
+                coeffs=list(mechanism_state['coeffs']),
+                z_std=mechanism_state.get('z_std'),
+                sensitivity_scale=mechanism_state.get('sensitivity_scale'),
+            )
 
             if self.noise_mechanism == 'bsr':
                 return NoiseMechanismConfig(
@@ -842,6 +915,24 @@ class DifferentiallyPrivateTrainer(Trainer):
                     overrides=bnb_calibration_overrides,
                 )
             )
+
+        self._log_bsr_trace(
+            stage='dpdl_trainer_setup',
+            sampling_semantics=sampling_semantics,
+            noise_mechanism_config=noise_mechanism_config,
+            has_target_privacy_params=has_target_privacy_params,
+            noise_multiplier_ref=(
+                float(noise_multiplier_ref)
+                if noise_multiplier_ref is not None
+                else None
+            ),
+            correlated_denominator=(
+                float(correlated_denominator)
+                if correlated_denominator is not None
+                else None
+            ),
+            mechanism_kwargs=mechanism_kwargs,
+        )
 
         noise_generator = torch.Generator(device=self.device)
         if self.seed:
