@@ -105,6 +105,8 @@ class Configuration(BaseModel):
     model_name: str = 'resnetv2_50x1_bit.goog_in21k'
     loss_function: str = 'CrossEntropyLoss'
     optimizer: str = 'Adam'
+    optimizer_momentum: Optional[float] = None
+    optimizer_weight_decay: float = 0.0
     lr_scheduler: Literal['none', 'bnb_linear_decay'] = 'none'
     dataset_name: str = 'uoft-cs/cifar10'
     dataset_path: Optional[str] = None
@@ -485,12 +487,24 @@ class Configuration(BaseModel):
 
         return self
 
+    @model_validator(mode="after")
+    def check_optimizer_parameters(self):
+        if self.optimizer_momentum is not None and not (0.0 <= float(self.optimizer_momentum) < 1.0):
+            raise ValueError('--optimizer-momentum must be in [0, 1).')
+
+        if self.optimizer_weight_decay is not None and float(self.optimizer_weight_decay) < 0.0:
+            raise ValueError('--optimizer-weight-decay must be >= 0.')
+
+        return self
+
     def __str__(self):
         attributes = [
             ('Command', self.command),
             ('Privacy', self.privacy),
             ('Model name', self.model_name),
             ('Optimizer', self.optimizer),
+            ('Optimizer momentum', self.optimizer_momentum),
+            ('Optimizer weight decay', self.optimizer_weight_decay),
             ('LR scheduler', self.lr_scheduler),
             ('Dataset name', self.dataset_name),
             ('Dataset path', self.dataset_path),

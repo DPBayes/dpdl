@@ -122,6 +122,20 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = 'Adam',
+        optimizer_momentum: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Optimizer momentum (used by SGD-like optimizers)',
+                rich_help_panel='Training options',
+            )
+        ] = None,
+        optimizer_weight_decay: Annotated[
+            float,
+            typer.Option(
+                help='Optimizer weight decay (L2 regularization)',
+                rich_help_panel='Training options',
+            )
+        ] = 0.0,
         physical_batch_size: Annotated[
             Optional[int],
             typer.Option(
