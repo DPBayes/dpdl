@@ -10,6 +10,7 @@ from .model_base import ModelBase
 from .wide_resnet import WideResNet
 from .koskela_model import KoskelaNet
 from .bsr_test_model import BSRTestModel
+from .vgg_bnb_reference_model import VGGBnBReferenceModel
 from .hugging_face_models import HuggingfaceLanguageModel
 
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -113,6 +114,11 @@ class ModelFactory:
                 transforms = model_instance.get_transforms()
             elif configuration.model_name == 'bsr-test-net':
                 model_instance = BSRTestModel(num_classes=num_classes)
+                transforms = model_instance.get_transforms()
+            elif configuration.model_name == 'bnb-vgg-net':
+                model_instance = VGGBnBReferenceModel(
+                    num_classes=num_classes,  # Other defaults from the JAX implemenation
+                )
                 transforms = model_instance.get_transforms()
             else:
                 model_instance = timm.create_model(
