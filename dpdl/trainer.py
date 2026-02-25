@@ -656,6 +656,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         dataloader_len: int,
         bnb_p: float | None,
         bnb_b: int | None,
+        bsr_bands: int | None = None,
     ) -> int:
         if total_steps:
             if not poisson_sampling and sampling_mode == 'b_min_sep':
@@ -668,6 +669,20 @@ class DifferentiallyPrivateTrainer(Trainer):
                     raise ValueError('balls_in_bins sampling requires bnb_b to resolve expected batch size.')
 
                 sample_rate = 1.0 / float(int(bnb_b))
+            elif not poisson_sampling and sampling_mode == 'cyclic_poisson':
+                if bsr_bands is None:
+                    raise ValueError('cyclic_poisson sampling requires bsr_bands to resolve expected batch size.')
+
+                bands = int(bsr_bands)
+                if bands <= 0:
+                    raise ValueError('cyclic_poisson bands must be >= 1.')
+
+                partition_size = int(dataset_size) // bands
+                if partition_size <= 0:
+                    raise ValueError('cyclic_poisson requires dataset_size // bsr_bands >= 1.')
+
+                usable_size = partition_size * bands
+                sample_rate = float(batch_size) / float(usable_size)
             else:
                 sample_rate = float(batch_size) / float(dataset_size)
         else:
@@ -888,6 +903,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 dataloader_len=len(train_dataloader),
                 bnb_p=self.bnb_p,
                 bnb_b=self.bnb_b,
+                bsr_bands=self.bsr_bands,
             )
             correlated_denominator = float(expected_batch_size)
 
