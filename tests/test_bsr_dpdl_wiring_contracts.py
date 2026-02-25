@@ -116,8 +116,6 @@ def _build_trainer_stub(
     trainer.bsr_min_separation = bsr_min_separation
     trainer.bsr_mf_sensitivity = bsr_mf_sensitivity
     trainer.bsr_iterations_number = bsr_iterations_number
-    trainer.bsr_alpha = None
-    trainer.bsr_beta = None
     trainer.bnb_b = None
     trainer.bnb_p = None
     trainer.bnb_bands = None

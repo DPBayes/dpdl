@@ -22,6 +22,8 @@ def _run_dp_bnb(
     experiment: str,
     use_target_epsilon: bool,
     sampling_mode: str = 'balls_in_bins',
+    model_name: str = 'vit_tiny_patch16_224.augreg_in21k',
+    model_args: list[str] | None = None,
 ) -> dict:
     repo_root = Path(__file__).resolve().parents[1]
     env = base_env()
@@ -36,8 +38,7 @@ def _run_dp_bnb(
         '--dataset-path',
         str(image_dataset_path),
         '--model-name',
-        'vit_tiny_patch16_224.augreg_in21k',
-        '--no-pretrained',
+        model_name,
         '--privacy',
         '--use-steps',
         '--total-steps',
@@ -73,6 +74,11 @@ def _run_dp_bnb(
         experiment,
     ]
 
+    cmd_args.append('--no-pretrained')
+
+    if model_args:
+        cmd_args.extend(model_args)
+
     if use_target_epsilon:
         cmd_args.extend(['--target-epsilon', '8'])
     else:
@@ -97,6 +103,7 @@ def _run_dp_bnb(
         'device': 'cpu',
         'dataset_name': 'local-image',
         'dataset_path': str(image_dataset_path),
+        'model_name': model_name,
         'privacy': True,
         'use_steps': True,
         'noise_mechanism': 'bnb',
@@ -141,6 +148,21 @@ def test_integration_train_dp_bnb_fixed_noise_balls_in_bins_path(
         experiment='train-dp-bnb-fixed-noise-balls-in-bins',
         use_target_epsilon=False,
         sampling_mode='balls_in_bins',
+    )
+    assert 'loss' in metrics
+
+
+@pytest.mark.integration
+def test_integration_train_dp_bnb_fixed_noise_vgg_reference_path(
+    tmp_path: Path, image_dataset_path: Path
+) -> None:
+    metrics = _run_dp_bnb(
+        tmp_path,
+        image_dataset_path,
+        experiment='train-dp-bnb-fixed-noise-vgg-reference',
+        use_target_epsilon=False,
+        sampling_mode='balls_in_bins',
+        model_name='vgg_bnb_reference',
     )
     assert 'loss' in metrics
 

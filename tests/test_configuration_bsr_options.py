@@ -336,66 +336,14 @@ def test_cyclic_poisson_requires_bsr_mechanism() -> None:
         )
 
 
-def test_bsr_alpha_beta_validation() -> None:
-    with pytest.raises(ValidationError, match='bsr-alpha'):
+def test_removed_bsr_example_sgd_optimizer() -> None:
+    with pytest.raises(ValidationError, match='bsr-example-sgd'):
         Configuration(
             command='train',
-            noise_mechanism='bsr',
-            accountant='bsr',
-            poisson_sampling=False,
-            bsr_bands=5,
-            bsr_alpha=1.2,
+            optimizer='bsr-example-sgd',
+            noise_mechanism='gaussian',
+            accountant='rdp',
         )
-
-    with pytest.raises(ValidationError, match='bsr-beta'):
-        Configuration(
-            command='train',
-            noise_mechanism='bsr',
-            accountant='bsr',
-            poisson_sampling=False,
-            bsr_bands=5,
-            bsr_beta=1.0,
-        )
-
-
-def test_bsr_alpha_beta_rejects_beta_greater_than_alpha() -> None:
-    with pytest.raises(ValidationError, match='bsr-beta must be <= --bsr-alpha'):
-        Configuration(
-            command='train',
-            noise_mechanism='bsr',
-            accountant='bsr',
-            poisson_sampling=False,
-            bsr_bands=5,
-            bsr_alpha=0.9,
-            bsr_beta=0.95,
-        )
-
-
-def test_bsr_alpha_beta_accepts_equal_values() -> None:
-    cfg = Configuration(
-        command='train',
-        noise_mechanism='bsr',
-        accountant='bsr',
-        poisson_sampling=False,
-        bsr_bands=5,
-        bsr_alpha=0.9,
-        bsr_beta=0.9,
-    )
-    assert cfg.bsr_alpha == pytest.approx(0.9)
-    assert cfg.bsr_beta == pytest.approx(0.9)
-
-
-def test_gaussian_allows_bsr_alpha_beta_as_optimizer_knobs() -> None:
-    cfg = Configuration(
-        command='train',
-        noise_mechanism='gaussian',
-        accountant='rdp',
-        bsr_alpha=1.0,
-        bsr_beta=0.95,
-    )
-    assert cfg.noise_mechanism == 'gaussian'
-    assert cfg.bsr_alpha == pytest.approx(1.0)
-    assert cfg.bsr_beta == pytest.approx(0.95)
 
 
 def test_non_bsr_allows_empty_bsr_coeff_list_default() -> None:

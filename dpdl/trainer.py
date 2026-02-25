@@ -478,8 +478,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         bsr_min_separation: int | None = None,
         bsr_mf_sensitivity: float | None = None,
         bsr_iterations_number: int | None = None,
-        bsr_alpha: float | None = None,
-        bsr_beta: float | None = None,
         bnb_b: int | None = None,
         bnb_p: float | None = None,
         bnb_bands: int | None = None,
@@ -512,8 +510,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.bsr_min_separation = bsr_min_separation
         self.bsr_mf_sensitivity = bsr_mf_sensitivity
         self.bsr_iterations_number = bsr_iterations_number
-        self.bsr_alpha = bsr_alpha
-        self.bsr_beta = bsr_beta
         self.bnb_b = bnb_b
         self.bnb_p = bnb_p
         self.bnb_bands = bnb_bands
@@ -601,8 +597,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         explicit_coeffs: list[float] | None,
         bsr_bands: int | None,
         bnb_bands: int | None,
-        bsr_alpha: float | None,
-        bsr_beta: float | None,
     ) -> list[float]:
         if explicit_coeffs:
             return list(explicit_coeffs)
@@ -616,8 +610,8 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         return generate_bsr_coeffs_from_sgd_workload(
             bands=int(auto_bands),
-            momentum=float(bsr_beta if bsr_beta is not None else 0.0),
-            weight_decay=float(bsr_alpha if bsr_alpha is not None else 1.0),
+            momentum=0.0,
+            weight_decay=1.0,
         )
 
     @staticmethod
@@ -824,16 +818,12 @@ class DifferentiallyPrivateTrainer(Trainer):
                 explicit_coeffs=self.bsr_coeffs,
                 bsr_bands=self.bsr_bands,
                 bnb_bands=self.bnb_bands,
-                bsr_alpha=self.bsr_alpha,
-                bsr_beta=self.bsr_beta,
             )
             if not had_explicit_coeffs and torch.distributed.get_rank() == 0:
                 auto_bands = self.bsr_bands if self.noise_mechanism == 'bsr' else self.bnb_bands
                 log.info(
                     f'Auto-generated {self.noise_mechanism.upper()} coeffs from SGD workload '
-                    f'(bands={auto_bands}, '
-                    f'alpha={(self.bsr_alpha if self.bsr_alpha is not None else 1.0)}, '
-                    f'beta={(self.bsr_beta if self.bsr_beta is not None else 0.0)}): '
+                    f'(bands={auto_bands}): '
                     f'{self.bsr_coeffs}'
                 )
 
@@ -1619,8 +1609,6 @@ class TrainerFactory:
             bsr_min_separation=configuration.bsr_min_separation,
             bsr_mf_sensitivity=configuration.bsr_mf_sensitivity,
             bsr_iterations_number=configuration.bsr_iterations_number,
-            bsr_alpha=configuration.bsr_alpha,
-            bsr_beta=configuration.bsr_beta,
             bnb_b=configuration.bnb_b,
             bnb_p=configuration.bnb_p,
             bnb_bands=configuration.bnb_bands,

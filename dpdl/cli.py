@@ -571,20 +571,6 @@ def cli(
                 rich_help_panel='BSR options',
             )
         ] = None,
-        bsr_alpha: Annotated[
-            Optional[float],
-            typer.Option(
-                help='BSR alpha (multiplicative decay in SGD workload model; defaults to 1.0)',
-                rich_help_panel='BSR options',
-            )
-        ] = None,
-        bsr_beta: Annotated[
-            Optional[float],
-            typer.Option(
-                help='BSR beta (momentum in SGD workload model; defaults to 0.0)',
-                rich_help_panel='BSR options',
-            )
-        ] = None,
         bnb_b: Annotated[
             Optional[int],
             typer.Option(

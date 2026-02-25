@@ -135,8 +135,6 @@ class Configuration(BaseModel):
     bsr_min_separation: Optional[int] = None
     bsr_mf_sensitivity: Optional[float] = None
     bsr_iterations_number: Optional[int] = None
-    bsr_alpha: Optional[float] = None
-    bsr_beta: Optional[float] = None
     bnb_b: Optional[int] = None
     bnb_p: Optional[float] = None
     bnb_bands: Optional[int] = None
@@ -299,8 +297,6 @@ class Configuration(BaseModel):
         bsr_coeffs = self.bsr_coeffs
         bsr_bands = self.bsr_bands
         bsr_z_std = self.bsr_z_std
-        bsr_alpha = self.bsr_alpha
-        bsr_beta = self.bsr_beta
         bsr_iterations_number = self.bsr_iterations_number
         bsr_mf_sensitivity = self.bsr_mf_sensitivity
         bsr_max_participations = self.bsr_max_participations
@@ -334,17 +330,6 @@ class Configuration(BaseModel):
             raise ValueError(
                 'BSR-specific parameters require --noise-mechanism bsr.'
             )
-
-        # alpha/beta are workload/optimizer knobs and may be used independently
-        # of the selected noise mechanism (e.g. Gaussian DP-SGD with bsr-example-sgd).
-        if bsr_alpha is not None and not (0.0 < bsr_alpha <= 1.0):
-            raise ValueError('--bsr-alpha must be in (0, 1].')
-
-        if bsr_beta is not None and not (0.0 <= bsr_beta < 1.0):
-            raise ValueError('--bsr-beta must be in [0, 1).')
-
-        if bsr_alpha is not None and bsr_beta is not None and bsr_beta > bsr_alpha:
-            raise ValueError('--bsr-beta must be <= --bsr-alpha.')
 
         if sampling_mode == 'cyclic_poisson' and mechanism != 'bsr':
             raise ValueError(
@@ -568,8 +553,6 @@ class Configuration(BaseModel):
                 ('BSR min separation', self.bsr_min_separation),
                 ('BSR MF sensitivity', self.bsr_mf_sensitivity),
                 ('BSR iterations number', self.bsr_iterations_number),
-                ('BSR alpha', self.bsr_alpha),
-                ('BSR beta', self.bsr_beta),
                 ('BNB b', self.bnb_b),
                 ('BNB p', self.bnb_p),
                 ('BNB bands', self.bnb_bands),
@@ -684,8 +667,6 @@ class ConfigurationManager:
                 'coeff_count': len(coeffs),
                 'coeff_head': list(coeffs[:5]),
                 'bands': cfg.bsr_bands,
-                'alpha': cfg.bsr_alpha,
-                'beta': cfg.bsr_beta,
                 'iterations_number': cfg.bsr_iterations_number,
                 'mf_sensitivity': cfg.bsr_mf_sensitivity,
                 'min_separation': cfg.bsr_min_separation,
