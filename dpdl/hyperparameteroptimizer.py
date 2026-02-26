@@ -204,8 +204,9 @@ class HyperparameterOptimizer:
                         vals = [2**e for e in range(min_exp, max_exp+1)] + [-1]
                         raw_val = vals[idx]
                         actual[hyper] = max_batch_size if raw_val == -1 else raw_val
-                    elif hyper == 'max_grad_norm':
-                        actual[hyper] = optuna_config[hyper]['options'][idx]
+                    else:
+                        vals = optuna_config[hyper]['options']
+                        actual[hyper] = vals[idx]
                 else:
                     actual[key] = idx
 
@@ -240,7 +241,7 @@ class HyperparameterOptimizer:
         if torch.distributed.get_rank() == 0:
             log.info('Training final model with best hyperparameters for evaluation.')
 
-        # update the training hypers to the best values from the optimization
+        # Update optimized values for the final evaluation round.
         for hyper, best_value in best_params.items():
             setattr(config_manager.hyperparams, hyper, best_value)
 
@@ -360,7 +361,7 @@ class HyperparameterOptimizer:
             else:
                 raise ValueError(f'Unknown type in Optuna config: {cfg["type"]}')
 
-            # update the hyperparameter value in configuration
+            # Update hyperparameter value for this trial.
             setattr(config_manager.hyperparams, target_hyper, hyper_value)
 
         # while tuning hypers, do not validate
