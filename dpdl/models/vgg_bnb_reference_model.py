@@ -83,14 +83,31 @@ class VGGBnBReferenceModel(nn.Module):
         )
 
     def _initialize_weights(self) -> None:
-        # Approximate JAX reference init intent: He for conv, Xavier for linear, zero biases.
-        for module in self.modules():
-            if isinstance(module, nn.Conv2d):
-                nn.init.kaiming_normal_(module.weight, mode="fan_in", nonlinearity="relu")
-                nn.init.zeros_(module.bias)
-            elif isinstance(module, nn.Linear):
-                nn.init.xavier_normal_(module.weight)
-                nn.init.zeros_(module.bias)
+        # Initialize weights the same way as in DP-FTRL code.
+        # conv: N(0, sqrt(1/fan_in)); linear: Xavier normal; all biases zero.
+        # NB: I don't optimal for ReLU, but they use tanh.
+        convs = [
+            self.conv1,
+            self.conv2,
+            self.conv3,
+            self.conv4,
+            self.conv5,
+            self.conv6,
+        ]
+        for conv in convs:
+            fan_in = int(conv.kernel_size[0] * conv.kernel_size[1] * conv.in_channels)
+            std = float(torch.sqrt(torch.tensor(1.0 / fan_in)).item())
+
+            with torch.no_grad():
+                conv.weight.normal_(0.0, std)
+
+            nn.init.zeros_(conv.bias)
+
+        fcs = [self.fc1, self.fc2]
+        for fc in fcs:
+            nn.init.xavier_normal_(fc.weight)
+            nn.init.zeros_(fc.bias)
+
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.ndim != 4:
