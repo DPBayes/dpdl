@@ -483,6 +483,7 @@ class ConfigurationManager:
     def _validate_privacy_parameter_contracts(self) -> None:
         cfg = self.configuration
         hp = self.hyperparams
+        targeted_hypers = set(cfg.target_hypers) if cfg.command == 'optimize' else set()
 
         mechanism = cfg.noise_mechanism
         sampling_mode = cfg.sampling_mode
@@ -523,10 +524,11 @@ class ConfigurationManager:
                     'BSR mechanism requires non-Poisson semantics: set --poisson-sampling False.'
                 )
 
-            if not cfg.bsr_coeffs and hp.bsr_bands is None:
+            bands_missing = hp.bsr_bands is None and 'bsr_bands' not in targeted_hypers
+            if not cfg.bsr_coeffs and bands_missing:
                 raise ValueError('BSR mechanism requires --bsr-coeffs or --bsr-bands (for auto-generation).')
 
-            if sampling_mode == 'cyclic_poisson' and hp.bsr_bands is None:
+            if sampling_mode == 'cyclic_poisson' and bands_missing:
                 raise ValueError('Cyclic-poisson BSR sampling requires --bsr-bands.')
 
             if sampling_mode == 'cyclic_poisson':
@@ -587,7 +589,7 @@ class ConfigurationManager:
             if cfg.bnb_b is None:
                 raise ValueError('BNB b-min-sep sampling requires --bnb-b.')
 
-            if hp.bnb_bands is None:
+            if hp.bnb_bands is None and 'bnb_bands' not in targeted_hypers:
                 raise ValueError('BNB Toeplitz accounting requires --bnb-bands.')
 
             if int(cfg.bnb_b) < 1:
