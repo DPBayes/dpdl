@@ -85,7 +85,8 @@ def test_resolve_or_generate_bsr_coeffs_explicit_wins_over_bands() -> None:
 
 
 def test_resolve_or_generate_bsr_coeffs_bsr_fixed_and_cyclic_share_generation_path() -> None:
-    # Fixed-batch and cyclic BSR flows both resolve coeffs through this shared helper.
+    # Helper-level generation is shared; cyclic-vs-fixed branching now happens
+    # at trainer orchestration level.
     fixed_batch = DifferentiallyPrivateTrainer._resolve_or_generate_bsr_coeffs(
         noise_mechanism='bsr',
         explicit_coeffs=None,
