@@ -18,7 +18,7 @@
 Clone the repository:
 
 ```bash
-git clone --branch joss --single-branch --depth 1 git@github.com:PROBIC/dpdl.git
+git clone https://github.com/DPBayes/dpdl.git
 cd ./dpdl
 ```
 
