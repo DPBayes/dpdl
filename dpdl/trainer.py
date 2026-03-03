@@ -403,7 +403,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         secure_mode: bool = False,
         target_epsilon: float | None = None,
         target_delta: float | None = None,
-        noise_batch_ratio: float | None = None,
         seed: int = 0,
         **kwargs,
     ):
@@ -412,7 +411,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.clipping_mode = clipping_mode
         self.target_epsilon = target_epsilon
         self.target_delta = target_delta
-        self.noise_batch_ratio = noise_batch_ratio
         self.seed = seed
         self.poisson_sampling = poisson_sampling
         self.normalize_clipping = normalize_clipping
@@ -437,17 +435,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         if self.target_epsilon and not self.target_delta:
             raise ValueError('Parameter "target_epsilon" and "target_delta" not given.')
 
-        if self.noise_batch_ratio and not self.target_delta:
-            raise ValueError('Parameter "target_epsilon" and "target_delta" not given.')
-
-        if all([self.target_epsilon, self.noise_batch_ratio]):
-            raise ValueError('Parameters "target_epsilon" and "noise_batch_ratio" are exclusive.')
-
         if all([self.target_epsilon, self.noise_multiplier]):
             raise ValueError('Parameters "target_epsilon" and "noise_multiplier" are exlusive.')
-
-        if all([self.noise_batch_ratio, self.noise_multiplier]):
-            raise ValueError('Parameters "noise_batch_ratio" and "noise_multiplier" are exclusive.')
 
         if self.target_epsilon and not self.target_delta:
             raise ValueError('Parameter "target_epsilon" present, but "target_delta" is missing.')
@@ -488,9 +477,6 @@ class DifferentiallyPrivateTrainer(Trainer):
         else:
             if self.target_epsilon == -1:
                 self.noise_multiplier = 0
-
-            if self.noise_batch_ratio:
-                self.noise_multiplier = self.noise_batch_ratio * self.datamodule.batch_size
 
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
                 module=model,
@@ -1024,7 +1010,6 @@ class TrainerFactory:
             max_grad_norm=hyperparams.max_grad_norm,
             target_epsilon=target_epsilon,
             target_delta=target_delta,
-            noise_batch_ratio=hyperparams.noise_batch_ratio,
             poisson_sampling=configuration.poisson_sampling,
             normalize_clipping=configuration.normalize_clipping,
             # config
