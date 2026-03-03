@@ -539,7 +539,7 @@ def cli(
         noise_mechanism: Annotated[
             Optional[str],
             typer.Option(
-                help='Noise mechanism ("gaussian", "bsr", or "bnb")',
+                help='Noise mechanism ("gaussian", "bandmf", "bsr", or "bnb")',
                 rich_help_panel='Opacus options',
             )
         ] = 'gaussian',

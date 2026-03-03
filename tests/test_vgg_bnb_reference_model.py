@@ -31,7 +31,7 @@ def test_model_factory_builds_vgg_reference_with_resolved_config() -> None:
     cfg = Configuration(
         command='train',
         privacy=False,
-        model_name='vgg_bnb_reference',
+        model_name='bnb-vgg-net',
     )
     hypers = Hyperparameters(
         privacy=False,

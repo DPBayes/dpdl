@@ -429,7 +429,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         correlated_denominator: float | None,
         mechanism_kwargs: dict,
     ) -> None:
-        if noise_mechanism_config is None or noise_mechanism_config.mechanism != 'bsr':
+        if noise_mechanism_config is None or noise_mechanism_config.mechanism not in ('bandmf', 'bsr'):
             return
 
         state = noise_mechanism_config.mechanism_state
@@ -587,7 +587,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         resolved_bands = int(bands) if bands is not None else len(coeffs)
         if resolved_bands > 0 and scale_steps < resolved_bands:
             raise ValueError(
-                "cyclic_poisson BSR requires steps >= bands; "
+                "cyclic_poisson BandMF requires steps >= bands; "
                 f"got steps={scale_steps}, bands={resolved_bands}"
             )
 
@@ -609,7 +609,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         if explicit_coeffs:
             return list(explicit_coeffs)
 
-        auto_bands = bsr_bands if noise_mechanism == 'bsr' else bnb_bands
+        auto_bands = bsr_bands if noise_mechanism in ('bandmf', 'bsr') else bnb_bands
         if auto_bands is None:
             raise ValueError(
                 f'{noise_mechanism.upper()} auto coefficient generation requires '
@@ -748,14 +748,14 @@ class DifferentiallyPrivateTrainer(Trainer):
             bsr_cyclic_sensitivity_scale: float | None,
             correlated_denominator: float | None,
         ) -> NoiseMechanismConfig | None:
-            if self.noise_mechanism not in ('bsr', 'bnb'):
+            if self.noise_mechanism not in ('bandmf', 'bsr', 'bnb'):
                 return None
 
             mechanism_state = {}
             if self.bsr_coeffs:
                 mechanism_state['coeffs'] = list(self.bsr_coeffs)
             if (
-                self.noise_mechanism == 'bsr'
+                self.noise_mechanism == 'bandmf'
                 and self.sampling_mode == 'cyclic_poisson'
                 and bsr_cyclic_sensitivity_scale is not None
             ):
@@ -805,15 +805,15 @@ class DifferentiallyPrivateTrainer(Trainer):
                     sensitivity_scale=mechanism_state.get('sensitivity_scale'),
                 )
             elif not (
-                self.noise_mechanism == 'bsr' and self.sampling_mode == 'cyclic_poisson'
+                self.noise_mechanism == 'bandmf' and self.sampling_mode == 'cyclic_poisson'
             ):
                 raise ValueError(
                     'Correlated noise mechanism requires non-empty coeffs.'
                 )
 
-            if self.noise_mechanism == 'bsr':
+            if self.noise_mechanism in ('bandmf', 'bsr'):
                 return NoiseMechanismConfig(
-                    mechanism='bsr',
+                    mechanism=self.noise_mechanism,
                     accounting_mode=resolve_accounting_mode_from_accountant(self.accountant),
                     mechanism_state=mechanism_state,
                 )
@@ -829,10 +829,10 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         train_dataloader = self.datamodule.get_dataloader('train')
 
-        if self.noise_mechanism in ('bsr', 'bnb'):
+        if self.noise_mechanism in ('bandmf', 'bsr', 'bnb'):
             had_explicit_coeffs = bool(self.bsr_coeffs)
             cyclic_steps = None
-            if self.noise_mechanism == 'bsr' and self.sampling_mode == 'cyclic_poisson':
+            if self.noise_mechanism == 'bandmf' and self.sampling_mode == 'cyclic_poisson':
                 if self.total_steps:
                     cyclic_steps = int(self.total_steps)
                 elif self.epochs:
@@ -843,11 +843,11 @@ class DifferentiallyPrivateTrainer(Trainer):
                     and int(cyclic_steps) < int(self.bsr_bands)
                 ):
                     raise ValueError(
-                        "cyclic_poisson BSR requires steps >= bands; "
+                        "cyclic_poisson BandMF requires steps >= bands; "
                         f"got steps={int(cyclic_steps)}, bands={int(self.bsr_bands)}"
                     )
             if (
-                self.noise_mechanism == 'bsr'
+                self.noise_mechanism == 'bandmf'
                 and self.sampling_mode == 'cyclic_poisson'
                 and not had_explicit_coeffs
             ):
@@ -861,7 +861,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                     bnb_bands=self.bnb_bands,
                 )
                 if not had_explicit_coeffs and torch.distributed.get_rank() == 0:
-                    auto_bands = self.bsr_bands if self.noise_mechanism == 'bsr' else self.bnb_bands
+                    auto_bands = self.bsr_bands if self.noise_mechanism in ('bandmf', 'bsr') else self.bnb_bands
                     log.info(
                         f'Auto-generated {self.noise_mechanism.upper()} coeffs '
                         f'(bands={auto_bands}): '
@@ -877,7 +877,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 noise_multiplier_ref = self.noise_batch_ratio * self.datamodule.batch_size
 
         bsr_cyclic_horizon = None
-        if self.noise_mechanism == 'bsr' and self.sampling_mode == 'cyclic_poisson':
+        if self.noise_mechanism == 'bandmf' and self.sampling_mode == 'cyclic_poisson':
             if self.total_steps:
                 bsr_cyclic_horizon = int(self.total_steps)
             elif self.epochs:
@@ -891,7 +891,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         )
         if (
             sampling_semantics is not None
-            and self.noise_mechanism == 'bsr'
+            and self.noise_mechanism == 'bandmf'
             and self.sampling_mode == 'cyclic_poisson'
             and bsr_cyclic_sensitivity_scale is not None
         ):
@@ -924,7 +924,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                     bnb_horizon = aligned_horizon
 
         correlated_denominator = None
-        if self.noise_mechanism in ('bsr', 'bnb') and not has_target_privacy_params:
+        if self.noise_mechanism in ('bandmf', 'bsr', 'bnb') and not has_target_privacy_params:
             expected_batch_size = self._resolve_expected_batch_size_for_correlated_runtime(
                 total_steps=self.total_steps,
                 poisson_sampling=self.poisson_sampling,
@@ -953,9 +953,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             mechanism_kwargs['bsr_iterations_number'] = int(self.bsr_iterations_number)
 
         if bsr_cyclic_sensitivity_scale is not None:
-            mechanism_kwargs['bsr_sensitivity_scale'] = float(
-                bsr_cyclic_sensitivity_scale
-            )
+            mechanism_kwargs['sensitivity_scale'] = float(bsr_cyclic_sensitivity_scale)
 
         if self.bsr_max_participations is not None:
             mechanism_kwargs['bsr_max_participations'] = int(self.bsr_max_participations)

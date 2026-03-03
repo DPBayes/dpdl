@@ -27,8 +27,8 @@ def test_configuration_manager_accepts_explicit_bsr_z_std_privacy_path() -> None
         {
             'command': 'train',
             'privacy': True,
-            'noise_mechanism': 'bsr',
-            'accountant': 'bsr',
+            'noise_mechanism': 'bandmf',
+            'accountant': 'bandmf',
             'poisson_sampling': False,
             'sampling_mode': 'cyclic_poisson',
             'bsr_bands': 8,
@@ -52,7 +52,7 @@ def test_configuration_manager_accepts_explicit_bsr_z_std_privacy_path() -> None
                 'noise_mechanism': 'gaussian',
                 'accountant': 'prv',
             },
-            'BSR-specific parameters require --noise-mechanism bsr',
+            'BSR/BandMF-specific parameters require --noise-mechanism bandmf or bsr',
         ),
         (
             {
@@ -81,8 +81,8 @@ def test_configuration_manager_bsr_z_std_invalid_combo_matrix(
     params = {
         'command': 'train',
         'privacy': True,
-        'noise_mechanism': 'bsr',
-        'accountant': 'bsr',
+        'noise_mechanism': 'bandmf',
+        'accountant': 'bandmf',
         'poisson_sampling': False,
         'sampling_mode': 'cyclic_poisson',
         'bsr_bands': 8,
@@ -135,8 +135,8 @@ def test_configuration_manager_rejects_bsr_z_std_with_target_epsilon() -> None:
             {
                 'command': 'train',
                 'privacy': True,
-                'noise_mechanism': 'bsr',
-                'accountant': 'bsr',
+                'noise_mechanism': 'bandmf',
+                'accountant': 'bandmf',
                 'poisson_sampling': False,
                 'sampling_mode': 'cyclic_poisson',
                 'bsr_bands': 8,
@@ -156,8 +156,8 @@ def test_configuration_manager_allows_bsr_z_std_in_clip_only_mode() -> None:
         {
             'command': 'train',
             'privacy': True,
-            'noise_mechanism': 'bsr',
-            'accountant': 'bsr',
+            'noise_mechanism': 'bandmf',
+            'accountant': 'bandmf',
             'poisson_sampling': False,
             'sampling_mode': 'cyclic_poisson',
             'bsr_bands': 8,
@@ -179,8 +179,8 @@ def test_configuration_manager_rejects_bsr_z_std_with_noise_multiplier() -> None
             {
                 'command': 'train',
                 'privacy': True,
-                'noise_mechanism': 'bsr',
-                'accountant': 'bsr',
+                'noise_mechanism': 'bandmf',
+                'accountant': 'bandmf',
                 'poisson_sampling': False,
                 'sampling_mode': 'cyclic_poisson',
                 'bsr_bands': 8,
@@ -201,8 +201,8 @@ def test_configuration_manager_rejects_bsr_z_std_with_noise_batch_ratio() -> Non
             {
                 'command': 'train',
                 'privacy': True,
-                'noise_mechanism': 'bsr',
-                'accountant': 'bsr',
+                'noise_mechanism': 'bandmf',
+                'accountant': 'bandmf',
                 'poisson_sampling': False,
                 'sampling_mode': 'cyclic_poisson',
                 'bsr_bands': 8,
@@ -213,5 +213,25 @@ def test_configuration_manager_rejects_bsr_z_std_with_noise_batch_ratio() -> Non
                 'epochs': 1,
                 'batch_size': 32,
                 'max_grad_norm': 1.0,
+            }
+        )
+
+
+def test_configuration_manager_rejects_legacy_bsr_sensitivity_scale_key() -> None:
+    with pytest.raises(ValueError, match='bsr_sensitivity_scale'):
+        ConfigurationManager(
+            {
+                'command': 'train',
+                'privacy': True,
+                'noise_mechanism': 'bandmf',
+                'accountant': 'bandmf',
+                'poisson_sampling': False,
+                'sampling_mode': 'cyclic_poisson',
+                'bsr_bands': 8,
+                'target_epsilon': 8.0,
+                'epochs': 1,
+                'batch_size': 32,
+                'max_grad_norm': 1.0,
+                'bsr_sensitivity_scale': 1.23,
             }
         )

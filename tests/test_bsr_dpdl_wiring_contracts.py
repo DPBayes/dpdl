@@ -75,6 +75,8 @@ class _FakePrivacyEngine:
 def _build_trainer_stub(
     *,
     privacy_engine: _FakePrivacyEngine,
+    noise_mechanism: str,
+    accountant: str,
     target_epsilon: float | None,
     noise_multiplier: float | None,
     sampling_mode: str,
@@ -106,8 +108,8 @@ def _build_trainer_stub(
     trainer.seed = 123
     trainer.poisson_sampling = False
     trainer.normalize_clipping = False
-    trainer.accountant = "bsr"
-    trainer.noise_mechanism = "bsr"
+    trainer.accountant = accountant
+    trainer.noise_mechanism = noise_mechanism
     trainer.sampling_mode = sampling_mode
     trainer.bsr_coeffs = list(bsr_coeffs)
     trainer.bsr_z_std = bsr_z_std
@@ -153,6 +155,8 @@ def test_dpdl_bsr_contract_make_private_with_epsilon_cyclic(monkeypatch) -> None
     fake_pe = _FakePrivacyEngine()
     trainer = _build_trainer_stub(
         privacy_engine=fake_pe,
+        noise_mechanism="bandmf",
+        accountant="bandmf",
         target_epsilon=8.0,
         noise_multiplier=None,
         sampling_mode="cyclic_poisson",
@@ -186,9 +190,10 @@ def test_dpdl_bsr_contract_make_private_with_epsilon_cyclic(monkeypatch) -> None
     assert contract["trace_meta"] == contract["pe_meta"]
     assert "sensitivity_scale" in contract["pe_state"]
     assert "sensitivity_scale" in contract["pe_meta"]
-    assert pe_kwargs["noise_mechanism_config"].accounting_mode == "bsr_accountant"
+    assert pe_kwargs["noise_mechanism_config"].accounting_mode == "bandmf_accountant"
+    assert pe_kwargs["noise_mechanism_config"].mechanism == "bandmf"
     assert pe_kwargs["sampling_semantics"].sampling_mode == "cyclic_poisson"
-    assert "bsr_sensitivity_scale" in pe_kwargs
+    assert "sensitivity_scale" in pe_kwargs
 
     # Final epsilon should be delegated with only delta; PrivacyEngine resolves
     # mechanism/sampling state from its stored config.
@@ -201,6 +206,8 @@ def test_dpdl_bsr_contract_make_private_fixed_batch(monkeypatch) -> None:
     fake_pe = _FakePrivacyEngine()
     trainer = _build_trainer_stub(
         privacy_engine=fake_pe,
+        noise_mechanism="bsr",
+        accountant="bsr",
         target_epsilon=None,
         noise_multiplier=0.7,
         sampling_mode="torch_sampler",
