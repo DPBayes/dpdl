@@ -4,7 +4,7 @@ DPDL supports both epoch-based and step-based training.
 Under the hood, Opacus uses Poisson sampling, so the number of optimizer updates per epoch is depends from the sampling scheme.
 This section documents how `--use-steps`, `--epochs`, and `--total-steps` interact, why rounding appears in logs, and why this mirrors Opacus behavior.
 
-We will use `S` for steps, `N` for the size of the dataset, `B` for batch sizes.
+We will use `S` for steps, `N` for the size of the dataset, `B` for batch sizes, `E` for epochs.
 
 ## Modes and conversions
 
@@ -74,5 +74,5 @@ The choice of `total_steps` also controls which sample rates are possible.
 ## Practical guidance
 
 - For exact update counts or smooth sample rates, prefer `--use-steps --total-steps`.
-- To stay aligned with Opacus defaults, use `--epochs` (without `--use-steps`) or `--use-steps --epochs`, and expect rounding in the logs.
+- To stay aligned with Opacus defaults, use `--epochs` (without `--use-steps`) or `--use-steps --epochs S`, and expect rounding in the logs.
 - If you want epoch counts that map cleanly to steps, choose batch sizes that divide the dataset size evenly.
