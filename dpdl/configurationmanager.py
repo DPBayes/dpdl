@@ -93,13 +93,8 @@ def _validate_privacy_contracts(
             )
 
         bands_missing = bsr_bands is None and 'bsr_bands' not in target_hypers
-        if not bsr_coeffs and bands_missing:
-            raise ValueError(
-                f'{mechanism.upper()} mechanism requires --bsr-coeffs or --bsr-bands (for auto-generation).'
-            )
-
-        if mechanism == 'bandmf' and bands_missing:
-            raise ValueError('Cyclic-poisson BandMF sampling requires --bsr-bands.')
+        if bands_missing:
+            raise ValueError(f'{mechanism.upper()} mechanism requires --bsr-bands.')
 
         if mechanism == 'bandmf':
             if bsr_mf_sensitivity is not None:

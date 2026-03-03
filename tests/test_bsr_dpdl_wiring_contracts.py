@@ -80,7 +80,7 @@ def _build_trainer_stub(
     target_epsilon: float | None,
     noise_multiplier: float | None,
     sampling_mode: str,
-    bsr_coeffs: list[float],
+    bsr_coeffs: list[float] | None,
     bsr_bands: int,
     total_steps: int,
     bsr_z_std: float | None = None,
@@ -111,7 +111,7 @@ def _build_trainer_stub(
     trainer.accountant = accountant
     trainer.noise_mechanism = noise_mechanism
     trainer.sampling_mode = sampling_mode
-    trainer.bsr_coeffs = list(bsr_coeffs)
+    trainer.bsr_coeffs = list(bsr_coeffs) if bsr_coeffs is not None else None
     trainer.bsr_z_std = bsr_z_std
     trainer.bsr_bands = int(bsr_bands)
     trainer.bsr_max_participations = bsr_max_participations
@@ -160,7 +160,7 @@ def test_dpdl_bsr_contract_make_private_with_epsilon_cyclic(monkeypatch) -> None
         target_epsilon=8.0,
         noise_multiplier=None,
         sampling_mode="cyclic_poisson",
-        bsr_coeffs=[1.0, 0.4, 0.1],
+        bsr_coeffs=None,
         bsr_bands=3,
         total_steps=12,
         bsr_iterations_number=12,
@@ -188,12 +188,12 @@ def test_dpdl_bsr_contract_make_private_with_epsilon_cyclic(monkeypatch) -> None
     contract = _dump_bsr_contract(trace_call=trace_kwargs, pe_call=pe_kwargs)
     assert contract["trace_state"] == contract["pe_state"]
     assert contract["trace_meta"] == contract["pe_meta"]
-    assert "sensitivity_scale" in contract["pe_state"]
-    assert "sensitivity_scale" in contract["pe_meta"]
+    assert "sensitivity_scale" not in contract["pe_state"]
+    assert "sensitivity_scale" not in contract["pe_meta"]
     assert pe_kwargs["noise_mechanism_config"].accounting_mode == "bandmf_accountant"
     assert pe_kwargs["noise_mechanism_config"].mechanism == "bandmf"
     assert pe_kwargs["sampling_semantics"].sampling_mode == "cyclic_poisson"
-    assert "sensitivity_scale" in pe_kwargs
+    assert "sensitivity_scale" not in pe_kwargs
 
     # Final epsilon should be delegated with only delta; PrivacyEngine resolves
     # mechanism/sampling state from its stored config.

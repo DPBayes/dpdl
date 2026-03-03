@@ -62,8 +62,6 @@ def _run_dp_bnb(
         'bnb',
         '--sampling-mode',
         sampling_mode,
-        '--bsr-coeffs',
-        '1.0',
         '--bnb-b',
         '2',
         '--bnb-bands',

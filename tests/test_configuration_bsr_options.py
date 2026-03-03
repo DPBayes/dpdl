@@ -54,6 +54,7 @@ def test_fixed_batch_bsr_valid_minimal() -> None:
         accountant='bsr',
         poisson_sampling=False,
         sampling_mode='torch_sampler',
+        bsr_bands=4,
         bsr_coeffs=[1.0, 0.2],
     )
     assert cfg.noise_mechanism == 'bsr'
