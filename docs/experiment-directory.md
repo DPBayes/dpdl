@@ -32,7 +32,7 @@ Written at the end of training:
 If `--save-model` is specified also the resulting model is saved as `final_model.pt`.
 
 Furthermore, many callbacks can save their own data at the end of training (see [callback documentation](./callbacks.md) for `on_train_end` event.)
-For example, if `--record-final-train-accuracy` ise used, then training metrics after last epoch are saved in `train_metrics` under experiment directory.
+For example, if `--record-final-train-accuracy` is used, then training metrics after last epoch are saved in `train_metrics` under experiment directory.
 
 ## Predict command (`dpdl predict`)
 
