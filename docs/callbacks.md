@@ -49,7 +49,7 @@ class MyCallback(Callback):
 
 ## Practical guidance
 
-- I you need statistics on logical batch, you need to accumulate the data via physical batches and then do your magic in `on_train_batch_end`.
+- If you need statistics on logical batch, you need to accumulate the data via physical batches and then do your magic in `on_train_batch_end`.
 - Similarly, to get epoch statistics, accumulate logical batches (note that this can be memory heavy).
 - **For step-based training (`--use-steps`), epoch callbacks are approximate.** ([See here for explanation](./epochs-vs-steps.md)).
 
