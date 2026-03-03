@@ -419,6 +419,28 @@ class Trainer:
 
 class DifferentiallyPrivateTrainer(Trainer):
     @staticmethod
+    def _log_dp_timing(
+        *,
+        phase: str,
+        t0: float,
+        mechanism: str,
+        sampling_mode: str | None,
+        has_target_privacy_params: bool,
+    ) -> None:
+        if torch.distributed.get_rank() != 0:
+            return
+        elapsed = time.perf_counter() - float(t0)
+        payload = {
+            'phase': phase,
+            'elapsed_s': round(float(elapsed), 6),
+            'mechanism': mechanism,
+            'sampling_mode': sampling_mode,
+            'has_target_privacy_params': bool(has_target_privacy_params),
+            'ts_unix': round(time.time(), 6),
+        }
+        log.info('DP_TIMING %s', json.dumps(payload, sort_keys=True))
+
+    @staticmethod
     def _log_bsr_trace(
         *,
         stage: str,
@@ -825,6 +847,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             )
 
         has_target_privacy_params = self._has_target_privacy_params()
+        dp_setup_t0 = time.perf_counter()
         sampling_semantics = _build_sampling_semantics()
 
         train_dataloader = self.datamodule.get_dataloader('train')
@@ -883,12 +906,21 @@ class DifferentiallyPrivateTrainer(Trainer):
             elif self.epochs:
                 bsr_cyclic_horizon = int(self.epochs) * int(len(train_dataloader))
 
+        cyclic_scale_t0 = time.perf_counter()
         bsr_cyclic_sensitivity_scale = self._resolve_bsr_cyclic_sensitivity_scale(
             coeffs=self.bsr_coeffs,
             steps=bsr_cyclic_horizon,
             iterations_number=self.bsr_iterations_number,
             bands=self.bsr_bands,
         )
+        if self.noise_mechanism == 'bandmf' and self.sampling_mode == 'cyclic_poisson':
+            self._log_dp_timing(
+                phase='resolve_bsr_cyclic_sensitivity_scale',
+                t0=cyclic_scale_t0,
+                mechanism=self.noise_mechanism,
+                sampling_mode=self.sampling_mode,
+                has_target_privacy_params=has_target_privacy_params,
+            )
         if (
             sampling_semantics is not None
             and self.noise_mechanism == 'bandmf'
@@ -1015,6 +1047,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         # setup differential privacy for the model, optimize, and dataloader
         if has_target_privacy_params:
+            private_t0 = time.perf_counter()
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private_with_epsilon(
                 module=model,
                 optimizer=optimizer,
@@ -1032,6 +1065,13 @@ class DifferentiallyPrivateTrainer(Trainer):
                 sampling_semantics=sampling_semantics,
                 **mechanism_kwargs,
             )
+            self._log_dp_timing(
+                phase='make_private_with_epsilon',
+                t0=private_t0,
+                mechanism=self.noise_mechanism,
+                sampling_mode=self.sampling_mode,
+                has_target_privacy_params=has_target_privacy_params,
+            )
         else:
             if self.target_epsilon == -1:
                 self.noise_multiplier = 0
@@ -1039,6 +1079,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             if self.noise_batch_ratio:
                 self.noise_multiplier = self.noise_batch_ratio * self.datamodule.batch_size
 
+            private_t0 = time.perf_counter()
             dp_model, dp_optimizer, dp_dataloader = self.privacy_engine.make_private(
                 module=model,
                 optimizer=optimizer,
@@ -1052,6 +1093,22 @@ class DifferentiallyPrivateTrainer(Trainer):
                 total_steps=self.total_steps,
                 noise_mechanism_config=noise_mechanism_config,
                 sampling_semantics=sampling_semantics,
+            )
+            self._log_dp_timing(
+                phase='make_private',
+                t0=private_t0,
+                mechanism=self.noise_mechanism,
+                sampling_mode=self.sampling_mode,
+                has_target_privacy_params=has_target_privacy_params,
+            )
+
+        if self.noise_mechanism == 'bandmf' and self.sampling_mode == 'cyclic_poisson':
+            self._log_dp_timing(
+                phase='dp_setup_total',
+                t0=dp_setup_t0,
+                mechanism=self.noise_mechanism,
+                sampling_mode=self.sampling_mode,
+                has_target_privacy_params=has_target_privacy_params,
             )
 
         # now we can start using the DP'ifyed stuff
