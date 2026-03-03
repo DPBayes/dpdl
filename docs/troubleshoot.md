@@ -2,8 +2,6 @@
 
 This document collects common setup/runtime issues and practical fixes.
 
----
-
 ## Gloo on macOS (PyTorch Distributed)
 
 ### Symptoms
