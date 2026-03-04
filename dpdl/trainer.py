@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+import pathlib
 import time
 import json
 from collections.abc import Mapping
@@ -35,7 +36,7 @@ from .models.model_base import ModelBase
 from .models.model_factory import ModelFactory
 from .optimizers import OptimizerFactory
 from .schedulers import SchedulerFactory
-from .utils import seed_everything, shift_and_flatten
+from .utils import safe_open, seed_everything, shift_and_flatten
 
 log = logging.getLogger(__name__)
 
@@ -417,12 +418,6 @@ class Trainer:
 
 class DifferentiallyPrivateTrainer(Trainer):
     @staticmethod
-    def _is_primary_rank() -> bool:
-        if torch.distributed.is_available() and torch.distributed.is_initialized():
-            return torch.distributed.get_rank() == 0
-        return True
-
-    @staticmethod
     def _log_dp_timing(
         *,
         phase: str,
@@ -431,7 +426,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         sampling_mode: str | None,
         has_target_privacy_params: bool,
     ) -> None:
-        if not DifferentiallyPrivateTrainer._is_primary_rank():
+        if not torch.distributed.get_rank() == 0:
             return
 
         elapsed = time.perf_counter() - float(t0)
@@ -486,6 +481,38 @@ class DifferentiallyPrivateTrainer(Trainer):
         }
         log.info('BSR_TRACE %s', json.dumps(payload, sort_keys=True))
 
+    def _emit_accounting_telemetry(self, *, phase: str) -> None:
+        if not torch.distributed.get_rank() == 0:
+            return
+
+        payload = self.privacy_engine.get_accounting_telemetry(
+            delta=(float(self.target_delta) if self.target_delta is not None else None),
+        )
+        payload.update(
+            {
+                'phase': phase,
+                'noise_mechanism': self.noise_mechanism,
+                'sampling_mode_requested': self.sampling_mode,
+                'max_grad_norm': float(self.max_grad_norm),
+                'target_epsilon': (
+                    float(self.target_epsilon) if self.target_epsilon is not None else None
+                ),
+                'target_delta': (
+                    float(self.target_delta) if self.target_delta is not None else None
+                ),
+            }
+        )
+        log.info('ACCOUNTING_TELEMETRY %s', json.dumps(payload, sort_keys=True))
+
+        if self.log_dir is None or self.experiment_name is None:
+            return
+
+        out_dir = pathlib.Path(self.log_dir) / self.experiment_name
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / 'accounting_telemetry.json'
+        with safe_open(out_path, 'w') as fh:
+            json.dump(payload, fh, sort_keys=True, indent=2)
+
     def __init__(
         self,
         *,
@@ -515,6 +542,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         target_delta: float | None = None,
         noise_batch_ratio: float | None = None,
         seed: int = 0,
+        log_dir: str | None = None,
+        experiment_name: str | None = None,
         **kwargs,
     ):
         self.noise_multiplier = noise_multiplier
@@ -525,6 +554,8 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.target_delta = target_delta
         self.noise_batch_ratio = noise_batch_ratio
         self.seed = seed
+        self.log_dir = log_dir
+        self.experiment_name = experiment_name
         self.poisson_sampling = poisson_sampling
         self.normalize_clipping = normalize_clipping
         self.accountant = accountant
@@ -806,7 +837,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                         "cyclic_poisson BandMF requires steps >= bands; "
                         f"got steps={int(cyclic_steps)}, bands={int(self.bsr_bands)}"
                     )
-            if self.bsr_coeffs and self._is_primary_rank():
+            if self.bsr_coeffs and torch.distributed.get_rank() == 0:
                 auto_bands = self.bsr_bands if self.noise_mechanism in ('bandmf', 'bsr') else self.bnb_bands
                 log.info(
                     f'Using explicit {self.noise_mechanism.upper()} coeff override '
@@ -836,9 +867,10 @@ class DifferentiallyPrivateTrainer(Trainer):
                 bands = int(self.bnb_bands)
                 if bands < 1:
                     raise ValueError('BNB bands must be >= 1.')
+
                 if bnb_horizon % bands != 0:
                     aligned_horizon = int(math.ceil(bnb_horizon / bands) * bands)
-                    if self._is_primary_rank():
+                    if self.torch.distributed.get_rank() == 0:
                         log.info(
                             'Aligning BNB Toeplitz horizon to a multiple of bands '
                             f'for Monte Carlo accounting: horizon={bnb_horizon}, '
@@ -1002,6 +1034,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.model = dp_model
         self.datamodule.set_dataloader('train', dp_dataloader)
         self.optimizer = dp_optimizer
+        self._emit_accounting_telemetry(phase='post_make_private')
 
     def get_epsilon(self):
         return self.privacy_engine.get_epsilon(self.target_delta)
@@ -1603,6 +1636,8 @@ class TrainerFactory:
             clipping_mode=configuration.clipping_mode,
             physical_batch_size=configuration.physical_batch_size,
             seed=configuration.seed,
+            log_dir=configuration.log_dir,
+            experiment_name=configuration.experiment_name,
             callback_handler=callback_handler,
             lr_scheduler=lr_scheduler,
             validation_frequency=configuration.validation_frequency,
