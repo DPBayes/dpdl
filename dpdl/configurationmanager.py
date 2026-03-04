@@ -18,7 +18,7 @@ _FAMILY_CONTRACTS = {
     },
     'bsr': {
         'accountant': 'bsr',
-        'sampling_modes': {None, 'torch_sampler'},
+        'sampling_modes': {None, 'torch_sampler', 'cyclic_poisson'},
         'requires_non_poisson': True,
     },
     'bnb': {
