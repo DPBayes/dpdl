@@ -72,8 +72,8 @@ def _validate_privacy_contracts(
     if mechanism not in ('bandmf', 'bsr', 'bnb') and has_any_bsr_field:
         raise ValueError('BSR/BandMF-specific parameters require --noise-mechanism bandmf or bsr.')
 
-    if sampling_mode == 'cyclic_poisson' and mechanism != 'bandmf':
-        raise ValueError('Cyclic-poisson sampling requires --noise-mechanism bandmf.')
+    if sampling_mode == 'cyclic_poisson' and mechanism not in ['bandmf', 'bsr']:
+        raise ValueError('Cyclic Poisson sampling requires --noise-mechanism bandmf or bsr.')
 
     if mechanism in ('bandmf', 'bsr'):
         contract = _FAMILY_CONTRACTS[mechanism]
