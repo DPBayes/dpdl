@@ -708,7 +708,7 @@ class ConfigurationManager:
         if 'bsr_sensitivity_scale' in cli_params:
             raise ValueError(
                 'Legacy key `bsr_sensitivity_scale` is no longer supported. '
-                'Use canonical `sensitivity_scale` in mechanism state (resolved by trainer/runtime).'
+                'Use canonical `bsr_sensitivity_scale` in mechanism state (resolved by trainer/runtime).'
             )
 
         privacy = cli_params.get('privacy', True)
@@ -776,7 +776,7 @@ class ConfigurationManager:
         Apply centralized privacy contract validation for resolved config/hypers.
         Math: validates parsed runtime tuple (mechanism, sampler, accountant, metadata)
         before forwarding to Opacus where ε(δ) accounting is executed.
-        Mapping: metadata includes bands/max_participations/min_separation/mf_sensitivity.
+        Mapping: metadata includes bands/bsr_max_participations/bsr_min_separation/bsr_mf_sensitivity.
         """
         cfg = self.configuration
         targeted_hypers = set(cfg.target_hypers) if cfg.command == 'optimize' else set()
@@ -805,7 +805,7 @@ class ConfigurationManager:
         Emit config-parse trace payload for BSR/BandMF accounting inputs.
         Math: logs inputs that determine correlated accounting scale terms
         (fixed-batch S_{k,b}(C;T) or cyclic κ(T)) and z_std path selection.
-        Mapping: coeffs/bands/iterations_number/max_participations/min_separation/mf_sensitivity.
+        Mapping: coeffs/bands/bsr_iterations_number/bsr_max_participations/bsr_min_separation/bsr_mf_sensitivity.
         """
         cfg = self.configuration
         if cfg.noise_mechanism not in ('bandmf', 'bsr'):
@@ -829,11 +829,11 @@ class ConfigurationManager:
             'bsr': {
                 'coeff_count': len(coeffs),
                 'coeff_head': list(coeffs[:5]),
-                'bands': self.hyperparams.bsr_bands,
-                'iterations_number': cfg.bsr_iterations_number,
-                'mf_sensitivity': cfg.bsr_mf_sensitivity,
-                'min_separation': cfg.bsr_min_separation,
-                'max_participations': cfg.bsr_max_participations,
+                'bsr_bands': self.hyperparams.bsr_bands,
+                'bsr_iterations_number': cfg.bsr_iterations_number,
+                'bsr_mf_sensitivity': cfg.bsr_mf_sensitivity,
+                'bsr_min_separation': cfg.bsr_min_separation,
+                'bsr_max_participations': cfg.bsr_max_participations,
                 'z_std': cfg.bsr_z_std,
             },
         }

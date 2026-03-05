@@ -471,12 +471,13 @@ class DifferentiallyPrivateTrainer(Trainer):
                 'coeff_count': len(coeffs) if isinstance(coeffs, list) else None,
                 'coeff_head': list(coeffs[:5]) if isinstance(coeffs, list) else None,
                 'z_std': state.get('z_std'),
-                'sensitivity_scale': state.get('sensitivity_scale'),
-                'iterations_number': state.get('iterations_number'),
-                'min_separation': state.get('min_separation'),
-                'max_participations': state.get('max_participations'),
-                'mf_sensitivity': state.get('mf_sensitivity'),
-                'bands': state.get('bands'),
+                'bsr_sensitivity_scale': state.get('bsr_sensitivity_scale'),
+                'bsr_iterations_number': state.get('bsr_iterations_number'),
+                'bsr_min_separation': state.get('bsr_min_separation'),
+                'bsr_max_participations': state.get('bsr_max_participations'),
+                'bsr_mf_sensitivity': state.get('bsr_mf_sensitivity'),
+                'bsr_bands': state.get('bsr_bands'),
+                'bnb_bands': state.get('bnb_bands'),
             },
         }
         log.info('BSR_TRACE %s', json.dumps(payload, sort_keys=True))
@@ -754,16 +755,16 @@ class DifferentiallyPrivateTrainer(Trainer):
                     privacy_metadata['bands'] = int(self.bnb_bands)
 
             if self.bsr_max_participations is not None:
-                privacy_metadata['max_participations'] = int(self.bsr_max_participations)
+                privacy_metadata['bsr_max_participations'] = int(self.bsr_max_participations)
 
             if self.bsr_min_separation is not None:
-                privacy_metadata['min_separation'] = int(self.bsr_min_separation)
+                privacy_metadata['bsr_min_separation'] = int(self.bsr_min_separation)
 
             if self.bsr_mf_sensitivity is not None:
-                privacy_metadata['mf_sensitivity'] = float(self.bsr_mf_sensitivity)
+                privacy_metadata['bsr_mf_sensitivity'] = float(self.bsr_mf_sensitivity)
 
             if self.bsr_iterations_number is not None:
-                privacy_metadata['iterations_number'] = int(self.bsr_iterations_number)
+                privacy_metadata['bsr_iterations_number'] = int(self.bsr_iterations_number)
 
             return SamplingSemantics(
                 sampling_mode=self.sampling_mode,
@@ -789,29 +790,32 @@ class DifferentiallyPrivateTrainer(Trainer):
             mechanism_state = {}
             if self.bsr_coeffs:
                 mechanism_state['coeffs'] = list(self.bsr_coeffs)
+
             if self.noise_mechanism in ('bandmf', 'bsr') and self.bsr_bands is not None:
-                mechanism_state['bands'] = int(self.bsr_bands)
+                mechanism_state['bsr_bands'] = int(self.bsr_bands)
+
             if self.noise_mechanism == 'bnb' and self.bnb_bands is not None:
-                mechanism_state['bands'] = int(self.bnb_bands)
+                mechanism_state['bnb_bands'] = int(self.bnb_bands)
                 if bnb_horizon is not None:
                     c_matrix, c_matrix_contract = build_bnb_toeplitz_c_matrix_and_contract(
                         coeffs=mechanism_state.get('coeffs', []),
                         bands=int(self.bnb_bands),
                         horizon=int(bnb_horizon),
                     )
-                    mechanism_state['c_matrix'] = c_matrix
-                    mechanism_state['c_matrix_contract'] = c_matrix_contract
+                    mechanism_state['bnb_c_matrix'] = c_matrix
+                    mechanism_state['bnb_c_matrix_contract'] = c_matrix_contract
 
             if self.bsr_max_participations is not None:
-                mechanism_state['max_participations'] = int(self.bsr_max_participations)
+                mechanism_state['bsr_max_participations'] = int(self.bsr_max_participations)
 
             if self.bsr_min_separation is not None:
-                mechanism_state['min_separation'] = int(self.bsr_min_separation)
+                mechanism_state['bsr_min_separation'] = int(self.bsr_min_separation)
 
             if self.bsr_mf_sensitivity is not None:
-                mechanism_state['mf_sensitivity'] = float(self.bsr_mf_sensitivity)
+                mechanism_state['bsr_mf_sensitivity'] = float(self.bsr_mf_sensitivity)
+
             if self.bsr_iterations_number is not None:
-                mechanism_state['iterations_number'] = int(self.bsr_iterations_number)
+                mechanism_state['bsr_iterations_number'] = int(self.bsr_iterations_number)
 
             # make_private_with_epsilon calibrates and sets z_std itself.
             if not self._has_target_privacy_params():
@@ -833,7 +837,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 self._validate_correlated_mechanism_state(
                     coeffs=list(coeffs_for_validation),
                     z_std=mechanism_state.get('z_std'),
-                    sensitivity_scale=mechanism_state.get('sensitivity_scale'),
+                    sensitivity_scale=mechanism_state.get('bsr_sensitivity_scale'),
                 )
 
             if self.noise_mechanism in ('bandmf', 'bsr'):
@@ -871,7 +875,8 @@ class DifferentiallyPrivateTrainer(Trainer):
                         "cyclic_poisson BandMF requires steps >= bands; "
                         f"got steps={int(cyclic_steps)}, bands={int(self.bsr_bands)}"
                     )
-            if self.bsr_coeffs and torch.distributed.get_rank() == 0:
+
+            if self.bsr_coeffs and torch.distributed.get_rank == 0:
                 auto_bands = self.bsr_bands if self.noise_mechanism in ('bandmf', 'bsr') else self.bnb_bands
                 log.info(
                     f'Using explicit {self.noise_mechanism.upper()} coeff override '
@@ -904,7 +909,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
                 if bnb_horizon % bands != 0:
                     aligned_horizon = int(math.ceil(bnb_horizon / bands) * bands)
-                    if self.torch.distributed.get_rank() == 0:
+                    if torch.distributed.get_rank() == 0:
                         log.info(
                             'Aligning BNB Toeplitz horizon to a multiple of bands '
                             f'for Monte Carlo accounting: horizon={bnb_horizon}, '
