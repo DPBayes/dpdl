@@ -9,6 +9,12 @@ from typing import Any, Optional, List, Literal
 
 log = logging.getLogger(__name__)
 
+# DPDL MF paper-comment convention for this file:
+# - Short tags: `BSR (Kalinin et al., 2024)`, `Balls-n-Bins (Chua et al., 2024)`.
+# - Math-note format: one intuition line + one compact equation + variable mapping.
+# - Inline variable map at first semantic use in validators.
+# - Scope note: implemented DPDL->Opacus plumbing only (no AOF commentary).
+
 
 _FAMILY_CONTRACTS = {
     'bandmf': {
@@ -37,6 +43,119 @@ def _is_explicitly_set(v: object) -> bool:
     return True
 
 
+def _validate_bandmf_bsr_contracts(
+    *,
+    mechanism: str,
+    sampling_mode: str | None,
+    accountant: str,
+    poisson_sampling: bool,
+    target_hypers: set[str],
+    bsr_bands: int | None,
+    bsr_z_std: float | None,
+    bsr_iterations_number: int | None,
+    bsr_mf_sensitivity: float | None,
+    bsr_max_participations: int | None,
+    bsr_min_separation: int | None,
+) -> None:
+    contract = _FAMILY_CONTRACTS[mechanism]
+    if accountant != contract['accountant']:
+        raise ValueError(f'{mechanism.upper()} mechanism requires --accountant {contract["accountant"]}.')
+
+    if contract['requires_non_poisson'] and poisson_sampling:
+        raise ValueError(
+            f'{mechanism.upper()} mechanism requires non-Poisson semantics: set --poisson-sampling False.'
+        )
+
+    if sampling_mode not in contract['sampling_modes']:
+        allowed_modes = ', '.join(str(m) for m in sorted(contract['sampling_modes'], key=lambda v: str(v)))
+        raise ValueError(
+            f'{mechanism.upper()} mechanism does not support --sampling-mode {sampling_mode!r}; '
+            f'supported: {allowed_modes}.'
+        )
+
+    bands_missing = bsr_bands is None and 'bsr_bands' not in target_hypers
+    if bands_missing:
+        raise ValueError(f'{mechanism.upper()} mechanism requires --bsr-bands.')
+
+    if mechanism == 'bandmf':
+        if bsr_mf_sensitivity is not None:
+            raise ValueError(
+                '--bsr-mf-sensitivity is fixed-batch BSR only and cannot be used with --sampling-mode cyclic_poisson.'
+            )
+        if bsr_max_participations is not None:
+            raise ValueError(
+                '--bsr-max-participations is fixed-batch BSR only and cannot be used with --sampling-mode cyclic_poisson.'
+            )
+        if bsr_min_separation is not None:
+            raise ValueError(
+                '--bsr-min-separation is fixed-batch BSR only and cannot be used with --sampling-mode cyclic_poisson.'
+            )
+
+    if bsr_bands is not None and int(bsr_bands) < 1:
+        raise ValueError('--bsr-bands must be >= 1.')
+
+    if bsr_z_std is not None and bsr_z_std < 0:
+        raise ValueError('--bsr-z-std must be >= 0.')
+
+    if bsr_iterations_number is not None and bsr_iterations_number < 1:
+        raise ValueError('--bsr-iterations-number must be >= 1.')
+
+
+def _validate_bnb_contracts(
+    *,
+    mechanism: str,
+    sampling_mode: str | None,
+    accountant: str,
+    poisson_sampling: bool,
+    target_hypers: set[str],
+    bnb_b: int | None,
+    bnb_bands: int | None,
+    bnb_num_samples: int | None,
+    bnb_seed: int | None,
+) -> None:
+    if sampling_mode in ('b_min_sep', 'balls_in_bins') and mechanism != 'bnb':
+        raise ValueError('BNB-specific sampling requires --noise-mechanism bnb.')
+
+    if sampling_mode == 'b_min_sep':
+        raise ValueError(
+            'b_min_sep sampling is temporarily disabled pending p-aware BNB accounting. '
+            'Use --sampling-mode balls_in_bins.'
+        )
+
+    if mechanism != 'bnb':
+        return
+
+    contract = _FAMILY_CONTRACTS['bnb']
+    if accountant != contract['accountant']:
+        raise ValueError('BNB mechanism requires --accountant bnb.')
+
+    if contract['requires_non_poisson'] and poisson_sampling:
+        raise ValueError(
+            'BNB mechanism requires non-Poisson semantics: set --poisson-sampling False.'
+        )
+
+    if sampling_mode not in contract['sampling_modes']:
+        raise ValueError('BNB mechanism requires --sampling-mode balls_in_bins.')
+
+    if bnb_b is None:
+        raise ValueError('BNB b-min-sep sampling requires --bnb-b.')
+
+    if bnb_bands is None and 'bnb_bands' not in target_hypers:
+        raise ValueError('BNB Toeplitz accounting requires --bnb-bands.')
+
+    if int(bnb_b) < 1:
+        raise ValueError('--bnb-b must be >= 1.')
+
+    if int(bnb_bands) < 1:
+        raise ValueError('--bnb-bands must be >= 1.')
+
+    if bnb_num_samples is not None and int(bnb_num_samples) < 1:
+        raise ValueError('--bnb-num-samples must be >= 1.')
+
+    if bnb_seed is not None and int(bnb_seed) < 0:
+        raise ValueError('--bnb-seed must be >= 0.')
+
+
 def _validate_privacy_contracts(
     *,
     mechanism: str,
@@ -57,6 +176,12 @@ def _validate_privacy_contracts(
     bnb_num_samples: int | None,
     bnb_seed: int | None,
 ) -> None:
+    """
+    Validate mechanism/accountant/sampler compatibility at config-parse time.
+    Math: enforce accountant/runtime contracts, e.g. cyclic q = bands·sample_rate ∈ (0,1],
+    fixed-batch BSR uses S_{k,b}(C;T), and BNB uses balls-in-bins metadata.
+    Mapping: mechanism=noise_mechanism, accountant=accountant, sampler=sampling_mode.
+    """
     has_any_bsr_field = any(
         _is_explicitly_set(v)
         for v in [
@@ -72,52 +197,24 @@ def _validate_privacy_contracts(
     if mechanism not in ('bandmf', 'bsr', 'bnb') and has_any_bsr_field:
         raise ValueError('BSR/BandMF-specific parameters require --noise-mechanism bandmf or bsr.')
 
+    # `sampling_mode` carries runtime sampler semantics; `cyclic_poisson` is only valid for BandMF/BSR.
     if sampling_mode == 'cyclic_poisson' and mechanism not in ['bandmf', 'bsr']:
         raise ValueError('Cyclic Poisson sampling requires --noise-mechanism bandmf or bsr.')
 
     if mechanism in ('bandmf', 'bsr'):
-        contract = _FAMILY_CONTRACTS[mechanism]
-        if accountant != contract['accountant']:
-            raise ValueError(f'{mechanism.upper()} mechanism requires --accountant {contract["accountant"]}.')
-
-        if contract['requires_non_poisson'] and poisson_sampling:
-            raise ValueError(
-                f'{mechanism.upper()} mechanism requires non-Poisson semantics: set --poisson-sampling False.'
-            )
-
-        if sampling_mode not in contract['sampling_modes']:
-            allowed_modes = ', '.join(str(m) for m in sorted(contract['sampling_modes'], key=lambda v: str(v)))
-            raise ValueError(
-                f'{mechanism.upper()} mechanism does not support --sampling-mode {sampling_mode!r}; '
-                f'supported: {allowed_modes}.'
-            )
-
-        bands_missing = bsr_bands is None and 'bsr_bands' not in target_hypers
-        if bands_missing:
-            raise ValueError(f'{mechanism.upper()} mechanism requires --bsr-bands.')
-
-        if mechanism == 'bandmf':
-            if bsr_mf_sensitivity is not None:
-                raise ValueError(
-                    '--bsr-mf-sensitivity is fixed-batch BSR only and cannot be used with --sampling-mode cyclic_poisson.'
-                )
-            if bsr_max_participations is not None:
-                raise ValueError(
-                    '--bsr-max-participations is fixed-batch BSR only and cannot be used with --sampling-mode cyclic_poisson.'
-                )
-            if bsr_min_separation is not None:
-                raise ValueError(
-                    '--bsr-min-separation is fixed-batch BSR only and cannot be used with --sampling-mode cyclic_poisson.'
-                )
-
-        if bsr_bands is not None and int(bsr_bands) < 1:
-            raise ValueError('--bsr-bands must be >= 1.')
-
-        if bsr_z_std is not None and bsr_z_std < 0:
-            raise ValueError('--bsr-z-std must be >= 0.')
-
-        if bsr_iterations_number is not None and bsr_iterations_number < 1:
-            raise ValueError('--bsr-iterations-number must be >= 1.')
+        _validate_bandmf_bsr_contracts(
+            mechanism=mechanism,
+            sampling_mode=sampling_mode,
+            accountant=accountant,
+            poisson_sampling=poisson_sampling,
+            target_hypers=target_hypers,
+            bsr_bands=bsr_bands,
+            bsr_z_std=bsr_z_std,
+            bsr_iterations_number=bsr_iterations_number,
+            bsr_mf_sensitivity=bsr_mf_sensitivity,
+            bsr_max_participations=bsr_max_participations,
+            bsr_min_separation=bsr_min_separation,
+        )
 
     has_any_bnb_field = any(
         _is_explicitly_set(v)
@@ -130,45 +227,17 @@ def _validate_privacy_contracts(
     if mechanism != 'bnb' and has_any_bnb_field:
         raise ValueError('BNB-specific parameters require --noise-mechanism bnb.')
 
-    if sampling_mode in ('b_min_sep', 'balls_in_bins') and mechanism != 'bnb':
-        raise ValueError('BNB-specific sampling requires --noise-mechanism bnb.')
-
-    if sampling_mode == 'b_min_sep':
-        raise ValueError(
-            'b_min_sep sampling is temporarily disabled pending p-aware BNB accounting. '
-            'Use --sampling-mode balls_in_bins.'
-        )
-
-    if mechanism == 'bnb':
-        contract = _FAMILY_CONTRACTS['bnb']
-        if accountant != contract['accountant']:
-            raise ValueError('BNB mechanism requires --accountant bnb.')
-
-        if contract['requires_non_poisson'] and poisson_sampling:
-            raise ValueError(
-                'BNB mechanism requires non-Poisson semantics: set --poisson-sampling False.'
-            )
-
-        if sampling_mode not in contract['sampling_modes']:
-            raise ValueError('BNB mechanism requires --sampling-mode balls_in_bins.')
-
-        if bnb_b is None:
-            raise ValueError('BNB b-min-sep sampling requires --bnb-b.')
-
-        if bnb_bands is None and 'bnb_bands' not in target_hypers:
-            raise ValueError('BNB Toeplitz accounting requires --bnb-bands.')
-
-        if int(bnb_b) < 1:
-            raise ValueError('--bnb-b must be >= 1.')
-
-        if int(bnb_bands) < 1:
-            raise ValueError('--bnb-bands must be >= 1.')
-
-        if bnb_num_samples is not None and int(bnb_num_samples) < 1:
-            raise ValueError('--bnb-num-samples must be >= 1.')
-
-        if bnb_seed is not None and int(bnb_seed) < 0:
-            raise ValueError('--bnb-seed must be >= 0.')
+    _validate_bnb_contracts(
+        mechanism=mechanism,
+        sampling_mode=sampling_mode,
+        accountant=accountant,
+        poisson_sampling=poisson_sampling,
+        target_hypers=target_hypers,
+        bnb_b=bnb_b,
+        bnb_bands=bnb_bands,
+        bnb_num_samples=bnb_num_samples,
+        bnb_seed=bnb_seed,
+    )
 
 class Hyperparameters(BaseModel):
     learning_rate: float = 1e-3
@@ -397,6 +466,7 @@ class Configuration(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_sampling_mode_aliases(cls, values):
+        """Normalize legacy sampling aliases to canonical runtime names."""
         sampling_mode = values.get('sampling_mode')
         if sampling_mode == 'balls_n_bins':
             values = dict(values)
@@ -406,6 +476,12 @@ class Configuration(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def check_total_steps_nonpoisson_sampling_mode(cls, values):
+        """
+        Guard non-poisson step-based mode with explicit sampler semantics.
+        Math: with horizon T=total_steps and non-Poisson sampling, q depends on sampler law
+        (cyclic/b-min-sep/balls-in-bins), so sampling_mode must be explicit.
+        Mapping: T=total_steps, q=sample_rate seen by Opacus accountants.
+        """
         total_steps = values.get('total_steps')
         use_steps = values.get('use_steps')
         poisson_sampling = values.get('poisson_sampling', True)
@@ -413,6 +489,7 @@ class Configuration(BaseModel):
         privacy = values.get('privacy', True)
         mechanism = values.get('noise_mechanism', 'gaussian')
 
+        # `total_steps` is optimization horizon `T`; non-poisson requires explicit sampling contract.
         if (
             privacy
             and total_steps
@@ -464,6 +541,12 @@ class Configuration(BaseModel):
 
     @model_validator(mode="after")
     def check_accountant_mechanism_compatibility(self):
+        """
+        Validate high-level accountant/mechanism compatibility.
+        Math: this gate enforces valid pairs (mechanism, accountant) so ε(δ) is computed
+        under the intended contract for correlated vs Gaussian mechanisms.
+        Mapping: mechanism=noise_mechanism, accountant=accountant.
+        """
         mechanism = self.noise_mechanism
         accountant = self.accountant
 
@@ -487,6 +570,12 @@ class Configuration(BaseModel):
 
     @model_validator(mode="after")
     def check_privacy_parameter_contracts(self):
+        """
+        Run full privacy-parameter contract checks.
+        Math: validates that provided privacy parameters define one coherent accounting path
+        (target ε/δ, explicit σ, or mechanism-specific state constraints).
+        Mapping: ε=target_epsilon, δ=target_delta, σ=noise_multiplier or bsr_z_std.
+        """
         targeted_hypers = set(self.target_hypers) if self.command == 'optimize' else set()
         _validate_privacy_contracts(
             mechanism=self.noise_mechanism,
@@ -683,6 +772,12 @@ class ConfigurationManager:
         self._log_bsr_trace_from_config_parse()
 
     def _validate_privacy_parameter_contracts(self) -> None:
+        """
+        Apply centralized privacy contract validation for resolved config/hypers.
+        Math: validates parsed runtime tuple (mechanism, sampler, accountant, metadata)
+        before forwarding to Opacus where ε(δ) accounting is executed.
+        Mapping: metadata includes bands/max_participations/min_separation/mf_sensitivity.
+        """
         cfg = self.configuration
         targeted_hypers = set(cfg.target_hypers) if cfg.command == 'optimize' else set()
         _validate_privacy_contracts(
@@ -706,11 +801,18 @@ class ConfigurationManager:
         )
 
     def _log_bsr_trace_from_config_parse(self) -> None:
+        """
+        Emit config-parse trace payload for BSR/BandMF accounting inputs.
+        Math: logs inputs that determine correlated accounting scale terms
+        (fixed-batch S_{k,b}(C;T) or cyclic κ(T)) and z_std path selection.
+        Mapping: coeffs/bands/iterations_number/max_participations/min_separation/mf_sensitivity.
+        """
         cfg = self.configuration
         if cfg.noise_mechanism not in ('bandmf', 'bsr'):
             return
 
         coeffs = cfg.bsr_coeffs if cfg.bsr_coeffs is not None else []
+        # `target_epsilon`/`target_delta` are DP targets; `bands/k/min_separation` fields parameterize sensitivity contracts.
         payload = {
             'stage': 'dpdl_config_parse',
             'command': cfg.command,

@@ -482,9 +482,16 @@ class DifferentiallyPrivateTrainer(Trainer):
         log.info('BSR_TRACE %s', json.dumps(payload, sort_keys=True))
 
     def _emit_accounting_telemetry(self, *, phase: str) -> None:
+        """
+        Emit accountant telemetry payload for debugging DP contracts.
+        Math: records runtime accounting tuple used for ε(δ), including mechanism state
+        and sampler contract values (q/T/bands or fixed-batch sensitivity inputs).
+        Mapping: ε=target_epsilon, δ=target_delta, σ=noise_multiplier_ref/z_std path.
+        """
         if not torch.distributed.get_rank() == 0:
             return
 
+        # `target_epsilon`/`target_delta` are paper-level privacy targets; telemetry fields are runtime accountant outputs.
         payload = self.privacy_engine.get_accounting_telemetry(
             delta=(float(self.target_delta) if self.target_delta is not None else None),
         )
@@ -631,6 +638,12 @@ class DifferentiallyPrivateTrainer(Trainer):
         z_std: float | None,
         sensitivity_scale: float | None,
     ) -> None:
+        """
+        Validate correlated mechanism state before forwarding to Opacus.
+        Math: requires a valid Toeplitz factor C via non-empty finite coeffs with c_0>0;
+        optional scales must satisfy z_std >= 0 and sensitivity_scale > 0.
+        Mapping: coeffs -> C diagonals, sensitivity_scale -> cyclic κ(T) scale.
+        """
         if not coeffs:
             raise ValueError('Correlated noise mechanism requires non-empty coeffs.')
 
@@ -662,7 +675,14 @@ class DifferentiallyPrivateTrainer(Trainer):
         bnb_b: int | None,
         bsr_bands: int | None = None,
     ) -> int:
+        """
+        Resolve expected batch size used in correlated-noise calibration plumbing.
+        Math: expected_batch_size = N*q where q is derived from sampler law:
+        b-min-sep q=p, balls-in-bins q=1/b, cyclic q=batch_size/(floor(N/bands)*bands).
+        Mapping: N=dataset_size, b=bnb_b or bsr_bands, T=total_steps.
+        """
         if total_steps:
+            # `total_steps` is horizon `T`; branch-specific sample_rate is derived from sampler semantics.
             if not poisson_sampling and sampling_mode == 'b_min_sep':
                 if bnb_p is None:
                     raise ValueError('b_min_sep sampling requires bnb_p to resolve expected batch size.')
@@ -702,9 +722,16 @@ class DifferentiallyPrivateTrainer(Trainer):
 
     def setup(self):
         def _build_sampling_semantics() -> SamplingSemantics | None:
+            """
+            Build explicit sampling semantics for Opacus.
+            Math: constructs sampler contract metadata consumed by Opacus accountants,
+            e.g. cyclic (bands), b-min-sep (b,p,bands), balls-in-bins (bins,bands).
+            Mapping: fields are emitted as SamplingSemantics.privacy_metadata keys.
+            """
             if self.sampling_mode is None:
                 return None
 
+            # `bands`/`b`/`p` map sampler parameters to accountant-facing metadata keys.
             privacy_metadata = {}
             if self.sampling_mode == 'cyclic_poisson' and self.bsr_bands is not None:
                 privacy_metadata['bands'] = int(self.bsr_bands)
@@ -749,9 +776,16 @@ class DifferentiallyPrivateTrainer(Trainer):
             bnb_horizon: int | None,
             correlated_denominator: float | None,
         ) -> NoiseMechanismConfig | None:
+            """
+            Build correlated-noise mechanism config and state dictionary.
+            Math: builds mechanism_state for Opacus with Toeplitz coeffs and optional
+            σ path (explicit z_std or calibrated z_std = noise_multiplier_ref*max_grad_norm/denominator).
+            Mapping: mechanism_state keys mirror Opacus runtime/accounting fields.
+            """
             if self.noise_mechanism not in ('bandmf', 'bsr', 'bnb'):
                 return None
 
+            # `coeffs` encode Toeplitz factor coefficients; `z_std` is correlated Gaussian stddev.
             mechanism_state = {}
             if self.bsr_coeffs:
                 mechanism_state['coeffs'] = list(self.bsr_coeffs)
@@ -899,6 +933,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             correlated_denominator=correlated_denominator,
         )
 
+        # Forwarded kwargs are runtime accountant controls (`k`, `b`, sensitivity overrides, MC controls).
         mechanism_kwargs = {}
         if self.bsr_mf_sensitivity is not None:
             mechanism_kwargs['bsr_mf_sensitivity'] = float(self.bsr_mf_sensitivity)
@@ -1523,6 +1558,12 @@ class TrainerFactory:
         hyperparams: Hyperparameters,
         device: torch.device,
     ) -> Trainer:
+        """
+        Construct DifferentiallyPrivateTrainer with resolved privacy targets and runtime params.
+        Math: resolves DP targets and runtime plumbing before make_private; default policy
+        uses δ = min(1e-5, 1/N') with N' the dataset size rounded up to power of 10.
+        Mapping: ε=hyperparams.target_epsilon, δ=derived target_delta.
+        """
         # Target delta calculation: A common heuristic is to use 1/N', with N'
         # being the size of the dataset rounded up to the nearest power of 10.
         # To avoid too large values of delta, let's pick a somewhat sensible
@@ -1531,10 +1572,12 @@ class TrainerFactory:
             return 10 ** math.ceil(math.log10(n))
 
         def _calculate_target_delta(N):
+            # `delta` target is derived as min(1e-5, 1/N') where N' is rounded dataset size.
             N_prime = _round_up_to_nearest_power_of_10(N)
             return min(1e-5, 1 / N_prime)
 
         def _get_target_privacy_params(hyperparams):
+            # `target_epsilon` comes from hyperparams; `target_delta` is auto-derived policy.
             N = len(datamodule.get_dataloader('train').dataset)
             target_delta = _calculate_target_delta(N)
 

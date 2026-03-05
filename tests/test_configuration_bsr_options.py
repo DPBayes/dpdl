@@ -35,16 +35,17 @@ def test_bandmf_cyclic_rejects_fixed_batch_knobs() -> None:
         )
 
 
-def test_cyclic_requires_bandmf_mechanism() -> None:
-    with pytest.raises(ValidationError, match='requires --noise-mechanism bandmf'):
-        Configuration(
-            command='train',
-            noise_mechanism='bsr',
-            accountant='bsr',
-            poisson_sampling=False,
-            sampling_mode='cyclic_poisson',
-            bsr_bands=8,
-        )
+def test_bsr_cyclic_valid_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bsr',
+        accountant='bsr',
+        poisson_sampling=False,
+        sampling_mode='cyclic_poisson',
+        bsr_bands=8,
+    )
+    assert cfg.noise_mechanism == 'bsr'
+    assert cfg.sampling_mode == 'cyclic_poisson'
 
 
 def test_fixed_batch_bsr_valid_minimal() -> None:
@@ -61,16 +62,17 @@ def test_fixed_batch_bsr_valid_minimal() -> None:
     assert cfg.sampling_mode == 'torch_sampler'
 
 
-def test_fixed_batch_bsr_rejects_cyclic() -> None:
-    with pytest.raises(ValidationError, match='requires --noise-mechanism bandmf'):
-        Configuration(
-            command='train',
-            noise_mechanism='bsr',
-            accountant='bsr',
-            poisson_sampling=False,
-            sampling_mode='cyclic_poisson',
-            bsr_bands=4,
-        )
+def test_fixed_batch_bsr_cyclic_is_explicitly_allowed() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bsr',
+        accountant='bsr',
+        poisson_sampling=False,
+        sampling_mode='cyclic_poisson',
+        bsr_bands=4,
+    )
+    assert cfg.noise_mechanism == 'bsr'
+    assert cfg.sampling_mode == 'cyclic_poisson'
 
 
 def test_bnb_valid_balls_in_bins_with_alias() -> None:
