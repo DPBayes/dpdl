@@ -21,6 +21,7 @@ from .record_losses import RecordLossesByEpochCallback, RecordTrainLossByStepCal
 from .record_accuracy import RecordAccuracyByEpochCallback
 from .record_snr import RecordSNRCallback
 from .llm_sampling import LLMSamplingCallback
+from .mf_efficiency import MFEfficiencyMetricsCallback
 
 log = logging.getLogger(__name__)
 
@@ -118,6 +119,11 @@ class CallbackFactory:
                     max_grad_norm=hyperparams.max_grad_norm,
                     normalize_clipping=configuration.normalize_clipping,
                 )
+            )
+
+        if configuration.record_mf_efficiency:
+            callbacks.append(
+                MFEfficiencyMetricsCallback(log_dir=full_log_dir)
             )
 
         if configuration.checkpoint_step_interval:

@@ -424,6 +424,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_mf_efficiency: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record MF efficiency metrics (prefix MSE/RMSE)',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         record_snr: Annotated[
             Optional[bool],
             typer.Option(
