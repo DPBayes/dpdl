@@ -22,6 +22,8 @@ def _run_dp_bnb(
     experiment: str,
     use_target_epsilon: bool,
     sampling_mode: str = 'balls_in_bins',
+    noise_mechanism: str = 'bnb',
+    accountant: str = 'bnb',
     model_name: str = 'vit_tiny_patch16_224.augreg_in21k',
     model_args: list[str] | None = None,
 ) -> dict:
@@ -57,20 +59,27 @@ def _run_dp_bnb(
         '1.0',
         '--no-poisson-sampling',
         '--noise-mechanism',
-        'bnb',
+        noise_mechanism,
         '--accountant',
-        'bnb',
+        accountant,
         '--sampling-mode',
         sampling_mode,
         '--bnb-b',
         '2',
-        '--bnb-bands',
-        '1',
         '--log-dir',
         str(tmp_path),
         '--experiment-name',
         experiment,
     ]
+
+    if noise_mechanism == 'bnb':
+        cmd_args.extend(['--bnb-bands', '1', '--bsr-coeffs', '1.0'])
+    elif noise_mechanism == 'bsr':
+        cmd_args.extend(['--bsr-bands', '2', '--bsr-coeffs', '1.0', '--bsr-coeffs', '0.2'])
+    elif noise_mechanism == 'bisr':
+        cmd_args.extend(['--bsr-bands', '2', '--bsr-coeffs', '1.0', '--bsr-coeffs', '-0.5'])
+    else:
+        raise AssertionError(f'unsupported test noise_mechanism {noise_mechanism!r}')
 
     cmd_args.append('--no-pretrained')
 
@@ -104,13 +113,17 @@ def _run_dp_bnb(
         'model_name': model_name,
         'privacy': True,
         'use_steps': True,
-        'noise_mechanism': 'bnb',
-        'accountant': 'bnb',
+        'noise_mechanism': noise_mechanism,
+        'accountant': accountant,
         'sampling_mode': sampling_mode,
         'poisson_sampling': False,
-        'bnb_b': 2,
-        'bnb_bands': 1,
     }
+    if noise_mechanism == 'bnb':
+        expected_config['bnb_b'] = 2
+        expected_config['bnb_bands'] = 1
+    else:
+        expected_config['bnb_b'] = 2
+        expected_config['bsr_bands'] = 2
 
     assert_config_and_hyperparams(
         tmp_path / experiment,
@@ -160,7 +173,39 @@ def test_integration_train_dp_bnb_fixed_noise_vgg_reference_path(
         experiment='train-dp-bnb-fixed-noise-vgg-reference',
         use_target_epsilon=False,
         sampling_mode='balls_in_bins',
-        model_name='vgg_bnb_reference',
+        model_name='bnb-vgg-net',
+    )
+    assert 'loss' in metrics
+
+
+@pytest.mark.integration
+def test_integration_train_dp_bsr_balls_in_bins_fixed_noise_path(
+    tmp_path: Path, image_dataset_path: Path
+) -> None:
+    metrics = _run_dp_bnb(
+        tmp_path,
+        image_dataset_path,
+        experiment='train-dp-bsr-balls-in-bins-fixed-noise',
+        use_target_epsilon=False,
+        sampling_mode='balls_in_bins',
+        noise_mechanism='bsr',
+        accountant='bnb',
+    )
+    assert 'loss' in metrics
+
+
+@pytest.mark.integration
+def test_integration_train_dp_bisr_balls_in_bins_fixed_noise_path(
+    tmp_path: Path, image_dataset_path: Path
+) -> None:
+    metrics = _run_dp_bnb(
+        tmp_path,
+        image_dataset_path,
+        experiment='train-dp-bisr-balls-in-bins-fixed-noise',
+        use_target_epsilon=False,
+        sampling_mode='balls_in_bins',
+        noise_mechanism='bisr',
+        accountant='bnb',
     )
     assert 'loss' in metrics
 

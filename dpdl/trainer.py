@@ -778,8 +778,13 @@ class DifferentiallyPrivateTrainer(Trainer):
                 if self.bnb_b is not None:
                     privacy_metadata['bins'] = int(self.bnb_b)
 
-                if self.bnb_bands is not None:
-                    privacy_metadata['bands'] = int(self.bnb_bands)
+                if self.noise_mechanism == 'bnb':
+                    if self.bnb_bands is not None:
+                        privacy_metadata['bands'] = int(self.bnb_bands)
+                else:
+                    bands = self.bsr_bands if self.bsr_bands is not None else self.bnb_bands
+                    if bands is not None:
+                        privacy_metadata['bands'] = int(bands)
 
             if self.bsr_max_participations is not None:
                 privacy_metadata['bsr_max_participations'] = int(self.bsr_max_participations)
@@ -821,12 +826,27 @@ class DifferentiallyPrivateTrainer(Trainer):
             if self.noise_mechanism in ('bandmf', 'bsr', 'bisr') and self.bsr_bands is not None:
                 mechanism_state['bsr_bands'] = int(self.bsr_bands)
 
-            if self.noise_mechanism == 'bnb' and self.bnb_bands is not None:
-                mechanism_state['bnb_bands'] = int(self.bnb_bands)
-                if bnb_horizon is not None:
+            if self.accountant == 'bnb':
+                bands_for_bnb = (
+                    int(self.bnb_bands)
+                    if self.noise_mechanism == 'bnb' and self.bnb_bands is not None
+                    else (
+                        int(self.bsr_bands)
+                        if self.bsr_bands is not None
+                        else (
+                            int(self.bnb_bands)
+                            if self.bnb_bands is not None
+                            else None
+                        )
+                    )
+                )
+                if bands_for_bnb is not None:
+                    mechanism_state['bnb_bands'] = bands_for_bnb
+
+                if bnb_horizon is not None and bands_for_bnb is not None:
                     c_matrix, c_matrix_contract = build_bnb_toeplitz_c_matrix_and_contract(
                         coeffs=mechanism_state.get('coeffs', []),
-                        bands=int(self.bnb_bands),
+                        bands=int(bands_for_bnb),
                         horizon=int(bnb_horizon),
                     )
                     mechanism_state['bnb_c_matrix'] = c_matrix
@@ -917,7 +937,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 noise_multiplier_ref = self.noise_batch_ratio * self.datamodule.batch_size
 
         bnb_horizon = None
-        if self.noise_mechanism == 'bnb':
+        if self.accountant == 'bnb':
             if self.total_steps:
                 bnb_horizon = int(self.total_steps)
             elif self.epochs:
@@ -926,8 +946,20 @@ class DifferentiallyPrivateTrainer(Trainer):
             if bnb_horizon is not None and bnb_horizon < 1:
                 raise ValueError('BNB Toeplitz horizon must be >= 1.')
 
-            if bnb_horizon is not None and self.bnb_bands is not None:
-                bands = int(self.bnb_bands)
+            bands = (
+                int(self.bnb_bands)
+                if self.noise_mechanism == 'bnb' and self.bnb_bands is not None
+                else (
+                    int(self.bsr_bands)
+                    if self.bsr_bands is not None
+                    else (
+                        int(self.bnb_bands)
+                        if self.bnb_bands is not None
+                        else None
+                    )
+                )
+            )
+            if bnb_horizon is not None and bands is not None:
                 if bands < 1:
                     raise ValueError('BNB bands must be >= 1.')
 

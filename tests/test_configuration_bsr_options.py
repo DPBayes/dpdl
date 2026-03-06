@@ -103,7 +103,7 @@ def test_fixed_batch_bsr_cyclic_is_explicitly_allowed() -> None:
 
 
 def test_bisr_rejects_wrong_accountant() -> None:
-    with pytest.raises(ValidationError, match='BISR mechanism requires --accountant bsr'):
+    with pytest.raises(ValidationError, match='BISR mechanism requires --accountant in \\{bnb, bsr\\}'):
         Configuration(
             command='train',
             noise_mechanism='bisr',
@@ -115,11 +115,69 @@ def test_bisr_rejects_wrong_accountant() -> None:
 
 
 def test_bisr_rejects_unsupported_sampling_mode() -> None:
-    with pytest.raises(ValidationError, match='does not support --sampling-mode'):
+    with pytest.raises(ValidationError, match='requires --accountant bnb'):
         Configuration(
             command='train',
             noise_mechanism='bisr',
             accountant='bsr',
+            poisson_sampling=False,
+            sampling_mode='balls_in_bins',
+            bsr_bands=4,
+        )
+
+
+def test_bandmf_valid_balls_in_bins_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bandmf',
+        accountant='bnb',
+        poisson_sampling=False,
+        sampling_mode='balls_in_bins',
+        bnb_b=4,
+        bsr_bands=2,
+        bsr_coeffs=[1.0, 0.2],
+    )
+    assert cfg.noise_mechanism == 'bandmf'
+    assert cfg.accountant == 'bnb'
+    assert cfg.sampling_mode == 'balls_in_bins'
+
+
+def test_bsr_valid_balls_in_bins_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bsr',
+        accountant='bnb',
+        poisson_sampling=False,
+        sampling_mode='balls_in_bins',
+        bnb_b=4,
+        bsr_bands=2,
+    )
+    assert cfg.noise_mechanism == 'bsr'
+    assert cfg.accountant == 'bnb'
+    assert cfg.sampling_mode == 'balls_in_bins'
+
+
+def test_bisr_valid_balls_in_bins_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bisr',
+        accountant='bnb',
+        poisson_sampling=False,
+        sampling_mode='balls_in_bins',
+        bnb_b=4,
+        bsr_bands=2,
+    )
+    assert cfg.noise_mechanism == 'bisr'
+    assert cfg.accountant == 'bnb'
+    assert cfg.sampling_mode == 'balls_in_bins'
+
+
+def test_balls_in_bins_mf_rejects_missing_bnb_b() -> None:
+    with pytest.raises(ValidationError, match='balls_in_bins sampling requires --bnb-b'):
+        Configuration(
+            command='train',
+            noise_mechanism='bsr',
+            accountant='bnb',
             poisson_sampling=False,
             sampling_mode='balls_in_bins',
             bsr_bands=4,

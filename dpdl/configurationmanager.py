@@ -18,22 +18,22 @@ log = logging.getLogger(__name__)
 
 _FAMILY_CONTRACTS = {
     'bandmf': {
-        'accountant': 'bandmf',
-        'sampling_modes': {'cyclic_poisson'},
+        'accountants': {'bandmf', 'bnb'},
+        'sampling_modes': {'cyclic_poisson', 'balls_in_bins'},
         'requires_non_poisson': True,
     },
     'bsr': {
-        'accountant': 'bsr',
-        'sampling_modes': {None, 'torch_sampler', 'cyclic_poisson'},
+        'accountants': {'bsr', 'bnb'},
+        'sampling_modes': {None, 'torch_sampler', 'cyclic_poisson', 'balls_in_bins'},
         'requires_non_poisson': True,
     },
     'bisr': {
-        'accountant': 'bsr',
-        'sampling_modes': {None, 'torch_sampler', 'cyclic_poisson'},
+        'accountants': {'bsr', 'bnb'},
+        'sampling_modes': {None, 'torch_sampler', 'cyclic_poisson', 'balls_in_bins'},
         'requires_non_poisson': True,
     },
     'bnb': {
-        'accountant': 'bnb',
+        'accountants': {'bnb'},
         'sampling_modes': {'balls_in_bins'},
         'requires_non_poisson': True,
     },
@@ -63,8 +63,9 @@ def _validate_bandmf_bsr_contracts(
     bsr_min_separation: int | None,
 ) -> None:
     contract = _FAMILY_CONTRACTS[mechanism]
-    if accountant != contract['accountant']:
-        raise ValueError(f'{mechanism.upper()} mechanism requires --accountant {contract["accountant"]}.')
+    if accountant not in contract['accountants']:
+        allowed = ', '.join(sorted(contract['accountants']))
+        raise ValueError(f'{mechanism.upper()} mechanism requires --accountant in {{{allowed}}}.')
 
     if contract['requires_non_poisson'] and poisson_sampling:
         raise ValueError(
@@ -82,7 +83,7 @@ def _validate_bandmf_bsr_contracts(
     if bands_missing:
         raise ValueError(f'{mechanism.upper()} mechanism requires --bsr-bands.')
 
-    if mechanism == 'bandmf':
+    if mechanism == 'bandmf' and sampling_mode == 'cyclic_poisson':
         if bsr_mf_sensitivity is not None:
             raise ValueError(
                 '--bsr-mf-sensitivity is fixed-batch BSR only and cannot be used with --sampling-mode cyclic_poisson.'
@@ -118,7 +119,7 @@ def _validate_bnb_contracts(
     bnb_num_samples: int | None,
     bnb_seed: int | None,
 ) -> None:
-    if sampling_mode in ('b_min_sep', 'balls_in_bins') and mechanism != 'bnb':
+    if sampling_mode == 'b_min_sep' and mechanism != 'bnb':
         raise ValueError('BNB-specific sampling requires --noise-mechanism bnb.')
 
     if sampling_mode == 'b_min_sep':
@@ -131,7 +132,7 @@ def _validate_bnb_contracts(
         return
 
     contract = _FAMILY_CONTRACTS['bnb']
-    if accountant != contract['accountant']:
+    if accountant not in contract['accountants']:
         raise ValueError('BNB mechanism requires --accountant bnb.')
 
     if contract['requires_non_poisson'] and poisson_sampling:
@@ -159,6 +160,42 @@ def _validate_bnb_contracts(
 
     if bnb_seed is not None and int(bnb_seed) < 0:
         raise ValueError('--bnb-seed must be >= 0.')
+
+
+def _validate_balls_in_bins_mf_contracts(
+    *,
+    mechanism: str,
+    sampling_mode: str | None,
+    accountant: str,
+    target_hypers: set[str],
+    bnb_b: int | None,
+    bnb_bands: int | None,
+    bsr_bands: int | None,
+) -> None:
+    if sampling_mode != 'balls_in_bins' or mechanism not in ('bandmf', 'bsr', 'bisr'):
+        return
+
+    if accountant != 'bnb':
+        raise ValueError(
+            f'{mechanism.upper()} balls_in_bins path requires --accountant bnb.'
+        )
+
+    if bnb_b is None:
+        raise ValueError('balls_in_bins sampling requires --bnb-b.')
+
+    if int(bnb_b) < 1:
+        raise ValueError('--bnb-b must be >= 1.')
+
+    if bsr_bands is None and bnb_bands is None and 'bsr_bands' not in target_hypers:
+        raise ValueError(
+            f'{mechanism.upper()} balls_in_bins path requires --bsr-bands.'
+        )
+
+    if bsr_bands is not None and int(bsr_bands) < 1:
+        raise ValueError('--bsr-bands must be >= 1.')
+
+    if bnb_bands is not None and int(bnb_bands) < 1:
+        raise ValueError('--bnb-bands must be >= 1.')
 
 
 def _validate_privacy_contracts(
@@ -231,7 +268,7 @@ def _validate_privacy_contracts(
             bnb_bands,
         ]
     )
-    if mechanism != 'bnb' and has_any_bnb_field:
+    if mechanism not in ('bandmf', 'bsr', 'bisr', 'bnb') and has_any_bnb_field:
         raise ValueError('BNB-specific parameters require --noise-mechanism bnb.')
 
     _validate_bnb_contracts(
@@ -244,6 +281,16 @@ def _validate_privacy_contracts(
         bnb_bands=bnb_bands,
         bnb_num_samples=bnb_num_samples,
         bnb_seed=bnb_seed,
+    )
+
+    _validate_balls_in_bins_mf_contracts(
+        mechanism=mechanism,
+        sampling_mode=sampling_mode,
+        accountant=accountant,
+        target_hypers=target_hypers,
+        bnb_b=bnb_b,
+        bnb_bands=bnb_bands,
+        bsr_bands=bsr_bands,
     )
 
 class Hyperparameters(BaseModel):
