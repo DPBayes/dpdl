@@ -1,6 +1,60 @@
 import torch
+from torch.optim import Optimizer
 
 from .configurationmanager import Configuration, Hyperparameters
+
+
+class PaperSGD(Optimizer):
+    def __init__(
+        self,
+        params,
+        *,
+        lr: float,
+        weight_decay: float,
+        momentum: float,
+    ):
+        if lr < 0.0:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        if not (0.0 < float(weight_decay) <= 1.0):
+            raise ValueError(f"Invalid paper weight_decay: {weight_decay}")
+        if not (0.0 <= float(momentum) < 1.0):
+            raise ValueError(f"Invalid paper momentum: {momentum}")
+
+        defaults = {
+            'lr': float(lr),
+            'paper_alpha': float(weight_decay),
+            'momentum': float(momentum),
+            'weight_decay': float(weight_decay),
+        }
+        super().__init__(params, defaults)
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        loss = None
+        if closure is not None:
+            with torch.enable_grad():
+                loss = closure()
+
+        for group in self.param_groups:
+            lr = float(group['lr'])
+            alpha = float(group['paper_alpha'])
+            beta = float(group['momentum'])
+
+            for p in group['params']:
+                if p.grad is None:
+                    continue
+
+                grad = p.grad
+                state = self.state[p]
+                momentum_buffer = state.get('momentum_buffer')
+                if momentum_buffer is None:
+                    momentum_buffer = state['momentum_buffer'] = torch.zeros_like(p)
+
+                momentum_buffer.mul_(beta).add_(grad)
+                p.mul_(alpha).add_(momentum_buffer, alpha=-lr)
+
+        return loss
+
 
 class OptimizerFactory:
     @staticmethod
@@ -13,15 +67,12 @@ class OptimizerFactory:
                 if configuration.optimizer_momentum is not None
                 else 0.0
             )
-            weight_decay = float(configuration.optimizer_weight_decay or 0.0)
-
-            return torch.optim.SGD(
+            weight_decay = float(configuration.optimizer_weight_decay)
+            return PaperSGD(
                 model.parameters(),
                 lr=hyperparams.learning_rate,
-                momentum=momentum,
                 weight_decay=weight_decay,
-                nesterov=False,
-                dampening=0.0,
+                momentum=momentum,
             )
 
         optimizer_cls = getattr(torch.optim, configuration.optimizer)

@@ -224,6 +224,44 @@ def test_bnb_rejects_torch_sampler() -> None:
         )
 
 
+def test_paper_sgd_requires_optimizer_momentum_and_weight_decay() -> None:
+    with pytest.raises(ValidationError, match='paper-sgd requires --optimizer-momentum'):
+        Configuration(
+            command='train',
+            optimizer='paper-sgd',
+            optimizer_weight_decay=0.9999,
+        )
+
+    with pytest.raises(ValidationError, match='paper-sgd requires --optimizer-weight-decay'):
+        Configuration(
+            command='train',
+            optimizer='paper-sgd',
+            optimizer_momentum=0.95,
+        )
+
+
+def test_paper_sgd_rejects_zero_weight_decay() -> None:
+    with pytest.raises(ValidationError, match='paper shrinkage factor alpha'):
+        Configuration(
+            command='train',
+            optimizer='paper-sgd',
+            optimizer_momentum=0.95,
+            optimizer_weight_decay=0.0,
+        )
+
+
+def test_paper_sgd_accepts_matching_configuration() -> None:
+    cfg = Configuration(
+        command='train',
+        optimizer='paper-sgd',
+        optimizer_momentum=0.95,
+        optimizer_weight_decay=0.9999,
+    )
+    assert cfg.optimizer == 'paper-sgd'
+    assert cfg.optimizer_weight_decay == pytest.approx(0.9999)
+    assert cfg.optimizer_momentum == pytest.approx(0.95)
+
+
 def test_gaussian_rejects_mechanism_specific_accountants() -> None:
     with pytest.raises(ValidationError, match='Gaussian mechanism does not support mechanism-specific accountants'):
         Configuration(

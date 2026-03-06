@@ -621,6 +621,14 @@ class Configuration(BaseModel):
         if self.optimizer_weight_decay is not None and float(self.optimizer_weight_decay) < 0.0:
             raise ValueError('--optimizer-weight-decay must be >= 0.')
 
+        if self.optimizer == 'paper-sgd':
+            if self.optimizer_momentum is None:
+                raise ValueError('paper-sgd requires --optimizer-momentum.')
+            if float(self.optimizer_weight_decay or 0.0) == 0.0:
+                raise ValueError(
+                    'paper-sgd requires --optimizer-weight-decay as the paper shrinkage factor alpha.'
+                )
+
         return self
 
     @model_validator(mode="after")

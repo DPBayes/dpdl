@@ -125,14 +125,14 @@ def cli(
         optimizer_momentum: Annotated[
             Optional[float],
             typer.Option(
-                help='Optimizer momentum (used by SGD-like optimizers)',
+                help='Optimizer momentum (BSR paper `beta`)',
                 rich_help_panel='Training options',
             )
         ] = None,
         optimizer_weight_decay: Annotated[
             float,
             typer.Option(
-                help='Optimizer weight decay (L2 regularization)',
+                help='Optimizer weight decay (BSR paper `alpha`)',
                 rich_help_panel='Training options',
             )
         ] = 0.0,
