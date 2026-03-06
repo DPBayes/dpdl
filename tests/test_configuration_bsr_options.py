@@ -48,6 +48,19 @@ def test_bsr_cyclic_valid_minimal() -> None:
     assert cfg.sampling_mode == 'cyclic_poisson'
 
 
+def test_bisr_cyclic_valid_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bisr',
+        accountant='bsr',
+        poisson_sampling=False,
+        sampling_mode='cyclic_poisson',
+        bsr_bands=8,
+    )
+    assert cfg.noise_mechanism == 'bisr'
+    assert cfg.sampling_mode == 'cyclic_poisson'
+
+
 def test_fixed_batch_bsr_valid_minimal() -> None:
     cfg = Configuration(
         command='train',
@@ -62,6 +75,20 @@ def test_fixed_batch_bsr_valid_minimal() -> None:
     assert cfg.sampling_mode == 'torch_sampler'
 
 
+def test_fixed_batch_bisr_valid_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bisr',
+        accountant='bsr',
+        poisson_sampling=False,
+        sampling_mode='torch_sampler',
+        bsr_bands=4,
+        bsr_coeffs=[1.0, 0.2],
+    )
+    assert cfg.noise_mechanism == 'bisr'
+    assert cfg.sampling_mode == 'torch_sampler'
+
+
 def test_fixed_batch_bsr_cyclic_is_explicitly_allowed() -> None:
     cfg = Configuration(
         command='train',
@@ -73,6 +100,30 @@ def test_fixed_batch_bsr_cyclic_is_explicitly_allowed() -> None:
     )
     assert cfg.noise_mechanism == 'bsr'
     assert cfg.sampling_mode == 'cyclic_poisson'
+
+
+def test_bisr_rejects_wrong_accountant() -> None:
+    with pytest.raises(ValidationError, match='BISR mechanism requires --accountant bsr'):
+        Configuration(
+            command='train',
+            noise_mechanism='bisr',
+            accountant='prv',
+            poisson_sampling=False,
+            sampling_mode='cyclic_poisson',
+            bsr_bands=4,
+        )
+
+
+def test_bisr_rejects_unsupported_sampling_mode() -> None:
+    with pytest.raises(ValidationError, match='does not support --sampling-mode'):
+        Configuration(
+            command='train',
+            noise_mechanism='bisr',
+            accountant='bsr',
+            poisson_sampling=False,
+            sampling_mode='balls_in_bins',
+            bsr_bands=4,
+        )
 
 
 def test_bnb_valid_balls_in_bins_with_alias() -> None:

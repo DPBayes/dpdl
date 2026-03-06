@@ -27,6 +27,11 @@ _FAMILY_CONTRACTS = {
         'sampling_modes': {None, 'torch_sampler', 'cyclic_poisson'},
         'requires_non_poisson': True,
     },
+    'bisr': {
+        'accountant': 'bsr',
+        'sampling_modes': {None, 'torch_sampler', 'cyclic_poisson'},
+        'requires_non_poisson': True,
+    },
     'bnb': {
         'accountant': 'bnb',
         'sampling_modes': {'balls_in_bins'},
@@ -194,14 +199,16 @@ def _validate_privacy_contracts(
             bsr_iterations_number,
         ]
     )
-    if mechanism not in ('bandmf', 'bsr', 'bnb') and has_any_bsr_field:
-        raise ValueError('BSR/BandMF-specific parameters require --noise-mechanism bandmf or bsr.')
+    if mechanism not in ('bandmf', 'bsr', 'bisr', 'bnb') and has_any_bsr_field:
+        raise ValueError(
+            'BSR/BandMF/BISR-specific parameters require --noise-mechanism bandmf, bsr, or bisr.'
+        )
 
     # `sampling_mode` carries runtime sampler semantics; `cyclic_poisson` is only valid for BandMF/BSR.
-    if sampling_mode == 'cyclic_poisson' and mechanism not in ['bandmf', 'bsr']:
-        raise ValueError('Cyclic Poisson sampling requires --noise-mechanism bandmf or bsr.')
+    if sampling_mode == 'cyclic_poisson' and mechanism not in ['bandmf', 'bsr', 'bisr']:
+        raise ValueError('Cyclic Poisson sampling requires --noise-mechanism bandmf, bsr, or bisr.')
 
-    if mechanism in ('bandmf', 'bsr'):
+    if mechanism in ('bandmf', 'bsr', 'bisr'):
         _validate_bandmf_bsr_contracts(
             mechanism=mechanism,
             sampling_mode=sampling_mode,
@@ -360,7 +367,7 @@ class Configuration(BaseModel):
     accountant: str = 'prv'
     poisson_sampling: bool = True
     normalize_clipping: bool = False
-    noise_mechanism: Literal['gaussian', 'bandmf', 'bsr', 'bnb'] = 'gaussian'
+    noise_mechanism: Literal['gaussian', 'bandmf', 'bsr', 'bisr', 'bnb'] = 'gaussian'
     sampling_mode: Optional[Literal['torch_sampler', 'cyclic_poisson', 'b_min_sep', 'balls_in_bins']] = None
     bsr_coeffs: Optional[List[float]] = None
     bsr_bands: Optional[int] = None
@@ -509,7 +516,7 @@ class Configuration(BaseModel):
             and use_steps
             and not poisson_sampling
             and sampling_mode == 'torch_sampler'
-            and mechanism not in ('bandmf', 'bsr', 'bnb')
+            and mechanism not in ('bandmf', 'bsr', 'bisr', 'bnb')
         ):
             raise ValueError(
                 'Setting total_steps with non-Poisson sampling requires '
@@ -736,14 +743,14 @@ class ConfigurationManager:
             raise ValueError(
                 'Privacy mode requires one explicit target path. '
                 'Set one of --target-epsilon (or -1 for clip-only), '
-                '--noise-multiplier, --noise-batch-ratio, or --bsr-z-std (BandMF/BSR only).'
+                '--noise-multiplier, --noise-batch-ratio, or --bsr-z-std (BandMF/BSR/BISR only).'
             )
 
         self.configuration = Configuration(**cli_params)
         self.hyperparams = Hyperparameters(**cli_params)
 
         if (
-            self.configuration.noise_mechanism in ('bandmf', 'bsr')
+            self.configuration.noise_mechanism in ('bandmf', 'bsr', 'bisr')
             and self.configuration.bsr_z_std is not None
             and (
                 (
@@ -756,7 +763,7 @@ class ConfigurationManager:
         ):
             raise ValueError(
                 '--bsr-z-std cannot be combined with --target-epsilon (except clip-only -1), '
-                '--noise-multiplier, or --noise-batch-ratio for BandMF/BSR. '
+                '--noise-multiplier, or --noise-batch-ratio for BandMF/BSR/BISR. '
                 'Use either explicit --bsr-z-std alone, or accounting-driven noise controls.'
             )
 
@@ -810,7 +817,7 @@ class ConfigurationManager:
         Mapping: coeffs/bands/bsr_iterations_number/bsr_max_participations/bsr_min_separation/bsr_mf_sensitivity.
         """
         cfg = self.configuration
-        if cfg.noise_mechanism not in ('bandmf', 'bsr'):
+        if cfg.noise_mechanism not in ('bandmf', 'bsr', 'bisr'):
             return
 
         coeffs = cfg.bsr_coeffs if cfg.bsr_coeffs is not None else []
