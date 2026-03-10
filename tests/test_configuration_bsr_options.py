@@ -22,6 +22,20 @@ def test_bandmf_cyclic_valid_minimal() -> None:
     assert cfg.sampling_mode == 'cyclic_poisson'
 
 
+def test_bandmf_fixed_batch_valid_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bandmf',
+        accountant='bandmf',
+        poisson_sampling=False,
+        sampling_mode='torch_sampler',
+        bsr_bands=4,
+        bsr_coeffs=[1.0, 0.2],
+    )
+    assert cfg.noise_mechanism == 'bandmf'
+    assert cfg.sampling_mode == 'torch_sampler'
+
+
 def test_bandmf_cyclic_rejects_fixed_batch_knobs() -> None:
     with pytest.raises(ValidationError, match='fixed-batch BSR only'):
         Configuration(

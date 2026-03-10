@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 _FAMILY_CONTRACTS = {
     'bandmf': {
         'accountants': {'bandmf', 'bnb'},
-        'sampling_modes': {'cyclic_poisson', 'balls_in_bins'},
+        'sampling_modes': {None, 'torch_sampler', 'cyclic_poisson', 'balls_in_bins'},
         'requires_non_poisson': True,
     },
     'bsr': {
