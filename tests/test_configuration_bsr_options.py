@@ -61,6 +61,19 @@ def test_bisr_cyclic_valid_minimal() -> None:
     assert cfg.sampling_mode == 'cyclic_poisson'
 
 
+def test_bandinvmf_cyclic_valid_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bandinvmf',
+        accountant='bsr',
+        poisson_sampling=False,
+        sampling_mode='cyclic_poisson',
+        bsr_bands=8,
+    )
+    assert cfg.noise_mechanism == 'bandinvmf'
+    assert cfg.sampling_mode == 'cyclic_poisson'
+
+
 def test_fixed_batch_bsr_valid_minimal() -> None:
     cfg = Configuration(
         command='train',
@@ -86,6 +99,20 @@ def test_fixed_batch_bisr_valid_minimal() -> None:
         bsr_coeffs=[1.0, 0.2],
     )
     assert cfg.noise_mechanism == 'bisr'
+    assert cfg.sampling_mode == 'torch_sampler'
+
+
+def test_fixed_batch_bandinvmf_valid_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bandinvmf',
+        accountant='bsr',
+        poisson_sampling=False,
+        sampling_mode='torch_sampler',
+        bsr_bands=4,
+        bsr_coeffs=[1.0, 0.2],
+    )
+    assert cfg.noise_mechanism == 'bandinvmf'
     assert cfg.sampling_mode == 'torch_sampler'
 
 
@@ -168,6 +195,21 @@ def test_bisr_valid_balls_in_bins_minimal() -> None:
         bsr_bands=2,
     )
     assert cfg.noise_mechanism == 'bisr'
+    assert cfg.accountant == 'bnb'
+    assert cfg.sampling_mode == 'balls_in_bins'
+
+
+def test_bandinvmf_valid_balls_in_bins_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bandinvmf',
+        accountant='bnb',
+        poisson_sampling=False,
+        sampling_mode='balls_in_bins',
+        bnb_b=4,
+        bsr_bands=2,
+    )
+    assert cfg.noise_mechanism == 'bandinvmf'
     assert cfg.accountant == 'bnb'
     assert cfg.sampling_mode == 'balls_in_bins'
 

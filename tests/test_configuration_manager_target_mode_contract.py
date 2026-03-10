@@ -52,7 +52,7 @@ def test_configuration_manager_accepts_explicit_bsr_z_std_privacy_path() -> None
                 'noise_mechanism': 'gaussian',
                 'accountant': 'prv',
             },
-            'BSR/BandMF/BISR-specific parameters require --noise-mechanism bandmf, bsr, or bisr',
+            'BSR/BandMF/BISR/BandInvMF-specific parameters require --noise-mechanism bandmf, bsr, bisr, or bandinvmf',
         ),
         (
             {

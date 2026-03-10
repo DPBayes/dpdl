@@ -451,7 +451,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         correlated_denominator: float | None,
         mechanism_kwargs: dict,
     ) -> None:
-        if noise_mechanism_config is None or noise_mechanism_config.mechanism not in ('bandmf', 'bsr', 'bisr'):
+        if noise_mechanism_config is None or noise_mechanism_config.mechanism not in ('bandmf', 'bsr', 'bisr', 'bandinvmf'):
             return
 
         state = noise_mechanism_config.mechanism_state
@@ -492,7 +492,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         dataloader_len: int,
         bsr_bands: int | None,
     ) -> None:
-        if mechanism not in ('bandmf', 'bisr') or sampling_mode != 'cyclic_poisson':
+        if mechanism not in ('bandmf', 'bisr', 'bandinvmf') or sampling_mode != 'cyclic_poisson':
             return
         if bsr_bands is None:
             return
@@ -815,7 +815,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             σ path (explicit z_std or calibrated z_std = noise_multiplier_ref*max_grad_norm/denominator).
             Mapping: mechanism_state keys mirror Opacus runtime/accounting fields.
             """
-            if self.noise_mechanism not in ('bandmf', 'bsr', 'bisr', 'bnb'):
+            if self.noise_mechanism not in ('bandmf', 'bsr', 'bisr', 'bandinvmf', 'bnb'):
                 return None
 
             # `coeffs` encode Toeplitz factor coefficients; `z_std` is correlated Gaussian stddev.
@@ -823,7 +823,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             if self.bsr_coeffs:
                 mechanism_state['coeffs'] = list(self.bsr_coeffs)
 
-            if self.noise_mechanism in ('bandmf', 'bsr', 'bisr') and self.bsr_bands is not None:
+            if self.noise_mechanism in ('bandmf', 'bsr', 'bisr', 'bandinvmf') and self.bsr_bands is not None:
                 mechanism_state['bsr_bands'] = int(self.bsr_bands)
 
             if self.accountant == 'bnb':
@@ -887,7 +887,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                     sensitivity_scale=mechanism_state.get('bsr_sensitivity_scale'),
                 )
 
-            if self.noise_mechanism in ('bandmf', 'bsr', 'bisr'):
+            if self.noise_mechanism in ('bandmf', 'bsr', 'bisr', 'bandinvmf'):
                 return NoiseMechanismConfig(
                     mechanism=self.noise_mechanism,
                     accounting_mode=resolve_accounting_mode_from_accountant(self.accountant),
@@ -906,7 +906,7 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         train_dataloader = self.datamodule.get_dataloader('train')
 
-        if self.noise_mechanism in ('bandmf', 'bsr', 'bisr', 'bnb'):
+        if self.noise_mechanism in ('bandmf', 'bsr', 'bisr', 'bandinvmf', 'bnb'):
             self._validate_cyclic_steps_vs_bands(
                 mechanism=self.noise_mechanism,
                 sampling_mode=self.sampling_mode,
@@ -919,7 +919,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             if self.bsr_coeffs and torch.distributed.get_rank == 0:
                 auto_bands = (
                     self.bsr_bands
-                    if self.noise_mechanism in ('bandmf', 'bsr', 'bisr')
+                    if self.noise_mechanism in ('bandmf', 'bsr', 'bisr', 'bandinvmf')
                     else self.bnb_bands
                 )
                 log.info(
@@ -974,7 +974,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                     bnb_horizon = aligned_horizon
 
         correlated_denominator = None
-        if self.noise_mechanism in ('bandmf', 'bsr', 'bisr', 'bnb') and not has_target_privacy_params:
+        if self.noise_mechanism in ('bandmf', 'bsr', 'bisr', 'bandinvmf', 'bnb') and not has_target_privacy_params:
             expected_batch_size = self._resolve_expected_batch_size_for_correlated_runtime(
                 total_steps=self.total_steps,
                 poisson_sampling=self.poisson_sampling,
@@ -1117,7 +1117,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 has_target_privacy_params=has_target_privacy_params,
             )
 
-        if self.noise_mechanism in ('bandmf', 'bisr') and self.sampling_mode == 'cyclic_poisson':
+        if self.noise_mechanism in ('bandmf', 'bisr', 'bandinvmf') and self.sampling_mode == 'cyclic_poisson':
             self._log_dp_timing(
                 phase='dp_setup_total',
                 t0=dp_setup_t0,

@@ -32,6 +32,11 @@ _FAMILY_CONTRACTS = {
         'sampling_modes': {None, 'torch_sampler', 'cyclic_poisson', 'balls_in_bins'},
         'requires_non_poisson': True,
     },
+    'bandinvmf': {
+        'accountants': {'bsr', 'bnb'},
+        'sampling_modes': {None, 'torch_sampler', 'cyclic_poisson', 'balls_in_bins'},
+        'requires_non_poisson': True,
+    },
     'bnb': {
         'accountants': {'bnb'},
         'sampling_modes': {'balls_in_bins'},
@@ -172,7 +177,7 @@ def _validate_balls_in_bins_mf_contracts(
     bnb_bands: int | None,
     bsr_bands: int | None,
 ) -> None:
-    if sampling_mode != 'balls_in_bins' or mechanism not in ('bandmf', 'bsr', 'bisr'):
+    if sampling_mode != 'balls_in_bins' or mechanism not in ('bandmf', 'bsr', 'bisr', 'bandinvmf'):
         return
 
     if accountant != 'bnb':
@@ -236,16 +241,16 @@ def _validate_privacy_contracts(
             bsr_iterations_number,
         ]
     )
-    if mechanism not in ('bandmf', 'bsr', 'bisr', 'bnb') and has_any_bsr_field:
+    if mechanism not in ('bandmf', 'bsr', 'bisr', 'bandinvmf', 'bnb') and has_any_bsr_field:
         raise ValueError(
-            'BSR/BandMF/BISR-specific parameters require --noise-mechanism bandmf, bsr, or bisr.'
+            'BSR/BandMF/BISR/BandInvMF-specific parameters require --noise-mechanism bandmf, bsr, bisr, or bandinvmf.'
         )
 
     # `sampling_mode` carries runtime sampler semantics; `cyclic_poisson` is only valid for BandMF/BSR.
-    if sampling_mode == 'cyclic_poisson' and mechanism not in ['bandmf', 'bsr', 'bisr']:
-        raise ValueError('Cyclic Poisson sampling requires --noise-mechanism bandmf, bsr, or bisr.')
+    if sampling_mode == 'cyclic_poisson' and mechanism not in ['bandmf', 'bsr', 'bisr', 'bandinvmf']:
+        raise ValueError('Cyclic Poisson sampling requires --noise-mechanism bandmf, bsr, bisr, or bandinvmf.')
 
-    if mechanism in ('bandmf', 'bsr', 'bisr'):
+    if mechanism in ('bandmf', 'bsr', 'bisr', 'bandinvmf'):
         _validate_bandmf_bsr_contracts(
             mechanism=mechanism,
             sampling_mode=sampling_mode,
@@ -268,7 +273,7 @@ def _validate_privacy_contracts(
             bnb_bands,
         ]
     )
-    if mechanism not in ('bandmf', 'bsr', 'bisr', 'bnb') and has_any_bnb_field:
+    if mechanism not in ('bandmf', 'bsr', 'bisr', 'bandinvmf', 'bnb') and has_any_bnb_field:
         raise ValueError('BNB-specific parameters require --noise-mechanism bnb.')
 
     _validate_bnb_contracts(
@@ -414,7 +419,7 @@ class Configuration(BaseModel):
     accountant: str = 'prv'
     poisson_sampling: bool = True
     normalize_clipping: bool = False
-    noise_mechanism: Literal['gaussian', 'bandmf', 'bsr', 'bisr', 'bnb'] = 'gaussian'
+    noise_mechanism: Literal['gaussian', 'bandmf', 'bsr', 'bisr', 'bandinvmf', 'bnb'] = 'gaussian'
     sampling_mode: Optional[Literal['torch_sampler', 'cyclic_poisson', 'b_min_sep', 'balls_in_bins']] = None
     bsr_coeffs: Optional[List[float]] = None
     bsr_bands: Optional[int] = None
@@ -563,7 +568,7 @@ class Configuration(BaseModel):
             and use_steps
             and not poisson_sampling
             and sampling_mode == 'torch_sampler'
-            and mechanism not in ('bandmf', 'bsr', 'bisr', 'bnb')
+            and mechanism not in ('bandmf', 'bsr', 'bisr', 'bandinvmf', 'bnb')
         ):
             raise ValueError(
                 'Setting total_steps with non-Poisson sampling requires '
@@ -798,14 +803,14 @@ class ConfigurationManager:
             raise ValueError(
                 'Privacy mode requires one explicit target path. '
                 'Set one of --target-epsilon (or -1 for clip-only), '
-                '--noise-multiplier, --noise-batch-ratio, or --bsr-z-std (BandMF/BSR/BISR only).'
+                '--noise-multiplier, --noise-batch-ratio, or --bsr-z-std (BandMF/BSR/BISR/BandInvMF only).'
             )
 
         self.configuration = Configuration(**cli_params)
         self.hyperparams = Hyperparameters(**cli_params)
 
         if (
-            self.configuration.noise_mechanism in ('bandmf', 'bsr', 'bisr')
+            self.configuration.noise_mechanism in ('bandmf', 'bsr', 'bisr', 'bandinvmf')
             and self.configuration.bsr_z_std is not None
             and (
                 (
@@ -818,7 +823,7 @@ class ConfigurationManager:
         ):
             raise ValueError(
                 '--bsr-z-std cannot be combined with --target-epsilon (except clip-only -1), '
-                '--noise-multiplier, or --noise-batch-ratio for BandMF/BSR/BISR. '
+                '--noise-multiplier, or --noise-batch-ratio for BandMF/BSR/BISR/BandInvMF. '
                 'Use either explicit --bsr-z-std alone, or accounting-driven noise controls.'
             )
 
@@ -872,7 +877,7 @@ class ConfigurationManager:
         Mapping: coeffs/bands/bsr_iterations_number/bsr_max_participations/bsr_min_separation/bsr_mf_sensitivity.
         """
         cfg = self.configuration
-        if cfg.noise_mechanism not in ('bandmf', 'bsr', 'bisr'):
+        if cfg.noise_mechanism not in ('bandmf', 'bsr', 'bisr', 'bandinvmf'):
             return
 
         coeffs = cfg.bsr_coeffs if cfg.bsr_coeffs is not None else []
