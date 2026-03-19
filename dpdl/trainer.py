@@ -1101,6 +1101,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 total_steps=self.total_steps,
                 noise_mechanism_config=noise_mechanism_config,
                 sampling_semantics=sampling_semantics,
+                **mechanism_kwargs,
             )
             self._log_dp_timing(
                 phase='make_private',
