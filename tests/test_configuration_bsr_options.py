@@ -198,6 +198,38 @@ def test_bsr_valid_balls_in_bins_minimal() -> None:
     assert cfg.sampling_mode == 'balls_in_bins'
 
 
+def test_bnb_calibration_controls_are_accepted() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bsr',
+        accountant='bnb',
+        poisson_sampling=False,
+        sampling_mode='balls_in_bins',
+        bnb_b=4,
+        bsr_bands=2,
+        bnb_num_samples=12345,
+        bnb_seed=7,
+        bnb_calibration_mode='optimistic',
+    )
+    assert cfg.bnb_num_samples == 12345
+    assert cfg.bnb_seed == 7
+    assert cfg.bnb_calibration_mode == 'optimistic'
+
+
+def test_bnb_calibration_mode_rejects_invalid_value() -> None:
+    with pytest.raises(ValidationError, match='bnb_calibration_mode'):
+        Configuration(
+            command='train',
+            noise_mechanism='bsr',
+            accountant='bnb',
+            poisson_sampling=False,
+            sampling_mode='balls_in_bins',
+            bnb_b=4,
+            bsr_bands=2,
+            bnb_calibration_mode='bad-mode',
+        )
+
+
 def test_empty_bsr_coeff_list_normalizes_to_none() -> None:
     cfg = Configuration(
         command='train',

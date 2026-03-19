@@ -599,6 +599,27 @@ def cli(
                 rich_help_panel='BNB options',
             )
         ] = None,
+        bnb_num_samples: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BNB Monte Carlo sample budget',
+                rich_help_panel='BNB options',
+            )
+        ] = None,
+        bnb_seed: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BNB Monte Carlo RNG seed',
+                rich_help_panel='BNB options',
+            )
+        ] = None,
+        bnb_calibration_mode: Annotated[
+            Optional[Literal['evr', 'optimistic']],
+            typer.Option(
+                help='BNB calibration mode ("evr" keeps the EVR guard, "optimistic" disables it)',
+                rich_help_panel='BNB options',
+            )
+        ] = None,
         target_epsilon: Annotated[
             Optional[float],
             typer.Option(

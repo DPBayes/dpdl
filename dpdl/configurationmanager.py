@@ -118,6 +118,7 @@ def _validate_bnb_contracts(
     bnb_bands: int | None,
     bnb_num_samples: int | None,
     bnb_seed: int | None,
+    bnb_calibration_mode: str | None,
 ) -> None:
     if sampling_mode == 'b_min_sep':
         raise ValueError(
@@ -130,6 +131,9 @@ def _validate_bnb_contracts(
 
     if bnb_seed is not None and int(bnb_seed) < 0:
         raise ValueError('--bnb-seed must be >= 0.')
+
+    if bnb_calibration_mode is not None and str(bnb_calibration_mode) not in {'evr', 'optimistic'}:
+        raise ValueError("--bnb-calibration-mode must be one of {'evr', 'optimistic'}.")
 
 
 def _validate_balls_in_bins_mf_contracts(
@@ -217,6 +221,7 @@ def _validate_privacy_contracts(
     bnb_bands: int | None,
     bnb_num_samples: int | None,
     bnb_seed: int | None,
+    bnb_calibration_mode: str | None,
 ) -> None:
     """
     Validate mechanism/accountant/sampler compatibility at config-parse time.
@@ -283,6 +288,7 @@ def _validate_privacy_contracts(
         bnb_bands=bnb_bands,
         bnb_num_samples=bnb_num_samples,
         bnb_seed=bnb_seed,
+        bnb_calibration_mode=bnb_calibration_mode,
     )
 
     _validate_balls_in_bins_mf_contracts(
@@ -438,6 +444,7 @@ class Configuration(BaseModel):
     bnb_bands: Optional[int] = None
     bnb_num_samples: Optional[int] = None
     bnb_seed: Optional[int] = None
+    bnb_calibration_mode: Optional[Literal['evr', 'optimistic']] = None
     n_trials: int = 20
     optuna_random_trials: int = 10
     target_hypers: List[str] = []
@@ -676,6 +683,7 @@ class Configuration(BaseModel):
             bnb_bands=self.bnb_bands,
             bnb_num_samples=self.bnb_num_samples,
             bnb_seed=self.bnb_seed,
+            bnb_calibration_mode=self.bnb_calibration_mode,
         )
         return self
 
@@ -754,6 +762,7 @@ class Configuration(BaseModel):
                 ('BNB p', self.bnb_p),
                 ('BNB MC samples', self.bnb_num_samples),
                 ('BNB MC seed', self.bnb_seed),
+                ('BNB calibration mode', self.bnb_calibration_mode),
             ]
             attributes.extend(privacy_attributes)
 
@@ -880,6 +889,7 @@ class ConfigurationManager:
             bnb_bands=self.hyperparams.bnb_bands,
             bnb_num_samples=cfg.bnb_num_samples,
             bnb_seed=cfg.bnb_seed,
+            bnb_calibration_mode=cfg.bnb_calibration_mode,
         )
 
     def _log_bsr_trace_from_config_parse(self) -> None:

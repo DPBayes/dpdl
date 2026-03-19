@@ -571,6 +571,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         bnb_bands: int | None = None,
         bnb_num_samples: int | None = None,
         bnb_seed: int | None = None,
+        bnb_calibration_mode: str | None = None,
         secure_mode: bool = False,
         target_epsilon: float | None = None,
         target_delta: float | None = None,
@@ -607,6 +608,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.bnb_bands = bnb_bands
         self.bnb_num_samples = bnb_num_samples
         self.bnb_seed = bnb_seed
+        self.bnb_calibration_mode = bnb_calibration_mode
 
         # setup opacus privacy engine
         privacy_engine_args = {
@@ -1015,6 +1017,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                             if self.bnb_seed is not None
                             else None
                         ),
+                        'bnb_calibration_mode': self.bnb_calibration_mode,
                     },
                 )
             )
@@ -1724,6 +1727,7 @@ class TrainerFactory:
             bnb_bands=hyperparams.bnb_bands,
             bnb_num_samples=configuration.bnb_num_samples,
             bnb_seed=configuration.bnb_seed,
+            bnb_calibration_mode=configuration.bnb_calibration_mode,
             # config
             accountant=configuration.accountant,
             secure_mode=configuration.secure_mode,

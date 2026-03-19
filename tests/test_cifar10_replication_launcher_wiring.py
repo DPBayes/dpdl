@@ -10,7 +10,13 @@ DPDL_DIR = REPO_ROOT / "dpdl"
 LAUNCHER = REPO_ROOT / "scripts" / "REPLICATE-BISR-STUDY-CIFAR10.sh"
 
 
-def _run_launcher(*, methods: str, regimes: str, include_controls: str = "0") -> str:
+def _run_launcher(
+    *,
+    methods: str,
+    regimes: str,
+    include_controls: str = "0",
+    extra_env: dict[str, str] | None = None,
+) -> str:
     env = os.environ.copy()
     env.update(
         {
@@ -21,6 +27,8 @@ def _run_launcher(*, methods: str, regimes: str, include_controls: str = "0") ->
             "INCLUDE_CONTROLS": include_controls,
         }
     )
+    if extra_env:
+        env.update(extra_env)
     proc = subprocess.run(
         ["bash", str(LAUNCHER)],
         cwd=DPDL_DIR,
@@ -51,3 +59,17 @@ def test_bandinvmf_rows_emit_live_commands() -> None:
     assert "--noise-mechanism bandinvmf" in stdout
     assert "--accountant bnb" in stdout
     assert "--accountant bsr" in stdout
+
+
+def test_launcher_forwards_bnb_calibration_controls_when_requested() -> None:
+    stdout = _run_launcher(
+        methods="bsr",
+        regimes="amplified",
+        extra_env={
+            "BNB_CALIBRATION_MODE": "optimistic",
+            "BNB_NUM_SAMPLES": "200000",
+        },
+    )
+
+    assert "--bnb-calibration-mode optimistic" in stdout
+    assert "--bnb-num-samples 200000" in stdout
