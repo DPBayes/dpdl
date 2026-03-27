@@ -1021,6 +1021,14 @@ class DifferentiallyPrivateTrainer(Trainer):
                     },
                 )
             )
+            if torch.distributed.is_available() and torch.distributed.is_initialized():
+                world_size = int(torch.distributed.get_world_size())
+                if world_size > 1:
+                    # Mirror the distributed DP runtime contract explicitly so
+                    # trainer-side traces and Opacus state agree about chunk sharding.
+                    mechanism_kwargs['bnb_distributed_dp_runtime'] = True
+                    if mechanism_kwargs.get('bnb_distributed_mode') in (None, 'none'):
+                        mechanism_kwargs['bnb_distributed_mode'] = 'chunk_shard'
 
         self._log_bsr_trace(
             stage='dpdl_trainer_setup',

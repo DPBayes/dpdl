@@ -32,9 +32,10 @@ def _capture_dp_handoff(
     noise_mechanism: str,
     use_explicit_coeffs: bool,
     total_steps: int,
+    world_size: int = 1,
 ) -> tuple[dict, dict]:
     monkeypatch.setattr(torch.distributed, "get_rank", lambda: 0)
-    monkeypatch.setattr(torch.distributed, "get_world_size", lambda: 1)
+    monkeypatch.setattr(torch.distributed, "get_world_size", lambda: world_size)
     monkeypatch.setattr(torch.distributed, "is_initialized", lambda: True)
     monkeypatch.setattr(torch.distributed, "barrier", lambda: None)
     monkeypatch.setattr(
@@ -47,6 +48,7 @@ def _capture_dp_handoff(
     orig_make_private = opacus.PrivacyEngine.make_private
 
     def wrapped_make_private(self, *args, **kwargs):
+        captured["make_private_kwargs"] = copy.deepcopy(kwargs)
         captured["pre_state"] = copy.deepcopy(kwargs["noise_mechanism_config"].mechanism_state)
         result = orig_make_private(self, *args, **kwargs)
         captured["post_state"] = copy.deepcopy(self.noise_mechanism_config.mechanism_state)
@@ -87,6 +89,64 @@ def _capture_dp_handoff(
     TrainerFactory.get_trainer(cfg_mgr)
 
     return captured["pre_state"], captured["post_state"]
+
+
+def test_capture_dp_handoff_marks_bnb_chunk_shard_for_distributed_runtime(
+    image_dataset_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(torch.distributed, "get_rank", lambda: 0)
+    monkeypatch.setattr(torch.distributed, "get_world_size", lambda: 8)
+    monkeypatch.setattr(torch.distributed, "is_initialized", lambda: True)
+    monkeypatch.setattr(torch.distributed, "barrier", lambda: None)
+    monkeypatch.setattr(
+        trainer_mod.opacus.distributed,
+        "DifferentiallyPrivateDistributedDataParallel",
+        lambda model: model,
+    )
+
+    captured: dict[str, dict] = {}
+    orig_make_private = opacus.PrivacyEngine.make_private
+
+    def wrapped_make_private(self, *args, **kwargs):
+        captured["kwargs"] = copy.deepcopy(kwargs)
+        return orig_make_private(self, *args, **kwargs)
+
+    monkeypatch.setattr(opacus.PrivacyEngine, "make_private", wrapped_make_private)
+
+    cli_params = {
+        "command": "train",
+        "device": "cpu",
+        "dataset_name": "local-image",
+        "dataset_path": str(image_dataset_path),
+        "model_name": "vit_tiny_patch16_224.augreg_in21k",
+        "privacy": True,
+        "use_steps": True,
+        "total_steps": 2,
+        "batch_size": 4,
+        "physical_batch_size": 4,
+        "num_workers": 0,
+        "seed": 42,
+        "split_seed": 42,
+        "max_grad_norm": 1.0,
+        "poisson_sampling": False,
+        "target_epsilon": None,
+        "noise_batch_ratio": None,
+        "noise_mechanism": "bsr",
+        "accountant": "bnb",
+        "sampling_mode": "balls_in_bins",
+        "bnb_b": 2,
+        "noise_multiplier": 10.0,
+        "bsr_bands": 2,
+        "pretrained": False,
+    }
+
+    cfg_mgr = ConfigurationManager(cli_params)
+    TrainerFactory.get_trainer(cfg_mgr)
+
+    kwargs = captured["kwargs"]
+    assert kwargs["bnb_distributed_dp_runtime"] is True
+    assert kwargs["bnb_distributed_mode"] == "chunk_shard"
 
 
 def _run_dp_bnb(
