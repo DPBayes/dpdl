@@ -117,6 +117,7 @@ def _validate_bnb_contracts(
     bnb_b: int | None,
     bnb_bands: int | None,
     bnb_num_samples: int | None,
+    bnb_chunk_size: int | None,
     bnb_seed: int | None,
     bnb_calibration_mode: str | None,
 ) -> None:
@@ -128,6 +129,9 @@ def _validate_bnb_contracts(
 
     if bnb_num_samples is not None and int(bnb_num_samples) < 1:
         raise ValueError('--bnb-num-samples must be >= 1.')
+
+    if bnb_chunk_size is not None and int(bnb_chunk_size) < 1:
+        raise ValueError('--bnb-chunk-size must be >= 1.')
 
     if bnb_seed is not None and int(bnb_seed) < 0:
         raise ValueError('--bnb-seed must be >= 0.')
@@ -220,6 +224,7 @@ def _validate_privacy_contracts(
     bnb_p: float | None,
     bnb_bands: int | None,
     bnb_num_samples: int | None,
+    bnb_chunk_size: int | None,
     bnb_seed: int | None,
     bnb_calibration_mode: str | None,
 ) -> None:
@@ -287,6 +292,7 @@ def _validate_privacy_contracts(
         bnb_b=bnb_b,
         bnb_bands=bnb_bands,
         bnb_num_samples=bnb_num_samples,
+        bnb_chunk_size=bnb_chunk_size,
         bnb_seed=bnb_seed,
         bnb_calibration_mode=bnb_calibration_mode,
     )
@@ -443,6 +449,7 @@ class Configuration(BaseModel):
     bnb_p: Optional[float] = None
     bnb_bands: Optional[int] = None
     bnb_num_samples: Optional[int] = None
+    bnb_chunk_size: Optional[int] = None
     bnb_seed: Optional[int] = None
     bnb_calibration_mode: Optional[Literal['evr', 'optimistic']] = None
     n_trials: int = 20
@@ -682,6 +689,7 @@ class Configuration(BaseModel):
             bnb_p=self.bnb_p,
             bnb_bands=self.bnb_bands,
             bnb_num_samples=self.bnb_num_samples,
+            bnb_chunk_size=self.bnb_chunk_size,
             bnb_seed=self.bnb_seed,
             bnb_calibration_mode=self.bnb_calibration_mode,
         )
@@ -761,6 +769,7 @@ class Configuration(BaseModel):
                 ('BNB b', self.bnb_b),
                 ('BNB p', self.bnb_p),
                 ('BNB MC samples', self.bnb_num_samples),
+                ('BNB chunk size', self.bnb_chunk_size),
                 ('BNB MC seed', self.bnb_seed),
                 ('BNB calibration mode', self.bnb_calibration_mode),
             ]
@@ -888,6 +897,7 @@ class ConfigurationManager:
             bnb_p=cfg.bnb_p,
             bnb_bands=self.hyperparams.bnb_bands,
             bnb_num_samples=cfg.bnb_num_samples,
+            bnb_chunk_size=cfg.bnb_chunk_size,
             bnb_seed=cfg.bnb_seed,
             bnb_calibration_mode=cfg.bnb_calibration_mode,
         )

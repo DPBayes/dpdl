@@ -208,10 +208,12 @@ def test_bnb_calibration_controls_are_accepted() -> None:
         bnb_b=4,
         bsr_bands=2,
         bnb_num_samples=12345,
+        bnb_chunk_size=1000,
         bnb_seed=7,
         bnb_calibration_mode='optimistic',
     )
     assert cfg.bnb_num_samples == 12345
+    assert cfg.bnb_chunk_size == 1000
     assert cfg.bnb_seed == 7
     assert cfg.bnb_calibration_mode == 'optimistic'
 

@@ -570,6 +570,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         bnb_p: float | None = None,
         bnb_bands: int | None = None,
         bnb_num_samples: int | None = None,
+        bnb_chunk_size: int | None = None,
         bnb_seed: int | None = None,
         bnb_calibration_mode: str | None = None,
         secure_mode: bool = False,
@@ -607,6 +608,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.bnb_p = bnb_p
         self.bnb_bands = bnb_bands
         self.bnb_num_samples = bnb_num_samples
+        self.bnb_chunk_size = bnb_chunk_size
         self.bnb_seed = bnb_seed
         self.bnb_calibration_mode = bnb_calibration_mode
 
@@ -1010,6 +1012,11 @@ class DifferentiallyPrivateTrainer(Trainer):
                         'bnb_num_samples': (
                             int(self.bnb_num_samples)
                             if self.bnb_num_samples is not None
+                            else None
+                        ),
+                        'bnb_chunk_size': (
+                            int(self.bnb_chunk_size)
+                            if self.bnb_chunk_size is not None
                             else None
                         ),
                         'bnb_seed': (
@@ -1735,6 +1742,7 @@ class TrainerFactory:
             bnb_p=configuration.bnb_p,
             bnb_bands=hyperparams.bnb_bands,
             bnb_num_samples=configuration.bnb_num_samples,
+            bnb_chunk_size=configuration.bnb_chunk_size,
             bnb_seed=configuration.bnb_seed,
             bnb_calibration_mode=configuration.bnb_calibration_mode,
             # config

@@ -606,6 +606,13 @@ def cli(
                 rich_help_panel='BNB options',
             )
         ] = None,
+        bnb_chunk_size: Annotated[
+            Optional[int],
+            typer.Option(
+                help='BNB Monte Carlo chunk size',
+                rich_help_panel='BNB options',
+            )
+        ] = None,
         bnb_seed: Annotated[
             Optional[int],
             typer.Option(
