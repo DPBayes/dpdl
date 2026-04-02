@@ -255,13 +255,18 @@ def log_final_epsilon(config_manager, trainer):
     if config_manager.hyperparams.target_epsilon == -1:
         return
 
+    final_epsilon = trainer.get_epsilon()
+    if torch.distributed.get_rank() != 0:
+        return final_epsilon
+
     log_dir = config_manager.configuration.log_dir
     experiment_name = config_manager.configuration.experiment_name
     full_log_dir = pathlib.Path(f'{log_dir}/{experiment_name}')
 
-    final_epsilon = trainer.get_epsilon()
     with safe_open(f'{full_log_dir}/final_epsilon', 'w') as fh:
         fh.write(f'{final_epsilon}\n')
+
+    return final_epsilon
 
 def _log_gpus(config_manager):
     log_dir = config_manager.configuration.log_dir

@@ -283,13 +283,17 @@ class HyperparameterOptimizer:
         # now all the ranks have access to the metrics
         loss, metrics = broadcast_objects
 
+        if not config_manager.configuration.disable_epsilon_logging:
+            # Correlated noise accounting can use Monte-Carlo methods, which are embarassingly
+            # parallel. To distribute this slow calculation is the only reason to resolve the
+            # final epsilon on all ranks.
+            log_final_epsilon(config_manager, trainer)
+
         if torch.distributed.get_rank() == 0:
             if metrics:
                 log.info('Final metrics:')
                 for key, value in metrics.items():
                     log.info(f' - {key}: {value}.')
-
-            log_final_epsilon(config_manager, trainer)
 
             # save model if requested
             if save_model := config_manager.configuration.save_model:

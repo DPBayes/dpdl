@@ -808,10 +808,11 @@ def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
         log_test_metrics(config_manager, test_metrics, test_loss)
         log_runtime(config_manager, start_time, end_time)
 
-        # We need to have an option to disable this, as it might fail due to an OOM
-        # error if using very small noise multipliers.
-        if not config_manager.configuration.disable_epsilon_logging:
-            log_final_epsilon(config_manager, trainer)
+    if not config_manager.configuration.disable_epsilon_logging:
+        # Correlated noise accounting can use Monte-Carlo methods, which are embarassingly
+        # parallel. To distribute this slow calculation is the only reason to resolve the
+        # final epsilon on all ranks.
+        log_final_epsilon(config_manager, trainer)
 
     saved_model_path = None
 
