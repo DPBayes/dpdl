@@ -169,6 +169,29 @@ def test_capture_dp_handoff_marks_bnb_chunk_shard_for_distributed_runtime(
     assert kwargs["bnb_distributed_mode"] == "chunk_shard"
 
 
+def test_capture_dp_handoff_allows_blt_in_distributed_runtime(
+    image_dataset_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pre_state, post_state, sampling_semantics, dataset_size = _capture_dp_handoff(
+        image_dataset_path,
+        monkeypatch,
+        noise_mechanism="blt",
+        use_explicit_coeffs=False,
+        total_steps=2,
+        bnb_b=2,
+        blt_buffers=4,
+        world_size=8,
+    )
+
+    assert sampling_semantics.sampling_mode == "balls_in_bins"
+    assert sampling_semantics.privacy_metadata["bins"] == 2
+    assert sampling_semantics.privacy_metadata["bands"] == 2
+    assert dataset_size > 0
+    assert pre_state["blt_buffers"] == 4
+    assert post_state["blt_buffers"] == 4
+
+
 def _run_dp_bnb(
     tmp_path: Path,
     image_dataset_path: Path,

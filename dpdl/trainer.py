@@ -1241,14 +1241,10 @@ class DifferentiallyPrivateTrainer(Trainer):
             if torch.distributed.is_available() and torch.distributed.is_initialized()
             else 1
         )
-        if self.noise_mechanism == 'blt':
-            if distributed_world_size > 1:
-                raise ValueError(
-                    'BLT runtime is not yet supported in DPDL distributed mode; use a single-process run.'
-                )
-            model = self.model
-        else:
+        if distributed_world_size > 1:
             model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
+        else:
+            model = self.model
 
         optimizer = self.optimizer
 
