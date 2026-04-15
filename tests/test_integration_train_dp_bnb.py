@@ -35,7 +35,7 @@ def _capture_dp_handoff(
     sampling_mode: str = "balls_in_bins",
     bnb_b: int | None = 2,
     bnb_p: float | None = None,
-    blt_rank: int | None = None,
+    blt_buffers: int | None = None,
     world_size: int = 1,
 ) -> tuple[dict, dict, object, int]:
     monkeypatch.setattr(torch.distributed, "get_rank", lambda: 0)
@@ -91,8 +91,8 @@ def _capture_dp_handoff(
     if noise_mechanism == "bifr":
         cli_params["bsr_bands"] = 2
         cli_params["bifr_frac"] = 0.25
-    if noise_mechanism == "blt" and blt_rank is not None:
-        cli_params["blt_rank"] = blt_rank
+    if noise_mechanism == "blt" and blt_buffers is not None:
+        cli_params["blt_buffers"] = blt_buffers
     if bnb_b is not None:
         cli_params["bnb_b"] = bnb_b
     if bnb_p is not None:
@@ -182,7 +182,7 @@ def _run_dp_bnb(
     model_name: str = 'vit_tiny_patch16_224.augreg_in21k',
     model_args: list[str] | None = None,
     use_explicit_coeffs: bool = True,
-    blt_rank: int | None = None,
+    blt_buffers: int | None = None,
 ) -> dict:
     repo_root = Path(__file__).resolve().parents[1]
     env = base_env()
@@ -240,8 +240,8 @@ def _run_dp_bnb(
     elif noise_mechanism == 'bifr':
         cmd_args.extend(['--bsr-bands', '2', '--bifr-frac', '0.25'])
     elif noise_mechanism == 'blt':
-        if blt_rank is not None:
-            cmd_args.extend(['--blt-rank', str(blt_rank)])
+        if blt_buffers is not None:
+            cmd_args.extend(['--blt-buffers', str(blt_buffers)])
     else:
         if noise_mechanism != 'gaussian':
             raise AssertionError(f'unsupported test noise_mechanism {noise_mechanism!r}')
@@ -290,9 +290,9 @@ def _run_dp_bnb(
     if noise_mechanism == 'bifr':
         expected_config['bsr_bands'] = 2
         expected_config['bifr_frac'] = 0.25
-    if noise_mechanism == 'blt' and blt_rank is not None:
-        expected_config['blt_rank'] = blt_rank
-        expected_hypers['blt_rank'] = blt_rank
+    if noise_mechanism == 'blt' and blt_buffers is not None:
+        expected_config['blt_buffers'] = blt_buffers
+        expected_hypers['blt_buffers'] = blt_buffers
 
     assert_config_and_hyperparams(
         tmp_path / experiment,
@@ -586,7 +586,7 @@ def test_blt_fixed_batch_dpdl_handoff_uses_workload_resolved_state(
             "accountant": "blt",
             "sampling_mode": "torch_sampler",
             "noise_multiplier": 10.0,
-            "blt_rank": 2,
+            "blt_buffers": 2,
             "pretrained": False,
         }
     )
@@ -597,7 +597,7 @@ def test_blt_fixed_batch_dpdl_handoff_uses_workload_resolved_state(
     assert kwargs["noise_mechanism_config"].mechanism == "blt"
     assert kwargs["noise_mechanism_config"].accounting_mode == "blt_accountant"
     assert kwargs["sampling_semantics"].sampling_mode == "torch_sampler"
-    assert state["blt_rank"] == 2
+    assert state["blt_buffers"] == 2
     assert state["blt_horizon"] == 7
     assert state["blt_selection_mode"] == "implicit_workload_default"
     assert state["noise_multiplier_ref"] == pytest.approx(10.0)
@@ -616,7 +616,7 @@ def test_blt_balls_in_bins_dpdl_handoff_stays_minimal_and_opacus_resolves(
         use_explicit_coeffs=False,
         total_steps=7,
         sampling_mode="balls_in_bins",
-        blt_rank=2,
+        blt_buffers=2,
     )
 
     for key in (
@@ -629,7 +629,7 @@ def test_blt_balls_in_bins_dpdl_handoff_stays_minimal_and_opacus_resolves(
 
     assert sampling_semantics is not None
     assert sampling_semantics.sampling_mode == "balls_in_bins"
-    assert pre_state["blt_rank"] == 2
+    assert pre_state["blt_buffers"] == 2
     assert pre_state["bnb_horizon"] == 7
     assert post_state["bnb_accountant_coeffs_source"] == "normalized_forward_c_col"
     assert post_state["bnb_c_matrix"] is not None
@@ -680,7 +680,7 @@ def test_blt_balls_in_bins_target_epsilon_forwards_bnb_controls(
             "bnb_b": 2,
             "bnb_num_samples": 123,
             "bnb_calibration_mode": "optimistic",
-            "blt_rank": 2,
+            "blt_buffers": 2,
             "pretrained": False,
         }
     )
@@ -692,7 +692,7 @@ def test_blt_balls_in_bins_target_epsilon_forwards_bnb_controls(
     assert kwargs["sampling_semantics"].sampling_mode == "balls_in_bins"
     assert kwargs["bnb_num_samples"] == 123
     assert kwargs["bnb_calibration_mode"] == "optimistic"
-    assert kwargs["blt_rank"] == 2
+    assert kwargs["blt_buffers"] == 2
 
 
 def test_bifr_balls_in_bins_target_epsilon_forwards_bnb_controls(
@@ -772,7 +772,7 @@ def test_integration_train_dp_blt_fixed_noise_path(
         sampling_mode='torch_sampler',
         noise_mechanism='blt',
         accountant='blt',
-        blt_rank=2,
+        blt_buffers=2,
     )
     assert 'loss' in metrics
 
@@ -790,7 +790,7 @@ def test_integration_train_dp_blt_balls_in_bins_fixed_noise_path(
         sampling_mode='balls_in_bins',
         noise_mechanism='blt',
         accountant='bnb',
-        blt_rank=2,
+        blt_buffers=2,
     )
     assert 'loss' in metrics
 

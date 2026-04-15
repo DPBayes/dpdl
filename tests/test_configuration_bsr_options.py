@@ -183,11 +183,11 @@ def test_fixed_batch_blt_valid_minimal() -> None:
         accountant='blt',
         poisson_sampling=False,
         sampling_mode='torch_sampler',
-        blt_rank=2,
+        blt_buffers=2,
     )
     assert cfg.noise_mechanism == 'blt'
     assert cfg.accountant == 'blt'
-    assert cfg.blt_rank == 2
+    assert cfg.blt_buffers == 2
 
 
 def test_amplified_blt_balls_in_bins_valid_minimal() -> None:
@@ -197,7 +197,7 @@ def test_amplified_blt_balls_in_bins_valid_minimal() -> None:
         accountant='bnb',
         poisson_sampling=False,
         sampling_mode='balls_in_bins',
-        blt_rank=2,
+        blt_buffers=2,
     )
     assert cfg.noise_mechanism == 'blt'
     assert cfg.accountant == 'bnb'

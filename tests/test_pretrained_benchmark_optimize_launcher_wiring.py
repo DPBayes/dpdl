@@ -1,15 +1,36 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
-from pretrained_benchmark_imports import iter_rows, CalibratedSigmaRow, build_report_payload
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DPDL_DIR = REPO_ROOT / "dpdl"
 LAUNCHER = REPO_ROOT / "scripts" / "OPTIMIZE-PRETRAINED-BENCHMARK-LR-ONLY.sh"
+_MODULE_PATH = REPO_ROOT / "local-scripts" / "pretrained_benchmark_sigma_calibration.py"
+_MANIFEST_PATH = REPO_ROOT / "local-scripts" / "pretrained_benchmark_manifest.py"
+_SPEC = importlib.util.spec_from_file_location(
+    "pretrained_benchmark_sigma_calibration", _MODULE_PATH
+)
+assert _SPEC is not None and _SPEC.loader is not None
+_MODULE = importlib.util.module_from_spec(_SPEC)
+sys.modules[_SPEC.name] = _MODULE
+_SPEC.loader.exec_module(_MODULE)
+_MANIFEST_SPEC = importlib.util.spec_from_file_location(
+    "pretrained_benchmark_manifest", _MANIFEST_PATH
+)
+assert _MANIFEST_SPEC is not None and _MANIFEST_SPEC.loader is not None
+_MANIFEST = importlib.util.module_from_spec(_MANIFEST_SPEC)
+sys.modules[_MANIFEST_SPEC.name] = _MANIFEST
+_MANIFEST_SPEC.loader.exec_module(_MANIFEST)
+
+iter_rows = _MANIFEST.iter_rows
+CalibratedSigmaRow = _MODULE.CalibratedSigmaRow
+build_report_payload = _MODULE.build_report_payload
 
 
 def _write_sigma_report(tmp_path: Path) -> Path:
@@ -42,7 +63,7 @@ def _write_sigma_report(tmp_path: Path) -> Path:
             "calibrated_for": row.calibrated_for,
             "method_policy": row.method_policy,
             "bifr_frac": row.bifr_frac,
-            "blt_rank": row.blt_rank,
+            "blt_buffers": row.blt_buffers,
             "blt_selection_mode": row.blt_selection_mode,
             "noise_multiplier": 1.2345,
             "bnb_num_samples": 100000,
@@ -212,9 +233,9 @@ def test_pretrained_optimize_launcher_reconstructs_bifr_and_blt_rows(tmp_path: P
         regimes="nonamplified",
         epsilons="1",
     )
-    assert "policy=workload_rank2_implicit_default_v1" in blt_stdout
+    assert "policy=workload_buffers2_implicit_default_v1" in blt_stdout
     assert "blt_selection_mode=implicit_workload_default" in blt_stdout
     assert "--noise-mechanism blt" in blt_stdout
     assert "--accountant blt" in blt_stdout
-    assert "--blt-rank 2" in blt_stdout
+    assert "--blt-buffers 2" in blt_stdout
     assert "--bsr-bands" not in blt_stdout

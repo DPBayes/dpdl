@@ -584,7 +584,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         bsr_mf_sensitivity: float | None = None,
         bsr_iterations_number: int | None = None,
         bifr_frac: float | None = None,
-        blt_rank: int | None = None,
+        blt_buffers: int | None = None,
         bnb_b: int | None = None,
         bnb_p: float | None = None,
         bnb_bands: int | None = None,
@@ -624,7 +624,7 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.bsr_mf_sensitivity = bsr_mf_sensitivity
         self.bsr_iterations_number = bsr_iterations_number
         self.bifr_frac = bifr_frac
-        self.blt_rank = blt_rank
+        self.blt_buffers = blt_buffers
         self.bnb_b = bnb_b
         self.bnb_p = bnb_p
         self.bnb_bands = bnb_bands
@@ -966,7 +966,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                     max_grad_norm=float(self.max_grad_norm),
                     loss_reduction=str(getattr(self.model.criterion, 'reduction', 'mean')),
                     sampling_semantics=sampling_semantics,
-                    rank=self.blt_rank,
+                    buffers=self.blt_buffers,
                     target_epsilon=float(self.target_epsilon) if has_target_privacy_params else None,
                     target_delta=float(self.target_delta) if has_target_privacy_params else None,
                     noise_multiplier_ref=(
@@ -1165,8 +1165,8 @@ class DifferentiallyPrivateTrainer(Trainer):
 
         if self.bifr_frac is not None:
             mechanism_kwargs['bifr_frac'] = float(self.bifr_frac)
-        if self.blt_rank is not None:
-            mechanism_kwargs['blt_rank'] = int(self.blt_rank)
+        if self.blt_buffers is not None:
+            mechanism_kwargs['blt_buffers'] = int(self.blt_buffers)
 
         if self.bsr_max_participations is not None:
             mechanism_kwargs['bsr_max_participations'] = int(self.bsr_max_participations)
@@ -1928,7 +1928,7 @@ class TrainerFactory:
             bsr_mf_sensitivity=configuration.bsr_mf_sensitivity,
             bsr_iterations_number=configuration.bsr_iterations_number,
             bifr_frac=configuration.bifr_frac,
-            blt_rank=hyperparams.blt_rank,
+            blt_buffers=hyperparams.blt_buffers,
             bnb_b=configuration.bnb_b,
             bnb_p=configuration.bnb_p,
             bnb_bands=hyperparams.bnb_bands,

@@ -136,7 +136,7 @@ def _validate_blt_contracts(
     accountant: str,
     poisson_sampling: bool,
     target_hypers: set[str],
-    blt_rank: int | None,
+    blt_buffers: int | None,
     bnb_b: int | None,
     bnb_p: float | None,
 ) -> None:
@@ -155,8 +155,8 @@ def _validate_blt_contracts(
             f'supported: {allowed_modes}.'
         )
 
-    if blt_rank is not None and int(blt_rank) < 1:
-        raise ValueError('--blt-rank must be >= 1.')
+    if blt_buffers is not None and int(blt_buffers) < 1:
+        raise ValueError('--blt-buffers must be >= 1.')
 
     if sampling_mode in (None, 'torch_sampler'):
         if accountant != 'blt':
@@ -179,9 +179,9 @@ def _validate_blt_contracts(
     if bnb_p is not None and not (0.0 < float(bnb_p) <= 1.0):
         raise ValueError('--bnb-p must satisfy 0 < p <= 1.')
 
-    if bnb_b is None and blt_rank is None and 'blt_rank' not in target_hypers:
+    if bnb_b is None and blt_buffers is None and 'blt_buffers' not in target_hypers:
         raise ValueError(
-            'BLT b_min_sep path requires --bnb-b or a workload-facing BLT control such as --blt-rank.'
+            'BLT b_min_sep path requires --bnb-b or a workload-facing BLT control such as --blt-buffers.'
         )
 
 
@@ -340,7 +340,7 @@ def _validate_privacy_contracts(
     bsr_mf_sensitivity: float | None,
     bsr_iterations_number: int | None,
     bifr_frac: float | None,
-    blt_rank: int | None,
+    blt_buffers: int | None,
     bnb_b: int | None,
     bnb_p: float | None,
     bnb_bands: int | None,
@@ -375,7 +375,7 @@ def _validate_privacy_contracts(
     if mechanism != 'bifr' and _is_explicitly_set(bifr_frac):
         raise ValueError('BIFR-specific parameters require --noise-mechanism bifr.')
 
-    if mechanism != 'blt' and _is_explicitly_set(blt_rank):
+    if mechanism != 'blt' and _is_explicitly_set(blt_buffers):
         raise ValueError('BLT-specific parameters require --noise-mechanism blt.')
 
     # `sampling_mode` carries runtime sampler semantics; `cyclic_poisson` is only valid for BandMF/BSR.
@@ -404,7 +404,7 @@ def _validate_privacy_contracts(
             accountant=accountant,
             poisson_sampling=poisson_sampling,
             target_hypers=target_hypers,
-            blt_rank=blt_rank,
+            blt_buffers=blt_buffers,
             bnb_b=bnb_b,
             bnb_p=bnb_p,
         )
@@ -468,7 +468,7 @@ class Hyperparameters(BaseModel):
     noise_batch_ratio: Optional[float]
     bsr_bands: Optional[int] = None
     bnb_bands: Optional[int] = None
-    blt_rank: Optional[int] = None
+    blt_buffers: Optional[int] = None
     privacy: bool = True # Only used in __str__
     max_length: Optional[int] = None
 
@@ -543,7 +543,7 @@ class Hyperparameters(BaseModel):
                 ('Noise-batch ratio', self.noise_batch_ratio),
                 ('BSR bands', self.bsr_bands),
                 ('BNB bands', self.bnb_bands),
-                ('BLT rank', self.blt_rank),
+                ('BLT buffers', self.blt_buffers),
             ]
             hypers.extend(privacy_hypers)
 
@@ -592,7 +592,7 @@ class Configuration(BaseModel):
     bnb_b: Optional[int] = None
     bnb_p: Optional[float] = None
     bnb_bands: Optional[int] = None
-    blt_rank: Optional[int] = None
+    blt_buffers: Optional[int] = None
     bnb_num_samples: Optional[int] = None
     bnb_chunk_size: Optional[int] = None
     bnb_seed: Optional[int] = None
@@ -628,7 +628,6 @@ class Configuration(BaseModel):
     save_model: Optional[bool] = False
     model_weights_path: Optional[str] = None
     record_clipping: Optional[bool] = False
-    record_mf_efficiency: Optional[bool] = False
     record_snr: Optional[bool] = False
     record_llm_samples: Optional[bool] = False
     record_gradient_norms: Optional[bool] = False
@@ -831,7 +830,7 @@ class Configuration(BaseModel):
             bsr_mf_sensitivity=self.bsr_mf_sensitivity,
             bsr_iterations_number=self.bsr_iterations_number,
             bifr_frac=self.bifr_frac,
-            blt_rank=self.blt_rank,
+            blt_buffers=self.blt_buffers,
             bnb_b=self.bnb_b,
             bnb_p=self.bnb_p,
             bnb_bands=self.bnb_bands,
@@ -881,7 +880,6 @@ class Configuration(BaseModel):
             ('Save final model', self.save_model),
             ('Path for saving/loding model weights', self.model_weights_path),
             ('Record clipping stats (MSE)', self.record_clipping),
-            ('Record MF efficiency metrics', self.record_mf_efficiency),
             ('Record signal-to-noise ratio', self.record_snr),
             ('Record LLM samples', self.record_llm_samples),
             ('Record gradient norms', self.record_gradient_norms),
@@ -910,7 +908,7 @@ class Configuration(BaseModel):
                 ('BSR coeffs', self.bsr_coeffs),
                 ('BSR z std', self.bsr_z_std),
                 ('BIFR frac', self.bifr_frac),
-                ('BLT rank', self.blt_rank),
+                ('BLT buffers', self.blt_buffers),
                 ('BSR max participations', self.bsr_max_participations),
                 ('BSR min separation', self.bsr_min_separation),
                 ('BSR MF sensitivity', self.bsr_mf_sensitivity),
@@ -962,7 +960,7 @@ class ConfigurationManager:
         if 'blt_lambda' in cli_params or 'lambda' in cli_params:
             raise ValueError(
                 'Diagnostic BLT lambda inputs are not supported in DPDL. '
-                'Use workload-driven BLT with --blt-rank instead.'
+                'Use workload-driven BLT with --blt-buffers instead.'
             )
 
         privacy = cli_params.get('privacy', True)
@@ -1048,7 +1046,7 @@ class ConfigurationManager:
             bsr_mf_sensitivity=cfg.bsr_mf_sensitivity,
             bsr_iterations_number=cfg.bsr_iterations_number,
             bifr_frac=cfg.bifr_frac,
-            blt_rank=self.hyperparams.blt_rank,
+            blt_buffers=self.hyperparams.blt_buffers,
             bnb_b=cfg.bnb_b,
             bnb_p=cfg.bnb_p,
             bnb_bands=self.hyperparams.bnb_bands,

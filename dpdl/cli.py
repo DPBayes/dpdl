@@ -424,13 +424,6 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
-        record_mf_efficiency: Annotated[
-            Optional[bool],
-            typer.Option(
-                help='Record MF efficiency metrics (normalized paper prefix MSE/RMSE plus legacy diagnostic)',
-                rich_help_panel='Logging options',
-            )
-        ] = False,
         record_snr: Annotated[
             Optional[bool],
             typer.Option(
@@ -578,10 +571,10 @@ def cli(
                 rich_help_panel='BSR options',
             )
         ] = None,
-        blt_rank: Annotated[
+        blt_buffers: Annotated[
             Optional[int],
             typer.Option(
-                help='BLT workload complexity control; Opacus resolves theta/theta_hat implicitly from workload inputs and this rank-style knob',
+                help='BLT workload complexity control; Opacus resolves theta/theta_hat implicitly from workload inputs and this buffer-count knob',
                 rich_help_panel='BSR options',
             )
         ] = None,
