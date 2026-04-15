@@ -4,9 +4,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
-
-from dpdl.pretrained_benchmark_manifest import iter_rows
-from dpdl.pretrained_benchmark_sigma_calibration import CalibratedSigmaRow, build_report_payload
+from pretrained_benchmark_imports import iter_rows, CalibratedSigmaRow, build_report_payload
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -42,6 +40,10 @@ def _write_sigma_report(tmp_path: Path) -> Path:
             "poisson_sampling": row.poisson_sampling,
             "explicit_coeffs": row.explicit_coeffs,
             "calibrated_for": row.calibrated_for,
+            "method_policy": row.method_policy,
+            "bifr_frac": row.bifr_frac,
+            "blt_rank": row.blt_rank,
+            "blt_selection_mode": row.blt_selection_mode,
             "noise_multiplier": 1.2345,
             "bnb_num_samples": 100000,
             "bnb_calibration_mode": "optimistic",
@@ -94,13 +96,13 @@ def test_pretrained_optimize_launcher_covers_expected_matrix_contract(tmp_path: 
     stdout = _run_launcher(
         tmp_path,
         datasets="uoft-cs/cifar100 dpdl-benchmark/sun397 dpdl-benchmark/cassava",
-        methods="dpsgd idb1 bsr bisr bandmf bandinvmf",
+        methods="dpsgd idb1 bsr bisr bandmf bandinvmf bifr blt",
         regimes="amplified nonamplified",
         epsilons="0.5 1 2 4 8",
     )
 
     assert "DATASETS=uoft-cs/cifar100 dpdl-benchmark/sun397 dpdl-benchmark/cassava" in stdout
-    assert "METHODS=dpsgd idb1 bsr bisr bandmf bandinvmf" in stdout
+    assert "METHODS=dpsgd idb1 bsr bisr bandmf bandinvmf bifr blt" in stdout
     assert "REGIMES=amplified nonamplified" in stdout
     assert "EPSILONS=0.5 1 2 4 8" in stdout
     assert "OPTIMIZER=paper-sgd" in stdout
@@ -110,6 +112,8 @@ def test_pretrained_optimize_launcher_covers_expected_matrix_contract(tmp_path: 
     assert "SIGMA_SOURCE=report_json" in stdout
     assert "SKIP_POLICY=runtime_file_or_squeue" in stdout
     assert "TRUE_DPSGD=gaussian+prv+poisson+target_epsilon" in stdout
+    assert "BIFR_POLICY=explicit_single_slice_only_no_auto_frac_search" in stdout
+    assert "BLT_POLICY=workload_driven_rank_selection" in stdout
 
 
 def test_pretrained_optimize_launcher_uses_dataset_specific_metadata_and_fixed_sigma(tmp_path: Path) -> None:
@@ -152,7 +156,7 @@ def test_pretrained_optimize_launcher_handles_nonamplified_identity_control_and_
     assert "--accountant bsr" in stdout
     assert "--sampling-mode torch_sampler" in stdout
     assert "--bsr-bands 1" in stdout
-    assert "--bsr-coeffs 1.0" in stdout
+    assert "--bsr-coeffs 1" in stdout
 
 
 def test_pretrained_optimize_launcher_emits_true_dpsgd_poisson_prv_row(tmp_path: Path) -> None:
@@ -185,3 +189,32 @@ def test_pretrained_optimize_launcher_uses_new_lr_range_config(tmp_path: Path) -
 
     assert "--optuna-config conf/optuna_hypers_pretrained_benchmark_lr_only.conf" in stdout
     assert "--n-trials 3" in stdout
+
+
+def test_pretrained_optimize_launcher_reconstructs_bifr_and_blt_rows(tmp_path: Path) -> None:
+    bifr_stdout = _run_launcher(
+        tmp_path,
+        datasets="uoft-cs/cifar100",
+        methods="bifr",
+        regimes="amplified",
+        epsilons="1",
+    )
+    assert "policy=explicit_single_slice_canonical_frac_0p25_v1" in bifr_stdout
+    assert "--noise-mechanism bifr" in bifr_stdout
+    assert "--accountant bnb" in bifr_stdout
+    assert "--bifr-frac 0.25" in bifr_stdout
+    assert "--sampling-mode balls_in_bins" in bifr_stdout
+
+    blt_stdout = _run_launcher(
+        tmp_path,
+        datasets="uoft-cs/cifar100",
+        methods="blt",
+        regimes="nonamplified",
+        epsilons="1",
+    )
+    assert "policy=workload_rank2_implicit_default_v1" in blt_stdout
+    assert "blt_selection_mode=implicit_workload_default" in blt_stdout
+    assert "--noise-mechanism blt" in blt_stdout
+    assert "--accountant blt" in blt_stdout
+    assert "--blt-rank 2" in blt_stdout
+    assert "--bsr-bands" not in blt_stdout

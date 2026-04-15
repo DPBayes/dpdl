@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
-
-from dpdl.pretrained_benchmark_manifest import filter_rows, iter_rows
-from dpdl.pretrained_benchmark_sigma_calibration import (
+from pretrained_benchmark_imports import (
+    filter_rows,
+    iter_rows,
     CalibratedSigmaRow,
     build_report_payload,
     load_report,
@@ -14,14 +14,14 @@ from dpdl.pretrained_benchmark_sigma_calibration import (
 def test_pretrained_benchmark_manifest_covers_expected_matrix_and_contract() -> None:
     rows = list(iter_rows())
 
-    assert len(rows) == 3 * 2 * 5 * 5
+    assert len(rows) == 3 * 2 * 7 * 5
     assert {row.dataset_name for row in rows} == {
         "uoft-cs/cifar100",
         "dpdl-benchmark/sun397",
         "dpdl-benchmark/cassava",
     }
     assert {row.regime for row in rows} == {"amplified", "nonamplified"}
-    assert {row.method for row in rows} == {"idb1", "bsr", "bisr", "bandmf", "bandinvmf"}
+    assert {row.method for row in rows} == {"idb1", "bsr", "bisr", "bandmf", "bandinvmf", "bifr", "blt"}
     assert {row.epsilon for row in rows} == {0.5, 1.0, 2.0, 4.0, 8.0}
 
     cifar_rows = filter_rows(dataset_name="uoft-cs/cifar100")
@@ -48,6 +48,15 @@ def test_pretrained_benchmark_manifest_covers_expected_matrix_and_contract() -> 
     assert {row.delta for row in rows} == {1e-5}
     assert {row.pretrained for row in rows} == {True}
     assert {row.calibrated_for for row in rows} == {"final_evaluation_round"}
+
+    bifr_rows = filter_rows(method="bifr")
+    assert {row.bifr_frac for row in bifr_rows} == {0.25}
+    assert {row.method_policy for row in bifr_rows} == {"explicit_single_slice_canonical_frac_0p25_v1"}
+
+    blt_rows = filter_rows(method="blt")
+    assert {row.blt_rank for row in blt_rows} == {2}
+    assert {row.blt_selection_mode for row in blt_rows} == {"implicit_workload_default"}
+    assert {row.method_policy for row in blt_rows} == {"workload_rank2_implicit_default_v1"}
 
 
 def test_pretrained_benchmark_calibration_report_shape_preserves_row_metadata() -> None:
@@ -76,6 +85,10 @@ def test_pretrained_benchmark_calibration_report_shape_preserves_row_metadata() 
         poisson_sampling=False,
         explicit_coeffs=None,
         calibrated_for="final_evaluation_round",
+        method_policy="explicit_single_slice_canonical_frac_0p25_v1",
+        bifr_frac=0.25,
+        blt_rank=None,
+        blt_selection_mode=None,
         noise_multiplier=4.2,
         bnb_num_samples=100000,
         bnb_calibration_mode="optimistic",
@@ -95,6 +108,8 @@ def test_pretrained_benchmark_calibration_report_shape_preserves_row_metadata() 
     assert out_row["delta"] == 1e-5
     assert out_row["noise_multiplier"] == 4.2
     assert out_row["calibrated_for"] == "final_evaluation_round"
+    assert out_row["method_policy"] == "explicit_single_slice_canonical_frac_0p25_v1"
+    assert out_row["bifr_frac"] == 0.25
 
 
 def test_pretrained_benchmark_save_report_round_trips_rows(tmp_path) -> None:
@@ -123,6 +138,10 @@ def test_pretrained_benchmark_save_report_round_trips_rows(tmp_path) -> None:
         poisson_sampling=False,
         explicit_coeffs=None,
         calibrated_for="final_evaluation_round",
+        method_policy="workload_rank2_implicit_default_v1",
+        bifr_frac=None,
+        blt_rank=2,
+        blt_selection_mode="implicit_workload_default",
         noise_multiplier=4.2,
         bnb_num_samples=100000,
         bnb_calibration_mode="optimistic",
@@ -134,3 +153,5 @@ def test_pretrained_benchmark_save_report_round_trips_rows(tmp_path) -> None:
     assert json.loads(out.read_text()) == payload
     assert reloaded["rows"][0]["row_id"] == row.row_id
     assert reloaded["rows"][0]["noise_multiplier"] == row.noise_multiplier
+    assert reloaded["rows"][0]["blt_rank"] == 2
+    assert reloaded["rows"][0]["blt_selection_mode"] == "implicit_workload_default"

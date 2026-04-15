@@ -145,6 +145,37 @@ def test_fixed_batch_bifr_valid_minimal() -> None:
     assert cfg.bifr_frac == pytest.approx(0.25)
 
 
+def test_amplified_bifr_balls_in_bins_valid_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bifr',
+        accountant='bnb',
+        poisson_sampling=False,
+        sampling_mode='balls_in_bins',
+        bsr_bands=4,
+        bifr_frac=0.25,
+    )
+    assert cfg.noise_mechanism == 'bifr'
+    assert cfg.accountant == 'bnb'
+    assert cfg.sampling_mode == 'balls_in_bins'
+    assert cfg.bifr_frac == pytest.approx(0.25)
+
+
+def test_amplified_bifr_b_min_sep_valid_minimal() -> None:
+    cfg = Configuration(
+        command='train',
+        noise_mechanism='bifr',
+        accountant='bnb',
+        poisson_sampling=False,
+        sampling_mode='b_min_sep',
+        bsr_bands=4,
+        bifr_frac=0.25,
+    )
+    assert cfg.noise_mechanism == 'bifr'
+    assert cfg.accountant == 'bnb'
+    assert cfg.sampling_mode == 'b_min_sep'
+
+
 def test_fixed_batch_blt_valid_minimal() -> None:
     cfg = Configuration(
         command='train',
@@ -228,12 +259,12 @@ def test_bisr_rejects_unsupported_sampling_mode() -> None:
         )
 
 
-def test_bifr_rejects_wrong_accountant() -> None:
-    with pytest.raises(ValidationError, match='BIFR mechanism requires --accountant in \\{bsr\\}'):
+def test_bifr_rejects_wrong_accountant_for_fixed_batch() -> None:
+    with pytest.raises(ValidationError, match='BIFR mechanism requires --accountant in \\{bnb, bsr\\}'):
         Configuration(
             command='train',
             noise_mechanism='bifr',
-            accountant='bnb',
+            accountant='prv',
             poisson_sampling=False,
             sampling_mode='torch_sampler',
             bsr_bands=4,

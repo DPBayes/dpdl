@@ -51,8 +51,8 @@ _FAMILY_CONTRACTS = {
         'requires_non_poisson': True,
     },
     'bifr': {
-        'accountants': {'bsr'},
-        'sampling_modes': {None, 'torch_sampler'},
+        'accountants': {'bsr', 'bnb'},
+        'sampling_modes': {None, 'torch_sampler', 'balls_in_bins', 'b_min_sep'},
         'requires_non_poisson': True,
     },
 }
@@ -202,9 +202,9 @@ def _validate_bnb_contracts(
     bnb_calibration_mode: str | None,
 ) -> None:
     if sampling_mode == 'b_min_sep':
-        if mechanism not in ('gaussian', 'bandmf', 'bsr', 'bisr', 'bandinvmf', 'blt'):
+        if mechanism not in ('gaussian', 'bandmf', 'bsr', 'bisr', 'bandinvmf', 'bifr', 'blt'):
             raise ValueError(
-                'b_min_sep sampling requires --noise-mechanism gaussian, bandmf, bsr, bisr, bandinvmf, or blt.'
+                'b_min_sep sampling requires --noise-mechanism gaussian, bandmf, bsr, bisr, bandinvmf, bifr, or blt.'
             )
 
         if accountant != 'bnb':
@@ -275,7 +275,7 @@ def _validate_balls_in_bins_mf_contracts(
     bnb_bands: int | None,
     bsr_bands: int | None,
 ) -> None:
-    if sampling_mode != 'balls_in_bins' or mechanism not in ('bandmf', 'bsr', 'bisr', 'bandinvmf', 'blt'):
+    if sampling_mode != 'balls_in_bins' or mechanism not in ('bandmf', 'bsr', 'bisr', 'bandinvmf', 'bifr', 'blt'):
         return
 
     if accountant != 'bnb':
@@ -417,9 +417,9 @@ def _validate_privacy_contracts(
             bnb_bands,
         ]
     )
-    if mechanism not in ('gaussian', 'bandmf', 'bsr', 'bisr', 'bandinvmf', 'blt') and has_any_bnb_field:
+    if mechanism not in ('gaussian', 'bandmf', 'bsr', 'bisr', 'bandinvmf', 'bifr', 'blt') and has_any_bnb_field:
         raise ValueError(
-            'BNB-specific parameters require --noise-mechanism gaussian, bandmf, bsr, bisr, bandinvmf, or blt.'
+            'BNB-specific parameters require --noise-mechanism gaussian, bandmf, bsr, bisr, bandinvmf, bifr, or blt.'
         )
 
     _validate_bnb_contracts(

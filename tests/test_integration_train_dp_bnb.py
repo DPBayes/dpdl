@@ -88,6 +88,9 @@ def _capture_dp_handoff(
     }
     if noise_mechanism in ("bsr", "bisr"):
         cli_params["bsr_bands"] = 2
+    if noise_mechanism == "bifr":
+        cli_params["bsr_bands"] = 2
+        cli_params["bifr_frac"] = 0.25
     if noise_mechanism == "blt" and blt_rank is not None:
         cli_params["blt_rank"] = blt_rank
     if bnb_b is not None:
@@ -234,6 +237,8 @@ def _run_dp_bnb(
         cmd_args.extend(['--bsr-bands', '2'])
         if use_explicit_coeffs:
             cmd_args.extend(['--bsr-coeffs', '1.0', '--bsr-coeffs', '-0.5'])
+    elif noise_mechanism == 'bifr':
+        cmd_args.extend(['--bsr-bands', '2', '--bifr-frac', '0.25'])
     elif noise_mechanism == 'blt':
         if blt_rank is not None:
             cmd_args.extend(['--blt-rank', str(blt_rank)])
@@ -282,6 +287,9 @@ def _run_dp_bnb(
         expected_config['bnb_b'] = 2
     if noise_mechanism in ('bsr', 'bisr'):
         expected_config['bsr_bands'] = 2
+    if noise_mechanism == 'bifr':
+        expected_config['bsr_bands'] = 2
+        expected_config['bifr_frac'] = 0.25
     if noise_mechanism == 'blt' and blt_rank is not None:
         expected_config['blt_rank'] = blt_rank
         expected_hypers['blt_rank'] = blt_rank
@@ -477,6 +485,34 @@ def test_bisr_balls_in_bins_dpdl_handoff_stays_minimal_and_opacus_resolves(
     assert post_state["bnb_horizon"] == 7
 
 
+def test_bifr_balls_in_bins_dpdl_handoff_stays_minimal_and_opacus_resolves(
+    image_dataset_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pre_state, post_state, _sampling_semantics, _dataset_size = _capture_dp_handoff(
+        image_dataset_path,
+        monkeypatch,
+        noise_mechanism="bifr",
+        use_explicit_coeffs=False,
+        total_steps=7,
+    )
+
+    for key in (
+        "bnb_accountant_coeffs",
+        "bnb_accountant_coeffs_source",
+        "bnb_c_matrix",
+        "bnb_c_matrix_contract",
+    ):
+        assert key not in pre_state
+
+    assert pre_state["bnb_horizon"] == 7
+    assert pre_state["bifr_frac"] == pytest.approx(0.25)
+    assert post_state["bnb_accountant_coeffs_source"] == "abs_exact_factor_c_col"
+    assert post_state["bnb_c_matrix"] is not None
+    assert post_state["bnb_c_matrix_contract"] is not None
+    assert post_state["bnb_horizon"] == 7
+
+
 def test_bsr_b_min_sep_dpdl_handoff_defaults_probability_and_opacus_resolves(
     image_dataset_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -659,6 +695,70 @@ def test_blt_balls_in_bins_target_epsilon_forwards_bnb_controls(
     assert kwargs["blt_rank"] == 2
 
 
+def test_bifr_balls_in_bins_target_epsilon_forwards_bnb_controls(
+    image_dataset_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(torch.distributed, "get_rank", lambda: 0)
+    monkeypatch.setattr(torch.distributed, "get_world_size", lambda: 1)
+    monkeypatch.setattr(torch.distributed, "is_initialized", lambda: True)
+    monkeypatch.setattr(torch.distributed, "barrier", lambda: None)
+    monkeypatch.setattr(
+        trainer_mod.opacus.distributed,
+        "DifferentiallyPrivateDistributedDataParallel",
+        lambda model: model,
+    )
+
+    captured: dict[str, dict] = {}
+
+    def fake_make_private_with_epsilon(self, *args, **kwargs):
+        captured["kwargs"] = copy.deepcopy(kwargs)
+        return kwargs["module"], kwargs["optimizer"], kwargs["data_loader"]
+
+    monkeypatch.setattr(opacus.PrivacyEngine, "make_private_with_epsilon", fake_make_private_with_epsilon)
+
+    cfg_mgr = ConfigurationManager(
+        {
+            "command": "train",
+            "device": "cpu",
+            "dataset_name": "local-image",
+            "dataset_path": str(image_dataset_path),
+            "model_name": "vit_tiny_patch16_224.augreg_in21k",
+            "privacy": True,
+            "use_steps": True,
+            "total_steps": 7,
+            "batch_size": 4,
+            "physical_batch_size": 4,
+            "num_workers": 0,
+            "seed": 42,
+            "split_seed": 42,
+            "max_grad_norm": 1.0,
+            "poisson_sampling": False,
+            "target_epsilon": 8.0,
+            "noise_multiplier": None,
+            "noise_batch_ratio": None,
+            "noise_mechanism": "bifr",
+            "accountant": "bnb",
+            "sampling_mode": "balls_in_bins",
+            "bnb_b": 2,
+            "bnb_num_samples": 123,
+            "bnb_calibration_mode": "optimistic",
+            "bsr_bands": 2,
+            "bifr_frac": 0.25,
+            "pretrained": False,
+        }
+    )
+    TrainerFactory.get_trainer(cfg_mgr)
+
+    kwargs = captured["kwargs"]
+    assert kwargs["noise_mechanism_config"].mechanism == "bifr"
+    assert kwargs["noise_mechanism_config"].accounting_mode == "bnb_accountant"
+    assert kwargs["sampling_semantics"].sampling_mode == "balls_in_bins"
+    assert kwargs["bnb_num_samples"] == 123
+    assert kwargs["bnb_calibration_mode"] == "optimistic"
+    assert kwargs["bifr_frac"] == pytest.approx(0.25)
+
+
 @pytest.mark.integration
 def test_integration_train_dp_blt_fixed_noise_path(
     tmp_path: Path, image_dataset_path: Path
@@ -691,6 +791,23 @@ def test_integration_train_dp_blt_balls_in_bins_fixed_noise_path(
         noise_mechanism='blt',
         accountant='bnb',
         blt_rank=2,
+    )
+    assert 'loss' in metrics
+
+
+@pytest.mark.integration
+def test_integration_train_dp_bifr_balls_in_bins_fixed_noise_path(
+    tmp_path: Path, image_dataset_path: Path
+) -> None:
+    metrics = _run_dp_bnb(
+        tmp_path,
+        image_dataset_path,
+        experiment='train-dp-bifr-balls-in-bins-fixed-noise',
+        use_target_epsilon=False,
+        total_steps=2,
+        sampling_mode='balls_in_bins',
+        noise_mechanism='bifr',
+        accountant='bnb',
     )
     assert 'loss' in metrics
 

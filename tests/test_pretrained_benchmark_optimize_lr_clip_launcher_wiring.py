@@ -4,9 +4,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
-
-from dpdl.pretrained_benchmark_manifest import iter_rows
-from dpdl.pretrained_benchmark_sigma_calibration import CalibratedSigmaRow, build_report_payload
+from pretrained_benchmark_imports import iter_rows, CalibratedSigmaRow, build_report_payload
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -42,6 +40,10 @@ def _write_sigma_report(tmp_path: Path) -> Path:
             "poisson_sampling": row.poisson_sampling,
             "explicit_coeffs": row.explicit_coeffs,
             "calibrated_for": row.calibrated_for,
+            "method_policy": row.method_policy,
+            "bifr_frac": row.bifr_frac,
+            "blt_rank": row.blt_rank,
+            "blt_selection_mode": row.blt_selection_mode,
             "noise_multiplier": 1.2345,
             "bnb_num_samples": 100000,
             "bnb_calibration_mode": "optimistic",
@@ -145,12 +147,44 @@ def test_pretrained_optimize_lr_clip_launcher_defaults_cover_full_method_set(tmp
     stdout = _run_launcher(
         sigma_report=sigma_report,
         datasets="uoft-cs/cifar100",
-        methods="dpsgd idb1 bsr bisr bandmf bandinvmf",
+        methods="dpsgd idb1 bsr bisr bandmf bandinvmf bifr blt",
         regimes="amplified nonamplified",
         epsilons="8",
     )
 
-    assert "METHODS=dpsgd idb1 bsr bisr bandmf bandinvmf" in stdout
+    assert "METHODS=dpsgd idb1 bsr bisr bandmf bandinvmf bifr blt" in stdout
     assert "REGIMES=amplified nonamplified" in stdout
     assert "N_TRIALS=3" in stdout
     assert "OPTUNA_CONFIG=conf/optuna_hypers_pretrained_benchmark_lr_clip.conf" in stdout
+    assert "BIFR_POLICY=explicit_single_slice_only_no_auto_frac_search" in stdout
+    assert "BLT_POLICY=workload_driven_rank_selection" in stdout
+
+
+def test_pretrained_optimize_lr_clip_launcher_reconstructs_bifr_and_blt_rows(tmp_path: Path) -> None:
+    sigma_report = _write_sigma_report(tmp_path)
+
+    bifr_stdout = _run_launcher(
+        sigma_report=sigma_report,
+        datasets="uoft-cs/cifar100",
+        methods="bifr",
+        regimes="nonamplified",
+        epsilons="1",
+    )
+    assert "policy=explicit_single_slice_canonical_frac_0p25_v1" in bifr_stdout
+    assert "--noise-mechanism bifr" in bifr_stdout
+    assert "--accountant bsr" in bifr_stdout
+    assert "--bifr-frac 0.25" in bifr_stdout
+
+    blt_stdout = _run_launcher(
+        sigma_report=sigma_report,
+        datasets="uoft-cs/cifar100",
+        methods="blt",
+        regimes="amplified",
+        epsilons="1",
+    )
+    assert "policy=workload_rank2_implicit_default_v1" in blt_stdout
+    assert "blt_selection_mode=implicit_workload_default" in blt_stdout
+    assert "--noise-mechanism blt" in blt_stdout
+    assert "--accountant bnb" in blt_stdout
+    assert "--blt-rank 2" in blt_stdout
+    assert "--bsr-bands" not in blt_stdout
