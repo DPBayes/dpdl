@@ -72,6 +72,7 @@ def test_launcher_emits_standard_opacus_dpsgd_row() -> None:
     assert "--target-epsilon 0.25" in stdout
     assert "--noise-mechanism gaussian" in stdout
     assert "--accountant prv" in stdout
+    assert "--poisson-sampling" in stdout
     assert "--sampling-mode" not in stdout
     assert "--no-poisson-sampling" not in stdout
     assert "--bnb-num-samples" not in stdout

@@ -1916,13 +1916,6 @@ class TrainerFactory:
         adapter = TrainerFactory._make_adapter(configuration, device)
 
         reference_train_split_size = None
-        if (
-            configuration.command == 'optimize'
-            and configuration.accountant == 'bnb'
-            and configuration.sampling_mode == 'balls_in_bins'
-            and configuration.noise_mechanism in ('bandmf', 'bsr', 'bisr', 'bandinvmf', 'bifr', 'blt')
-        ):
-            reference_train_split_size = datamodule.get_source_train_split_size()
 
         # instantiate a differentially private trainer
         trainer = DifferentiallyPrivateTrainer(

@@ -207,7 +207,7 @@ def test_capture_dp_handoff_allows_blt_in_distributed_runtime(
     assert post_state["blt_buffers"] == 4
 
 
-def test_optimize_balls_in_bins_mf_uses_full_train_split_as_workload_reference(
+def test_optimize_balls_in_bins_mf_uses_live_optimize_split_as_workload_reference(
     image_dataset_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -229,9 +229,9 @@ def test_optimize_balls_in_bins_mf_uses_full_train_split_as_workload_reference(
 
     assert dataset_size == 18
     assert sampling_semantics.sampling_mode == "balls_in_bins"
-    assert sampling_semantics.privacy_metadata["bins"] == 7
-    assert pre_state["bnb_bins"] == 7
-    assert post_state["bnb_bins"] == 7
+    assert sampling_semantics.privacy_metadata["bins"] == 6
+    assert pre_state["bnb_bins"] == 6
+    assert post_state["bnb_bins"] == 6
 
 
 def _run_dp_bnb(
