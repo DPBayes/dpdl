@@ -1,4 +1,5 @@
 import logging
+import math
 import pathlib
 import json
 import torch
@@ -325,6 +326,27 @@ def _validate_balls_in_bins_gaussian_contract(
         raise ValueError('Gaussian balls_in_bins path only supports --bnb-bands 1.')
 
 
+def _resolve_fourier_retain_count(
+    *,
+    block_size: int,
+    retain_frac: float | None,
+    retain_count: int | None,
+) -> int:
+    if (retain_frac is None) == (retain_count is None):
+        raise ValueError('Fourier clipping requires exactly one of --fourier-retain-frac or --fourier-retain-count.')
+
+    if retain_frac is not None:
+        retain_frac = float(retain_frac)
+        if not math.isfinite(retain_frac) or retain_frac <= 0.0 or retain_frac > 1.0:
+            raise ValueError('--fourier-retain-frac must satisfy 0 < frac <= 1.')
+        return max(1, min(int(block_size), int(math.ceil(float(block_size) * retain_frac))))
+
+    retain_count = int(retain_count)
+    if retain_count < 1 or retain_count > int(block_size):
+        raise ValueError('--fourier-retain-count must satisfy 1 <= count <= --fourier-block-size.')
+    return retain_count
+
+
 def _validate_privacy_contracts(
     *,
     mechanism: str,
@@ -579,8 +601,20 @@ class Configuration(BaseModel):
     accountant: str = 'prv'
     poisson_sampling: bool = True
     normalize_clipping: bool = False
-    noise_mechanism: Literal['gaussian', 'bandmf', 'bsr', 'bisr', 'bandinvmf', 'bifr', 'blt'] = 'gaussian'
+    noise_mechanism: str = 'gaussian'
     sampling_mode: Optional[Literal['torch_sampler', 'cyclic_poisson', 'b_min_sep', 'balls_in_bins']] = None
+    fourier_layout: Optional[Literal['layer_matrix_columns', 'parameter_blockwise']] = None
+    fourier_transform: Optional[Literal['dct']] = None
+    fourier_mode: Optional[Literal['fixed_lowpass', 'adaptive_topk_leaky']] = None
+    fourier_block_size: Optional[int] = None
+    fourier_retain_frac: Optional[float] = None
+    fourier_retain_count: Optional[int] = None
+    allow_unaccounted_fourier_selection: bool = False
+    fourier_resolved_retain_count: Optional[int] = None
+    privacy_claim_valid: Optional[bool] = None
+    reported_epsilon_is_nominal: Optional[bool] = None
+    reported_epsilon_excludes_selection: Optional[bool] = None
+    reported_epsilon_excludes_sampling: Optional[bool] = None
     bsr_coeffs: Optional[List[float]] = None
     bsr_bands: Optional[int] = None
     bsr_z_std: Optional[float] = None
@@ -771,6 +805,59 @@ class Configuration(BaseModel):
         return values
 
     @model_validator(mode="after")
+    def check_fourier_parameters(self):
+        if self.noise_mechanism == 'fourier':
+            raise ValueError(
+                'noise_mechanism=fourier is obsolete; use --clipping-mode fourier '
+                'with a base --noise-mechanism such as gaussian, bsr, or blt.'
+            )
+
+        if self.noise_mechanism not in ('gaussian', 'bandmf', 'bsr', 'bisr', 'bandinvmf', 'bifr', 'blt'):
+            raise ValueError(
+                'noise_mechanism must be one of gaussian, bandmf, bsr, bisr, bandinvmf, bifr, or blt.'
+            )
+
+        if self.clipping_mode not in ('flat', 'per_layer', 'adaptive', 'auto', 'fourier'):
+            raise ValueError('clipping_mode must be one of flat, per_layer, adaptive, auto, or fourier.')
+
+        if self.clipping_mode != 'fourier':
+            return self
+
+        self.fourier_layout = self.fourier_layout or 'layer_matrix_columns'
+        self.fourier_transform = self.fourier_transform or 'dct'
+        self.fourier_mode = self.fourier_mode or 'fixed_lowpass'
+        self.fourier_block_size = 1024 if self.fourier_block_size is None else int(self.fourier_block_size)
+
+        if int(self.fourier_block_size) < 1:
+            raise ValueError('--fourier-block-size must be >= 1.')
+
+        self.fourier_resolved_retain_count = _resolve_fourier_retain_count(
+            block_size=int(self.fourier_block_size),
+            retain_frac=self.fourier_retain_frac,
+            retain_count=self.fourier_retain_count,
+        )
+
+        if (
+            self.fourier_mode == 'adaptive_topk_leaky'
+            and not self.allow_unaccounted_fourier_selection
+        ):
+            raise ValueError(
+                'Fourier adaptive_topk_leaky mode leaks private selection information; '
+                'pass --allow-unaccounted-fourier-selection True to run it as a nonclaiming diagnostic.'
+            )
+
+        self.privacy_claim_valid = False
+        self.reported_epsilon_is_nominal = True
+        self.reported_epsilon_excludes_selection = bool(
+            self.fourier_mode == 'adaptive_topk_leaky'
+        )
+        self.reported_epsilon_excludes_sampling = bool(
+            self.sampling_mode not in (None, 'poisson') or not self.poisson_sampling
+        )
+
+        return self
+
+    @model_validator(mode="after")
     def check_accountant_mechanism_compatibility(self):
         """
         Validate high-level accountant/mechanism compatibility.
@@ -905,6 +992,17 @@ class Configuration(BaseModel):
                 ('Normalize clipping', self.normalize_clipping),
                 ('Noise mechanism', self.noise_mechanism),
                 ('Sampling mode', self.sampling_mode),
+                ('Fourier layout', self.fourier_layout),
+                ('Fourier transform', self.fourier_transform),
+                ('Fourier mode', self.fourier_mode),
+                ('Fourier block size', self.fourier_block_size),
+                ('Fourier retain frac', self.fourier_retain_frac),
+                ('Fourier retain count', self.fourier_retain_count),
+                ('Fourier resolved retain count', self.fourier_resolved_retain_count),
+                ('Privacy claim valid', self.privacy_claim_valid),
+                ('Reported epsilon is nominal', self.reported_epsilon_is_nominal),
+                ('Reported epsilon excludes selection', self.reported_epsilon_excludes_selection),
+                ('Reported epsilon excludes sampling', self.reported_epsilon_excludes_sampling),
                 ('BSR coeffs', self.bsr_coeffs),
                 ('BSR z std', self.bsr_z_std),
                 ('BIFR frac', self.bifr_frac),

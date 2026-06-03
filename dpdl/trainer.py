@@ -32,6 +32,7 @@ from opacus.accountants.analysis.bnb import (
 from opacus.accountants.analysis.bsr import calibrate_bsr_z_std
 from opacus.distributed import DifferentiallyPrivateDistributedDataParallel
 from opacus.mechanism_contracts import (
+    FourierClippingConfig,
     NoiseMechanismConfig,
     SamplingSemantics,
     resolve_accounting_mode_from_accountant,
@@ -499,6 +500,47 @@ class DifferentiallyPrivateTrainer(Trainer):
         log.info('BSR_TRACE %s', json.dumps(payload, sort_keys=True))
 
     @staticmethod
+    def _log_fourier_trace(
+        *,
+        stage: str,
+        sampling_semantics: SamplingSemantics | None,
+        base_noise_mechanism: str,
+        clipping_mode: str,
+        fourier_clipping_config: FourierClippingConfig | None,
+        fourier_resolved_retain_count: int | None,
+        noise_mechanism_config: NoiseMechanismConfig | None,
+    ) -> None:
+        if fourier_clipping_config is None:
+            return
+
+        state = fourier_clipping_config.state_dict()
+        payload = {
+            'stage': stage,
+            'noise_mechanism': base_noise_mechanism,
+            'clipping_mode': clipping_mode,
+            'accounting_mode': (
+                noise_mechanism_config.accounting_mode
+                if noise_mechanism_config is not None
+                else None
+            ),
+            'sampling_mode': sampling_semantics.sampling_mode if sampling_semantics is not None else None,
+            'sampling_metadata': dict(sampling_semantics.privacy_metadata) if sampling_semantics is not None else {},
+            'fourier': {
+                'layout': state.get('layout'),
+                'transform': state.get('transform'),
+                'mode': state.get('mode'),
+                'block_size': state.get('block_size'),
+                'retain_frac': state.get('retain_frac'),
+                'retain_count': state.get('retain_count'),
+                'resolved_retain_count': fourier_resolved_retain_count,
+                'privacy_claim_valid': state.get('privacy_claim_valid'),
+                'reported_epsilon_is_nominal': state.get('reported_epsilon_is_nominal'),
+                'reported_epsilon_excludes_selection': state.get('reported_epsilon_excludes_selection'),
+            },
+        }
+        log.info('FOURIER_TRACE %s', json.dumps(payload, sort_keys=True))
+
+    @staticmethod
     def _validate_cyclic_steps_vs_bands(
         *,
         mechanism: str,
@@ -543,6 +585,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             {
                 'phase': phase,
                 'noise_mechanism': self.noise_mechanism,
+                'clipping_mode': self.clipping_mode,
                 'sampling_mode_requested': self.sampling_mode,
                 'max_grad_norm': float(self.max_grad_norm),
                 'target_epsilon': (
@@ -553,6 +596,24 @@ class DifferentiallyPrivateTrainer(Trainer):
                 ),
             }
         )
+        if self.clipping_mode == 'fourier':
+            payload['fourier_clipping'] = {
+                'layout': self.fourier_layout or 'layer_matrix_columns',
+                'transform': self.fourier_transform or 'dct',
+                'mode': self.fourier_mode or 'fixed_lowpass',
+                'block_size': int(self.fourier_block_size or 1024),
+                'retain_frac': self.fourier_retain_frac,
+                'retain_count': self.fourier_retain_count,
+                'resolved_retain_count': self.fourier_resolved_retain_count,
+                'privacy_claim_valid': False,
+                'reported_epsilon_is_nominal': True,
+                'reported_epsilon_excludes_selection': bool(
+                    self.reported_epsilon_excludes_selection
+                ),
+                'reported_epsilon_excludes_sampling': bool(
+                    self.reported_epsilon_excludes_sampling
+                ),
+            }
         log.info('ACCOUNTING_TELEMETRY %s', json.dumps(payload, sort_keys=True))
 
         if self.log_dir is None or self.experiment_name is None:
@@ -576,6 +637,18 @@ class DifferentiallyPrivateTrainer(Trainer):
         normalize_clipping: bool = False,
         noise_mechanism: str = 'gaussian',
         sampling_mode: str | None = None,
+        fourier_layout: str | None = None,
+        fourier_transform: str | None = None,
+        fourier_mode: str | None = None,
+        fourier_block_size: int | None = None,
+        fourier_retain_frac: float | None = None,
+        fourier_retain_count: int | None = None,
+        allow_unaccounted_fourier_selection: bool = False,
+        fourier_resolved_retain_count: int | None = None,
+        privacy_claim_valid: bool | None = None,
+        reported_epsilon_is_nominal: bool | None = None,
+        reported_epsilon_excludes_selection: bool | None = None,
+        reported_epsilon_excludes_sampling: bool | None = None,
         bsr_coeffs: list[float] | None = None,
         bsr_z_std: float | None = None,
         bsr_bands: int | None = None,
@@ -617,6 +690,18 @@ class DifferentiallyPrivateTrainer(Trainer):
         self.accountant = accountant
         self.noise_mechanism = noise_mechanism
         self.sampling_mode = sampling_mode
+        self.fourier_layout = fourier_layout
+        self.fourier_transform = fourier_transform
+        self.fourier_mode = fourier_mode
+        self.fourier_block_size = fourier_block_size
+        self.fourier_retain_frac = fourier_retain_frac
+        self.fourier_retain_count = fourier_retain_count
+        self.allow_unaccounted_fourier_selection = allow_unaccounted_fourier_selection
+        self.fourier_resolved_retain_count = fourier_resolved_retain_count
+        self.privacy_claim_valid = privacy_claim_valid
+        self.reported_epsilon_is_nominal = reported_epsilon_is_nominal
+        self.reported_epsilon_excludes_selection = reported_epsilon_excludes_selection
+        self.reported_epsilon_excludes_sampling = reported_epsilon_excludes_sampling
         self.bsr_coeffs = bsr_coeffs
         self.bsr_z_std = bsr_z_std
         self.bsr_bands = bsr_bands
@@ -1067,6 +1152,35 @@ class DifferentiallyPrivateTrainer(Trainer):
                 f'unsupported runtime noise mechanism for DPDL handoff: {self.noise_mechanism!r}'
             )
 
+        def _build_fourier_clipping_config() -> FourierClippingConfig | None:
+            if self.clipping_mode != 'fourier':
+                return None
+
+            return FourierClippingConfig(
+                layout=self.fourier_layout or 'layer_matrix_columns',
+                transform=self.fourier_transform or 'dct',
+                mode=self.fourier_mode or 'fixed_lowpass',
+                block_size=int(self.fourier_block_size or 1024),
+                retain_frac=(
+                    float(self.fourier_retain_frac)
+                    if self.fourier_retain_frac is not None
+                    else None
+                ),
+                retain_count=(
+                    int(self.fourier_retain_count)
+                    if self.fourier_retain_count is not None
+                    else None
+                ),
+                allow_unaccounted_selection=bool(
+                    self.allow_unaccounted_fourier_selection
+                ),
+                privacy_claim_valid=False,
+                reported_epsilon_is_nominal=True,
+                reported_epsilon_excludes_selection=bool(
+                    self.reported_epsilon_excludes_selection
+                ),
+            )
+
         train_dataloader = self.datamodule.get_dataloader('train')
         reference_train_split_size = int(len(train_dataloader.dataset))
         reference_train_steps_per_epoch = int(len(train_dataloader))
@@ -1171,6 +1285,7 @@ class DifferentiallyPrivateTrainer(Trainer):
             bnb_horizon=bnb_horizon,
             correlated_denominator=correlated_denominator,
         )
+        fourier_clipping_config = _build_fourier_clipping_config()
 
         # Forwarded kwargs are runtime accountant controls (`k`, `b`, sensitivity overrides, MC controls).
         mechanism_kwargs = {}
@@ -1243,6 +1358,15 @@ class DifferentiallyPrivateTrainer(Trainer):
             ),
             mechanism_kwargs=mechanism_kwargs,
         )
+        self._log_fourier_trace(
+            stage='dpdl_trainer_setup',
+            sampling_semantics=sampling_semantics,
+            base_noise_mechanism=self.noise_mechanism,
+            clipping_mode=self.clipping_mode,
+            fourier_clipping_config=fourier_clipping_config,
+            fourier_resolved_retain_count=self.fourier_resolved_retain_count,
+            noise_mechanism_config=noise_mechanism_config,
+        )
 
         noise_generator = torch.Generator(device=self.device)
         if self.seed:
@@ -1258,6 +1382,15 @@ class DifferentiallyPrivateTrainer(Trainer):
             if torch.distributed.is_available() and torch.distributed.is_initialized()
             else 1
         )
+        if (
+            distributed_world_size > 1
+            and self.clipping_mode == 'fourier'
+            and (self.fourier_mode or 'fixed_lowpass') == 'adaptive_topk_leaky'
+        ):
+            raise ValueError(
+                'adaptive_topk_leaky Fourier clipping is single-process only in this pivot; '
+                'use fixed_lowpass for distributed Fourier clipping.'
+            )
         if distributed_world_size > 1:
             model = opacus.distributed.DifferentiallyPrivateDistributedDataParallel(self.model)
         else:
@@ -1282,6 +1415,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 normalize_clipping=self.normalize_clipping,
                 total_steps=self.total_steps,
                 noise_mechanism_config=noise_mechanism_config,
+                fourier_clipping_config=fourier_clipping_config,
                 sampling_semantics=sampling_semantics,
                 **mechanism_kwargs,
             )
@@ -1312,6 +1446,7 @@ class DifferentiallyPrivateTrainer(Trainer):
                 normalize_clipping=self.normalize_clipping,
                 total_steps=self.total_steps,
                 noise_mechanism_config=noise_mechanism_config,
+                fourier_clipping_config=fourier_clipping_config,
                 sampling_semantics=sampling_semantics,
                 **mechanism_kwargs,
             )
@@ -1935,6 +2070,18 @@ class TrainerFactory:
             normalize_clipping=configuration.normalize_clipping,
             noise_mechanism=configuration.noise_mechanism,
             sampling_mode=configuration.sampling_mode,
+            fourier_layout=configuration.fourier_layout,
+            fourier_transform=configuration.fourier_transform,
+            fourier_mode=configuration.fourier_mode,
+            fourier_block_size=configuration.fourier_block_size,
+            fourier_retain_frac=configuration.fourier_retain_frac,
+            fourier_retain_count=configuration.fourier_retain_count,
+            allow_unaccounted_fourier_selection=configuration.allow_unaccounted_fourier_selection,
+            fourier_resolved_retain_count=configuration.fourier_resolved_retain_count,
+            privacy_claim_valid=configuration.privacy_claim_valid,
+            reported_epsilon_is_nominal=configuration.reported_epsilon_is_nominal,
+            reported_epsilon_excludes_selection=configuration.reported_epsilon_excludes_selection,
+            reported_epsilon_excludes_sampling=configuration.reported_epsilon_excludes_sampling,
             bsr_coeffs=configuration.bsr_coeffs,
             bsr_z_std=configuration.bsr_z_std,
             bsr_bands=hyperparams.bsr_bands,

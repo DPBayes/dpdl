@@ -504,7 +504,7 @@ def cli(
         clipping_mode: Annotated[
             Optional[str],
             typer.Option(
-                help='Opacus clipping mode ("flat" or "per_layer" or "adaptive")',
+                help='Opacus clipping mode ("flat", "per_layer", "adaptive", or "fourier")',
                 rich_help_panel='Opacus options',
             )
         ] = 'flat',
@@ -539,7 +539,7 @@ def cli(
         noise_mechanism: Annotated[
             Optional[str],
             typer.Option(
-                help='Noise mechanism ("gaussian", "bandmf", "bsr", "bisr", "bandinvmf", "bifr", or "blt"); BLT is workload-driven and does not expose lambda',
+                help='Base noise mechanism ("gaussian", "bandmf", "bsr", "bisr", "bandinvmf", "bifr", or "blt"); use --clipping-mode fourier for Fourier experiments',
                 rich_help_panel='Opacus options',
             )
         ] = 'gaussian',
@@ -550,6 +550,55 @@ def cli(
                 rich_help_panel='Opacus options',
             )
         ] = None,
+        fourier_layout: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Fourier clipping layout ("layer_matrix_columns" or "parameter_blockwise")',
+                rich_help_panel='Fourier options',
+            )
+        ] = None,
+        fourier_transform: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Fourier clipping transform ("dct" in this pivot)',
+                rich_help_panel='Fourier options',
+            )
+        ] = None,
+        fourier_mode: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Fourier clipping mode ("fixed_lowpass" or "adaptive_topk_leaky")',
+                rich_help_panel='Fourier options',
+            )
+        ] = None,
+        fourier_block_size: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Block size for blockwise Fourier/DCT projection',
+                rich_help_panel='Fourier options',
+            )
+        ] = None,
+        fourier_retain_frac: Annotated[
+            Optional[float],
+            typer.Option(
+                help='Fraction of coefficients retained per Fourier block; exclusive with --fourier-retain-count',
+                rich_help_panel='Fourier options',
+            )
+        ] = None,
+        fourier_retain_count: Annotated[
+            Optional[int],
+            typer.Option(
+                help='Number of coefficients retained per Fourier block; exclusive with --fourier-retain-frac',
+                rich_help_panel='Fourier options',
+            )
+        ] = None,
+        allow_unaccounted_fourier_selection: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Allow adaptive_topk_leaky Fourier selection as a nonclaiming diagnostic run',
+                rich_help_panel='Fourier options',
+            )
+        ] = False,
         bsr_coeffs: Annotated[
             Optional[List[float]],
             typer.Option(
