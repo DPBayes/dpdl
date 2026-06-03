@@ -22,6 +22,7 @@ import pathlib
 import time
 import json
 from collections.abc import Mapping
+from typing import Any
 
 import opacus
 import torch
@@ -433,6 +434,193 @@ class Trainer:
 
 
 class DifferentiallyPrivateTrainer(Trainer):
+    @staticmethod
+    def _distributed_rank() -> int:
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            return int(torch.distributed.get_rank())
+        return 0
+
+    @staticmethod
+    def _distributed_world_size() -> int:
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            return int(torch.distributed.get_world_size())
+        return 1
+
+    @staticmethod
+    def _gather_rank_payload(local_payload: dict[str, Any]) -> list[dict[str, Any]]:
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            gathered: list[dict[str, Any] | None] = [
+                None for _ in range(torch.distributed.get_world_size())
+            ]
+            torch.distributed.all_gather_object(gathered, local_payload)
+            return [payload for payload in gathered if payload is not None]
+        return [local_payload]
+
+    @staticmethod
+    def _is_rank_zero() -> bool:
+        return DifferentiallyPrivateTrainer._distributed_rank() == 0
+
+    @staticmethod
+    def _summarize_fourier_rank_payloads(
+        per_rank: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        metadata_by_rank = [
+            rank_payload.get('metadata') or {} for rank_payload in per_rank
+        ]
+        dimension_pairs = {
+            (
+                metadata.get('original_trainable_numel'),
+                metadata.get('encoded_numel'),
+            )
+            for metadata in metadata_by_rank
+        }
+        first = metadata_by_rank[0] if metadata_by_rank else {}
+        return {
+            'consistent_dimensions_across_ranks': len(dimension_pairs) <= 1,
+            'original_trainable_numel': first.get('original_trainable_numel'),
+            'encoded_numel': first.get('encoded_numel'),
+            'encoded_fraction_of_original': first.get('encoded_fraction_of_original'),
+            'compression_ratio_vs_original': first.get('compression_ratio_vs_original'),
+            'plan_entry_count': first.get('plan_entry_count'),
+            'fallback_counts': first.get('fallback_counts'),
+            'plan_kind_counts': first.get('plan_kind_counts'),
+        }
+
+    @staticmethod
+    def _summarize_memory_rank_payloads(
+        per_rank: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        keys = (
+            'current_memory_allocated_bytes',
+            'current_memory_reserved_bytes',
+            'peak_memory_allocated_bytes',
+            'peak_memory_reserved_bytes',
+        )
+        summary: dict[str, Any] = {}
+        for key in keys:
+            values = [
+                rank_payload.get(key)
+                for rank_payload in per_rank
+                if isinstance(rank_payload.get(key), (int, float))
+            ]
+            summary[f'max_{key}'] = max(values) if values else None
+        summary['cuda_rank_count'] = sum(
+            1 for rank_payload in per_rank if bool(rank_payload.get('cuda_memory_available'))
+        )
+        return summary
+
+    def _experiment_output_dir(self) -> pathlib.Path | None:
+        if self.log_dir is None or self.experiment_name is None:
+            return None
+        out_dir = pathlib.Path(self.log_dir) / self.experiment_name
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return out_dir
+
+    def _write_rank_zero_json(self, filename: str, payload: dict[str, Any]) -> None:
+        if not self._is_rank_zero():
+            return
+
+        out_dir = self._experiment_output_dir()
+        if out_dir is None:
+            return
+
+        with safe_open(out_dir / filename, 'w') as fh:
+            json.dump(payload, fh, sort_keys=True, indent=2)
+
+    def _reset_memory_telemetry(self) -> None:
+        self._memory_telemetry_reset_error = None
+        if self.device.type != 'cuda' or not torch.cuda.is_available():
+            return
+
+        try:
+            torch.cuda.synchronize(self.device)
+            torch.cuda.reset_peak_memory_stats(self.device)
+        except Exception as exc:
+            self._memory_telemetry_reset_error = str(exc)
+
+    def _local_memory_telemetry(self, *, phase: str) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'phase': phase,
+            'scope': 'fit',
+            'rank': self._distributed_rank(),
+            'world_size': self._distributed_world_size(),
+            'device': str(self.device),
+            'device_type': self.device.type,
+            'cuda_memory_available': False,
+            'reset_error': getattr(self, '_memory_telemetry_reset_error', None),
+        }
+        if self.device.type != 'cuda' or not torch.cuda.is_available():
+            return payload
+
+        try:
+            torch.cuda.synchronize(self.device)
+            payload.update(
+                {
+                    'cuda_memory_available': True,
+                    'current_memory_allocated_bytes': int(
+                        torch.cuda.memory_allocated(self.device)
+                    ),
+                    'current_memory_reserved_bytes': int(
+                        torch.cuda.memory_reserved(self.device)
+                    ),
+                    'peak_memory_allocated_bytes': int(
+                        torch.cuda.max_memory_allocated(self.device)
+                    ),
+                    'peak_memory_reserved_bytes': int(
+                        torch.cuda.max_memory_reserved(self.device)
+                    ),
+                }
+            )
+        except Exception as exc:
+            payload['read_error'] = str(exc)
+        return payload
+
+    def _emit_memory_telemetry(self, *, phase: str) -> None:
+        per_rank = self._gather_rank_payload(self._local_memory_telemetry(phase=phase))
+        payload = {
+            'phase': phase,
+            'scope': 'fit',
+            'per_rank': per_rank,
+            'summary': self._summarize_memory_rank_payloads(per_rank),
+        }
+        log.info('MEMORY_TELEMETRY %s', json.dumps(payload, sort_keys=True))
+        self._write_rank_zero_json('memory_telemetry.json', payload)
+
+    def _local_fourier_telemetry(self, *, phase: str) -> dict[str, Any]:
+        metadata = getattr(self.optimizer, 'fourier_clipping_metadata', None)
+        if metadata is None and hasattr(self.optimizer, 'state_dict'):
+            metadata = self.optimizer.state_dict().get('_dp_fourier_clipping_metadata')
+        return {
+            'phase': phase,
+            'rank': self._distributed_rank(),
+            'world_size': self._distributed_world_size(),
+            'clipping_mode': self.clipping_mode,
+            'noise_mechanism': self.noise_mechanism,
+            'metadata': metadata or {},
+        }
+
+    def _emit_fourier_telemetry(self, *, phase: str) -> None:
+        if self.clipping_mode != 'fourier':
+            return
+
+        per_rank = self._gather_rank_payload(self._local_fourier_telemetry(phase=phase))
+        payload = {
+            'phase': phase,
+            'clipping_mode': self.clipping_mode,
+            'noise_mechanism': self.noise_mechanism,
+            'per_rank': per_rank,
+            'summary': self._summarize_fourier_rank_payloads(per_rank),
+        }
+        log.info('FOURIER_TELEMETRY %s', json.dumps(payload, sort_keys=True))
+        self._write_rank_zero_json('fourier_telemetry.json', payload)
+
+    def fit(self):
+        self._reset_memory_telemetry()
+        result = super().fit()
+        self._emit_fourier_telemetry(phase='post_fit')
+        self._emit_memory_telemetry(phase='post_fit')
+        return result
+
     @staticmethod
     def _log_dp_timing(
         *,
