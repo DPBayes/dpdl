@@ -181,7 +181,7 @@ def cli(
         model_name: Annotated[
             str,
             typer.Option(
-                help='PyTorch Image Models (timm) model name',
+                help='PyTorch Image Models (timm) or custom model name or path',
                 rich_help_panel='Model options',
             )
         ] = 'resnetv2_50x1_bit.goog_in21k',
@@ -655,10 +655,15 @@ def cli(
 def run_show_layers(config_manager: ConfigurationManager) -> None:
     log.info(config_manager.configuration)
     log.info('Showing model layers.')
-    model, _ = ModelFactory.get_model(
+
+    # TODO: change placeholder num_classes and loss_fn
+    model, _, _ = ModelFactory.get_model(
         config_manager.configuration,
         config_manager.hyperparams,
+        42,
+        torch.nn.MSELoss()
     )
+    
     model.show_layers()
 
 

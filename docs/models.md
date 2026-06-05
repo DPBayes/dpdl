@@ -9,9 +9,9 @@ We aim keeep the document brief and point to code for further details.
 Model creation happens in [ModelFactory](../dpdl/models/model_factory.py).
 The main selection logic is:
 - If `--llm` is set, load a HuggingFace model via [HuggingfaceLanguageModel](../dpdl/models/hugging_face_models.py).
-- Otherwise, by default we use `timm` models, unless the model name matches a custom model (e.g., `wrn-<depth>-<width>` for [WideResNet](https://arxiv.org/abs/1605.07146) or `koskela-net`).
+- Otherwise, by default we use `timm` models, unless the model name matches a custom model or one of the provided ones (e.g., `wide_res_net-<depth>-<width>` for [WideResNet](https://arxiv.org/abs/1605.07146) or `koskela_net`).
 
-After initilization, we wrap the modesl in [ModelBase](../dpdl/models/model_base.py) what provides a common interface (e.g. loss, metrics, save/load, etc) for the underlying models.
+After initilization, we wrap the models in [ModelBase](../dpdl/models/model_base.py) what provides a common interface (e.g. loss, metrics, save/load, etc) for the underlying models.
 
 ## Timm models (vision)
 
@@ -29,14 +29,19 @@ If you need model‑specific behaviors (e.g., special tokenization), consult the
 
 DPDL includes a small set of custom models, that have been implemented on a case-by-case needs:
 - [WideResNet](https://arxiv.org/abs/1605.07146) via name pattern `wrn-<depth>-<width>`.
-- KoskelaNet (used in [this paper](https://arxiv.org/pdf/1809.03832.pdf)) via name `koskela-net`.
+- KoskelaNet (used in [this paper](https://arxiv.org/pdf/1809.03832.pdf)) via name `koskela_net`.
 
-Should you need to implement a custom model, use the above implementations as an example.
-In essence:
-- Implement a new module under `dpdl/models/` while following the [ModelBase API](../dpdl/models/model_base.py).
-- Extend `ModelFactory.get_model()` to route to your model.
+Should you need a custom model, you can use it by either providing a path to the file or placing it in the models folder.
+Note that when using the dpdl command line tool directly, only direct paths can be used due to Pythons handling of module paths.
+Both methods require the model files to be in snake case and the model class to have the same name in capital camel case (e.g. dummy_net.py model file and DummyNet class).
 
-The name based routing is *a bit hacky*, but we haven't yet come up with a more reasonable method.
+In practice this means:
+- Implement a new module while following the [ModelBase API](../dpdl/models/model_base.py).
+    - The model has to at least expose the functions `forward`, `get_classifier` and `get_transforms`.
+    - The model class name has to be the capital camel case version of the snake case file name (e.g. `dummy_net.py` model file and `DummyNet` class).
+- provide the path as the model-name command line argument for the dpdl binary
+- OR: provide the file name as the model-name command line argument if placed in the `models` folder and using `run.py`
+    - In this case, model initialization parameters can be supplied by separation with hyphens, like so: `model_file-<param1>-<param2>`. Integers will be converted to the `int` type, all else will be passed as `str`.
 
 ## PEFT (parameter‑efficient fine‑tuning)
 
