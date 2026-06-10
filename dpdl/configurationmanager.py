@@ -17,7 +17,6 @@ class Hyperparameters(BaseModel):
     noise_multiplier: Optional[float]
     max_grad_norm: Optional[float]
     target_epsilon: Optional[float]
-    noise_batch_ratio: Optional[float]
     privacy: bool = True # Only used in __str__
     max_length: Optional[int] = None
 
@@ -36,24 +35,6 @@ class Hyperparameters(BaseModel):
 
         if all([target_epsilon, noise_multiplier]):
             raise ValueError('Both, target_epsilon and noise_multiplier given.')
-
-        return values
-
-    @root_validator(pre=True)
-    def check_target_epsilon_or_noise_batch_ratio(cls, values):
-        target_epsilon, noise_batch_ratio = values.get('target_epsilon'), values.get('noise_batch_ratio')
-
-        if all([target_epsilon, noise_batch_ratio]):
-            raise ValueError('Both, target_epsilon and noise_batch_ratio given.')
-
-        return values
-
-    @root_validator(pre=True)
-    def check_noise_batch_ratio_or_noise_multiplier(cls, values):
-        noise_multiplier, noise_batch_ratio = values.get('noise_multiplier'), values.get('noise_batch_ratio')
-
-        if all([noise_multiplier, noise_batch_ratio]):
-            raise ValueError('Both, noise_multiplier and noise_batch_ratio given.')
 
         return values
 
@@ -84,7 +65,6 @@ class Hyperparameters(BaseModel):
                 ('Noise multiplier', self.noise_multiplier),
                 ('Max grad norn', self.max_grad_norm),
                 ('Target epsilon', self.target_epsilon),
-                ('Noise-batch ratio', self.noise_batch_ratio),
             ]
             hypers.extend(privacy_hypers)
 
