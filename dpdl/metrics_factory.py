@@ -9,7 +9,7 @@ import torchmetrics
 log = logging.getLogger(__name__)
 
 def _get_classification_metrics(
-    num_classes: int,
+    output_dim: int,
     sync: bool,
     with_confusion_matrix: bool,
 ) -> torchmetrics.MetricCollection:
@@ -19,17 +19,17 @@ def _get_classification_metrics(
     # all the GPUs.
     metrics = {
         'MulticlassAccuracy': torchmetrics.classification.MulticlassAccuracy(
-            num_classes=num_classes,
+            num_classes=output_dim,
             average='macro',
             sync_on_compute=sync,
         ),
         'MulticlassAccuracyWithMicro': torchmetrics.classification.MulticlassAccuracy(
-            num_classes=num_classes,
+            num_classes=output_dim,
             average='micro',
             sync_on_compute=sync,
         ),
         'MulticlassAccuracyPerClass': torchmetrics.classification.MulticlassAccuracy(
-            num_classes=num_classes,
+            num_classes=output_dim,
             average='none',
             sync_on_compute=sync,
         ),
@@ -37,8 +37,8 @@ def _get_classification_metrics(
 
     if with_confusion_matrix:
         metrics['ConfusionMatrix'] = torchmetrics.ConfusionMatrix(
-            task='multiclass' if num_classes > 2 else 'binary',
-            num_classes=num_classes,
+            task='multiclass' if output_dim > 2 else 'binary',
+            num_classes=output_dim,
             sync_on_compute=sync,
         )
 
@@ -104,7 +104,7 @@ class MetricsFactory:
     @staticmethod
     def get_metrics(
         configuration,
-        num_classes: Optional[int] = None,
+        output_dim: Optional[int] = None,
     ) -> Dict[str, torchmetrics.MetricCollection]:
         task = configuration.task
 
@@ -116,21 +116,21 @@ class MetricsFactory:
             if torch.distributed.get_rank() == 0:
                 log.info(f'Task is "{configuration.task}", initializing classification metrics.')
 
-            if not num_classes or num_classes < 1:
-                raise ValueError('num_classes required for classification tasks')
+            if not output_dim or output_dim < 1:
+                raise ValueError('output_dim required for classification tasks')
 
             train = _get_classification_metrics(
-                num_classes=num_classes,
+                output_dim=output_dim,
                 sync=train_sync,
                 with_confusion_matrix=False,
             )
             valid = _get_classification_metrics(
-                num_classes=num_classes,
+                output_dim=output_dim,
                 sync=eval_sync,
                 with_confusion_matrix=False,
             )
             test = _get_classification_metrics(
-                num_classes=num_classes,
+                output_dim=output_dim,
                 sync=eval_sync,
                 with_confusion_matrix=True,
             )
@@ -139,7 +139,7 @@ class MetricsFactory:
             if torch.distributed.get_rank() == 0:
                 log.info(f'Task is "{configuration.task}", initializing language model metrics.')
 
-            vocab_size = int(num_classes)
+            vocab_size = int(output_dim)
             ignore_index = -100
 
             train = _get_language_model_metrics(

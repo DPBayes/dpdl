@@ -147,14 +147,14 @@ class RecordPerClassCosineSimilarityCallback(Callback):
         self.max_grad_norm = max_grad_norm
 
     def on_train_start(self, trainer, *args, **kwargs):
-        self.num_classes = trainer.datamodule.get_num_classes()
+        self.output_dim = trainer.datamodule.get_output_dim()
         self.cosine_similarities_history = []
 
     def on_train_batch_start(self, *args, **kwargs):
         # Reset accumulators for each logical batch
-        self.sum_mean_grad_unclipped = {cls: 0 for cls in range(self.num_classes)}
-        self.sum_mean_grad_clipped = {cls: 0 for cls in range(self.num_classes)}
-        self.num_batches = {cls: 0 for cls in range(self.num_classes)}
+        self.sum_mean_grad_unclipped = {cls: 0 for cls in range(self.output_dim)}
+        self.sum_mean_grad_clipped = {cls: 0 for cls in range(self.output_dim)}
+        self.num_batches = {cls: 0 for cls in range(self.output_dim)}
 
     def on_train_physical_batch_end(self, trainer, batch_idx, batch, *args, **kwargs):
         with torch.no_grad():
@@ -167,7 +167,7 @@ class RecordPerClassCosineSimilarityCallback(Callback):
             del per_sample_gradients
             torch.cuda.empty_cache()
 
-            for cls in range(self.num_classes):
+            for cls in range(self.output_dim):
                 mask = (class_labels == cls)
                 if mask.sum() == 0:
                     continue
@@ -197,7 +197,7 @@ class RecordPerClassCosineSimilarityCallback(Callback):
             # Create a row for this step with one column per class.
             row = {'Step': self.global_step}
 
-            for cls in range(self.num_classes):
+            for cls in range(self.output_dim):
                 if self.num_batches[cls] == 0:
                     # If no update for this class in the batch, record a placeholder
                     row[f'Clipped_Mean_vs_Unclipped_Mean_Class{cls}'] = None
@@ -216,7 +216,7 @@ class RecordPerClassCosineSimilarityCallback(Callback):
     def on_train_end(self, trainer, *args, **kwargs):
         if self._is_global_zero():
             header = ['Step'] + [
-                f'Clipped_Mean_vs_Unclipped_Mean_Class{cls}' for cls in range(self.num_classes)
+                f'Clipped_Mean_vs_Unclipped_Mean_Class{cls}' for cls in range(self.output_dim)
             ]
 
             file_path = os.path.join(self.log_dir, 'cosine-similarity-per-class.csv')
@@ -231,4 +231,3 @@ class RecordPerClassCosineSimilarityCallback(Callback):
                 writer.writerow([record.get(col, None) for col in header])
 
         log.info(f'Cosine Similarities data saved at {file_path}')
-

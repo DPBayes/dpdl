@@ -15,7 +15,7 @@ class ModelBase(torch.nn.Module):
     def __init__(
         self,
         model_instance: torch.nn.Module = None,
-        num_classes: int = 10,
+        output_dim: int = 10,
         use_feature_cache: bool = False,
         criterion: torch.nn.Module = None,
         metrics: Optional[Dict[str, Any]] = None
@@ -24,7 +24,7 @@ class ModelBase(torch.nn.Module):
         super().__init__()
 
         self.model = model_instance
-        self.num_classes = num_classes
+        self.output_dim = output_dim
         self.use_feature_cache = use_feature_cache
 
         if not criterion:

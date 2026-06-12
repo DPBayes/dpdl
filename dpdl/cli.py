@@ -656,7 +656,6 @@ def run_show_layers(config_manager: ConfigurationManager) -> None:
     log.info(config_manager.configuration)
     log.info('Showing model layers.')
 
-    # TODO: change placeholder num_classes and loss_fn
     model, _, _ = ModelFactory.get_model(
         config_manager.configuration,
         config_manager.hyperparams,

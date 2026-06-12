@@ -20,18 +20,18 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
     def on_train_start(self, trainer, *args, **kwargs):
         # Separate body and head of the model
         self.body, self.head = self._get_body_and_head(trainer._unwrap_model())
-        self.num_classes = trainer.datamodule.get_num_classes()
+        self.output_dim = trainer.datamodule.get_output_dim()
 
     def on_train_batch_start(self, *args, **kwargs):
         # Initialize accumulators for each class at the start of each logical batch
-        self.body_norms_accumulator = {cls: [] for cls in range(self.num_classes)}
-        self.head_norms_accumulator = {cls: [] for cls in range(self.num_classes)}
+        self.body_norms_accumulator = {cls: [] for cls in range(self.output_dim)}
+        self.head_norms_accumulator = {cls: [] for cls in range(self.output_dim)}
 
     def on_train_physical_batch_end(self, trainer, batch_idx, batch, *args, **kwargs):
         batch_data, class_labels = batch
 
         with torch.no_grad():
-            for cls in range(self.num_classes):
+            for cls in range(self.output_dim):
                 cls_mask = class_labels == cls
                 if cls_mask.sum() == 0:
                     continue
@@ -83,7 +83,7 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
         # Aggregate the per-class gradient norms for the logical batch
         row_data = {'step': self.global_step}
 
-        for cls in range(self.num_classes):
+        for cls in range(self.output_dim):
             # Calculate statistics of body and head norms across physical batches
             if self.body_norms_accumulator[cls]:
                 body_mean_norm = np.mean(self.body_norms_accumulator[cls])
@@ -114,7 +114,7 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
         self.grad_history.append(row_data)
 
         # Clear accumulators for the next logical batch
-        for cls in range(self.num_classes):
+        for cls in range(self.output_dim):
             self.body_norms_accumulator[cls].clear()
             self.head_norms_accumulator[cls].clear()
 
@@ -131,7 +131,7 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
 
     def _save_to_csv(self, file_path):
         fieldnames = ['step']
-        for cls in range(self.num_classes):
+        for cls in range(self.output_dim):
             fieldnames.append(f'Class_{cls}_Body_Mean_Norm')
             fieldnames.append(f'Class_{cls}_Head_Mean_Norm')
             for q in self.quantiles:

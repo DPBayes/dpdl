@@ -36,7 +36,7 @@ class KoskelaNet(nn.Module):
     https://github.com/DPBayes/ADADP/blob/master/CIFAR_tests/linear.py
 
     """
-    def __init__(self):
+    def __init__(self, num_classes=10):
         super().__init__()
 
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=0)
@@ -47,7 +47,7 @@ class KoskelaNet(nn.Module):
 
         self.fc1 = nn.Linear(1600, 500, bias=False)
         self.fc2 = nn.Linear(500, 500, bias=False)
-        self.final_fc = nn.Linear(500, 10, bias=False)
+        self.final_fc = nn.Linear(500, num_classes, bias=False)
 
     def forward(self, x):
         x = self.pool1(F.relu(self.conv1(x)))

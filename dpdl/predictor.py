@@ -251,8 +251,6 @@ class PredictorFactory:
 
         device = resolve_device(configuration.device)
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, device)
-        num_classes = datamodule.get_num_classes()
-
         trainer = TrainerFactory.get_trainer(config_manager)
 
         predictor = Predictor(

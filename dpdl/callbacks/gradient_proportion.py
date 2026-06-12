@@ -16,7 +16,7 @@ class RecordClippedProportionsPerClassCallback(Callback):
 
     def on_train_start(self, trainer, *args, **kwargs):
         # Get the number of classes from the datamodule
-        self.num_classes = trainer.datamodule.get_num_classes()
+        self.output_dim = trainer.datamodule.get_output_dim()
 
         # Initialize container for the clipped proportions
         self.clipped_proportions_history = []
@@ -53,7 +53,7 @@ class RecordClippedProportionsPerClassCallback(Callback):
 
             clipped_proportions = []
 
-            for cls in range(self.num_classes):
+            for cls in range(self.output_dim):
                 mask = (all_labels == cls)
                 if mask.sum() == 0:
                     # If no gradients for this class, mark as 0 clipped proportion
@@ -89,7 +89,7 @@ class RecordClippedProportionsPerClassCallback(Callback):
         with open(file_path, 'w', newline='') as f:
             writer = csv.writer(f)
             # Write the header row
-            header = ['Step'] + [f'Class_{i}' for i in range(self.num_classes)]
+            header = ['Step'] + [f'Class_{i}' for i in range(self.output_dim)]
             writer.writerow(header)
 
             # Write the clipped proportions for each step

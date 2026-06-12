@@ -8,20 +8,20 @@ We aim keeep the document brief and point to code for further details.
 
 Model creation happens in [ModelFactory](../dpdl/models/model_factory.py).
 The main selection logic is:
-- If `--llm` is set, load a HuggingFace model via [HuggingfaceLanguageModel](../dpdl/models/hugging_face_models.py).
-- Otherwise, by default we use `timm` models, unless the model name matches a custom model or one of the provided ones (e.g., `wide_res_net-<depth>-<width>` for [WideResNet](https://arxiv.org/abs/1605.07146) or `koskela_net`).
+- If `--task` is a language task (i.e. CausalLM, InstructLM or SequenceClassification), load a HuggingFace model via [HuggingfaceLanguageModel](../dpdl/models/hugging_face_models.py).
+- Otherwise, by default we use `timm` models, unless the model name matches one of the provided, custom models (e.g., `wide_res_net-<depth>-<width>` for [WideResNet](https://arxiv.org/abs/1605.07146) or `koskela-net`).
 
-After initilization, we wrap the models in [ModelBase](../dpdl/models/model_base.py) what provides a common interface (e.g. loss, metrics, save/load, etc) for the underlying models.
+After initialization, we wrap the models in [ModelBase](../dpdl/models/model_base.py) what provides a common interface (e.g. loss, metrics, save/load, etc.) for the underlying models.
 
 ## Timm models (vision)
 
-When `--llm` is **not** set and the model name does not match a custom model, [ModelFactory](../dpdl/models/model_factory.py) calls `timm.create_model()` to instatiate the requested model.
+When `--task` is **not** a language task and the model name does not match a custom model, [ModelFactory](../dpdl/models/model_factory.py) calls `timm.create_model()` to instantiate the requested model.
 The factory gets the parameters from [ConfigurationManager](../dpdl/callbacks/configurationmanager.py) and creates the model as requested.
 The model requested model is specified with `--model-name` CLI switch and loading pretrained weights is controlled by `--pretrained`/`--no-pretrained` switch.
 
 ## HuggingFace models (language)
 
-When `--llm` is enabled, DPDL uses [HuggingfaceLanguageModel](../dpdl/models/hugging_face_models.py) to load HF models via the [Transfomers API](https://huggingface.co/docs/transformers/index).
+When `--task` is one of `CausalLM`, `InstructLM` or `SequenceClassification`, DPDL uses [HuggingfaceLanguageModel](../dpdl/models/hugging_face_models.py) to load HF models via the [Transfomers API](https://huggingface.co/docs/transformers/index).
 
 If you need model‑specific behaviors (e.g., special tokenization), consult the upstream model docs and extend `HuggingfaceLanguageModel` as needed.
 
@@ -29,19 +29,13 @@ If you need model‑specific behaviors (e.g., special tokenization), consult the
 
 DPDL includes a small set of custom models, that have been implemented on a case-by-case needs:
 - [WideResNet](https://arxiv.org/abs/1605.07146) via name pattern `wrn-<depth>-<width>`.
-- KoskelaNet (used in [this paper](https://arxiv.org/pdf/1809.03832.pdf)) via name `koskela_net`.
+- KoskelaNet (used in [this paper](https://arxiv.org/pdf/1809.03832.pdf)) via name `koskela-net`.
 
-Should you need a custom model, you can use it by either providing a path to the file or placing it in the models folder.
-Note that when using the dpdl command line tool directly, only direct paths can be used due to Pythons handling of module paths.
-Both methods require the model files to be in snake case and the model class to have the same name in capital camel case (e.g. dummy_net.py model file and DummyNet class).
-
-In practice this means:
-- Implement a new module while following the [ModelBase API](../dpdl/models/model_base.py).
-    - The model has to at least expose the functions `forward`, `get_classifier` and `get_transforms`.
-    - The model class name has to be the capital camel case version of the snake case file name (e.g. `dummy_net.py` model file and `DummyNet` class).
-- provide the path as the model-name command line argument for the dpdl binary
-- OR: provide the file name as the model-name command line argument if placed in the `models` folder and using `run.py`
-    - In this case, model initialization parameters can be supplied by separation with hyphens, like so: `model_file-<param1>-<param2>`. Integers will be converted to the `int` type, all else will be passed as `str`.
+Should you need to implement a custom model, use the above implementations as an example.
+In essence:
+- Implement a new module under `dpdl/models/` while following the [ModelBase API](../dpdl/models/model_base.py).
+- Extend the checks in [CustomBuilder.matches()](../dpdl/models/custom_builder.py) to match your model.
+- Extend the [CustomBuilder.get_model()](../dpdl/models/custom_builder.py) to instantiate you model correctly
 
 ## PEFT (parameter‑efficient fine‑tuning)
 
