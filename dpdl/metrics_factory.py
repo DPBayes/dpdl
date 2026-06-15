@@ -1,17 +1,26 @@
-from dataclasses import dataclass
-from typing import Optional, Dict
-from torchmetrics.text import Perplexity
-
 import logging
+from typing import Dict, Optional
+
 import torch
 import torchmetrics
+from torchmetrics.text import Perplexity
+
+from .custom_metrics_factory import CustomMetricsFactory
 
 log = logging.getLogger(__name__)
+
+
+def _build_custom_metrics(metric_config, key, default_kwargs, sync_on_compute):
+    if not metric_config:
+        return None
+    return CustomMetricsFactory.build_metric_collection(metric_config[key], default_kwargs, sync_on_compute)
+
 
 def _get_classification_metrics(
     output_dim: int,
     sync: bool,
     with_confusion_matrix: bool,
+    custom_metrics: Optional[Dict[str, torchmetrics.Metric]] = None,
 ) -> torchmetrics.MetricCollection:
     # NB: If `sync_on_compute` is enabled, this breaks
     # distributed training. If this needs to be enabled,
@@ -42,11 +51,20 @@ def _get_classification_metrics(
             sync_on_compute=sync,
         )
 
+    if custom_metrics:
+        metrics.update(custom_metrics)
+
     return torchmetrics.MetricCollection(metrics)
 
 
 class LanguageModelMetrics(torchmetrics.MetricCollection):
-    def __init__(self, vocab_size: int, ignore_index: int, sync: bool) -> None:
+    def __init__(
+        self,
+        vocab_size: int,
+        ignore_index: int,
+        sync: bool,
+        custom_metrics: Optional[Dict[str, torchmetrics.Metric]] = None,
+    ) -> None:
         metrics = {
             'MulticlassAccuracy': torchmetrics.classification.MulticlassAccuracy(
                 num_classes=vocab_size,
@@ -59,6 +77,10 @@ class LanguageModelMetrics(torchmetrics.MetricCollection):
                 sync_on_compute=sync,
             ),
         }
+
+        if custom_metrics:
+            metrics.update(custom_metrics)
+
         super().__init__(metrics)
 
     def update(self, preds, target) -> None:
@@ -73,15 +95,13 @@ class LanguageModelMetrics(torchmetrics.MetricCollection):
             shift_logits_flat = shift_logits.view(-1, shift_logits.size(-1))  # (batch*(seq_len-1), vocab)
             shift_labels_flat = shift_labels.view(-1)                         # (batch*(seq_len-1))
 
-            self['Perplexity'].update(shift_logits, shift_labels)
+            for metric in self.values():
+                if isinstance(metric, Perplexity):
+                    metric.update(shift_logits, shift_labels)
+                else:
+                    metric.update(shift_logits_flat, shift_labels_flat)
 
-            for name, metric in self.items():
-                if name == 'Perplexity':
-                    continue
-
-                metric.update(shift_logits_flat, shift_labels_flat)
-
-            return
+            return None
 
         return super().update(preds, target)
 
@@ -90,12 +110,13 @@ def _get_language_model_metrics(
     vocab_size: int,
     ignore_index: int,
     sync: bool,
+    custom_metrics: Optional[Dict[str, torchmetrics.Metric]] = None,
 ) -> torchmetrics.MetricCollection:
-
     return LanguageModelMetrics(
         vocab_size=vocab_size,
         ignore_index=ignore_index,
         sync=sync,
+        custom_metrics=custom_metrics,
     )
 
 
@@ -107,6 +128,8 @@ class MetricsFactory:
         output_dim: Optional[int] = None,
     ) -> Dict[str, torchmetrics.MetricCollection]:
         task = configuration.task
+        metric_conf = getattr(configuration, 'metric_conf', None)
+        metric_config = CustomMetricsFactory.read_metric_config(metric_conf) if metric_conf else None
 
         # we only validate on rank 0, so there's no need to
         # synchronize when calculating the metrics.
@@ -119,20 +142,28 @@ class MetricsFactory:
             if not output_dim or output_dim < 1:
                 raise ValueError('output_dim required for classification tasks')
 
+            classification_defaults = {
+                'num_classes': output_dim,
+                'task': 'multiclass' if output_dim > 2 else 'binary',
+            }
+
             train = _get_classification_metrics(
                 output_dim=output_dim,
                 sync=train_sync,
                 with_confusion_matrix=False,
+                custom_metrics=_build_custom_metrics(metric_config, 'train_metrics', classification_defaults, train_sync),
             )
             valid = _get_classification_metrics(
                 output_dim=output_dim,
                 sync=eval_sync,
                 with_confusion_matrix=False,
+                custom_metrics=_build_custom_metrics(metric_config, 'valid_metrics', classification_defaults, eval_sync),
             )
             test = _get_classification_metrics(
                 output_dim=output_dim,
                 sync=eval_sync,
                 with_confusion_matrix=True,
+                custom_metrics=_build_custom_metrics(metric_config, 'test_metrics', classification_defaults, eval_sync),
             )
 
         elif task in ('CausalLM', 'InstructLM'):
@@ -142,20 +173,29 @@ class MetricsFactory:
             vocab_size = int(output_dim)
             ignore_index = -100
 
+            language_defaults = {
+                'num_classes': vocab_size,
+                'ignore_index': ignore_index,
+                'task': 'multiclass',
+            }
+
             train = _get_language_model_metrics(
                 vocab_size=vocab_size,
                 ignore_index=ignore_index,
                 sync=train_sync,
+                custom_metrics=_build_custom_metrics(metric_config, 'train_metrics', language_defaults, train_sync),
             )
             valid = _get_language_model_metrics(
                 vocab_size=vocab_size,
                 ignore_index=ignore_index,
                 sync=eval_sync,
+                custom_metrics=_build_custom_metrics(metric_config, 'valid_metrics', language_defaults, eval_sync),
             )
             test = _get_language_model_metrics(
                 vocab_size=vocab_size,
                 ignore_index=ignore_index,
                 sync=eval_sync,
+                custom_metrics=_build_custom_metrics(metric_config, 'test_metrics', language_defaults, eval_sync),
             )
 
         else:
