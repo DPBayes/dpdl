@@ -16,45 +16,63 @@ def _build_custom_metrics(metric_config, key, default_kwargs, sync_on_compute):
     return CustomMetricsFactory.build_metric_collection(metric_config[key], default_kwargs, sync_on_compute)
 
 
-def _get_classification_metrics(
-    output_dim: int,
-    sync: bool,
-    with_confusion_matrix: bool,
-    custom_metrics: Optional[Dict[str, torchmetrics.Metric]] = None,
-) -> torchmetrics.MetricCollection:
-    # NB: If `sync_on_compute` is enabled, this breaks
-    # distributed training. If this needs to be enabled,
-    # then we also need to actually run the validation on
-    # all the GPUs.
-    metrics = {
-        'MulticlassAccuracy': torchmetrics.classification.MulticlassAccuracy(
-            num_classes=output_dim,
-            average='macro',
-            sync_on_compute=sync,
-        ),
-        'MulticlassAccuracyWithMicro': torchmetrics.classification.MulticlassAccuracy(
-            num_classes=output_dim,
-            average='micro',
-            sync_on_compute=sync,
-        ),
-        'MulticlassAccuracyPerClass': torchmetrics.classification.MulticlassAccuracy(
-            num_classes=output_dim,
-            average='none',
-            sync_on_compute=sync,
-        ),
-    }
+class ClassificationMetrics(torchmetrics.MetricCollection):
+    def __init__(
+        self,
+        output_dim: int,
+        sync: bool,
+        with_confusion_matrix: bool,
+        custom_metrics: Optional[Dict[str, torchmetrics.Metric]] = None,
+    ) -> None:
+        # NB: If `sync_on_compute` is enabled, this breaks
+        # distributed training. If this needs to be enabled,
+        # then we also need to actually run the validation on
+        # all the GPUs.
+        metrics = {
+            'MulticlassAccuracy': torchmetrics.classification.MulticlassAccuracy(
+                num_classes=output_dim,
+                average='macro',
+                sync_on_compute=sync,
+            ),
+            'MulticlassAccuracyWithMicro': torchmetrics.classification.MulticlassAccuracy(
+                num_classes=output_dim,
+                average='micro',
+                sync_on_compute=sync,
+            ),
+            'MulticlassAccuracyPerClass': torchmetrics.classification.MulticlassAccuracy(
+                num_classes=output_dim,
+                average='none',
+                sync_on_compute=sync,
+            ),
+        }
 
-    if with_confusion_matrix:
-        metrics['ConfusionMatrix'] = torchmetrics.ConfusionMatrix(
-            task='multiclass' if output_dim > 2 else 'binary',
-            num_classes=output_dim,
-            sync_on_compute=sync,
-        )
+        if with_confusion_matrix:
+            metrics['ConfusionMatrix'] = torchmetrics.ConfusionMatrix(
+                task='multiclass' if output_dim > 2 else 'binary',
+                num_classes=output_dim,
+                sync_on_compute=sync,
+            )
 
-    if custom_metrics:
-        metrics.update(custom_metrics)
+        if custom_metrics:
+            metrics.update(custom_metrics)
 
-    return torchmetrics.MetricCollection(metrics)
+        super().__init__(metrics)
+
+    def update(self, preds, target) -> None:
+        # ConfusionMatrix expects class labels, not logits, unlike the
+        # other classification metrics, which apply argmax internally.
+        if 'ConfusionMatrix' not in self.keys():
+            return super().update(preds, target)
+
+        preds_labels = preds.argmax(dim=-1) if preds.ndim > target.ndim else preds
+
+        for name, metric in self.items():
+            if name == 'ConfusionMatrix':
+                metric.update(preds_labels, target)
+            else:
+                metric.update(preds, target)
+
+        return None
 
 
 class LanguageModelMetrics(torchmetrics.MetricCollection):
@@ -84,40 +102,23 @@ class LanguageModelMetrics(torchmetrics.MetricCollection):
         super().__init__(metrics)
 
     def update(self, preds, target) -> None:
-        # Accuracy metrics use standard flattened inputs
-        if not hasattr(preds, 'ndim'):
+        # Perplexity expects 3D logits and 2D labels, unlike the other
+        # metrics, which expect flattened inputs.
+        if not hasattr(preds, 'ndim') or preds.ndim != 3:
             return super().update(preds, target)
 
-        # We need to shape the data for perplexity that expects 3D logits and 2D labels
-        if preds.ndim == 3:
-            shift_logits = preds[:, :-1, :].contiguous()                      # (batch, seq_len-1, vocab)
-            shift_labels = target[:, 1:].contiguous()                         # (batch, seq_len-1)
-            shift_logits_flat = shift_logits.view(-1, shift_logits.size(-1))  # (batch*(seq_len-1), vocab)
-            shift_labels_flat = shift_labels.view(-1)                         # (batch*(seq_len-1))
+        shift_logits = preds[:, :-1, :].contiguous()                      # (batch, seq_len-1, vocab)
+        shift_labels = target[:, 1:].contiguous()                         # (batch, seq_len-1)
+        shift_logits_flat = shift_logits.view(-1, shift_logits.size(-1))  # (batch*(seq_len-1), vocab)
+        shift_labels_flat = shift_labels.view(-1)                         # (batch*(seq_len-1))
 
-            for metric in self.values():
-                if isinstance(metric, Perplexity):
-                    metric.update(shift_logits, shift_labels)
-                else:
-                    metric.update(shift_logits_flat, shift_labels_flat)
+        for name, metric in self.items():
+            if name == 'Perplexity':
+                metric.update(shift_logits, shift_labels)
+            else:
+                metric.update(shift_logits_flat, shift_labels_flat)
 
-            return None
-
-        return super().update(preds, target)
-
-
-def _get_language_model_metrics(
-    vocab_size: int,
-    ignore_index: int,
-    sync: bool,
-    custom_metrics: Optional[Dict[str, torchmetrics.Metric]] = None,
-) -> torchmetrics.MetricCollection:
-    return LanguageModelMetrics(
-        vocab_size=vocab_size,
-        ignore_index=ignore_index,
-        sync=sync,
-        custom_metrics=custom_metrics,
-    )
+        return None
 
 
 class MetricsFactory:
@@ -147,19 +148,19 @@ class MetricsFactory:
                 'task': 'multiclass' if output_dim > 2 else 'binary',
             }
 
-            train = _get_classification_metrics(
+            train = ClassificationMetrics(
                 output_dim=output_dim,
                 sync=train_sync,
                 with_confusion_matrix=False,
                 custom_metrics=_build_custom_metrics(metric_config, 'train_metrics', classification_defaults, train_sync),
             )
-            valid = _get_classification_metrics(
+            valid = ClassificationMetrics(
                 output_dim=output_dim,
                 sync=eval_sync,
                 with_confusion_matrix=False,
                 custom_metrics=_build_custom_metrics(metric_config, 'valid_metrics', classification_defaults, eval_sync),
             )
-            test = _get_classification_metrics(
+            test = ClassificationMetrics(
                 output_dim=output_dim,
                 sync=eval_sync,
                 with_confusion_matrix=True,
@@ -179,19 +180,19 @@ class MetricsFactory:
                 'task': 'multiclass',
             }
 
-            train = _get_language_model_metrics(
+            train = LanguageModelMetrics(
                 vocab_size=vocab_size,
                 ignore_index=ignore_index,
                 sync=train_sync,
                 custom_metrics=_build_custom_metrics(metric_config, 'train_metrics', language_defaults, train_sync),
             )
-            valid = _get_language_model_metrics(
+            valid = LanguageModelMetrics(
                 vocab_size=vocab_size,
                 ignore_index=ignore_index,
                 sync=eval_sync,
                 custom_metrics=_build_custom_metrics(metric_config, 'valid_metrics', language_defaults, eval_sync),
             )
-            test = _get_language_model_metrics(
+            test = LanguageModelMetrics(
                 vocab_size=vocab_size,
                 ignore_index=ignore_index,
                 sync=eval_sync,
