@@ -1,17 +1,16 @@
 import logging
-import re
-import timm
 import torch
 import os
+import sys
+import importlib
 
 from typing import Any, Dict, Optional
 
 from .model_base import ModelBase
-from .wide_resnet import WideResNet
-from .koskela_model import KoskelaNet
-from .hugging_face_models import HuggingfaceLanguageModel
 
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from .llm_builder import LLMBuilder
+from .timm_builder import TimmBuilder
+from .custom_builder import CustomBuilder
 
 from dpdl.configurationmanager import Configuration, Hyperparameters
 from dpdl.peft import PeftFactory
@@ -51,7 +50,7 @@ class ModelFactory:
     def get_model(
         configuration: Configuration,
         hyperparams: Hyperparameters,
-        num_classes: int,
+        output_dim: int,
         loss_fn: torch.nn,
         metrics: Optional[Dict[str, Any]] = None
     ):
@@ -62,7 +61,7 @@ class ModelFactory:
         Parameters:
         - configuration: Configuration object containing model specs.
         - hyperparams: Optional hyperparameters, not directly used here.
-        - num_classes: The number of classes for a classification problem
+        - output_dim: The number of classes for a classification problem
 
         Returns:
         - A tuple of (ModelBase instance, Data Transforms).
@@ -73,67 +72,23 @@ class ModelFactory:
         or just use ModelBase directly?
         """
 
-        transforms = {}  # No default transforms
-        model_instance = None
+        checkpoints_dir_latest = get_latest_checkpoint(
+            configuration.checkpoints_dir
+        )
 
-
-        # Flag to skip image model creation if we load HF
-        loaded_hf = False
-
-        # Flag to see if we load a local model already fine tuned
-        checkpoints_dir_latest = None
-
-        # check if we want to experiment on LLMs
-        if configuration.llm:
-            checkpoints_dir_latest = get_latest_checkpoint(
-                configuration.checkpoints_dir
-            )
-            model_instance = HuggingfaceLanguageModel(
-                configuration.model_name,
-                configuration.load_in_4bit,
-                num_labels=num_classes,
-                peft=configuration.peft,
-                checkpoint_dir=checkpoints_dir_latest,
-                task=configuration.task,
-            )
-
-            transforms = model_instance.get_transforms()
-            loaded_hf = True
-
-        if not loaded_hf:
-            if configuration.model_name.startswith('wrn-'):
-                # Parse depth and width from model_name, e.g., 'wrn-16-4'
-                parts = configuration.model_name.split('-')
-                depth, width = int(parts[1]), int(parts[2])
-                model_instance = WideResNet(depth=depth, width=width, num_classes=num_classes)
-                transforms = model_instance.get_transforms()
-            elif configuration.model_name == 'koskela-net':
-                model_instance = KoskelaNet()
-                transforms = model_instance.get_transforms()
-            else:
-                model_instance = timm.create_model(
-                    configuration.model_name,
-                    pretrained=configuration.pretrained,
-                    num_classes=num_classes,
-                )
-
-                # Resolve data config and create transforms
-                model_config = timm.data.resolve_data_config({}, model=model_instance)
-                transforms = timm.data.transforms_factory.create_transform(**model_config)
-
-        # resolve num_classes if needed
-        if num_classes is None:
-            if hasattr(model_instance, 'config') and getattr(model_instance.config, 'vocab_size', None):
-                num_classes = int(model_instance.config.vocab_size)
-            elif getattr(model_instance, 'num_classes', None):
-                num_classes = int(model_instance.num_classes)
-            else:
-                raise ValueError('Num classes not given and unable to infer it.')
+        if LLMBuilder.matches(configuration):
+            model_instance, transforms, output_dim = LLMBuilder.get_model(configuration, output_dim, checkpoints_dir_latest)
+        elif CustomBuilder.matches(configuration):
+            model_instance, transforms, output_dim = CustomBuilder.get_model(configuration, output_dim)
+        elif TimmBuilder.matches(configuration):
+            model_instance, transforms, output_dim = TimmBuilder.get_model(configuration, output_dim)
+        else:
+            raise ValueError(f"No model buildable for name '{configuration.model_name}' and task '{configuration.task}'!")
 
         # Wrap the instantiated model with ModelBase
         model = ModelBase(
             model_instance=model_instance,
-            num_classes=num_classes,
+            output_dim=output_dim,
             use_feature_cache=configuration.cache_features,
             criterion=loss_fn,
             metrics=metrics
@@ -151,5 +106,4 @@ class ModelFactory:
         if configuration.peft:
             model = PeftFactory.get_peft_model(model, configuration, checkpoints_dir_latest)
 
-        return model, transforms, num_classes
-
+        return model, transforms, output_dim

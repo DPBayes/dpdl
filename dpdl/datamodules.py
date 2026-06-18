@@ -75,7 +75,7 @@ class DataModule:
         }
 
         # The _load_datasets method will fill this
-        self.num_classes = None
+        self.output_dim = None
 
         # Load datasets to memory
         if torch.distributed.get_rank() == 0:
@@ -158,8 +158,8 @@ class DataModule:
 
             self.batch_size = batch_size
 
-    def get_num_classes(self):
-        return self.num_classes
+    def get_output_dim(self):
+        return self.output_dim
 
     def get_dataloader(self, name):
         return self._dataloaders.get(name)
@@ -286,12 +286,12 @@ class DataModule:
         # Make sure the dataset label field is of type ClassLabel
         self._dataset_splits = self._enforce_label_field_type(dataset_splits)
 
-        # Automatically determine the number of classes
+        # Automatically determine the output dimension
         # NB: This can be done if the label is of type ClassLabel
-        self.num_classes = dataset_splits['train'].features[self._label_field].num_classes
+        self.output_dim = dataset_splits['train'].features[self._label_field].num_classes
 
         if torch.distributed.get_rank() == 0:
-            log.info(f'Determined the number of classes to be {self.num_classes}.')
+            log.info(f'Determined the output dimension to be {self.output_dim}.')
 
     def _create_dataset_splits(self):
         # Check if there's a validation split available
@@ -553,10 +553,10 @@ class DataModule:
         return dataset.select(sampled_indices)
 
     def _get_few_shot_subset(self, dataset):
-        if not self.num_classes:
+        if not self.output_dim:
             raise ValueError('Number of classes unknown, can not create few shot dataset.')
 
-        test_size = self.shots * self.num_classes
+        test_size = self.shots * self.output_dim
 
         # Special case: `train_test_split` is unable to 'split' if
         # the requested split size equals the dataset size. Also,
@@ -594,14 +594,14 @@ class DataModule:
 
         # Get the label counts and basic statistics.
         label_counts = Counter(dataset[self._label_field])
-        num_classes = len(label_counts)
+        output_dim = len(label_counts)
         max_count = max(label_counts.values())
 
         # Calculate the number of samples per class based on an exponential distribution.
-        # For cls_idx = 0 we get max_count and for cls_idx = num_classes-1 we get fewer samples.
+        # For cls_idx = 0 we get max_count and for cls_idx = output_dim-1 we get fewer samples.
         img_num_per_cls = [
-            max(1, int(max_count * (self._imbalance_factor ** (cls_idx / (num_classes - 1.0)))))
-            for cls_idx in range(num_classes)
+            max(1, int(max_count * (self._imbalance_factor ** (cls_idx / (output_dim - 1.0)))))
+            for cls_idx in range(output_dim)
         ]
 
         # Do we want to flip the imbalance order?
@@ -613,7 +613,7 @@ class DataModule:
         g.manual_seed(self.split_seed)
 
         # Collect indices for each class.
-        class_indices = {cls: [] for cls in range(num_classes)}
+        class_indices = {cls: [] for cls in range(output_dim)}
         for idx, sample in enumerate(dataset):
             class_indices[sample[self._label_field]].append(idx)
 
@@ -645,12 +645,12 @@ class DataModule:
 
         # Get label counts as a list of counts
         label_counts = list(Counter(dataset[self._label_field]).values())
-        num_classes = len(label_counts)
+        output_dim = len(label_counts)
 
         # Determine number of samples per class: for the fairness-imbalanced class, reduce the count
         img_num_per_cls = [
             label_counts[i] if i != self._fairness_imbalance_class else int(label_counts[i] * self._imbalance_factor)
-            for i in range(num_classes)
+            for i in range(output_dim)
         ]
 
         # Create a torch generator for reproducibility
@@ -658,7 +658,7 @@ class DataModule:
         g.manual_seed(self.split_seed)
 
         # Collect indices for each class
-        class_indices = {cls: [] for cls in range(num_classes)}
+        class_indices = {cls: [] for cls in range(output_dim)}
         for idx, sample in enumerate(dataset):
             class_indices[sample[self._label_field]].append(idx)
 
@@ -1015,12 +1015,12 @@ class NLPDataModule(DataModule):
 
             # Automatically determine the number of classes
             # NB: This can be done if the label is of type ClassLabel
-            self.num_classes = (
+            self.output_dim = (
                 dataset_splits['train'].features[self._label_field].num_classes
             )
 
             if torch.distributed.get_rank() == 0:
-                log.info(f'Determined the number of classes to be {self.num_classes}.')
+                log.info(f'Determined the output dimension to be {self.output_dim}.')
 
         else:
             self._detect_text_fields(

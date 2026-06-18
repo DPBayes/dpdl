@@ -8,20 +8,20 @@ We aim keeep the document brief and point to code for further details.
 
 Model creation happens in [ModelFactory](../dpdl/models/model_factory.py).
 The main selection logic is:
-- If `--llm` is set, load a HuggingFace model via [HuggingfaceLanguageModel](../dpdl/models/hugging_face_models.py).
-- Otherwise, by default we use `timm` models, unless the model name matches a custom model (e.g., `wrn-<depth>-<width>` for [WideResNet](https://arxiv.org/abs/1605.07146) or `koskela-net`).
+- If `--task` is a language task (i.e. CausalLM, InstructLM or SequenceClassification), load a HuggingFace model via [HuggingfaceLanguageModel](../dpdl/models/hugging_face_models.py).
+- Otherwise, by default we use `timm` models, unless the model name matches one of the provided, custom models (e.g., `wide_res_net-<depth>-<width>` for [WideResNet](https://arxiv.org/abs/1605.07146) or `koskela-net`).
 
-After initilization, we wrap the modesl in [ModelBase](../dpdl/models/model_base.py) what provides a common interface (e.g. loss, metrics, save/load, etc) for the underlying models.
+After initialization, we wrap the models in [ModelBase](../dpdl/models/model_base.py) what provides a common interface (e.g. loss, metrics, save/load, etc.) for the underlying models.
 
 ## Timm models (vision)
 
-When `--llm` is **not** set and the model name does not match a custom model, [ModelFactory](../dpdl/models/model_factory.py) calls `timm.create_model()` to instatiate the requested model.
+When `--task` is **not** a language task and the model name does not match a custom model, [ModelFactory](../dpdl/models/model_factory.py) calls `timm.create_model()` to instantiate the requested model.
 The factory gets the parameters from [ConfigurationManager](../dpdl/callbacks/configurationmanager.py) and creates the model as requested.
 The model requested model is specified with `--model-name` CLI switch and loading pretrained weights is controlled by `--pretrained`/`--no-pretrained` switch.
 
 ## HuggingFace models (language)
 
-When `--llm` is enabled, DPDL uses [HuggingfaceLanguageModel](../dpdl/models/hugging_face_models.py) to load HF models via the [Transfomers API](https://huggingface.co/docs/transformers/index).
+When `--task` is one of `CausalLM`, `InstructLM` or `SequenceClassification`, DPDL uses [HuggingfaceLanguageModel](../dpdl/models/hugging_face_models.py) to load HF models via the [Transfomers API](https://huggingface.co/docs/transformers/index).
 
 If you need model‑specific behaviors (e.g., special tokenization), consult the upstream model docs and extend `HuggingfaceLanguageModel` as needed.
 
@@ -34,9 +34,8 @@ DPDL includes a small set of custom models, that have been implemented on a case
 Should you need to implement a custom model, use the above implementations as an example.
 In essence:
 - Implement a new module under `dpdl/models/` while following the [ModelBase API](../dpdl/models/model_base.py).
-- Extend `ModelFactory.get_model()` to route to your model.
-
-The name based routing is *a bit hacky*, but we haven't yet come up with a more reasonable method.
+- Extend the checks in [CustomBuilder.matches()](../dpdl/models/custom_builder.py) to match your model.
+- Extend the [CustomBuilder.get_model()](../dpdl/models/custom_builder.py) to instantiate you model correctly
 
 ## PEFT (parameter‑efficient fine‑tuning)
 

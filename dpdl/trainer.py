@@ -864,7 +864,7 @@ class TrainerFactory:
 
         # First create DataModule, it can figure out the number of classes
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, device)
-        num_classes = datamodule.get_num_classes()
+        output_dim = datamodule.get_output_dim()
 
         # Now, setup data, model, and optimizer
         loss_fn = LossFactory.get_loss(configuration)
@@ -872,15 +872,15 @@ class TrainerFactory:
         # This also return effective number of classes, as for LM tasks
         # it is vocabulary size and for classification tasksk it's number
         # of classes as usually.
-        model, transforms, num_classes_eff = ModelFactory.get_model(
+        model, transforms, output_dim_eff = ModelFactory.get_model(
             configuration,
             hyperparams,
-            num_classes,
+            output_dim,
             loss_fn,
         )
 
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
-        metrics = MetricsFactory.get_metrics(configuration, num_classes_eff)
+        metrics = MetricsFactory.get_metrics(configuration, output_dim_eff)
         model.set_metrics(metrics)
 
         # Initialize the datamodule with the transformations
@@ -957,19 +957,19 @@ class TrainerFactory:
 
         # First initialize the DataModule, it will know about the number of classes
         datamodule = DataModuleFactory.get_datamodule(configuration, hyperparams, device)
-        num_classes = datamodule.get_num_classes()
+        output_dim = datamodule.get_output_dim()
 
         # Now, setup data, model, and optimizer
         loss_fn = LossFactory.get_loss(configuration)
 
-        model, transforms, num_classes_eff = ModelFactory.get_model(
+        model, transforms, output_dim_eff = ModelFactory.get_model(
             configuration,
             hyperparams,
-            num_classes,
+            output_dim,
             loss_fn,
         )
 
-        metrics = MetricsFactory.get_metrics(configuration, num_classes_eff)
+        metrics = MetricsFactory.get_metrics(configuration, output_dim_eff)
         model.set_metrics(metrics)
 
         optimizer = OptimizerFactory.get_optimizer(configuration, hyperparams, model)
