@@ -9,6 +9,10 @@ log = logging.getLogger(__name__)
 class TimmBuilder:
 
     @staticmethod
+    def matches(configuration: Configuration):
+        return configuration.task == "ImageClassification"
+
+    @staticmethod
     def get_model(
             configuration: Configuration,
             output_dim: int | None

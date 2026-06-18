@@ -80,10 +80,12 @@ class ModelFactory:
             model_instance, transforms, output_dim = LLMBuilder.get_model(configuration, output_dim, checkpoints_dir_latest)
         elif CustomBuilder.matches(configuration):
             model_instance, transforms, output_dim = CustomBuilder.get_model(configuration, output_dim)
-        else:
+        elif TimmBuilder.matches(configuration):
             model_instance, transforms, output_dim = TimmBuilder.get_model(configuration, output_dim)
+        else:
+            raise ValueError(f"No model buildable for name '{configuration.model_name}' and task '{configuration.task}'!")
 
-            # Wrap the instantiated model with ModelBase
+        # Wrap the instantiated model with ModelBase
         model = ModelBase(
             model_instance=model_instance,
             output_dim=output_dim,

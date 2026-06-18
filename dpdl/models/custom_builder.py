@@ -23,8 +23,10 @@ class CustomBuilder:
             parts = configuration.model_name.split('-')
             depth, width = int(parts[1]), int(parts[2])
             model_instance = WideResNet(depth=depth, width=width, num_classes=output_dim)
-        else:
+        elif configuration.model_name == 'koskela-net':
             model_instance = KoskelaNet(num_classes=output_dim)
+        else:
+            raise ValueError(f"Custom model class could not be determined from name: {configuration.model_name}")
 
         transforms = model_instance.get_transforms()
 
