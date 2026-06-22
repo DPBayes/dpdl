@@ -5,6 +5,7 @@ import pathlib
 import pickle
 import shutil
 import subprocess
+import sys
 
 import optuna
 import pandas as pd
@@ -322,6 +323,28 @@ def _create_experiment_directory(
 
     return full_log_dir
 
+class _TeeStream:
+    """Writes to two streams simultaneously (here: original stderr + a log file)."""
+
+    def __init__(self, primary, secondary):
+        self._primary = primary
+        self._secondary = secondary
+
+    def write(self, data):
+        self._primary.write(data)
+        self._secondary.write(data)
+
+    def flush(self):
+        self._primary.flush()
+        self._secondary.flush()
+
+    def fileno(self):
+        return self._primary.fileno()
+
+    def isatty(self):
+        return self._primary.isatty()
+
+
 def _start_logging_to_files(log: logging.Logger, log_path: pathlib.Path):
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -331,8 +354,7 @@ def _start_logging_to_files(log: logging.Logger, log_path: pathlib.Path):
     stdout_file_handler.setFormatter(formatter)
     log.addHandler(stdout_file_handler)
 
-    # create a file handler for saving stderr logs to a file
-    stderr_file_handler = logging.FileHandler(log_path / 'stderr.txt')
-    stderr_file_handler.setLevel(logging.INFO)
-    stderr_file_handler.setFormatter(formatter)
-    log.addHandler(stderr_file_handler)
+    # Tee sys.stderr to a file while keeping the original stream open as well, 
+    # so that warnings and tracebacks are still visible in the terminal.
+    stderr_file = open(log_path / 'stderr.txt', 'w', buffering=1)
+    sys.stderr = _TeeStream(sys.stderr, stderr_file)
