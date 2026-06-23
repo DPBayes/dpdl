@@ -607,6 +607,19 @@ def cli(
                 rich_help_panel='Prediction options',
             )
         ] = 'test',
+        log_level: Annotated[
+            str,
+            typer.Option(
+                '--log-level',
+                help=(
+                    'Console log verbosity: "info" (default, all messages), '
+                    '"quiet" (metrics and loss only), '
+                    '"warning" (warnings and errors only), '
+                    '"debug" (verbose).'
+                ),
+                rich_help_panel='Logging options',
+            )
+        ] = 'info',
     ):
 
     # Map from commands to functions

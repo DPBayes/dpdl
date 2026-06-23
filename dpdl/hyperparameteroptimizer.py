@@ -152,18 +152,18 @@ class HyperparameterOptimizer:
                     # need to also keep track of how many manual trials we are
                     # enqueuing that have not been completed yet
                     if not study._should_skip_enqueue(trial):
-                        log.info(f'Enqueuing trial: {trial}')
+                        log.metrics(f'Enqueuing trial: {trial}')
                         study.enqueue_trial(trial, skip_if_exists=True)
                         enqueued_trial_count += 1
 
-                log.info(f'Enqueued {enqueued_trial_count} manual trials.')
+                log.metrics(f'Enqueued {enqueued_trial_count} manual trials.')
 
                 if enqueued_trial_count >= configuration.n_trials:
                     raise ValueError('The number of enqueued trials exceeds or matches the total number of trials. Please reduce the number of manual trials or increase `n_trials` to allow Optuna to perform additional trials.')
 
                 # Adjust number of random trials to account for enqueued trials
                 remaining_random_trials = max(configuration.optuna_random_trials - enqueued_trial_count, 0)
-                log.info(f'Setting n_startup_trials to {remaining_random_trials} to account for enqueued trials.')
+                log.metrics(f'Setting n_startup_trials to {remaining_random_trials} to account for enqueued trials.')
                 sampler = sampler_cls(
                     n_startup_trials=remaining_random_trials,
                     seed=configuration.seed,
@@ -183,10 +183,10 @@ class HyperparameterOptimizer:
         # log the results of the best trial
         if torch.distributed.get_rank() == 0:
             trial = study.best_trial
-            log.info(f'Best objective ralue: {trial.value}')
-            log.info('Params: ')
+            log.metrics(f'Best objective ralue: {trial.value}')
+            log.metrics('Params: ')
             for key, value in trial.params.items():
-                log.info(f' - {key}: {value}')
+                log.metrics(f' - {key}: {value}')
 
         # first we need to broadcast the best parameters to all ranks,
         # so we pack them into a list for sending
@@ -254,8 +254,8 @@ class HyperparameterOptimizer:
         trainer = TrainerFactory.get_trainer(config_manager)
 
         if torch.distributed.get_rank() == 0:
-            log.info('!! Final training round on the full training dataset (train + valid) and evaluating on test.')
-            log.info('--------------------------------------------------------------------------------------------')
+            log.metrics('!! Final training round on the full training dataset (train + valid) and evaluating on test.')
+            log.metrics('--------------------------------------------------------------------------------------------')
 
         # fit model using training AND validation data. we also use the test
         # set for validation here.
@@ -263,11 +263,11 @@ class HyperparameterOptimizer:
 
         # now we can evaluate the final performance of the best model
         if torch.distributed.get_rank() == 0:
-            log.info('Evaluating final model on the test set.')
+            log.metrics('Evaluating final model on the test set.')
 
         if torch.distributed.get_rank() == 0:
             loss, metrics = trainer.test()
-            log.info(f'Final loss: {loss:.4f}')
+            log.metrics(f'Final loss: {loss:.4f}')
 
             # let's share the loss and metrics with other ranks
             # rank 0 is the source
@@ -284,9 +284,9 @@ class HyperparameterOptimizer:
 
         if torch.distributed.get_rank() == 0:
             if metrics:
-                log.info('Final metrics:')
+                log.metrics('Final metrics:')
                 for key, value in metrics.items():
-                    log.info(f' - {key}: {value}.')
+                    log.metrics(f' - {key}: {value}.')
 
             log_final_epsilon(config_manager, trainer)
 
@@ -370,7 +370,7 @@ class HyperparameterOptimizer:
         trainer = TrainerFactory.get_trainer(config_manager)
 
         if torch.distributed.get_rank() == 0:
-            log.info(f'Starting trial {trial.number}.')
+            log.metrics(f'Starting trial {trial.number}.')
             log.info(config_manager.hyperparams)
 
         trainer.fit()
