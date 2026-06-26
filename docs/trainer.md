@@ -24,6 +24,32 @@ We support [torchmetrics](https://github.com/Lightning-AI/torchmetrics) through 
 
 Metrics live in the [model](../dpdl/models/model_base.py) (`train_metrics`, `valid_metrics`, `test_metrics`) and the Trainer(s) update them during different training phases.
 
+### Built-in metrics
+
+`MetricsFactory` always initialises a task-appropriate baseline set:
+
+- **Classification** (`ImageClassification`, `SequenceClassification`): macro and micro `MulticlassAccuracy` per class, and a `ConfusionMatrix` on the test split.
+- **Language modelling** (`CausalLM`, `InstructLM`): micro `MulticlassAccuracy` and `Perplexity`.
+
+### Custom metrics
+
+Additional metrics can be declared in a YAML config file and passed via `--metric-config`. The file has three optional sections (`train_metrics`, `valid_metrics`, `test_metrics`), each a list of entries. An entry is either a plain metric class name or a mapping:
+
+```yaml
+train_metrics:
+  - Accuracy                   # shorthand: just the class name
+
+valid_metrics:
+  - name: AUROC                # torchmetrics class name
+    params:
+      thresholds: 10
+      average: macro
+```
+
+See [`conf/metrics/example.conf`](../conf/metrics/example.conf) for a working example.
+
+`CustomMetricsFactory` resolves each name against the torchmetrics submodule hierarchy (`torchmetrics`, `torchmetrics.classification`, `torchmetrics.text`, `torchmetrics.regression`, `torchmetrics.image`, `torchmetrics.audio`). Task-level defaults such as `num_classes` and `task` are injected automatically where the metric accepts them; `sync_on_compute` is also set to match the train/eval setting. Params declared in the config always take precedence over these defaults.
+
 ## Task adapters
 
 The trainers use **task adapters** to keep task-specific logic out of the training loop.
