@@ -33,7 +33,7 @@ Metrics live in the [model](../dpdl/models/model_base.py) (`train_metrics`, `val
 
 ### Custom metrics
 
-Additional metrics can be declared in a YAML config file and passed via `--metric-conf`. The file has three optional sections (`train_metrics`, `valid_metrics`, `test_metrics`), each a list of entries. An entry is either a plain metric class name or a mapping:
+Additional metrics can be declared in a YAML config file and passed via `--metric-config`. The file has three optional sections (`train_metrics`, `valid_metrics`, `test_metrics`), each a list of entries. An entry is either a plain metric class name or a mapping:
 
 ```yaml
 train_metrics:
@@ -41,7 +41,6 @@ train_metrics:
 
 valid_metrics:
   - name: AUROC                # torchmetrics class name
-    alias: val_auroc           # key used when logging (defaults to name)
     params:
       thresholds: 10
       average: macro

@@ -564,7 +564,7 @@ def cli(
                 rich_help_panel='Bayesian optimization (Optuna) options',
             )
         ] = 'conf/optuna_hypers.conf',
-        metric_conf: Annotated[
+        metric_config: Annotated[
             Optional[str],
             typer.Option(
                 help='YAML file path containing custom metrics for train/validation/test',

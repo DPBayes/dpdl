@@ -1,13 +1,22 @@
 import logging
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import torch
 import torchmetrics
 from torchmetrics.text import Perplexity
+import yaml
 
-from .custom_metrics_factory import CustomMetricsFactory
 
 log = logging.getLogger(__name__)
+
+_METRIC_MODULES = (
+    torchmetrics,
+    getattr(torchmetrics, 'classification', None),
+    getattr(torchmetrics, 'text', None),
+    getattr(torchmetrics, 'regression', None),
+    getattr(torchmetrics, 'image', None),
+    getattr(torchmetrics, 'audio', None),
+)
 
 
 def _build_custom_metrics(metric_config, key, default_kwargs, sync_on_compute):
@@ -121,6 +130,96 @@ class LanguageModelMetrics(torchmetrics.MetricCollection):
         return None
 
 
+class CustomMetricsFactory:
+    @staticmethod
+    def _resolve_metric_class(metric_name: str):
+        for module in _METRIC_MODULES:
+            if module and hasattr(module, metric_name):
+                return getattr(module, metric_name)
+        raise ValueError(f'Metric class "{metric_name}" not found in torchmetrics.')
+
+    @staticmethod
+    def _build_metric(metric_spec: Dict[str, Any], default_kwargs: Dict[str, Any], sync_on_compute: bool):
+        metric_name = metric_spec['name']
+        metric_cls = CustomMetricsFactory._resolve_metric_class(metric_name)
+
+        user_params = dict(metric_spec.get('params') or {})
+        
+        params = default_kwargs.copy()
+        params.update(user_params)
+
+        if 'sync_on_compute' not in params:
+            params['sync_on_compute'] = sync_on_compute
+
+        return metric_cls(**params)
+
+    @staticmethod
+    def _normalize_metric_entries(metric_entries, section_name: str, metric_config: str) -> list[Dict[str, Any]]:
+        normalized: list[Dict[str, Any]] = []
+
+        for idx, entry in enumerate(metric_entries):
+            if isinstance(entry, str):
+                entry = {'name': entry, 'params': {}}
+            elif not isinstance(entry, dict):
+                raise ValueError(
+                    f'Metric config file "{metric_config}" section "{section_name}" entry #{idx + 1} must be a mapping or string.'
+                )
+
+            metric_name = entry.get('name')
+            if not metric_name:
+                raise ValueError(
+                    f'Metric config file "{metric_config}" section "{section_name}" entry #{idx + 1} is missing a metric name.'
+                )
+
+            params = entry.get('params') or {}
+            if not isinstance(params, dict):
+                raise ValueError(
+                    f'Metric config file "{metric_config}" section "{section_name}" entry #{idx + 1} has invalid params.'
+                )
+
+            normalized.append({'name': metric_name, 'params': params})
+
+        return normalized
+
+    @staticmethod
+    def read_metric_config(metric_config: Optional[str]) -> Dict[str, list[Dict[str, Any]]]:
+        if not metric_config:
+            return {'train_metrics': [], 'valid_metrics': [], 'test_metrics': []}
+
+        with open(metric_config, 'rb') as fh:
+            raw_config = yaml.safe_load(fh) or {}
+
+        if not isinstance(raw_config, dict):
+            raise ValueError(f'Metric config file "{metric_config}" must contain a mapping at the top level.')
+
+        normalized_config = {
+            'train_metrics': [],
+            'valid_metrics': [],
+            'test_metrics': [],
+        }
+
+        for key in ('train_metrics', 'valid_metrics', 'test_metrics'):
+            entries = raw_config.get(key, None)
+            if entries is None:
+                continue
+            if not isinstance(entries, list):
+                raise ValueError(
+                    f'Metric config file "{metric_config}" section "{key}" must contain a list of metrics.'
+                )
+
+            normalized_config[key].extend(CustomMetricsFactory._normalize_metric_entries(entries, key, metric_config))
+
+        return normalized_config
+
+    @staticmethod
+    def build_metric_collection(metric_specs, default_kwargs: Dict[str, Any], sync_on_compute: bool) -> Dict[str, torchmetrics.Metric]:
+        return {
+            spec['name']: CustomMetricsFactory._build_metric(spec, default_kwargs, sync_on_compute)
+            for spec in metric_specs
+        }
+
+
+
 class MetricsFactory:
 
     @staticmethod
@@ -129,8 +228,8 @@ class MetricsFactory:
         output_dim: Optional[int] = None,
     ) -> Dict[str, torchmetrics.MetricCollection]:
         task = configuration.task
-        metric_conf = getattr(configuration, 'metric_conf', None)
-        metric_config = CustomMetricsFactory.read_metric_config(metric_conf) if metric_conf else None
+        metric_config = getattr(configuration, 'metric_config', None)
+        metric_config = CustomMetricsFactory.read_metric_config(metric_config) if metric_config else None
 
         # we only validate on rank 0, so there's no need to
         # synchronize when calculating the metrics.
