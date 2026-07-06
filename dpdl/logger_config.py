@@ -19,4 +19,7 @@ def configure_logger(quiet: bool = False) -> logging.Logger:
     # add the new handler
     log.addHandler(handler)
 
+    # Prevent messages from propagating to the root logger, which causes double logging
+    log.propagate = False
+
     return log

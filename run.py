@@ -103,7 +103,7 @@ def main():
 
         return 0
 
-    log = configure_logger(quiet=_parse_quiet_arg(sys.argv))
+    log = configure_logger(quiet='--quiet' in sys.argv)
     setup_torch()
 
     device_arg = os.getenv('DPDL_DEVICE') or _parse_device_arg(sys.argv)
