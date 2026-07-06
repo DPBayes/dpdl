@@ -144,7 +144,7 @@ class ModelBase(torch.nn.Module):
             self.model.load_model(fpath)
 
             if torch.distributed.get_rank() == 0:
-                log.info(f'Loaded model from {fpath}')
+                log.debug(f'Loaded model from {fpath}')
 
             return
 
@@ -234,7 +234,7 @@ class ModelBase(torch.nn.Module):
         if unexpected:
             log.warning(f'load_model: unexpected keys ({len(unexpected)}): {unexpected[:20]}')
 
-        log.info(
+        log.debug(
             f'Loaded weights from {fpath} using candidate={best_name} '
             f'(match {matched}/{len(tgt_keys)}, ~{pct:.1f}% of target).'
         )

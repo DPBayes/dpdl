@@ -112,4 +112,4 @@ class RecordGradientStatisticsCallback(Callback):
             writer.writeheader()
             writer.writerows(grad_history)
 
-        log.info(f'{file_name} saved successfully at {file_path}.')
+        log.debug(f'{file_name} saved successfully at {file_path}.')

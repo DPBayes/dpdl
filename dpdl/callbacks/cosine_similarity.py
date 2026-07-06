@@ -136,7 +136,7 @@ class RecordCosineSimilarityCallback(Callback):
 
                     writer.writerow(row)
 
-            log.info(f'Cosine similarity data saved at {file_path}')
+            log.debug(f'Cosine similarity data saved at {file_path}')
 
 
 class RecordPerClassCosineSimilarityCallback(Callback):
@@ -230,4 +230,4 @@ class RecordPerClassCosineSimilarityCallback(Callback):
             for record in history:
                 writer.writerow([record.get(col, None) for col in header])
 
-        log.info(f'Cosine Similarities data saved at {file_path}')
+        log.debug(f'Cosine Similarities data saved at {file_path}')

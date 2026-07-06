@@ -25,10 +25,10 @@ def get_nb_trainable_parameters(model: torch.nn.Module):
     return trainable_params, all_param
 
 def print_trainable_modules(model: torch.nn.Module):
-    log.info('Trainable modules:')
+    log.debug('Trainable modules:')
     for module_name, module in model.named_modules():
         if any(p.requires_grad for p in module.parameters()):
-            log.info(module_name)
+            log.debug(module_name)
 
 
 class PeftFactory:
@@ -78,7 +78,7 @@ class HeadOnly:
         if torch.distributed.get_rank() == 0:
             print_trainable_modules(model)
 
-            log.info(f'Finetuning head only - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
+            log.debug(f'Finetuning head only - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
 
         return model
 
@@ -119,7 +119,7 @@ class FiLM:
         if torch.distributed.get_rank() == 0:
             print_trainable_modules(model)
 
-            log.info(f'FiLM setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
+            log.debug(f'FiLM setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}')
 
         return model
 
@@ -180,7 +180,7 @@ class LoRA:
 
         if torch.distributed.get_rank() == 0:
             print_trainable_modules(model)
-            log.info(
+            log.debug(
                 f'LoRA setup done - trainable params: {trainable_params:,d} || all params: {all_params:,d} || trainable%: {100 * trainable_params / all_params}'
             )
 

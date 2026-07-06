@@ -146,4 +146,4 @@ class RecordSNRCallback(Callback):
             writer.writerow(header)
             writer.writerows(self._rows)
 
-        log.info("SNR log written to %s", out_path)
+        log.debug("SNR log written to %s", out_path)

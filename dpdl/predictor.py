@@ -89,7 +89,7 @@ class Predictor:
             for i, (X, y) in enumerate(dataloader):
 
                 if torch.distributed.get_rank() == 0:
-                    log.info(f' - Predicting on batch {i}')
+                    log.debug(f' - Predicting on batch {i}')
 
                 # Move inputs to device
                 X, y = self.trainer.adapter.move_to_device(X, y)
@@ -159,7 +159,7 @@ class Predictor:
         model.load_model(fpath)
 
         if torch.distributed.get_rank() == 0:
-            log.info(f'Loaded weights from: {fpath}')
+            log.debug(f'Loaded weights from: {fpath}')
 
     def _get_model_params_and_buffers(self):
         model = self.trainer._unwrap_model()

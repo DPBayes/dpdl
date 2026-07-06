@@ -143,4 +143,4 @@ class RecordBodyAndHeadGradientNormsPerClassCallback(Callback):
             writer.writeheader()
             writer.writerows(self.grad_history)
 
-        log.info(f'Gradient norms (body & head per class) saved to {file_path}')
+        log.debug(f'Gradient norms (body & head per class) saved to {file_path}')

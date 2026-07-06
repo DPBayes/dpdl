@@ -342,7 +342,7 @@ class ConfigurationManager:
             with open(directory / 'configuration.json', 'w') as fh:
                 fh.write(self.configuration.json())
 
-            log.info(f'Configuration saved to {directory}.')
+            log.debug(f'Configuration saved to {directory}.')
 
     def save_hyperparameters(self, directory: pathlib.Path):
         if torch.distributed.get_rank() == 0:
@@ -352,7 +352,7 @@ class ConfigurationManager:
             with open(directory / 'hyperparameters.json', 'w') as fh:
                 fh.write(self.hyperparams.json())
 
-            log.info(f'Hyperparameters saved to {directory}/.')
+            log.debug(f'Hyperparameters saved to {directory}/.')
 
     def clone_with_overrides(self, **overrides) -> 'ConfigurationManager':
         params = dict(self._cli_params)

@@ -607,19 +607,14 @@ def cli(
                 rich_help_panel='Prediction options',
             )
         ] = 'test',
-        log_level: Annotated[
-            str,
+        quiet: Annotated[
+            bool,
             typer.Option(
-                '--log-level',
-                help=(
-                    'Console log verbosity: "info" (default, all messages), '
-                    '"quiet" (metrics and loss only), '
-                    '"warning" (warnings and errors only), '
-                    '"debug" (verbose).'
-                ),
+                '--quiet',
+                help='Only show training metrics, suppressing other console output.',
                 rich_help_panel='Logging options',
             )
-        ] = 'info',
+        ] = False,
     ):
 
     # Map from commands to functions
@@ -659,8 +654,8 @@ def cli(
 
 
 def run_show_layers(config_manager: ConfigurationManager) -> None:
-    log.info(config_manager.configuration)
-    log.info('Showing model layers.')
+    log.debug(config_manager.configuration)
+    log.debug('Showing model layers.')
 
     model, _, _ = ModelFactory.get_model(
         config_manager.configuration,
@@ -676,9 +671,9 @@ def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
     rank_zero = torch.distributed.get_rank() == 0
 
     if rank_zero:
-        log.info('Starting training.')
-        log.info(config_manager.hyperparams)
-        log.info(config_manager.configuration)
+        log.debug('Starting training.')
+        log.debug(config_manager.hyperparams)
+        log.debug(config_manager.configuration)
 
     seed_everything(config_manager.configuration.seed)
 
@@ -691,7 +686,7 @@ def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
     # log final train accuracy if needed
     if config_manager.configuration.record_final_train_accuracy:
         if rank_zero:
-            log.info('Evaluating on train set..')
+            log.debug('Evaluating on train set..')
 
         train_loss, train_metrics = trainer._evaluate('train', enable_callbacks=False)
 
@@ -700,7 +695,7 @@ def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
 
     # log test accuracy and run time, and save model if asked
     if rank_zero:
-        log.info('Evaluating on test set..')
+        log.debug('Evaluating on test set..')
         test_loss, test_metrics = trainer.test()
 
         log_test_metrics(config_manager, test_metrics, test_loss)
@@ -726,9 +721,9 @@ def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
             config_manager.configuration.model_weights_path = str(save_path)
 
         if rank_zero:
-            log.info(f'Saving model to "{save_path}"...')
+            log.debug(f'Saving model to "{save_path}"...')
             trainer.save_model(save_path)
-            log.info('Saving model done.')
+            log.debug('Saving model done.')
             saved_model_path = save_path
 
         torch.distributed.barrier()
@@ -738,8 +733,8 @@ def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
 
 def run_optimize(config_manager: ConfigurationManager) -> None:
     if torch.distributed.get_rank() == 0:
-        log.info('Starting hyperparameter optimization.')
-        log.info(config_manager.configuration)
+        log.debug('Starting hyperparameter optimization.')
+        log.debug(config_manager.configuration)
 
     seed_everything(config_manager.configuration.seed)
 
@@ -754,8 +749,8 @@ def run_optimize(config_manager: ConfigurationManager) -> None:
 
 def run_predict(config_manager: ConfigurationManager) -> None:
     if torch.distributed.get_rank() == 0:
-        log.info('Starting prediction.')
-        log.info(config_manager.configuration)
+        log.debug('Starting prediction.')
+        log.debug(config_manager.configuration)
 
     seed_everything(config_manager.configuration.seed)
 

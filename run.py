@@ -9,7 +9,7 @@ import typer
 
 from dpdl.cli import cli
 from dpdl.device import distributed_backend, resolve_device, set_cuda_device
-from dpdl.logger_config import LOG_LEVELS, configure_logger
+from dpdl.logger_config import configure_logger
 
 
 def setup_torch():
@@ -29,16 +29,8 @@ def setup_torch():
     multiprocess.set_start_method('spawn', force=True)
 
 
-def _parse_log_level_arg(argv) -> int:
-    import logging
-    for i, arg in enumerate(argv):
-        if arg == '--log-level' and i + 1 < len(argv):
-            return LOG_LEVELS.get(argv[i + 1], logging.INFO)
-
-        if arg.startswith('--log-level='):
-            return LOG_LEVELS.get(arg.split('=', 1)[1], logging.INFO)
-
-    return logging.INFO
+def _parse_quiet_arg(argv) -> bool:
+    return '--quiet' in argv
 
 
 def _parse_device_arg(argv):
@@ -65,7 +57,7 @@ def _resolve_distributed_env(log) -> tuple[int, int, int, str | None, str | None
     init_method = None
 
     if world_size is None or local_rank is None or rank is None:
-        log.info(
+        log.debug(
             "Distributed env vars 'WORLD_SIZE', 'RANK', and 'LOCAL_RANK' not set; "
             "defaulting to single-process distributed mode."
         )
@@ -111,7 +103,7 @@ def main():
 
         return 0
 
-    log = configure_logger(level=_parse_log_level_arg(sys.argv))
+    log = configure_logger(quiet=_parse_quiet_arg(sys.argv))
     setup_torch()
 
     device_arg = os.getenv('DPDL_DEVICE') or _parse_device_arg(sys.argv)
@@ -119,7 +111,7 @@ def main():
 
     world_size, rank, local_rank, init_method, dist_init_file = _resolve_distributed_env(log)
 
-    log.info(
+    log.debug(
         f'Rank {rank} initializing - our world size is {world_size} and local rank is {local_rank}.'
     )
 
@@ -129,10 +121,10 @@ def main():
     # Initialize the process group
     _init_process_group(device, world_size, rank, init_method)
 
-    log.info(f'Rank {rank} initialized.')
+    log.debug(f'Rank {rank} initialized.')
 
     if torch.distributed.get_rank() == 0:
-        log.info('All ranks initialized.')
+        log.debug('All ranks initialized.')
 
     exit_code = 0
 
@@ -152,7 +144,7 @@ def main():
 
             torch.distributed.destroy_process_group()
 
-            log.info(f'Rank {rank} done!')
+            log.debug(f'Rank {rank} done!')
 
         if dist_init_file is not None:
             try:

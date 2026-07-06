@@ -36,34 +36,34 @@ class RecordEpochStatsCallback(Callback):
                 steps_per_epoch = data_size / batch_size
                 epochs = math.ceil(trainer.total_steps / steps_per_epoch)
 
-                log.metrics(
+                log.info(
                     f"!!! Starting training for approximately {epochs} epochs ({trainer.total_steps} steps)."
                 )
             else:
-                log.metrics(f"!!! Starting training for {trainer.epochs} epochs.")
+                log.info(f"!!! Starting training for {trainer.epochs} epochs.")
 
     def on_train_end(self, trainer):
         if self._is_global_zero():
-            log.metrics("!!! Training finished.")
+            log.info("!!! Training finished.")
 
     def on_train_epoch_start(self, trainer, epoch):
         self.train_loss.reset()
 
         if self._is_global_zero():
-            log.metrics(f"--------------------------------------------------")
+            log.info(f"--------------------------------------------------")
             if not self.use_steps:
-                log.metrics(f"Starting training epoch {epoch+1}.")
+                log.info(f"Starting training epoch {epoch+1}.")
             else:
-                log.metrics(f"Starting training approximate epoch {epoch+1}.")
+                log.info(f"Starting training approximate epoch {epoch+1}.")
 
     def on_train_epoch_end(self, trainer, epoch, metrics):
         loss = self.train_loss.compute()
 
         if self._is_global_zero():
             if not self.use_steps:
-                log.metrics(f"Epoch {epoch+1} finished. Loss: {loss:.4f}.")
+                log.info(f"Epoch {epoch+1} finished. Loss: {loss:.4f}.")
             else:
-                log.metrics(f"Approximate epoch {epoch+1} finished. Loss: {loss:.4f}.")
+                log.info(f"Approximate epoch {epoch+1} finished. Loss: {loss:.4f}.")
 
             self._log_metrics(metrics, "Train metrics")
 
@@ -75,7 +75,7 @@ class RecordEpochStatsCallback(Callback):
         self.evaluation_loss.reset()
 
         if self._is_global_zero():
-            log.metrics(f"Validation finished. Loss: {loss:.4f}.")
+            log.info(f"Validation finished. Loss: {loss:.4f}.")
             self._log_metrics(metrics, "Validation metrics")
 
     def on_validation_batch_end(self, trainer, batch_idx, batch, loss):
@@ -86,7 +86,7 @@ class RecordEpochStatsCallback(Callback):
         self.evaluation_loss.reset()
 
         if self._is_global_zero():
-            log.metrics(f"Test finished. Loss: {loss:.4f}.")
+            log.info(f"Test finished. Loss: {loss:.4f}.")
             self._log_metrics(metrics, "Test metrics")
 
     def on_test_batch_end(self, trainer, batch_idx, batch, loss):
@@ -98,7 +98,7 @@ class RecordEpochStatsCallback(Callback):
 
         metrics = tensor_to_python_type(metrics)
 
-        log.metrics(annotation + ":")
+        log.info(annotation + ":")
         for key, value in metrics.items():
             if not key in self._metrics_to_ignore:
-                log.metrics(f" - {key}: {value}.")
+                log.info(f" - {key}: {value}.")

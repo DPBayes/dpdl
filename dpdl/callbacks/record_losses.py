@@ -33,7 +33,7 @@ class RecordTrainLossByStepCallback(Callback):
                 writer.writeheader()
                 writer.writerows(self.train_losses)
 
-            log.info(f'Training losses (by step) saved to {train_loss_path}')
+            log.debug(f'Training losses (by step) saved to {train_loss_path}')
 
 
 class RecordLossesByEpochCallback(Callback):
@@ -88,4 +88,4 @@ class RecordLossesByEpochCallback(Callback):
                     val_loss_val = self.val_losses[i] if i < len(self.val_losses) else ''
                     writer.writerow([i+1, train_loss_val, val_loss_val])
 
-            log.info('Training finished and all epoch losses have been logged to CSV.')
+            log.debug('Training finished and all epoch losses have been logged to CSV.')

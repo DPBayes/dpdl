@@ -47,4 +47,4 @@ class RecordPerClassAccuracyCallback(Callback):
                 for i, accuracies in enumerate(self.per_class_accuracies_history):
                     writer.writerow([i] + accuracies)
 
-            log.info(f'Per-class accuracy data saved at {file_path}')
+            log.debug(f'Per-class accuracy data saved at {file_path}')

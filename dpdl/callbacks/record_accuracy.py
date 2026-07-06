@@ -58,4 +58,4 @@ class RecordAccuracyByEpochCallback(Callback):
 
                 writer.writerow([i + 1, train_acc, val_acc])
 
-        log.info(f'Per epoch accuracies written to {self.csv_path}')
+        log.debug(f'Per epoch accuracies written to {self.csv_path}')

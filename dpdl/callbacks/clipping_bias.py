@@ -322,4 +322,4 @@ class ClipMSEDecompositionCallback(Callback):
             writer.writerow(header)
             writer.writerows(self._rows)
 
-        log.info(f'Clipping MSE decomposition written to {out_path}')
+        log.debug(f'Clipping MSE decomposition written to {out_path}')

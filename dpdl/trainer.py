@@ -331,18 +331,18 @@ class Trainer:
                 # PeftModel knows to save the adapters only
                 model.save_pretrained(fpath)
 
-                log.info(f'Saved merged HF PEFT adapters to {fpath}')
+                log.debug(f'Saved merged HF PEFT adapters to {fpath}')
             else:
                 # Merge PEFT into model and save the whole model
                 merged = model.merge_and_unload()
 
-                log.info(f'GOT A NEW MODEL FROM MERGE_AND_UNLOAD: {merged}')
+                log.debug(f'GOT A NEW MODEL FROM MERGE_AND_UNLOAD: {merged}')
                 # The `merge_and_unload` will incorporate the LoRA layers in
                 # the model. Then it will return as ModelBase.
                 merged.save_model(fpath)
 
                 if torch.distributed.get_rank() == 0:
-                    log.info(f'Saved merged HF PEFT model to {fpath}')
+                    log.debug(f'Saved merged HF PEFT model to {fpath}')
 
             return
 
@@ -384,7 +384,7 @@ class Trainer:
                         eos_token_id=self.datamodule.tokenizer.eos_token_id,
                     )
 
-                    log.info('Sampled text decoded', self.datamodule.decode(generated_ids))
+                    log.debug('Sampled text decoded', self.datamodule.decode(generated_ids))
 
         self.model.train()
 
@@ -945,7 +945,7 @@ class TrainerFactory:
             target_delta = _calculate_target_delta(N)
 
             if torch.distributed.get_rank() == 0:
-                log.info(f'Dataset size is {N}, setting target delta to: {target_delta}.')
+                log.debug(f'Dataset size is {N}, setting target delta to: {target_delta}.')
 
             # are we given a target epsilon?
             if hyperparams.target_epsilon is not None:

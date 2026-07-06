@@ -114,7 +114,7 @@ class MetricsFactory:
 
         if task in ('ImageClassification', 'SequenceClassification'):
             if torch.distributed.get_rank() == 0:
-                log.info(f'Task is "{configuration.task}", initializing classification metrics.')
+                log.debug(f'Task is "{configuration.task}", initializing classification metrics.')
 
             if not output_dim or output_dim < 1:
                 raise ValueError('output_dim required for classification tasks')
@@ -137,7 +137,7 @@ class MetricsFactory:
 
         elif task in ('CausalLM', 'InstructLM'):
             if torch.distributed.get_rank() == 0:
-                log.info(f'Task is "{configuration.task}", initializing language model metrics.')
+                log.debug(f'Task is "{configuration.task}", initializing language model metrics.')
 
             vocab_size = int(output_dim)
             ignore_index = -100

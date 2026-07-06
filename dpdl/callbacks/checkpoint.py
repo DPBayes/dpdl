@@ -112,7 +112,7 @@ class CheckpointCallback(Callback):
 
     def save_checkpoint(self, trainer, checkpoint_path: str):
         trainer.save_model(checkpoint_path)
-        log.info(f'Model checkpoint saved at {checkpoint_path}')
+        log.debug(f'Model checkpoint saved at {checkpoint_path}')
 
     def save_metrics(self, metrics, metrics_path: str):
         metrics = tensor_to_python_type(metrics)
@@ -120,4 +120,4 @@ class CheckpointCallback(Callback):
         with open(metrics_path, 'w') as fh:
             json.dump(metrics, fh)
 
-        log.info(f'Model checkpoint metrics saved at {metrics_path}')
+        log.debug(f'Model checkpoint metrics saved at {metrics_path}')

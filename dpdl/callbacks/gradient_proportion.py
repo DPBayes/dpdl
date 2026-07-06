@@ -96,4 +96,4 @@ class RecordClippedProportionsPerClassCallback(Callback):
             for step, proportions in enumerate(history):
                 writer.writerow([step] + proportions)
 
-        log.info(f'Clipped proportions data saved at {file_path}')
+        log.debug(f'Clipped proportions data saved at {file_path}')

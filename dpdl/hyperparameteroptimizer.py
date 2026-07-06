@@ -91,12 +91,12 @@ class HyperparameterOptimizer:
         )
 
         if torch.distributed.get_rank() == 0:
-            log.info('Determining maximum batch size for optimization.')
+            log.debug('Determining maximum batch size for optimization.')
 
         max_batch_size = HyperparameterOptimizer.get_max_batch_size(config_manager)
 
         if torch.distributed.get_rank() == 0:
-            log.info(f'- Maximum batch size for optimization: {max_batch_size}.')
+            log.debug(f'- Maximum batch size for optimization: {max_batch_size}.')
 
         # the optimization objective
         objective = partial(
@@ -152,18 +152,18 @@ class HyperparameterOptimizer:
                     # need to also keep track of how many manual trials we are
                     # enqueuing that have not been completed yet
                     if not study._should_skip_enqueue(trial):
-                        log.metrics(f'Enqueuing trial: {trial}')
+                        log.info(f'Enqueuing trial: {trial}')
                         study.enqueue_trial(trial, skip_if_exists=True)
                         enqueued_trial_count += 1
 
-                log.metrics(f'Enqueued {enqueued_trial_count} manual trials.')
+                log.info(f'Enqueued {enqueued_trial_count} manual trials.')
 
                 if enqueued_trial_count >= configuration.n_trials:
                     raise ValueError('The number of enqueued trials exceeds or matches the total number of trials. Please reduce the number of manual trials or increase `n_trials` to allow Optuna to perform additional trials.')
 
                 # Adjust number of random trials to account for enqueued trials
                 remaining_random_trials = max(configuration.optuna_random_trials - enqueued_trial_count, 0)
-                log.metrics(f'Setting n_startup_trials to {remaining_random_trials} to account for enqueued trials.')
+                log.info(f'Setting n_startup_trials to {remaining_random_trials} to account for enqueued trials.')
                 sampler = sampler_cls(
                     n_startup_trials=remaining_random_trials,
                     seed=configuration.seed,
@@ -183,10 +183,10 @@ class HyperparameterOptimizer:
         # log the results of the best trial
         if torch.distributed.get_rank() == 0:
             trial = study.best_trial
-            log.metrics(f'Best objective ralue: {trial.value}')
-            log.metrics('Params: ')
+            log.info(f'Best objective ralue: {trial.value}')
+            log.info('Params: ')
             for key, value in trial.params.items():
-                log.metrics(f' - {key}: {value}')
+                log.info(f' - {key}: {value}')
 
         # first we need to broadcast the best parameters to all ranks,
         # so we pack them into a list for sending
@@ -238,7 +238,7 @@ class HyperparameterOptimizer:
         # using the best params to get a model that we can evaluate on the test
         # for the final accuracy set
         if torch.distributed.get_rank() == 0:
-            log.info('Training final model with best hyperparameters for evaluation.')
+            log.debug('Training final model with best hyperparameters for evaluation.')
 
         # update the training hypers to the best values from the optimization
         for hyper, best_value in best_params.items():
@@ -254,8 +254,8 @@ class HyperparameterOptimizer:
         trainer = TrainerFactory.get_trainer(config_manager)
 
         if torch.distributed.get_rank() == 0:
-            log.metrics('!! Final training round on the full training dataset (train + valid) and evaluating on test.')
-            log.metrics('--------------------------------------------------------------------------------------------')
+            log.info('!! Final training round on the full training dataset (train + valid) and evaluating on test.')
+            log.info('--------------------------------------------------------------------------------------------')
 
         # fit model using training AND validation data. we also use the test
         # set for validation here.
@@ -263,11 +263,11 @@ class HyperparameterOptimizer:
 
         # now we can evaluate the final performance of the best model
         if torch.distributed.get_rank() == 0:
-            log.metrics('Evaluating final model on the test set.')
+            log.info('Evaluating final model on the test set.')
 
         if torch.distributed.get_rank() == 0:
             loss, metrics = trainer.test()
-            log.metrics(f'Final loss: {loss:.4f}')
+            log.info(f'Final loss: {loss:.4f}')
 
             # let's share the loss and metrics with other ranks
             # rank 0 is the source
@@ -284,9 +284,9 @@ class HyperparameterOptimizer:
 
         if torch.distributed.get_rank() == 0:
             if metrics:
-                log.metrics('Final metrics:')
+                log.info('Final metrics:')
                 for key, value in metrics.items():
-                    log.metrics(f' - {key}: {value}.')
+                    log.info(f' - {key}: {value}.')
 
             log_final_epsilon(config_manager, trainer)
 
@@ -296,7 +296,7 @@ class HyperparameterOptimizer:
                     save_path = config_manager.configuration.model_weights_path
                 else:
                     save_path = Path(config_manager.configuration.log_dir, config_manager.configuration.experiment_name, 'final_model.pt')
-                log.info(f'Saving final model after HPO to "{save_path}"...')
+                log.debug(f'Saving final model after HPO to "{save_path}"...')
                 trainer.save_model(save_path)
 
         return metrics
@@ -370,8 +370,8 @@ class HyperparameterOptimizer:
         trainer = TrainerFactory.get_trainer(config_manager)
 
         if torch.distributed.get_rank() == 0:
-            log.metrics(f'Starting trial {trial.number}.')
-            log.info(config_manager.hyperparams)
+            log.info(f'Starting trial {trial.number}.')
+            log.debug(config_manager.hyperparams)
 
         trainer.fit()
 
@@ -379,7 +379,7 @@ class HyperparameterOptimizer:
         if torch.distributed.get_rank() == 0:
             loss, metrics = trainer.validate()
 
-            log.info('Writing the loss and metrics of current trial into file.')
+            log.debug('Writing the loss and metrics of current trial into file.')
             save_hpo_metrics(
                 config_manager,
                 loss,
