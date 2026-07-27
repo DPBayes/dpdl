@@ -233,8 +233,8 @@ class LoRA:
         elif 'bert' in model_name:  # For the LLM experiments
             return LoraConfig(
                 task_type='SEQ_CLS',
-                r=16,  # rank
-                lora_alpha=32,
+                r=lora_rank,
+                lora_alpha=2 * lora_rank,
                 target_modules=['query', 'value'],
                 lora_dropout=0.1,
                 bias='none',
