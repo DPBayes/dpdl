@@ -103,6 +103,7 @@ class Configuration(BaseModel):
     optuna_target_metric: str = 'loss'
     optuna_direction: Literal['minimize', 'maximize'] = 'minimize'
     optuna_config: str = 'conf/optuna_hypers.conf'
+    metric_config: Optional[str] = None
     optuna_manual_trials: Optional[str] = None
     optuna_journal: str = 'optuna.journal'
     optuna_resume: bool = False
@@ -254,6 +255,7 @@ class Configuration(BaseModel):
             ('Enable callback debug logging', self.verbose_callback),
             ('Fairness-style subsampling class', self.fairness_imbalance_class),
             ('Random seed for creating dataset subsets', self.split_seed),
+            ('Metric configuration', self.metric_config),
             ('LLM use', self.llm),
             ('Task', self.task),
         ]
