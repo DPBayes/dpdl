@@ -410,6 +410,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_optimizer_stats: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record per-step gradient-norm and Adam statistics',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         record_llm_samples: Annotated[
             Optional[bool],
             typer.Option(
