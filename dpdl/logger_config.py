@@ -4,6 +4,7 @@ import sys
 def configure_logger() -> logging.Logger:
     log = logging.getLogger('dpdl')
     log.setLevel(logging.INFO)
+    log.propagate = False
 
     # create a stream handler for stdout
     handler = logging.StreamHandler(sys.stdout)
