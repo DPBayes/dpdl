@@ -11,10 +11,13 @@ from pathlib import Path
 
 from .configurationmanager import ConfigurationManager
 from .experimentmanager import (
+    log_disease_confusion_matrix,
     log_final_epsilon,
+    log_per_disease_accuracy,
     log_runtime,
     log_test_metrics,
     log_train_metrics,
+    save_per_sample_eval,
     start_experiment_logging,
 )
 from .hyperparameteroptimizer import HyperparameterOptimizer
@@ -171,6 +174,30 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = None,
+        scheduler_type: Annotated[
+            Optional[str],
+            typer.Option(
+                help='Scheduler type [cosine, linear, constant] by default None',
+                rich_help_panel='Training options',
+            )
+        ] = None,
+        resume: Annotated[
+            bool,
+            typer.Option(
+                help='Resume training from the latest checkpoint in the experiment '
+                     'dir (restores weights, optimizer, DP accountant, epoch). '
+                     'No-op if no checkpoint exists.',
+                rich_help_panel='Training options',
+            )
+        ] = False,
+        checkpoint_fraction: Annotated[
+            float,
+            typer.Option(
+                help='With --resume: save a checkpoint at each fraction-of-training '
+                     'milestone. 0.25 => 25%/50%/75%. Only the latest is kept.',
+                rich_help_panel='Training options',
+            )
+        ] = 0.25,
         prediction_save_gradient_data: Annotated[
             Optional[bool],
             typer.Option(
@@ -445,6 +472,13 @@ def cli(
                 rich_help_panel='Logging options',
             )
         ] = False,
+        record_learning_rate: Annotated[
+            Optional[bool],
+            typer.Option(
+                help='Record per-epoch learning rate',
+                rich_help_panel='Logging options',
+            )
+        ] = False,
         record_per_class_accuracy: Annotated[
             Optional[bool],
             typer.Option(
@@ -685,12 +719,25 @@ def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
         if rank_zero:
             log_train_metrics(config_manager, train_metrics, train_loss)
 
-    # log test accuracy and run time, and save model if asked
+    # log test accuracy and run time, and save model if asked.
+    # Tasks whose test evaluation issues collectives (e.g. DiseaseTask's disease
+    # accuracy all_reduce) must run test() on ALL ranks; others stay rank-0-only.
+    eval_all_ranks = getattr(trainer, 'eval_all_ranks', False)
     if rank_zero:
         log.info('Evaluating on test set..')
-        test_loss, test_metrics = trainer.test()
 
+    test_loss, test_metrics = None, None
+    if eval_all_ranks or rank_zero:
+        test_loss, test_metrics = trainer.test()
+    torch.distributed.barrier()
+
+    if rank_zero:
         log_test_metrics(config_manager, test_metrics, test_loss)
+        log_per_disease_accuracy(config_manager, getattr(trainer, 'last_per_disease_accuracy', None))
+        log_disease_confusion_matrix(config_manager, getattr(trainer, 'last_disease_confusion', None))
+        per_sample_records = getattr(trainer, 'last_per_sample_eval', None)
+        if per_sample_records:
+            save_per_sample_eval(config_manager, per_sample_records, split='test')
         log_runtime(config_manager, start_time, end_time)
 
         # We need to have an option to disable this, as it might fail due to an OOM

@@ -1,5 +1,6 @@
 import csv
 import logging
+import math
 import os
 
 import torch
@@ -8,6 +9,15 @@ import torchmetrics
 from .base_callback import Callback
 
 log = logging.getLogger(__name__)
+
+
+def _perplexity_from_loss(loss: float) -> float:
+    # perplexity = exp(mean cross-entropy). Guard against overflow / NaN
+    # so a single bad step doesn't break the CSV row.
+    try:
+        return math.exp(loss)
+    except (OverflowError, ValueError):
+        return float('inf')
 
 
 class RecordTrainLossByStepCallback(Callback):
@@ -22,14 +32,21 @@ class RecordTrainLossByStepCallback(Callback):
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, **kwargs):
         super().on_train_batch_end(trainer, batch_idx, batch, loss, **kwargs)
 
-        self.train_losses.append({'step': self.global_step, 'train_loss': loss})
+        self.train_losses.append({
+            'step': self.global_step,
+            'train_loss': loss,
+            'train_perplexity': _perplexity_from_loss(loss),
+        })
 
     def on_train_end(self, trainer, *args, **kwargs):
         if self._is_global_zero():
             train_loss_path = os.path.join(self.log_dir, 'train_loss_by_step.csv')
 
             with open(train_loss_path, 'w', newline='') as fh:
-                writer = csv.DictWriter(fh, fieldnames=['step', 'train_loss'])
+                writer = csv.DictWriter(
+                    fh,
+                    fieldnames=['step', 'train_loss', 'train_perplexity'],
+                )
                 writer.writeheader()
                 writer.writerows(self.train_losses)
 

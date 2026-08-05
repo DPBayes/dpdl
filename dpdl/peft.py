@@ -256,4 +256,21 @@ class LoRA:
                 task_type='CAUSAL_LM',
             )
 
+        elif 'mistral' in model_name or 'llama' in model_name or 'OLMo' in model_name:
+            # Decoder-only LLMs used for the disease/instruction experiments.
+            return LoraConfig(
+                r=lora_rank,
+                lora_alpha=lora_alpha,
+                target_modules=[
+                    'q_proj',
+                    'k_proj',
+                    'v_proj',
+                    'o_proj',
+                ],
+                lora_dropout=0.1,
+                inference_mode=False,
+                bias='none',
+                task_type='CAUSAL_LM',
+            )
+
         raise RuntimeError(f'No known LoRA configuration for model: {model_name}')

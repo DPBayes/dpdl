@@ -82,7 +82,7 @@ class Configuration(BaseModel):
     dataset_name: str = 'uoft-cs/cifar10'
     dataset_path: Optional[str] = None
     llm: bool = False
-    task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM', 'InstructLM' ] = 'ImageClassification'
+    task: Literal['ImageClassification', 'SequenceClassification', 'CausalLM', 'InstructLM', 'DiseaseTask'] = 'ImageClassification'
     physical_batch_size: int = 40
     num_workers: int = 7
     validation_frequency: float = 1.0
@@ -137,9 +137,15 @@ class Configuration(BaseModel):
     weight_perturbation_level: float = 0
     record_loss_by_step: Optional[bool] = False
     record_loss_by_epoch: Optional[bool] = False
+    record_learning_rate: Optional[bool] = False
     record_per_class_accuracy: Optional[bool] = False
     record_final_train_accuracy: Optional[bool] = False
     checkpoint_step_interval: Optional[int] = None
+    scheduler_type: Optional[str] = None
+    resume: Optional[bool] = False
+    # Fraction of the epoch budget between resume-checkpoints. 0.25 => save at
+    # 25%, 50%, 75% of training. Only the latest checkpoint is kept on disk.
+    checkpoint_fraction: Optional[float] = 0.25
     disable_epsilon_logging: Optional[bool] = False
     split_seed: Optional[int] = 42
     predict_dataset_split: Optional[str] = 'test'
@@ -248,9 +254,13 @@ class Configuration(BaseModel):
             ('Record gradient norms quantiles', self.record_gradient_norms_quantiles),
             ('Record train loss by step', self.record_loss_by_step),
             ('Record train/valid loss and accuracy by epoch', self.record_loss_by_epoch),
+            ('Record per-epoch learning rate', self.record_learning_rate),
             ('Record per-class accuracy', self.record_per_class_accuracy),
             ('Record final training accuracy', self.record_final_train_accuracy),
             ('Checkpoint every nth step', self.checkpoint_step_interval),
+            ('Scheduler', self.scheduler_type),
+            ('Resume from latest checkpoint', self.resume),
+            ('Checkpoint fraction', self.checkpoint_fraction),
             ('Enable callback debug logging', self.verbose_callback),
             ('Fairness-style subsampling class', self.fairness_imbalance_class),
             ('Random seed for creating dataset subsets', self.split_seed),

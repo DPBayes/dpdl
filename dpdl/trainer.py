@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import math
 import os
+import re
+import shutil
 from collections.abc import Mapping
 
 import opacus
@@ -15,7 +17,13 @@ from peft import PeftModel
 
 from .callbacks.callback_factory import CallbackFactory, CallbackHandler
 from .configurationmanager import Configuration, ConfigurationManager, Hyperparameters
-from .datamodules import DataModule, DataModuleFactory
+from .datamodules import (
+    DataModule,
+    DataModuleFactory,
+    DISEASE_EVAL_FIELDS,
+    normalize_disease_text,
+    strip_emojis,
+)
 from .device import resolve_device
 from .loss_factory import LossFactory
 from .metrics_factory import MetricsFactory
@@ -47,6 +55,7 @@ class Trainer:
         peft: str | None = None,
         task: str | None = None,
         device: torch.device | None = None,
+        scheduler_factory=None,
     ):
 
         self.model = model
@@ -63,6 +72,26 @@ class Trainer:
         self.adapter = adapter
         self.adapter.device = self.device
 
+        # Optional LR scheduler. It is built AFTER setup() because DP wraps the
+        # optimizer there, and the scheduler must attach to the wrapped optimizer.
+        self.scheduler_factory = scheduler_factory
+        self.scheduler = None
+
+        # Resume support: epoch to start the training loop from (0 = fresh run).
+        # Set by load_training_state() when resuming from a checkpoint.
+        self.start_epoch = 0
+
+        # Some tasks (e.g. DiseaseTask) run a generation-based test/val eval that
+        # issues collectives (all_reduce); those must run on ALL ranks. Others
+        # keep the rank-0-only eval path. Driven by the adapter.
+        self.eval_all_ranks = getattr(adapter, 'needs_generation_eval', False)
+
+        # Populated by DiseaseTaskAdapter.eval_acc; read by the CLI to persist
+        # the per-disease/confusion/per-sample memorization-study artifacts.
+        self.last_per_disease_accuracy = None
+        self.last_disease_confusion = None
+        self.last_per_sample_eval = None
+
         if not callback_handler:
             self.callback_handler = CallbackHandler()
         else:
@@ -72,6 +101,14 @@ class Trainer:
             raise ValueError('You should provide either "epochs" or "total_steps", not both.')
 
         self.setup()
+
+        if self.scheduler_factory is not None:
+            self.scheduler = self.scheduler_factory(self.optimizer)
+
+        # Shard the generation eval loader across ranks so its all_reduce counts
+        # are not inflated by the world size (no-op for single-GPU / non-disease).
+        if self.eval_all_ranks:
+            self._distribute_eval_dataloaders()
 
     def setup(self):
         self.model = self.model.to(self.device)
@@ -87,16 +124,41 @@ class Trainer:
 
         self.callback_handler.call('on_train_end', self)
 
+    def _distribute_eval_dataloaders(self):
+        """Shard the generation-eval ('sample') loader across ranks.
+
+        The 'sample' loader feeds the DiseaseTask generation eval, which
+        all_reduces its per-rank counts. Without sharding, every rank would
+        evaluate the full set and the reduction would over-count by world_size.
+        Standard valid/test loaders are intentionally left unsharded (their
+        metrics are computed rank-0-only).
+        """
+        if torch.distributed.get_world_size() <= 1:
+            return
+        if self.datamodule.get_dataloader('sample') is not None:
+            self.datamodule.set_dataloader(
+                'sample', self.datamodule._get_distributed_dataloader('sample'),
+            )
+
+    def _run_validation(self, epoch):
+        """Run validation honoring the per-task rank participation rule.
+
+        For generation-eval tasks all ranks participate (collectives inside
+        eval_acc); otherwise only rank 0 evaluates while the rest wait.
+        """
+        if self.eval_all_ranks or torch.distributed.get_rank() == 0:
+            self.validate(epoch)
+        torch.distributed.barrier()
+
     def _fit_epochs(self):
-        for epoch in range(self.epochs):
+        for epoch in range(self.start_epoch, self.epochs):
             self.fit_one_epoch(epoch)
 
-            if self.validation_frequency and epoch % self.validation_frequency == 0:
-                if torch.distributed.get_rank() == 0:
-                    self.validate(epoch)
+            if self.scheduler is not None:
+                self.scheduler.step()
 
-                # other ranks will wait for validation
-                torch.distributed.barrier()
+            if self.validation_frequency and epoch % self.validation_frequency == 0:
+                self._run_validation(epoch)
 
     def _fit_total_steps(self):
         step = 0
@@ -122,11 +184,7 @@ class Trainer:
                     virtual_epoch += 1
 
                     if self.validation_frequency and virtual_epoch % self.validation_frequency == 0:
-                        if torch.distributed.get_rank() == 0:
-                            self.validate(virtual_epoch)
-
-                        # other ranks will wait for validation
-                        torch.distributed.barrier()
+                        self._run_validation(virtual_epoch)
 
                     # are we finished?
                     if step >= self.total_steps:
@@ -149,6 +207,9 @@ class Trainer:
         # compute the epoch metrics
         metrics = self._unwrap_model().train_metrics.compute()
         self._unwrap_model().train_metrics.reset()
+
+        if self.scheduler is not None:
+            self.scheduler.step()
 
         self.callback_handler.call('on_train_epoch_end', self, epoch, metrics)
 
@@ -249,6 +310,10 @@ class Trainer:
             evaluation_loss += loss
 
         evaluation_loss /= len(dataloader)
+
+        # Generation-based eval (e.g. DiseaseTask disease accuracy). No-op for
+        # tasks without it. Runs before compute() so its metrics are included.
+        self.adapter.eval_acc(self, metrics_evaluator)
 
         metrics = metrics_evaluator.compute()
 
@@ -353,7 +418,9 @@ class Trainer:
 
         with torch.no_grad():
             for batch_idx, batch in enumerate(self.datamodule.get_dataloader('sample')):
-                X = batch
+                # DiseaseTask's sample loader yields (tokenized, raw_fields);
+                # other tasks yield just the tokenized inputs.
+                X = batch[0] if isinstance(batch, tuple) else batch
                 X = self.adapter.move_to_device(X)
 
                 is_mapping = isinstance(X, Mapping)  # covers dict and HF BatchEncoding
@@ -504,6 +571,207 @@ class DifferentiallyPrivateTrainer(Trainer):
         # let's unwrap the vanilla model and return it
         return self.model._module.module
 
+    # ----- Resume / checkpointing (DP) -----
+    # These are set by TrainerFactory when --resume / --checkpoint-fraction are used.
+    TRAINING_STATE_FILENAME = 'training_state.pt'
+    resume_enabled = False
+    checkpoint_fraction = None
+    checkpoints_dir = None
+
+    def _fit_epochs(self):
+        # If --resume was requested and a checkpoint exists, restore full state
+        # (weights + optimizer + accountant + epoch). No-op on the first run.
+        if getattr(self, 'resume_enabled', False):
+            self.load_training_state(getattr(self, 'checkpoints_dir', None))
+
+        start_epoch = getattr(self, 'start_epoch', 0)
+        if start_epoch > 0:
+            log.info(f'Resuming training from epoch {start_epoch} (of {self.epochs}).')
+
+        for epoch in range(start_epoch, self.epochs):
+            self.fit_one_epoch(epoch)
+
+            if self.scheduler is not None:
+                self.scheduler.step()
+
+            if self.validation_frequency and epoch % self.validation_frequency == 0:
+                self._run_validation(epoch)
+
+            # Resume-checkpoint at fraction-of-training milestones (default
+            # 25%/50%/75%), NOT every epoch — saving is expensive and we only
+            # ever need the latest one. Epoch granularity keeps DP accounting
+            # exact: the saved accountant reflects precisely the steps of the
+            # completed epochs, so a resume runs only the remaining epochs.
+            if getattr(self, 'resume_enabled', False) and self._should_checkpoint_this_epoch(epoch):
+                self._last_completed_epoch = epoch
+                self._save_epoch_checkpoint(epoch)
+
+    def _should_checkpoint_this_epoch(self, epoch: int) -> bool:
+        """True when completing `epoch` crosses a new checkpoint_fraction
+        milestone. E.g. fraction=0.25, epochs=25 -> saves after epochs 6, 12, 18.
+        The final epoch's checkpoint is redundant with --save-model, so skip it."""
+        frac = getattr(self, 'checkpoint_fraction', None)
+        if not frac or frac <= 0 or not self.epochs:
+            return False
+        if epoch >= self.epochs - 1:
+            return False  # last epoch: final_model is saved separately
+        done_frac = (epoch + 1) / self.epochs
+        prev_frac = epoch / self.epochs
+        return math.floor(done_frac / frac) > math.floor(prev_frac / frac)
+
+    def _save_epoch_checkpoint(self, epoch: int) -> None:
+        """Save adapter weights + full training state at an epoch boundary, then
+        prune older checkpoints so only the latest survives."""
+        checkpoints_dir = getattr(self, 'checkpoints_dir', None)
+        if not checkpoints_dir:
+            return
+        ckpt_dir = os.path.join(checkpoints_dir, f'checkpoint_epoch_{epoch}')
+        is_rank0 = (not torch.distributed.is_initialized()) or torch.distributed.get_rank() == 0
+        if is_rank0:
+            os.makedirs(ckpt_dir, exist_ok=True)
+        if torch.distributed.is_initialized():
+            torch.distributed.barrier()
+        # Adapter weights (PEFT dir format) + full training state; rank 0 only
+        # (standard DDP/DPDDP replicates params, so rank 0 can save alone).
+        if is_rank0:
+            self.save_model(ckpt_dir, adapters_only=True)
+            self.save_training_state(ckpt_dir)
+        if torch.distributed.is_initialized():
+            torch.distributed.barrier()
+        # Prune older checkpoints (rank 0 only) — keep just the one we wrote.
+        if is_rank0:
+            self._prune_old_checkpoints(checkpoints_dir, keep=ckpt_dir)
+
+    @staticmethod
+    def _prune_old_checkpoints(checkpoints_dir: str, keep: str) -> None:
+        """Delete every checkpoint_epoch_* dir except `keep`. Best-effort."""
+        keep_base = os.path.basename(os.path.normpath(keep))
+        for d in os.listdir(checkpoints_dir):
+            if not d.startswith('checkpoint_epoch_') or d == keep_base:
+                continue
+            path = os.path.join(checkpoints_dir, d)
+            if not os.path.isdir(path):
+                continue
+            try:
+                shutil.rmtree(path)
+                log.info(f'Pruned old checkpoint {path}')
+            except OSError as e:
+                log.warning(f'Could not prune old checkpoint {path}: {e}')
+
+    def save_training_state(self, save_dir: str) -> None:
+        """Write optimizer + accountant + scheduler + epoch + RNG to
+        <save_dir>/training_state.pt. Rank 0 only; other ranks hold identical
+        replicated optimizer state under DDP. `_last_completed_epoch` is the
+        0-indexed epoch that just finished; resume starts at it + 1."""
+        if torch.distributed.is_initialized() and torch.distributed.get_rank() != 0:
+            return
+
+        accountant = self.privacy_engine.accountant
+        if not hasattr(accountant, 'state_dict'):
+            raise RuntimeError(
+                'Opacus accountant has no state_dict(); cannot checkpoint DP '
+                'privacy state safely. Upgrade Opacus or disable --resume.'
+            )
+
+        state = {
+            'completed_epoch': int(getattr(self, '_last_completed_epoch', -1)),
+            'optimizer_state': self.optimizer.state_dict(),
+            'accountant_state': accountant.state_dict(),
+            'scheduler_state': self.scheduler.state_dict() if self.scheduler is not None else None,
+            'noise_multiplier': float(getattr(self.optimizer, 'noise_multiplier', 0.0)),
+            'target_epsilon': self.target_epsilon,
+            'target_delta': self.target_delta,
+            'epochs': self.epochs,
+            'rng': {
+                'torch': torch.get_rng_state(),
+                'cuda': torch.cuda.get_rng_state_all(),
+            },
+        }
+        path = os.path.join(save_dir, self.TRAINING_STATE_FILENAME)
+        torch.save(state, path)
+        log.info(f'Saved DP training state (optimizer + accountant + epoch) to {path}')
+
+    def load_training_state(self, checkpoints_dir: str) -> bool:
+        """Restore full training state from the latest checkpoint under
+        checkpoints_dir. Returns True if a state was loaded, False if none found.
+        Must be called AFTER setup() so optimizer / scheduler / privacy_engine
+        exist. ALL ranks call this identically (they read the same rank-0-written
+        file from the shared filesystem)."""
+        if not checkpoints_dir or not os.path.isdir(checkpoints_dir):
+            return False
+
+        candidates = [
+            d for d in os.listdir(checkpoints_dir)
+            if d.startswith('checkpoint_epoch_')
+            and os.path.isdir(os.path.join(checkpoints_dir, d))
+            and os.path.exists(os.path.join(checkpoints_dir, d, self.TRAINING_STATE_FILENAME))
+        ]
+        if not candidates:
+            log.info(f'No resumable checkpoint (with training_state.pt) in {checkpoints_dir}; fresh start.')
+            return False
+
+        latest = max(
+            candidates,
+            key=lambda d: os.path.getmtime(os.path.join(checkpoints_dir, d)),
+        )
+        ckpt_dir = os.path.join(checkpoints_dir, latest)
+        state_path = os.path.join(ckpt_dir, self.TRAINING_STATE_FILENAME)
+        state = torch.load(state_path, map_location=str(self.device), weights_only=False)
+
+        # --- Correctness guard: σ must match what setup() just recomputed. ---
+        current_sigma = float(getattr(self.optimizer, 'noise_multiplier', 0.0))
+        saved_sigma = float(state.get('noise_multiplier', current_sigma))
+        if saved_sigma > 0 and abs(current_sigma - saved_sigma) > 1e-6:
+            raise RuntimeError(
+                f'Noise multiplier mismatch on resume: recomputed σ={current_sigma} '
+                f'but checkpoint saved σ={saved_sigma}. The epochs/target_epsilon/'
+                f'sample-rate config must be IDENTICAL to the original run. Aborting '
+                f'to avoid corrupting DP accounting.'
+            )
+
+        # Restore accountant history (drives get_epsilon), optimizer, scheduler.
+        self.privacy_engine.accountant.load_state_dict(state['accountant_state'])
+        self.optimizer.load_state_dict(state['optimizer_state'])
+        if self.scheduler is not None and state.get('scheduler_state') is not None:
+            self.scheduler.load_state_dict(state['scheduler_state'])
+
+        # Restore RNG so Poisson sampling / dropout continue the same stream.
+        try:
+            torch.set_rng_state(state['rng']['torch'].cpu())
+            torch.cuda.set_rng_state_all([s.cpu() for s in state['rng']['cuda']])
+        except Exception as e:  # non-fatal: reproducibility only, not correctness
+            log.warning(f'Could not restore RNG state on resume: {e}')
+
+        self.start_epoch = int(state['completed_epoch']) + 1
+
+        # LoRA adapter weights: load from the same checkpoint dir into the
+        # already-built (DP-wrapped) model.
+        self._load_adapter_weights_from_dir(ckpt_dir)
+
+        if not torch.distributed.is_initialized() or torch.distributed.get_rank() == 0:
+            log.info(
+                f'Resumed from {ckpt_dir}: start_epoch={self.start_epoch}, '
+                f'accountant restored (ε so far={self.get_epsilon():.4f}), σ={current_sigma}.'
+            )
+        return True
+
+    def _load_adapter_weights_from_dir(self, ckpt_dir: str) -> None:
+        """Inject LoRA adapter weights saved by trainer.save_model() (PEFT dir
+        format) into the current DP-wrapped model via set_peft_model_state_dict."""
+        model = self._unwrap_model()
+        sf = os.path.join(ckpt_dir, 'adapter_model.safetensors')
+        binp = os.path.join(ckpt_dir, 'adapter_model.bin')
+        if os.path.exists(sf):
+            from safetensors.torch import load_file as _safe_load
+            sd = _safe_load(sf)
+        elif os.path.exists(binp):
+            sd = torch.load(binp, map_location='cpu', weights_only=True)
+        else:
+            log.warning(f'No adapter weights found in {ckpt_dir}; keeping freshly-initialized weights.')
+            return
+        from peft import set_peft_model_state_dict
+        set_peft_model_state_dict(model, sd)
+
     def _fit_total_steps(self):
         # here we'll keep track of our approximate epochs
         virtual_epoch = 0
@@ -598,13 +866,9 @@ class DifferentiallyPrivateTrainer(Trainer):
                     self._handle_virtual_epoch_end(virtual_epoch)
 
                     if self.validation_frequency and virtual_epoch % self.validation_frequency == 0:
-                        # validate only on rank 0. no need to do distributed here,
-                        # the computation is not heavy because we don't need gradients.
-                        if torch.distributed.get_rank() == 0:
-                            self.validate(virtual_epoch)
-
-                        # other ranks will wait for validation
-                        torch.distributed.barrier()
+                        # Rank-0-only for standard tasks; all ranks for
+                        # generation-eval tasks whose validate() issues collectives.
+                        self._run_validation(virtual_epoch)
 
                     if step < self.total_steps:
                         virtual_epoch += 1
@@ -741,6 +1005,24 @@ class TaskAdapter:
     def update_metrics(self, model, batch, forward_output, metrics = None):
         raise NotImplementedError
 
+    # --- optional per-task hooks (no-ops by default) ---
+
+    # Set True on adapters whose test/validation eval issues collectives and so
+    # must run on ALL ranks (see Trainer.eval_all_ranks).
+    needs_generation_eval = False
+
+    def sample(self, trainer):
+        """Optional generation sampling for logging (record_llm_samples)."""
+        pass
+
+    def eval_acc(self, trainer, metrics_evaluator):
+        """Optional generation-based evaluation (e.g. disease accuracy)."""
+        pass
+
+    def set_label_tokens(self, datamodule):
+        """Optional: build a label->token/text mapping from the datamodule."""
+        pass
+
 
 class ClassificationAdapter(TaskAdapter):
     def iterate_physical_batches(self, batch, physical_batch_size):
@@ -810,12 +1092,623 @@ class LanguageModelAdapter(TaskAdapter):
         with torch.no_grad():
             metrics_to_update.update(forward_output, y)
 
+
+class CausalLMAdapter(LanguageModelAdapter):
+    def sample(self, trainer):
+        return
+
+
+class InstructLMAdapter(LanguageModelAdapter):
+    def sample(self, trainer):
+        trainer._sample_impl()
+
+
+class DiseaseTaskAdapter(LanguageModelAdapter):
+    """Instruction-LM task with a generation-based diagnosis evaluation.
+
+    Training/validation reuse the LanguageModelAdapter forward/loss/metrics
+    (the disease collate yields (tokenized, labels) just like InstructLM).
+    On top of that, eval_acc generates a completion per test sample and scores
+    disease accuracy + PII leakage + confidence, with distributed all_reduce.
+    """
+    needs_generation_eval = True
+
+    def __init__(self, device):
+        super().__init__(device)
+        self.tokens_labels = None
+
+    def sample(self, trainer):
+        trainer._sample_impl()
+
+    def evaluate_diseases_accuracy_exact_matching(self, trainer):
+        log.info('Evaluating diseases accuracy with exact matching...')
+        is_dist = (
+            torch.distributed.is_available()
+            and torch.distributed.is_initialized()
+            and torch.distributed.get_world_size() > 1
+        )
+        rank = torch.distributed.get_rank() if is_dist else 0
+        trainer.model.eval()
+
+        # Per-field counters: {field: {value_text: count}}
+        all_fields = ['disease'] + DISEASE_EVAL_FIELDS
+        count_correct = {f: {} for f in all_fields}
+        count_true = {f: {} for f in all_fields}
+
+        corr_total = 0
+        total = 0
+
+        # Confidence tracking: collect (log_prob, is_correct) per sample.
+        # log_prob is None when the disease tokens were not found in the generation.
+        confidence_records = []  # list of (mean_log_prob: float | None, correct: bool)
+
+        # Per-sample evaluation records — one dict per example. Drives the
+        # memorization-study CSVs (canary scoring s(c), reconstruction lift,
+        # PII reconstruction). Gathered across ranks below and exposed on
+        # trainer.last_per_sample_eval for the caller to persist.
+        per_sample_records = []
+
+        # Confusion-matrix bookkeeping. We pick a SINGLE predicted disease per
+        # sample (earliest mention in the generation, ties broken by longest
+        # disease name -- handles substring overlap like Pneumonia vs Bronchopneumonia).
+        disease_ids_sorted   = sorted(self.tokens_labels.keys())
+        disease_texts_sorted = [self.tokens_labels[i]['text'] for i in disease_ids_sorted]
+        n_d = len(disease_ids_sorted)
+        id_to_row           = {did: r for r, did in enumerate(disease_ids_sorted)}
+        disease_text_to_col = {t: c for c, t in enumerate(disease_texts_sorted)}
+        # rows = truth disease, cols = predicted disease, last col = "no prediction".
+        confusion_local = torch.zeros(n_d, n_d + 1, dtype=torch.float64)
+
+        with torch.no_grad():
+            for batch_idx, batch in enumerate(trainer.datamodule.get_dataloader('sample')):
+                X, raw_fields = batch
+                X = trainer.adapter.move_to_device(X)
+
+                is_mapping = isinstance(X, Mapping)
+                if is_mapping:
+                    X_split = {k: v.split(trainer.physical_batch_size, dim=0) for k, v in X.items()}
+                    N = len(X_split['input_ids'])
+                    chunk_sizes = [len(X_split['input_ids'][i]) for i in range(N)]
+                else:
+                    X_split = X.split(trainer.physical_batch_size, dim=0)
+                    N = len(X_split)
+                    chunk_sizes = [len(X_split[i]) for i in range(N)]
+
+                offset = 0
+                for i in range(N):
+                    chunk_size = chunk_sizes[i]
+
+                    if is_mapping:
+                        X_splitted = {k: X_split[k][i] for k in X_split}
+                    else:
+                        X_splitted = X_split[i]
+
+                    # Slice raw_fields for this physical batch
+                    raw_chunk = {}
+                    for k, v in raw_fields.items():
+                        raw_chunk[k] = v[offset:offset + chunk_size]
+
+                    # output_scores=True gives us per-step logits so we can compute
+                    # the model's confidence in the disease tokens it generated.
+                    generate_output = trainer._unwrap_model().generate(
+                        X_splitted,
+                        max_new_tokens=60,
+                        do_sample=True,
+                        temperature=0.1,
+                        top_p=0.9,
+                        pad_token_id=trainer.datamodule.tokenizer.pad_token_id,
+                        eos_token_id=trainer.datamodule.tokenizer.eos_token_id,
+                        output_scores=True,
+                        return_dict_in_generate=True,
+                        repetition_penalty=1.2,
+                        no_repeat_ngram_size=4,
+                    )
+                    generated_ids = generate_output.sequences  # (B, full_seq_len)
+                    scores = generate_output.scores            # tuple of (B, vocab) tensors
+                    input_len = X_splitted['input_ids'].shape[1]
+                    decoded_text = trainer.datamodule.decode(generated_ids[:, input_len:])
+
+                    # Decode the prompt portion too — needed for reconstruction
+                    # / leakage analysis. Same skip_special_tokens convention.
+                    decoded_prompt = trainer.datamodule.decode(generated_ids[:, :input_len])
+
+                    # Evaluate disease label (via integer → text lookup)
+                    if '_disease_id' in raw_chunk:
+                        disease_texts = [self.tokens_labels[idx.item()]['text'] for idx in raw_chunk['_disease_id']]
+                        count_true['disease'] = count_true_labels(disease_texts, count_true['disease'])
+
+                        # exact_matching gives per-batch aggregate; we need per-sample for confidence.
+                        for b in range(chunk_size):
+                            disease_text = disease_texts[b]
+                            # Strip emojis from the decoded generation before any
+                            # text-space disease matching (DP models tend to prepend
+                            # decorative emojis that carry no diagnostic signal).
+                            cleaned_text = strip_emojis(decoded_text[b])
+
+                            is_correct = bool(
+                                re.search(re.escape(disease_text), cleaned_text, flags=re.IGNORECASE)
+                            )
+                            if is_correct:
+                                count_correct['disease'][disease_text] = count_correct['disease'].get(disease_text, 0) + 1
+                                corr_total += 1
+
+                            log_prob = _disease_log_prob(
+                                scores,
+                                generated_ids,
+                                disease_text,
+                                trainer.datamodule.tokenizer,
+                                input_len,
+                                b,
+                            )
+                            confidence_records.append((log_prob, is_correct))
+
+                            # Confusion matrix: pick a single predicted disease for this sample.
+                            truth_id  = raw_chunk['_disease_id'][b].item()
+                            truth_row = id_to_row[truth_id]
+                            predicted = extract_predicted_disease(cleaned_text, disease_texts_sorted)
+                            pred_col  = disease_text_to_col[predicted] if predicted is not None else n_d
+                            confusion_local[truth_row, pred_col] += 1
+
+                            # Per-sample record for the memorization-study CSV.
+                            record = {
+                                'disease': disease_text,
+                                'disease_id': truth_id,
+                                'predicted_disease': predicted,
+                                'is_correct': is_correct,
+                                'log_prob_answer': log_prob,
+                                'generated_text': decoded_text[b],
+                                'prompt_text': decoded_prompt[b],
+                            }
+
+                            # Per-field truth values + per-sample substring match.
+                            for field in DISEASE_EVAL_FIELDS:
+                                if field in raw_chunk:
+                                    truth_val = raw_chunk[field][b]
+                                    if isinstance(truth_val, torch.Tensor):
+                                        truth_val = truth_val.item()
+                                    truth_val = str(truth_val) if truth_val is not None else ''
+                                    record[f'field_truth_{field}'] = truth_val
+                                    record[f'field_match_{field}'] = bool(
+                                        truth_val and re.search(
+                                            re.escape(truth_val), decoded_text[b], flags=re.IGNORECASE,
+                                        )
+                                    )
+                            per_sample_records.append(record)
+
+                    # Evaluate all other fields (PII leakage + utility)
+                    for field in DISEASE_EVAL_FIELDS:
+                        if field in raw_chunk:
+                            field_values = raw_chunk[field]
+                            count_true[field] = count_true_labels(field_values, count_true[field])
+                            _, count_correct[field] = exact_matching(decoded_text, field_values, count_correct[field])
+
+                    total += chunk_size
+                    offset += chunk_size
+
+        trainer.model.train()
+
+        # Local confidence intermediates
+        with_conf_local    = [(lp, c) for lp, c in confidence_records if lp is not None]
+        conf_correct_local   = [lp for lp, c in with_conf_local if c]
+        conf_incorrect_local = [lp for lp, c in with_conf_local if not c]
+
+        if is_dist:
+            # Pack all local scalars into one float64 tensor and all-reduce SUM across ranks.
+            n_f = len(all_fields)
+            base_n = 2 + 2 * n_f + 7
+            device = next(trainer.model.parameters()).device
+            buf = torch.zeros(base_n + 2 * n_d, dtype=torch.float64, device=device)
+            buf[0] = total
+            buf[1] = corr_total
+            for i, field in enumerate(all_fields):
+                buf[2 + i]       = sum(count_true[field].values())
+                buf[2 + n_f + i] = sum(count_correct[field].values())
+            buf[2 + 2*n_f + 0] = len(with_conf_local)
+            buf[2 + 2*n_f + 1] = sum(math.exp(lp) for lp, _ in with_conf_local) if with_conf_local else 0.0
+            buf[2 + 2*n_f + 2] = sum(math.exp(lp) * float(c) for lp, c in with_conf_local) if with_conf_local else 0.0
+            buf[2 + 2*n_f + 3] = sum(conf_correct_local) if conf_correct_local else 0.0
+            buf[2 + 2*n_f + 4] = len(conf_correct_local)
+            buf[2 + 2*n_f + 5] = sum(conf_incorrect_local) if conf_incorrect_local else 0.0
+            buf[2 + 2*n_f + 6] = len(conf_incorrect_local)
+            for d_idx, disease_text in enumerate(disease_texts_sorted):
+                buf[base_n + d_idx]       = count_true['disease'].get(disease_text, 0)
+                buf[base_n + n_d + d_idx] = count_correct['disease'].get(disease_text, 0)
+
+            torch.distributed.all_reduce(buf, op=torch.distributed.ReduceOp.SUM)
+            buf = buf.cpu()
+
+            total      = int(buf[0].item())
+            corr_total = int(buf[1].item())
+            field_accuracy = {
+                field: (
+                    buf[2 + n_f + i].item() / buf[2 + i].item()
+                    if buf[2 + i].item() > 0 else 0.0
+                )
+                for i, field in enumerate(all_fields)
+            }
+
+            # Replace local per-disease counts with the all-reduced totals.
+            count_true['disease'] = {
+                disease_text: int(buf[base_n + d_idx].item())
+                for d_idx, disease_text in enumerate(disease_texts_sorted)
+                if buf[base_n + d_idx].item() > 0
+            }
+            count_correct['disease'] = {
+                disease_text: int(buf[base_n + n_d + d_idx].item())
+                for d_idx, disease_text in enumerate(disease_texts_sorted)
+                if buf[base_n + n_d + d_idx].item() > 0
+            }
+
+            g_n_with_conf   = buf[2 + 2*n_f + 0].item()
+            g_sum_probs     = buf[2 + 2*n_f + 1].item()
+            g_sum_weights   = buf[2 + 2*n_f + 2].item()
+            g_sum_lp_corr   = buf[2 + 2*n_f + 3].item()
+            g_n_lp_corr     = int(buf[2 + 2*n_f + 4].item())
+            g_sum_lp_incorr = buf[2 + 2*n_f + 5].item()
+            g_n_lp_incorr   = int(buf[2 + 2*n_f + 6].item())
+
+            confidence_weighted_acc = g_sum_weights / g_sum_probs if g_sum_probs > 0 else 0.0
+            mean_conf_correct   = g_sum_lp_corr   / g_n_lp_corr   if g_n_lp_corr   > 0 else 0.0
+            mean_conf_incorrect = g_sum_lp_incorr / g_n_lp_incorr if g_n_lp_incorr > 0 else 0.0
+
+            confidence_stats = {
+                'confidence_weighted_accuracy': confidence_weighted_acc,
+                'mean_log_prob_correct':        mean_conf_correct,
+                'mean_log_prob_incorrect':      mean_conf_incorrect,
+                'n_with_confidence':            int(g_n_with_conf),
+            }
+        else:
+            field_accuracy = {
+                field: (
+                    sum(count_correct[field].values()) / sum(count_true[field].values())
+                    if count_true[field] else 0.0
+                )
+                for field in all_fields
+            }
+            if with_conf_local:
+                probs   = [math.exp(lp) for lp, _ in with_conf_local]
+                weights = [math.exp(lp) * float(c) for lp, c in with_conf_local]
+                confidence_weighted_acc = sum(weights) / sum(probs)
+            else:
+                confidence_weighted_acc = 0.0
+            mean_conf_correct   = sum(conf_correct_local)   / len(conf_correct_local)   if conf_correct_local   else 0.0
+            mean_conf_incorrect = sum(conf_incorrect_local) / len(conf_incorrect_local) if conf_incorrect_local else 0.0
+            confidence_stats = {
+                'confidence_weighted_accuracy': confidence_weighted_acc,
+                'mean_log_prob_correct':        mean_conf_correct,
+                'mean_log_prob_incorrect':      mean_conf_incorrect,
+                'n_with_confidence':            len(with_conf_local),
+            }
+
+        # All-reduce the confusion matrix so rank 0 sees the full eval set.
+        if is_dist:
+            device = next(trainer.model.parameters()).device
+            confusion_buf = confusion_local.to(device)
+            torch.distributed.all_reduce(confusion_buf, op=torch.distributed.ReduceOp.SUM)
+            confusion_total = confusion_buf.cpu()
+        else:
+            confusion_total = confusion_local
+
+        # Gather per-sample records across ranks. Every rank must participate.
+        if is_dist:
+            world = torch.distributed.get_world_size()
+            gathered_records = [None] * world
+            torch.distributed.all_gather_object(gathered_records, list(per_sample_records))
+            per_sample_records = [r for part in gathered_records for r in part]
+
+        # Logging and per-value breakdowns: rank 0 only to avoid duplicate output
+        if not is_dist or rank == 0:
+            n_with_conf = confidence_stats['n_with_confidence']
+            log.info(f'Total correct: {corr_total} / {total}')
+            for field, acc in field_accuracy.items():
+                log.info(f'  {field} accuracy: {acc:.4f}')
+            log.info(
+                f'  confidence-weighted accuracy: {confidence_stats["confidence_weighted_accuracy"]:.4f} '
+                f'(mean log-prob correct={confidence_stats["mean_log_prob_correct"]:.3f}, '
+                f'incorrect={confidence_stats["mean_log_prob_incorrect"]:.3f}, '
+                f'n_with_scores={n_with_conf}/{total})'
+            )
+            accuracy_per_disease = compute_accuracy_per_disease(
+                self.tokens_labels, count_correct['disease'], count_true['disease']
+            )
+            log.info(f'Per-disease breakdown: {accuracy_per_disease}')
+            for field in ['name', 'country']:
+                breakdown = compute_accuracy_per_value(count_correct[field], count_true[field])
+                log.info(f'Per-{field} breakdown ({len(breakdown)} unique values):')
+                for value, stats in breakdown.items():
+                    log.info(
+                        f'  {value!r:40s}  true={stats["true_count"]:4d}  '
+                        f'correct={stats["correct"]:4d}  acc={stats["accuracy"]:.3f}'
+                    )
+
+            # Build a sparse dict-of-dicts confusion matrix.
+            disease_confusion = {}
+            for r, truth_text in enumerate(disease_texts_sorted):
+                row = {}
+                for c, pred_text in enumerate(disease_texts_sorted):
+                    cnt = int(confusion_total[r, c].item())
+                    if cnt > 0:
+                        row[pred_text] = cnt
+                na = int(confusion_total[r, n_d].item())
+                if na > 0:
+                    row[NO_PREDICTION_KEY] = na
+                if row:
+                    disease_confusion[truth_text] = row
+
+            # Quick sanity log: top off-diagonal confusions.
+            off_diag = []
+            for r, truth_text in enumerate(disease_texts_sorted):
+                for c, pred_text in enumerate(disease_texts_sorted):
+                    if r == c:
+                        continue
+                    cnt = int(confusion_total[r, c].item())
+                    if cnt > 0:
+                        off_diag.append((cnt, truth_text, pred_text))
+            off_diag.sort(reverse=True)
+            if off_diag:
+                log.info('Top disease confusions (truth -> predicted, count):')
+                for cnt, t, p in off_diag[:10]:
+                    log.info(f'  {t!r} -> {p!r}: {cnt}')
+        else:
+            accuracy_per_disease = {}
+            disease_confusion = {}
+
+        return (
+            field_accuracy['disease'],
+            accuracy_per_disease,
+            field_accuracy,
+            confidence_stats,
+            disease_confusion,
+            per_sample_records,
+        )
+
+    def eval_acc(self, trainer, metrics_evaluator):
+        is_dist = (
+            torch.distributed.is_available()
+            and torch.distributed.is_initialized()
+            and torch.distributed.get_world_size() > 1
+        )
+        is_rank0 = (not is_dist) or (torch.distributed.get_rank() == 0)
+        if is_rank0:
+            log.info('Evaluating diseases accuracy with exact matching after the epoch...')
+
+        acc, accuracy_per_disease, field_accuracy, confidence_stats, disease_confusion, per_sample_records = \
+            self.evaluate_diseases_accuracy_exact_matching(trainer)
+
+        # Only rank 0 updates the metrics evaluator to avoid double counting
+        if is_rank0:
+            def _safe_update(key, value):
+                if key in metrics_evaluator:
+                    metrics_evaluator[key].update(value)
+                else:
+                    log.warning(
+                        f'Metric "{key}" not found in metrics collection '
+                        f'(collection has: {list(metrics_evaluator.keys())}).'
+                    )
+
+            _safe_update('MulticlassAccuracyDisease', acc)
+
+            field_to_metric = {
+                'name':       'AccuracyName',
+                'country':    'AccuracyCountry',
+                'occupation': 'AccuracyOccupation',
+                'hobby':      'AccuracyHobby',
+                'symptoms':   'AccuracySymptoms',
+                'treatment':  'AccuracyTreatment',
+            }
+            for field, metric_key in field_to_metric.items():
+                if field in field_accuracy:
+                    _safe_update(metric_key, field_accuracy[field])
+
+            _safe_update('ConfidenceWeightedAccuracyDisease', confidence_stats['confidence_weighted_accuracy'])
+            _safe_update('MeanLogProbCorrect',                confidence_stats['mean_log_prob_correct'])
+            _safe_update('MeanLogProbIncorrect',              confidence_stats['mean_log_prob_incorrect'])
+
+            log.info(f'Accuracy after the epoch for diseases: {acc}')
+            log.info(f'Accuracy per disease: {accuracy_per_disease}')
+            log.info(f'Per-field accuracy: {field_accuracy}')
+
+            trainer.last_per_disease_accuracy = accuracy_per_disease
+            trainer.last_disease_confusion    = disease_confusion
+            trainer.last_per_sample_eval      = per_sample_records
+
+        return acc
+
+    def set_label_tokens(self, datamodule):
+        label_field = datamodule._label_field
+        splits = datamodule._dataset_splits
+        train_class_label = splits['train'].features[label_field]
+
+        # Guard against silent label drift: every split must share the same
+        # ClassLabel.names as train, otherwise _disease_id from valid/test will
+        # decode to a different disease text via tokens_labels (built from train).
+        train_names = list(train_class_label.names)
+        for split_name, split in splits.items():
+            if split_name == 'train':
+                continue
+            split_feature = split.features[label_field]
+            split_names = list(getattr(split_feature, 'names', []))
+            if split_names != train_names:
+                raise ValueError(
+                    f'ClassLabel mismatch between train and "{split_name}" for '
+                    f'label field "{label_field}". '
+                    f'This means _disease_id will map to the wrong disease text. '
+                    f'train.names={train_names!r}  {split_name}.names={split_names!r}'
+                )
+
+        class_number = splits['train'][label_field]
+        diseases = {}
+        for i in class_number:
+            # Normalize so the disease string used by substring eval, the
+            # confusion matrix, and the per-disease CSV matches the form that
+            # appears in dataset narratives (and in the training prepend).
+            disease_text = normalize_disease_text(train_class_label.int2str(i))
+            if i in diseases:
+                diseases[i]['count'] += 1
+            else:
+                tokens = datamodule.tokenizer.encode(disease_text, add_special_tokens=False)
+                diseases[i] = {'count': 1, 'tokens': tokens, 'text': disease_text}
+
+        self.tokens_labels = diseases
+
+
+def find_disease_token_span(token_ids, disease_text, tokenizer):
+    """Find the [start, end) token span covering `disease_text` in `token_ids`.
+
+    The search happens in *text* space, then we walk the tokens once to project
+    the character range back onto token indices. Assumes a byte-level /
+    SentencePiece tokenizer where decode is additive over tokens (OLMo, GPT-*,
+    Llama, Mistral, ...). Returns (-1, -1) when not present.
+    """
+    if isinstance(token_ids, torch.Tensor):
+        token_ids = token_ids.tolist()
+
+    if not token_ids or not disease_text:
+        return -1, -1
+
+    full_text = tokenizer.decode(token_ids, skip_special_tokens=False)
+    char_pos = full_text.lower().find(disease_text.lower())
+    if char_pos < 0:
+        return -1, -1
+    char_end = char_pos + len(disease_text)
+
+    cursor = 0
+    start_token = None
+    end_token = None
+    for i, tid in enumerate(token_ids):
+        tok_str = tokenizer.decode([tid], skip_special_tokens=False)
+        next_cursor = cursor + len(tok_str)
+        if start_token is None and cursor <= char_pos < next_cursor:
+            start_token = i
+        if start_token is not None and char_end <= next_cursor:
+            end_token = i + 1
+            break
+        cursor = next_cursor
+
+    if start_token is None or end_token is None:
+        return -1, -1
+    return start_token, end_token
+
+
+def _disease_log_prob(scores, generated_ids, disease_text, tokenizer, input_len, sample_idx):
+    """Mean log-prob assigned by the model to the disease span it produced.
+
+    Returns the mean log-prob (float) over the in-context tokens spanning the
+    disease, or None if the disease string is not present in the generation or
+    no scores exist.
+    """
+    if len(scores) == 0:
+        return None
+
+    new_ids = generated_ids[sample_idx, input_len:]  # generated tokens only
+    start, end = find_disease_token_span(new_ids, disease_text, tokenizer)
+    if start < 0:
+        return None
+
+    total_lp = 0.0
+    n_tokens = 0
+    new_ids_list = new_ids.tolist() if isinstance(new_ids, torch.Tensor) else list(new_ids)
+    for j in range(start, end):
+        if j >= len(scores):
+            return None
+        lp = torch.log_softmax(scores[j][sample_idx], dim=-1)
+        total_lp += lp[new_ids_list[j]].item()
+        n_tokens += 1
+
+    if n_tokens == 0:
+        return None
+    return total_lp / n_tokens
+
+
+NO_PREDICTION_KEY = '__no_prediction__'
+
+
+def extract_predicted_disease(text, disease_texts):
+    """Return the single disease name the model most plausibly predicted in `text`.
+
+    Heuristic: earliest case-insensitive occurrence of any known disease name;
+    ties broken by length (longer wins) so substring overlaps like "Pneumonia"
+    inside "Bronchopneumonia" don't masquerade as the prediction.
+    """
+    if not text:
+        return None
+    text_lower = text.lower()
+    best_pos = None
+    best_len = -1
+    best_name = None
+    for name in disease_texts:
+        if not name:
+            continue
+        idx = text_lower.find(name.lower())
+        if idx < 0:
+            continue
+        if (
+            best_pos is None
+            or idx < best_pos
+            or (idx == best_pos and len(name) > best_len)
+        ):
+            best_pos = idx
+            best_len = len(name)
+            best_name = name
+    return best_name
+
+
+def count_true_labels(label_text, count_true):
+    for label in label_text:
+        count_true[label] = count_true.get(label, 0) + 1
+    return count_true
+
+
+def exact_matching(texts, labels, count_correct=None):
+    corr = 0
+    for i in range(len(texts)):
+        label = labels[i]
+        if not label:
+            continue
+        if re.search(re.escape(label), texts[i], flags=re.IGNORECASE):
+            count_correct[label] = count_correct.get(label, 0) + 1
+            corr += 1
+    return corr, count_correct
+
+
+def compute_accuracy_per_disease(token_labels, count_correct, count_true):
+    accuracy_per_disease = {}
+    for _, info in token_labels.items():
+        disease_name = info['text']
+
+        correct_count = count_correct.get(disease_name, 0)
+        true_count = count_true.get(disease_name, 0)
+
+        accuracy = correct_count / true_count if true_count > 0 else 0.0
+
+        accuracy_per_disease[disease_name] = {
+            'correct': correct_count,
+            'true_count': true_count,
+            'accuracy': accuracy,
+        }
+    return accuracy_per_disease
+
+
+def compute_accuracy_per_value(count_correct, count_true):
+    """Per-value accuracy breakdown for arbitrary string fields (name, country, …)."""
+    result = {}
+    for value, true_count in count_true.items():
+        correct_count = count_correct.get(value, 0)
+        result[value] = {
+            'true_count': true_count,
+            'correct': correct_count,
+            'accuracy': correct_count / true_count if true_count > 0 else 0.0,
+        }
+    return dict(sorted(result.items(), key=lambda kv: kv[1]['true_count'], reverse=True))
+
+
 # Define task specific adapters
 _ADAPTERS = {
     'ImageClassification': ClassificationAdapter,
     'SequenceClassification': ClassificationAdapter,
-    'CausalLM': LanguageModelAdapter,
-    'InstructLM': LanguageModelAdapter,
+    'CausalLM': CausalLMAdapter,
+    'InstructLM': InstructLMAdapter,
+    'DiseaseTask': DiseaseTaskAdapter,
 }
 
 class TrainerFactory:
@@ -833,6 +1726,15 @@ class TrainerFactory:
     def get_trainer(config_manager: ConfigurationManager) -> Trainer:
         device = resolve_device(config_manager.configuration.device)
 
+        cfg = config_manager.configuration
+        # Point checkpoints_dir at <log_dir>/<experiment>/checkpoints whenever
+        # step-checkpointing OR resume is requested. Must happen for BOTH the DP
+        # and non-DP paths — resume relies on it to locate the latest checkpoint.
+        if cfg.checkpoint_step_interval is not None or cfg.resume:
+            cfg.checkpoints_dir = os.path.join(
+                cfg.log_dir, cfg.experiment_name, 'checkpoints',
+            )
+
         # are we differentially private?
         if config_manager.configuration.privacy:
             return TrainerFactory._get_differentially_private_trainer(
@@ -840,14 +1742,6 @@ class TrainerFactory:
                 config_manager.hyperparams,
                 device,
             )
-
-        # XXX: checkpoint dir??? We should have this from the new save model implementation?
-        if config_manager.configuration.checkpoint_step_interval is not None:
-            config_manager.configuration.checkpoints_dir = os.path.join(
-                config_manager.configuration.log_dir,
-                config_manager.configuration.experiment_name,
-                'checkpoints',
-        )
 
         return TrainerFactory._get_basic_trainer(
             config_manager.configuration,
@@ -903,6 +1797,12 @@ class TrainerFactory:
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
         adapter = TrainerFactory._make_adapter(configuration, device)
+        # Build the disease label->token/text mapping (no-op for other tasks).
+        adapter.set_label_tokens(datamodule)
+
+        scheduler_factory = TrainerFactory._make_scheduler_factory(
+            configuration, hyperparams, datamodule, total_steps,
+        )
 
         # instantiate a trainer without dp
         trainer = Trainer(
@@ -919,6 +1819,7 @@ class TrainerFactory:
             peft=configuration.peft,
             task=configuration.task,
             device=device,
+            scheduler_factory=scheduler_factory,
         )
 
         return trainer
@@ -996,6 +1897,12 @@ class TrainerFactory:
         epochs, total_steps = TrainerFactory._get_epochs_and_steps(configuration, hyperparams, datamodule)
 
         adapter = TrainerFactory._make_adapter(configuration, device)
+        # Build the disease label->token/text mapping (no-op for other tasks).
+        adapter.set_label_tokens(datamodule)
+
+        scheduler_factory = TrainerFactory._make_scheduler_factory(
+            configuration, hyperparams, datamodule, total_steps,
+        )
 
         # instantiate a differentialy private trained
         trainer = DifferentiallyPrivateTrainer(
@@ -1023,9 +1930,25 @@ class TrainerFactory:
             peft=configuration.peft,
             task=configuration.task,
             device=device,
+            scheduler_factory=scheduler_factory,
         )
 
+        # Resume / checkpointing state (DP only). checkpoints_dir was set by
+        # get_trainer when --resume or --checkpoint-step-interval was requested.
+        trainer.resume_enabled = bool(configuration.resume)
+        trainer.checkpoint_fraction = configuration.checkpoint_fraction
+        trainer.checkpoints_dir = configuration.checkpoints_dir
+
         return trainer
+
+    @staticmethod
+    def _make_scheduler_factory(configuration, hyperparams, datamodule, total_steps):
+        """Return a scheduler-building closure when scheduler_type is set, else None."""
+        if not configuration.scheduler_type:
+            return None
+        return OptimizerFactory.get_scheduler_factory(
+            configuration, hyperparams, datamodule, total_steps,
+        )
 
     @staticmethod
     def _get_epochs_and_steps(
