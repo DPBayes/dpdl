@@ -30,14 +30,6 @@ def print_trainable_modules(model: torch.nn.Module):
         if any(p.requires_grad for p in module.parameters()):
             log.info(module_name)
 
-
-def _get_head_module(model: torch.nn.Module):
-    try:
-        return model.get_classifier()
-    except (AttributeError, NotImplementedError):
-        return None
-
-
 def count_parameters(model: torch.nn.Module) -> dict:
     """
     Compute a breakdown of model parameter counts.
@@ -59,7 +51,7 @@ def count_parameters(model: torch.nn.Module) -> dict:
             trainable += num
 
     # Identify the classification head, if the model exposes one.
-    head_module = _get_head_module(model)
+    head_module = model.get_classifier()
     if head_module is not None:
         head_total = sum(p.numel() for p in head_module.parameters())
         head_trainable = sum(p.numel() for p in head_module.parameters() if p.requires_grad)
@@ -70,7 +62,7 @@ def count_parameters(model: torch.nn.Module) -> dict:
     # PEFT adapter weights (e.g. LoRA) are added on top of the backbone
     adapter_total = sum(p.numel() for name, p in model.named_parameters() if 'lora_' in name)
 
-    # PEFT's retains a copy of the head, which we exclude from reporting, as no computations are ever done with it
+    # PEFT retains a copy of the head, which we exclude from reporting, as no computations are ever done with it
     frozen_head_duplicate = head_total - head_trainable
 
     d_head = head_trainable

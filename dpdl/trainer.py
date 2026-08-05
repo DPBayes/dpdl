@@ -10,6 +10,7 @@ import torch
 from opacus import GradSampleModule
 from opacus.distributed import DifferentiallyPrivateDistributedDataParallel
 from opacus.utils.batch_memory_manager import BatchMemoryManager
+import peft
 
 from peft import PeftModel
 
@@ -22,7 +23,6 @@ from .metrics_factory import MetricsFactory
 from .models.model_base import ModelBase
 from .models.model_factory import ModelFactory
 from .optimizers import OptimizerFactory
-from .peft import count_parameters as count_model_parameters
 from .utils import seed_everything, shift_and_flatten
 
 log = logging.getLogger(__name__)
@@ -218,8 +218,8 @@ class Trainer:
     def get_datamodule(self):
         return self.datamodule
 
-    def count_parameters(self):
-        return count_model_parameters(self._unwrap_model())
+    def get_parameter_count(self):
+        return peft.count_parameters(self._unwrap_model())
 
     def _evaluate(self, mode, epoch=None, enable_callbacks=True):
         if enable_callbacks:
