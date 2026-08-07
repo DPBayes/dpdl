@@ -84,6 +84,26 @@ def process_experiment_directory(directory, pattern=None):
                 if os.path.exists(clip_stats_file_path):
                     experiment_data['clip_stats'] = read_csv_file(clip_stats_file_path)
 
+                optimizer_metadata_path = os.path.join(experiment_path, 'optimizer_metadata.json')
+                if os.path.exists(optimizer_metadata_path):
+                    experiment_data['optimizer_metadata'] = read_json_file(optimizer_metadata_path)
+
+                optimizer_stats_path = os.path.join(experiment_path, 'optimizer_stats.csv')
+                if os.path.exists(optimizer_stats_path):
+                    experiment_data['optimizer_stats'] = read_csv_file(optimizer_stats_path)
+
+                train_loss_by_step_path = os.path.join(experiment_path, 'train_loss_by_step.csv')
+                if os.path.exists(train_loss_by_step_path):
+                    experiment_data['train_loss_by_step'] = read_csv_file(train_loss_by_step_path)
+
+                parameter_counts_path = os.path.join(experiment_path, 'parameter_counts.json')
+                if os.path.exists(parameter_counts_path):
+                    experiment_data['parameter_counts'] = read_json_file(parameter_counts_path)
+
+                final_epsilon_path = os.path.join(experiment_path, 'final_epsilon')
+                if os.path.exists(final_epsilon_path):
+                    experiment_data['final_epsilon'] = float(read_text_file(final_epsilon_path))
+
                 data.append(experiment_data)
 
             except Exception as e:
