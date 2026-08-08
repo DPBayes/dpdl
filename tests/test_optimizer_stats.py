@@ -72,6 +72,7 @@ def test_records_adam_identity_and_optimizer_metadata(tmp_path, monkeypatch):
     model(torch.ones(4, 3, dtype=torch.float64)).sum().backward()
     for parameter in model.parameters():
         parameter.grad_sample = torch.ones((4, *parameter.shape), dtype=parameter.dtype)
+    optimizer.grad_samples = [parameter.grad_sample for parameter in model.parameters()]
     callback.on_train_physical_batch_end(trainer)
     optimizer.step()
     callback.on_train_batch_end(trainer, 0, None, 0.0)
@@ -104,6 +105,32 @@ def test_records_adam_identity_and_optimizer_metadata(tmp_path, monkeypatch):
     assert metadata['adam_identity_tolerance'] == pytest.approx(1e-5)
     assert metadata['adam_identity_max_relative_residual'] < 1e-12
     assert metadata['adam_identity_passed'] is True
+
+
+def test_ignores_frozen_parameters_without_grad_sample(tmp_path, monkeypatch):
+    model = torch.nn.Linear(3, 2, dtype=torch.float64)
+    model.bias.requires_grad = False
+    optimizer = _make_adam(model.parameters())
+    trainer = _Trainer(model, optimizer)
+    callback = RecordOptimizerStatsCallback(tmp_path, max_grad_norm=16)
+    monkeypatch.setattr(callback, '_all_gather_norms', lambda norms: norms)
+
+    callback.on_train_start(trainer)
+    callback.on_train_batch_start(trainer, 0, None)
+    optimizer.zero_grad()
+    model(torch.ones(4, 3, dtype=torch.float64)).sum().backward()
+    model.weight.grad_sample = torch.ones((4, *model.weight.shape), dtype=model.weight.dtype)
+    optimizer.grad_samples = [model.weight.grad_sample]
+    callback.on_train_physical_batch_end(trainer)
+    optimizer.step()
+    callback.on_train_batch_end(trainer, 0, None, 0.0)
+    callback.on_train_end(trainer)
+
+    metadata = json.loads((tmp_path / 'optimizer_metadata.json').read_text())
+    assert metadata['all_trainable_parameters_covered_once'] is True
+    assert metadata['non_trainable_optimizer_parameters'] == ['bias']
+    assert metadata['trainable_parameter_count'] == model.weight.numel()
+    assert metadata['optimizer_parameter_count'] == model.weight.numel() + model.bias.numel()
 
 
 def test_metadata_rejects_missing_trainable_parameter(tmp_path):

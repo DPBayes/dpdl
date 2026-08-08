@@ -121,9 +121,7 @@ class RecordOptimizerStatsCallback(Callback):
         """Accumulate norm vectors until all physical pieces of a logical batch finish."""
         with torch.no_grad():
             sum_squares = None
-            for parameter in self._optimizer_parameters(trainer.optimizer):
-                grad_sample = parameter.grad_sample
-
+            for grad_sample in trainer.optimizer.grad_samples:
                 # Add each parameter block to the per-example squared gradient norm.
                 flat = grad_sample.reshape(grad_sample.size(0), -1)
                 block_squares = flat.pow(2).sum(dim=1)
@@ -216,6 +214,9 @@ class RecordOptimizerStatsCallback(Callback):
             for group in optimizer.param_groups:
                 eps = group['eps']
                 for parameter in group['params']:
+                    if not parameter.requires_grad:
+                        continue
+
                     m_hat, v_hat = self._bias_corrected_adam_state(optimizer, group, parameter)
 
                     # Separate Adam's normalized direction from the user-supplied LR.
@@ -274,9 +275,13 @@ class RecordOptimizerStatsCallback(Callback):
 
     @staticmethod
     def _optimizer_parameters(optimizer):
-        """Iterate parameter groups without exposing their storage details to callers."""
+        """Iterate parameters that Adam and Opacus update."""
         for group in optimizer.param_groups:
-            yield from group['params']
+            for parameter in group['params']:
+                # Frozen backbone parameters remain in the optimizer groups, but Opacus does
+                # not attach per-sample gradients or create Adam state for them.
+                if parameter.requires_grad:
+                    yield parameter
 
     def _record_adam_identity(self, row: dict, optimizer) -> None:
         actual_sq = 0.0
@@ -292,6 +297,9 @@ class RecordOptimizerStatsCallback(Callback):
                 adam_epsilon = float(group['eps'])
 
                 for parameter in group['params']:
+                    if not parameter.requires_grad:
+                        continue
+
                     parameter_before = self._params_before_step[id(parameter)]
                     m_hat, v_hat = self._bias_corrected_adam_state(optimizer, group, parameter)
 
@@ -337,7 +345,7 @@ class RecordOptimizerStatsCallback(Callback):
             'parameter_groups': self._parameter_groups(optimizer),
             'parameter_inventory': inventory,
             'trainable_parameter_count': sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad),
-            'optimizer_parameter_count': sum(parameter.numel() for parameter in self._optimizer_parameters(optimizer)),
+            'optimizer_parameter_count': sum(parameter.numel() for group in optimizer.param_groups for parameter in group['params']),
             **coverage,
             'world_size': self._world_size,
             'training_dataset_size': training_dataset_size,
@@ -386,7 +394,7 @@ class RecordOptimizerStatsCallback(Callback):
             if parameter_id not in trainable
         )
         return {
-            'all_trainable_parameters_covered_once': not (missing or duplicated or non_trainable),
+            'all_trainable_parameters_covered_once': not (missing or duplicated),
             'missing_trainable_parameters': missing,
             'duplicated_trainable_parameters': duplicated,
             'non_trainable_optimizer_parameters': non_trainable,
