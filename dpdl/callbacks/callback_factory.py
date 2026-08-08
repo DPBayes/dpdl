@@ -129,11 +129,12 @@ class CallbackFactory:
                 )
             )
 
-        if configuration.checkpoint_step_interval:
+        if configuration.checkpoint_step_interval or configuration.checkpoint_steps:
             callbacks.append(
                 CheckpointCallback(
                     log_dir=full_log_dir,
                     checkpoint_step_interval=configuration.checkpoint_step_interval,
+                    checkpoint_steps=configuration.checkpoint_steps,
                     device=device,
                 )
             )

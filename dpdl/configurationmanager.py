@@ -142,6 +142,8 @@ class Configuration(BaseModel):
     record_per_class_accuracy: Optional[bool] = False
     record_final_train_accuracy: Optional[bool] = False
     checkpoint_step_interval: Optional[int] = None
+    checkpoint_steps: Optional[List[int]] = None
+    skip_test: Optional[bool] = False
     disable_epsilon_logging: Optional[bool] = False
     split_seed: Optional[int] = 42
     predict_dataset_split: Optional[str] = 'test'
@@ -254,6 +256,8 @@ class Configuration(BaseModel):
             ('Record per-class accuracy', self.record_per_class_accuracy),
             ('Record final training accuracy', self.record_final_train_accuracy),
             ('Checkpoint every nth step', self.checkpoint_step_interval),
+            ('Checkpoint at exact steps', self.checkpoint_steps),
+            ('Skip test evaluation', self.skip_test),
             ('Enable callback debug logging', self.verbose_callback),
             ('Fairness-style subsampling class', self.fairness_imbalance_class),
             ('Random seed for creating dataset subsets', self.split_seed),

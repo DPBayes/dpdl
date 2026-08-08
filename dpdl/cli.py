@@ -171,6 +171,20 @@ def cli(
                 rich_help_panel='Training options',
             )
         ] = None,
+        checkpoint_steps: Annotated[
+            Optional[List[int]],
+            typer.Option(
+                help='Save model and optimizer checkpoints at these exact steps',
+                rich_help_panel='Training options',
+            )
+        ] = None,
+        skip_test: Annotated[
+            bool,
+            typer.Option(
+                help='Do not evaluate the test split after training',
+                rich_help_panel='Training options',
+            )
+        ] = False,
         prediction_save_gradient_data: Annotated[
             Optional[bool],
             typer.Option(
@@ -699,12 +713,13 @@ def run_train(config_manager: ConfigurationManager) -> Optional[Path]:
         if rank_zero:
             log_train_metrics(config_manager, train_metrics, train_loss)
 
-    # log test accuracy and run time, and save model if asked
+    # Keep the test split closed during hyperparameter selection when requested.
     if rank_zero:
-        log.info('Evaluating on test set..')
-        test_loss, test_metrics = trainer.test()
+        if not config_manager.configuration.skip_test:
+            log.info('Evaluating on test set..')
+            test_loss, test_metrics = trainer.test()
 
-        log_test_metrics(config_manager, test_metrics, test_loss)
+            log_test_metrics(config_manager, test_metrics, test_loss)
         log_runtime(config_manager, start_time, end_time)
 
         # We need to have an option to disable this, as it might fail due to an OOM

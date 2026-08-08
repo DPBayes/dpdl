@@ -35,11 +35,12 @@ def get_latest_checkpoint(checkpoint_dir):
 
 
 class CheckpointCallback(Callback):
-    def __init__(self, log_dir: str, checkpoint_step_interval: int, device=None):
+    def __init__(self, log_dir: str, checkpoint_step_interval=None, checkpoint_steps=None, device=None):
         super().__init__()
 
         self.log_dir = log_dir
         self.checkpoint_step_interval = checkpoint_step_interval
+        self.checkpoint_steps = set(checkpoint_steps or [])
         self.checkpoints_dir = os.path.join(self.log_dir, 'checkpoints')
         self.global_step = get_latest_checkpoint(self.checkpoints_dir)
 
@@ -48,6 +49,13 @@ class CheckpointCallback(Callback):
         # Initialize mean metric for accumulating train loss over interval
         device = device or torch.device('cuda')
         self.interval_loss = torchmetrics.aggregation.MeanMetric(sync_on_compute=False).to(device)
+
+    def on_train_start(self, trainer):
+        super().on_train_start(trainer)
+
+        if self._is_global_zero() and 0 in self.checkpoint_steps:
+            checkpoint_path = os.path.join(self.checkpoints_dir, 'checkpoint_step_0.pt')
+            self.save_checkpoint(trainer, checkpoint_path)
 
     def on_train_batch_end(self, trainer, batch_idx, batch, loss, **kwargs):
 
@@ -58,12 +66,18 @@ class CheckpointCallback(Callback):
         self.interval_loss.update(loss)
         self.global_step += 1
 
-        if self.global_step % self.checkpoint_step_interval == 0:
+        interval_checkpoint = self.checkpoint_step_interval and self.global_step % self.checkpoint_step_interval == 0
+        if interval_checkpoint or self.global_step in self.checkpoint_steps:
             checkpoint_path = os.path.join(
                 self.checkpoints_dir, f'checkpoint_step_{self.global_step}.pt'
             )
 
             self.save_checkpoint(trainer, checkpoint_path)
+
+            # Exact checkpoints are state snapshots. Validate only at the last one.
+            final_exact_checkpoint = self.checkpoint_steps and self.global_step == max(self.checkpoint_steps)
+            if not interval_checkpoint and not final_exact_checkpoint:
+                return
 
             trainer.validate(enable_callbacks=False)
             metrics = trainer._unwrap_model().valid_metrics.compute()
@@ -89,6 +103,10 @@ class CheckpointCallback(Callback):
         if not self._is_global_zero():
             return
 
+        # The last exact checkpoint and its metrics were already saved at batch end.
+        if self.checkpoint_steps and self.global_step == max(self.checkpoint_steps):
+            return
+
         final_checkpoint_path = os.path.join(
             self.checkpoints_dir, f'final_checkpoint_step_{self.global_step}.pt'
         )
@@ -111,8 +129,20 @@ class CheckpointCallback(Callback):
         self.save_metrics(metrics, metrics_path)
 
     def save_checkpoint(self, trainer, checkpoint_path: str):
-        trainer.save_model(checkpoint_path)
-        log.info(f'Model checkpoint saved at {checkpoint_path}')
+        if self.checkpoint_steps:
+            # Exact-step probes need both the parameters and Adam's first and second moments.
+            torch.save(
+                {
+                    'step': self.global_step,
+                    'model_state_dict': trainer._unwrap_model().state_dict(),
+                    'optimizer_state_dict': trainer.optimizer.state_dict(),
+                },
+                checkpoint_path,
+            )
+            log.info(f'Model and optimizer checkpoint saved at {checkpoint_path}')
+        else:
+            trainer.save_model(checkpoint_path)
+            log.info(f'Model checkpoint saved at {checkpoint_path}')
 
     def save_metrics(self, metrics, metrics_path: str):
         metrics = tensor_to_python_type(metrics)
