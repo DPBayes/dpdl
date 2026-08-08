@@ -35,24 +35,14 @@ class PeftFactory:
     @staticmethod
     def get_peft_model(model: torch.nn.Module, configuration: Configuration, checkpoints_dir: str = None):
         if configuration.peft == 'lora':
-            lora_rank = configuration.lora_rank
-
-            if checkpoints_dir is not None:
-                return LoRA.get_peft_model(
-                    model=model,
-                    model_name=configuration.model_name,
-                    lora_rank=lora_rank,
-                    checkpoint_dir=checkpoints_dir,
-                    is_trainable=True,
-                )
-            else:
-                return LoRA.get_peft_model(
-                    model=model,
-                    model_name=configuration.model_name,
-                    lora_rank=lora_rank,
-                    checkpoint_dir=checkpoints_dir,
-                    is_trainable=True
-                )
+            return LoRA.get_peft_model(
+                model=model,
+                model_name=configuration.model_name,
+                lora_rank=configuration.lora_rank,
+                lora_alpha=configuration.lora_alpha,
+                checkpoint_dir=checkpoints_dir,
+                is_trainable=True,
+            )
 
         if configuration.peft == 'film':
             return FiLM.get_peft_model(model, configuration.model_name)
@@ -163,7 +153,8 @@ class LoRA:
     def get_peft_model(
         model: torch.nn.Module,
         model_name: str,
-        lora_rank: Optional[int] = None,
+        lora_rank: int,
+        lora_alpha: int,
         checkpoint_dir: Optional[str] = None,
         is_trainable: Optional[bool] = False,
     ):
@@ -173,7 +164,7 @@ class LoRA:
 
             lora_model = PeftModel.from_pretrained(model, checkpoint_dir, is_trainable=is_trainable)
         else:
-            lora_config = LoRA._get_config(model_name, lora_rank)
+            lora_config = LoRA._get_config(model_name, lora_rank, lora_alpha)
             lora_model = get_peft_model(model, lora_config)
 
         trainable_params, all_params = get_nb_trainable_parameters(lora_model)
@@ -187,13 +178,11 @@ class LoRA:
         return lora_model
 
     @staticmethod
-    def _get_config(model_name: str, lora_rank: int = None):
-        # default rank
-        if not lora_rank:
-            lora_rank = 4
-
-        # general recommendation for alpha is 2*rank
-        lora_alpha = lora_rank
+    def _get_config(model_name: str, lora_rank: int, lora_alpha: int):
+        if lora_rank <= 0:
+            raise ValueError('LoRA rank must be positive.')
+        if lora_alpha <= 0:
+            raise ValueError('LoRA alpha must be positive.')
 
         if model_name.startswith('vit_'):
 
@@ -224,8 +213,8 @@ class LoRA:
         elif 'distilbert' in model_name:
             return LoraConfig(
                 task_type='SEQ_CLS',
-                r=16,
-                lora_alpha=32,
+                r=lora_rank,
+                lora_alpha=lora_alpha,
                 target_modules=['q_lin', 'v_lin'],  # DistilBERT attention projections
                 lora_dropout=0.1,
                 bias='none',
@@ -233,8 +222,8 @@ class LoRA:
         elif 'bert' in model_name:  # For the LLM experiments
             return LoraConfig(
                 task_type='SEQ_CLS',
-                r=16,  # rank
-                lora_alpha=32,
+                r=lora_rank,
+                lora_alpha=lora_alpha,
                 target_modules=['query', 'value'],
                 lora_dropout=0.1,
                 bias='none',
@@ -242,8 +231,8 @@ class LoRA:
         elif 'gpt' in model_name:
             # Configure LoRA for causal LM
             return LoraConfig(
-                r=8,
-                lora_alpha=16,
+                r=lora_rank,
+                lora_alpha=lora_alpha,
                 target_modules=[
                     'c_attn',
                     'c_proj',

@@ -114,6 +114,7 @@ class Configuration(BaseModel):
     zero_head: bool = False
     peft: Optional[Literal['lora', 'film', 'head-only']] = None
     lora_rank: Optional[int] = None
+    lora_alpha: Optional[int] = None
     pretrained: bool = True
     cache_features: Optional[bool] = False
     use_steps: Optional[bool] = False
@@ -210,6 +211,25 @@ class Configuration(BaseModel):
 
         return values
 
+    @root_validator(pre=True)
+    def check_lora_rank(cls, values):
+        if values.get('peft') == 'lora':
+            lora_rank = values.get('lora_rank')
+
+            if lora_rank is None:
+                raise ValueError('Parameter "lora_rank" is required when using LoRA.')
+
+            if lora_rank <= 0:
+                raise ValueError('Parameter "lora_rank" must be positive.')
+
+            lora_alpha = values.get('lora_alpha')
+            if lora_alpha is None:
+                values['lora_alpha'] = lora_rank
+            elif lora_alpha <= 0:
+                raise ValueError('Parameter "lora_alpha" must be positive.')
+
+        return values
+
     def __str__(self):
         attributes = [
             ('Command', self.command),
@@ -238,6 +258,8 @@ class Configuration(BaseModel):
             ('Subset size', self.subset_size),
             ('Zero head weights', self.zero_head),
             ('PEFT method', self.peft),
+            ('LoRA rank', self.lora_rank),
+            ('LoRA alpha', self.lora_alpha),
             ('Use pretrained model', self.pretrained),
             ('Pretrained model weight perturbation noise level', self.weight_perturbation_level),
             ('Use precomputed features', self.cache_features),

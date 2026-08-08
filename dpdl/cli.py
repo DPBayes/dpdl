@@ -255,6 +255,13 @@ def cli(
                 rich_help_panel='Model options',
             )
         ] = None,
+        lora_alpha: Annotated[
+            Optional[int],
+            typer.Option(
+                help='LoRA scaling alpha; defaults to the LoRA rank',
+                rich_help_panel='Model options',
+            )
+        ] = None,
         weight_perturbation_level: Annotated[
             float,
             typer.Option(
