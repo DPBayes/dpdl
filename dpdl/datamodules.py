@@ -310,14 +310,14 @@ class DataModule:
             # Split the training dataset into training and validation
             self.train_dataset, val_and_test_split = self._dataset_splits['train'].train_test_split(
                 test_size=(self.test_size + self.val_size),
-                seed=self.seed,
+                seed=self.split_seed,
                 shuffle=True,
                 stratify_by_column=self._label_field,
             ).values()
 
             self.val_dataset, self.test_dataset = val_and_test_split.train_test_split(
                 test_size=0.5,
-                seed=self.seed,
+                seed=self.split_seed,
                 shuffle=True,
                 stratify_by_column=self._label_field,
             ).values()
@@ -327,7 +327,7 @@ class DataModule:
             # Split the training dataset into training and validation
             self.train_dataset, self.val_dataset = self._dataset_splits['train'].train_test_split(
                 test_size=self.test_size,
-                seed=self.seed,
+                seed=self.split_seed,
                 shuffle=True,
                 stratify_by_column=self._label_field,
             ).values()
@@ -341,7 +341,7 @@ class DataModule:
             # Split the validation into validation and test (50/50)
             self.val_dataset, self.test_dataset = self._dataset_splits['validation'].train_test_split(
                 test_size=0.5,
-                seed=self.seed,
+                seed=self.split_seed,
                 shuffle=True,
                 stratify_by_column=self._label_field,
             ).values()
